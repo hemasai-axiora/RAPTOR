@@ -1,0 +1,67 @@
+{
+  "family": "LowCostStackDevBackendTaskDefA1689B76",
+  "taskRoleArn": "arn:aws:iam::847013096108:role/LowCostStackDev-EcsTaskRole8DFA0181-HSb5BFeRGeZU",
+  "executionRoleArn": "arn:aws:iam::847013096108:role/LowCostStackDev-EcsExecutionRoleFD93B7A2-9HBBB6dGaKJn",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "containerDefinitions": [
+    {
+      "name": "BackendContainer",
+      "image": "847013096108.dkr.ecr.us-east-1.amazonaws.com/app-backend-dev:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "hostPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "DB_USER",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:847013096108:secret:DatabaseSecret3B817195-xqI7b1rpqDv5-zxkSsP:username::"
+        },
+        {
+          "name": "DB_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:847013096108:secret:DatabaseSecret3B817195-xqI7b1rpqDv5-zxkSsP:password::"
+        },
+        {
+          "name": "DB_HOST",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:847013096108:secret:DatabaseSecret3B817195-xqI7b1rpqDv5-zxkSsP:host::"
+        },
+        {
+          "name": "DB_PORT",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:847013096108:secret:DatabaseSecret3B817195-xqI7b1rpqDv5-zxkSsP:port::"
+        },
+        {
+          "name": "DB_NAME",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:847013096108:secret:DatabaseSecret3B817195-xqI7b1rpqDv5-zxkSsP:dbname::"
+        },
+        {
+          "name": "RESEND_API_KEY",
+          "valueFrom": "arn:aws:ssm:us-east-1:847013096108:parameter/axiorapulse/production/RESEND_API_KEY"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/app-backend-dev",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "backend"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health.php')\" || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 10,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}

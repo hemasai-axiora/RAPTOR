@@ -1,0 +1,30 @@
+# Local environments
+.venv/
+venv/
+node_modules/
+vendor/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Runtime data
+storage/
+logs/
+*.log
+*.tmp
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# Build/cache artifacts
+coverage/
+dist/
+build/
+.phpunit.cache/
+playwright-report/
+test-results/

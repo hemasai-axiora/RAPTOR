@@ -1,0 +1,66 @@
+version: "3.9"
+
+services:
+  # ─── Nginx Reverse Proxy (HTTP only) ────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: raptor-nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - web
+    networks:
+      - raptor-net
+
+  # ─── PHP Application ────────────────────────────────────────────────────────
+  web:
+    image: raptorqa-web
+    build:
+      context: .
+    container_name: raptor-web
+    restart: always
+    environment:
+      DB_HOST: db
+      DB_USER: ${DB_USER:-raptor_user}
+      DB_PASS: ${DB_PASS:-RaptorProd@2026!}
+      DB_NAME: ${DB_NAME:-raptor_crm_db}
+      URLROOT: ${URLROOT:-http://98.94.227.211/public}
+      APP_ENV: ${APP_ENV:-production}
+      SESSION_TIMEOUT: ${SESSION_TIMEOUT:-1800}
+      STORAGE_PATH: ${STORAGE_PATH:-/var/www/html/storage}
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-5242880}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - raptor-net
+
+  # ─── MySQL Database ─────────────────────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: raptor-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-RaptorRoot@2026!}
+      MYSQL_DATABASE: ${DB_NAME:-raptor_crm_db}
+      MYSQL_USER: ${DB_USER:-raptor_user}
+      MYSQL_PASSWORD: ${DB_PASS:-RaptorProd@2026!}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-RaptorRoot@2026!}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - raptor-net
+
+volumes:
+  db-data:
+
+networks:
+  raptor-net:
+    driver: bridge

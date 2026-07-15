@@ -1,0 +1,14 @@
+{
+  "name": "raptor-sales-monitoring-crm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "End-to-end test automation for Raptor Sales Monitoring CRM.",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.45.0"
+  }
+}

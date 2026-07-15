@@ -1,0 +1,17 @@
+# Prevent directory browsing
+Options -Indexes
+
+# Enable rewriting
+RewriteEngine On
+RewriteBase /public/
+
+# Protect sensitive files
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Redirect requests to front controller if not a file or directory
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?route=$1 [QSA,L]

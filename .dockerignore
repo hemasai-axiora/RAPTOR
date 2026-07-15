@@ -1,0 +1,11 @@
+.git
+node_modules
+playwright-report
+test-results
+Digital marketing reserch doument.pptx
+*.zip
+*.tar.gz
+*.tgz
+.env.local
+.env.development
+tests/

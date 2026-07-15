@@ -1,0 +1,317 @@
+<?php
+// Raptor CRM — Attendance model (Sprint 2)
+
+class Attendance extends Model {
+
+    /** Shift config read from settings with safe defaults. */
+    public function getShiftConfig(): array {
+        $this->query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'attendance.%'");
+        $rows = $this->resultSet();
+        $cfg = [];
+        foreach ($rows as $r) { $cfg[$r->setting_key] = $r->setting_value; }
+        return [
+            'shift_start'    => $cfg['attendance.shift_start']    ?? '09:30',
+            'shift_end'      => $cfg['attendance.shift_end']      ?? '18:30',
+            'grace_minutes'  => (int)($cfg['attendance.grace_minutes'] ?? 15),
+            'halfday_minutes'=> (int)($cfg['attendance.halfday_minutes'] ?? 240),
+            'policy_version' => $cfg['attendance.policy_version'] ?? 'v1',
+        ];
+    }
+
+    // ---------------- Consent ----------------
+
+    public function hasConsent($userId): bool {
+        $this->query('SELECT consented FROM location_consents
+                      WHERE user_id = :uid ORDER BY consented_at DESC LIMIT 1');
+        $this->bind(':uid', (int) $userId);
+        $row = $this->single();
+        return $row && (int) $row->consented === 1;
+    }
+
+    public function saveConsent($userId, $ip, $policyVersion): bool {
+        $this->query('INSERT INTO location_consents (user_id, consented, policy_version, ip)
+                      VALUES (:uid, 1, :pv, :ip)');
+        $this->bind(':uid', (int) $userId);
+        $this->bind(':pv', $policyVersion);
+        $this->bind(':ip', $ip);
+        return $this->execute();
+    }
+
+    // ---------------- Today's record ----------------
+
+    public function getToday($userId, $date = null) {
+        $date = $date ?: date('Y-m-d');
+        $this->query('SELECT * FROM attendance WHERE user_id = :uid AND work_date = :d');
+        $this->bind(':uid', (int) $userId);
+        $this->bind(':d', $date);
+        return $this->single();
+    }
+
+    // ---------------- Check-in ----------------
+
+    /**
+     * @param array $d  ['selfie_key','lat','lng','accuracy','device','ip']
+     * @return array    ['ok'=>bool, 'message'=>string, 'is_late'=>bool]
+     */
+    public function checkIn($userId, array $d): array {
+        $existing = $this->getToday($userId);
+        if ($existing && $existing->login_at) {
+            return ['ok' => false, 'message' => 'You have already checked in today.'];
+        }
+
+        $cfg      = $this->getShiftConfig();
+        $date     = date('Y-m-d');
+        $now      = date('Y-m-d H:i:s');
+        $latestOk = strtotime($date . ' ' . $cfg['shift_start']) + $cfg['grace_minutes'] * 60;
+        $isLate   = time() > $latestOk;
+
+        // Geofence: null = not evaluated, 1 = inside a fence, 0 = outside all fences.
+        $geoOk = $this->evalGeofence($d['lat'], $d['lng']);
+
+        // Anything abnormal (late or out-of-fence) routes to manager approval.
+        $needsApproval = $isLate || ($geoOk === 0);
+        $approval = $needsApproval ? 'pending' : 'auto';
+
+        $this->query('INSERT INTO attendance
+            (user_id, work_date, login_at, login_lat, login_lng, login_accuracy_m,
+             login_selfie_url, login_device, login_ip, is_late, geofence_ok, status, approval_status)
+            VALUES
+            (:uid, :d, :now, :lat, :lng, :acc, :selfie, :device, :ip, :late, :geo, \'present\', :appr)');
+        $this->bind(':uid', (int) $userId);
+        $this->bind(':d', $date);
+        $this->bind(':now', $now);
+        $this->bind(':lat', $d['lat'] !== null ? $d['lat'] : null);
+        $this->bind(':lng', $d['lng'] !== null ? $d['lng'] : null);
+        $this->bind(':acc', $d['accuracy'] !== null ? (int) $d['accuracy'] : null);
+        $this->bind(':selfie', $d['selfie_key']);
+        $this->bind(':device', $d['device']);
+        $this->bind(':ip', $d['ip']);
+        $this->bind(':late', $isLate ? 1 : 0, PDO::PARAM_INT);
+        $this->bind(':geo', $geoOk === null ? null : $geoOk, $geoOk === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+        $this->bind(':appr', $approval);
+        $ok = $this->execute();
+
+        $reasons = [];
+        if ($isLate)        { $reasons[] = 'LATE'; }
+        if ($geoOk === 0)   { $reasons[] = 'OUTSIDE geofence'; }
+
+        return [
+            'ok'         => $ok,
+            'is_late'    => $isLate,
+            'geofence_ok'=> $geoOk,
+            'message'    => $ok
+                ? ($needsApproval ? 'Checked in — flagged (' . implode(', ', $reasons) . '), pending approval.' : 'Checked in successfully.')
+                : 'Check-in failed.',
+        ];
+    }
+
+    /**
+     * Evaluate a coordinate against active 'office' geofences.
+     * @return int|null  1 inside any fence, 0 outside all, null if not evaluated
+     *                   (geofencing disabled, no coords, or no fences defined).
+     */
+    private function evalGeofence($lat, $lng): ?int {
+        if ($lat === null || $lng === null) { return null; }
+
+        $this->query("SELECT setting_value FROM settings WHERE setting_key = 'attendance.geofence_enabled'");
+        $row = $this->single();
+        if (!$row || (string) $row->setting_value !== '1') { return null; }
+
+        $this->query("SELECT center_lat, center_lng, radius_m FROM geofences WHERE type = 'office' AND active = 1");
+        $fences = $this->resultSet();
+        if (empty($fences)) { return null; }
+
+        foreach ($fences as $f) {
+            $dist = $this->haversineMeters((float) $lat, (float) $lng, (float) $f->center_lat, (float) $f->center_lng);
+            if ($dist <= (float) $f->radius_m) { return 1; }
+        }
+        return 0;
+    }
+
+    /** Great-circle distance in metres. */
+    private function haversineMeters(float $lat1, float $lng1, float $lat2, float $lng2): float {
+        $R = 6371000.0;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+        $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+        return $R * 2 * atan2(sqrt($a), sqrt(1 - $a));
+    }
+
+    // ---------------- Check-out ----------------
+
+    public function checkOut($userId, array $d): array {
+        $rec = $this->getToday($userId);
+        if (!$rec || !$rec->login_at) {
+            return ['ok' => false, 'message' => 'You have not checked in today.'];
+        }
+        if ($rec->logout_at) {
+            return ['ok' => false, 'message' => 'You have already checked out today.'];
+        }
+
+        // Close any break still open, then re-read the updated break total.
+        $this->autoCloseBreak((int) $rec->attendance_id);
+        $rec = $this->getToday($userId);
+
+        $cfg   = $this->getShiftConfig();
+        $now   = date('Y-m-d H:i:s');
+        $date  = $rec->work_date;
+
+        $worked = (int) round((time() - strtotime($rec->login_at)) / 60) - (int) $rec->break_minutes;
+        if ($worked < 0) { $worked = 0; }
+
+        $isEarly = time() < strtotime($date . ' ' . $cfg['shift_end']);
+        $status  = ($worked < $cfg['halfday_minutes']) ? 'half_day' : 'present';
+
+        $this->query('UPDATE attendance SET
+                        logout_at = :now, logout_lat = :lat, logout_lng = :lng,
+                        logout_accuracy_m = :acc, logout_selfie_url = :selfie,
+                        logout_device = :device, logout_ip = :ip,
+                        worked_minutes = :worked, is_early_logout = :early, status = :status
+                      WHERE attendance_id = :aid');
+        $this->bind(':now', $now);
+        $this->bind(':lat', $d['lat'] !== null ? $d['lat'] : null);
+        $this->bind(':lng', $d['lng'] !== null ? $d['lng'] : null);
+        $this->bind(':acc', $d['accuracy'] !== null ? (int) $d['accuracy'] : null);
+        $this->bind(':selfie', $d['selfie_key']);
+        $this->bind(':device', $d['device']);
+        $this->bind(':ip', $d['ip']);
+        $this->bind(':worked', $worked, PDO::PARAM_INT);
+        $this->bind(':early', $isEarly ? 1 : 0, PDO::PARAM_INT);
+        $this->bind(':status', $status);
+        $this->bind(':aid', (int) $rec->attendance_id);
+        $ok = $this->execute();
+
+        return [
+            'ok'             => $ok,
+            'worked_minutes' => $worked,
+            'is_early'       => $isEarly,
+            'message'        => $ok ? 'Checked out. Worked ' . floor($worked / 60) . 'h ' . ($worked % 60) . 'm.' : 'Check-out failed.',
+        ];
+    }
+
+    // ---------------- Breaks ----------------
+
+    public function getOpenBreak($attendanceId) {
+        $this->query('SELECT * FROM breaks WHERE attendance_id = :aid AND end_at IS NULL ORDER BY start_at DESC LIMIT 1');
+        $this->bind(':aid', (int) $attendanceId);
+        return $this->single();
+    }
+
+    public function startBreak($userId, $reason = null): array {
+        $rec = $this->getToday($userId);
+        if (!$rec || !$rec->login_at) { return ['ok' => false, 'message' => 'Check in first.']; }
+        if ($rec->logout_at)          { return ['ok' => false, 'message' => 'You have already checked out.']; }
+        if ($this->getOpenBreak($rec->attendance_id)) { return ['ok' => false, 'message' => 'A break is already running.']; }
+
+        $this->query('INSERT INTO breaks (attendance_id, start_at, reason) VALUES (:aid, :now, :reason)');
+        $this->bind(':aid', (int) $rec->attendance_id);
+        $this->bind(':now', date('Y-m-d H:i:s'));
+        $this->bind(':reason', $reason);
+        return ['ok' => $this->execute(), 'message' => 'Break started.'];
+    }
+
+    public function endBreak($userId): array {
+        $rec = $this->getToday($userId);
+        if (!$rec) { return ['ok' => false, 'message' => 'No attendance today.']; }
+        $open = $this->getOpenBreak($rec->attendance_id);
+        if (!$open) { return ['ok' => false, 'message' => 'No break is running.']; }
+
+        $minutes = max(0, (int) round((time() - strtotime($open->start_at)) / 60));
+        $this->query('UPDATE breaks SET end_at = :now, minutes = :m WHERE break_id = :bid');
+        $this->bind(':now', date('Y-m-d H:i:s'));
+        $this->bind(':m', $minutes, PDO::PARAM_INT);
+        $this->bind(':bid', (int) $open->break_id);
+        $this->execute();
+
+        // Roll the total break minutes onto the attendance row.
+        $this->query('UPDATE attendance SET break_minutes = break_minutes + :m WHERE attendance_id = :aid');
+        $this->bind(':m', $minutes, PDO::PARAM_INT);
+        $this->bind(':aid', (int) $rec->attendance_id);
+        $this->execute();
+
+        return ['ok' => true, 'message' => 'Break ended (' . $minutes . ' min).', 'minutes' => $minutes];
+    }
+
+    /** Close an open break silently (used at checkout). */
+    private function autoCloseBreak($attendanceId): void {
+        $open = $this->getOpenBreak($attendanceId);
+        if (!$open) { return; }
+        $minutes = max(0, (int) round((time() - strtotime($open->start_at)) / 60));
+        $this->query('UPDATE breaks SET end_at = :now, minutes = :m WHERE break_id = :bid');
+        $this->bind(':now', date('Y-m-d H:i:s'));
+        $this->bind(':m', $minutes, PDO::PARAM_INT);
+        $this->bind(':bid', (int) $open->break_id);
+        $this->execute();
+        $this->query('UPDATE attendance SET break_minutes = break_minutes + :m WHERE attendance_id = :aid');
+        $this->bind(':m', $minutes, PDO::PARAM_INT);
+        $this->bind(':aid', (int) $attendanceId);
+        $this->execute();
+    }
+
+    // ---------------- Approvals ----------------
+
+    /**
+     * Pending exceptions scoped to a set of user IDs (null = all, for admin).
+     */
+    public function getPendingApprovals($userIds) {
+        $sql = 'SELECT a.*, u.name AS employee_name
+                FROM attendance a JOIN users u ON a.user_id = u.user_id
+                WHERE a.approval_status = \'pending\'';
+        if (is_array($userIds)) {
+            if (empty($userIds)) { return []; }
+            $in = implode(',', array_map('intval', $userIds));
+            $sql .= " AND a.user_id IN ($in)";
+        }
+        $sql .= ' ORDER BY a.work_date DESC, a.login_at DESC';
+        $this->query($sql);
+        return $this->resultSet();
+    }
+
+    public function getById($attendanceId) {
+        $this->query('SELECT * FROM attendance WHERE attendance_id = :id');
+        $this->bind(':id', (int) $attendanceId);
+        return $this->single();
+    }
+
+    public function setApproval($attendanceId, $decision, $approverId, $remark = null): bool {
+        // decision: 'approved' | 'rejected'
+        $this->query('UPDATE attendance SET approval_status = :st, approved_by = :by, remarks = :rm
+                      WHERE attendance_id = :id AND approval_status = \'pending\'');
+        $this->bind(':st', $decision);
+        $this->bind(':by', (int) $approverId);
+        $this->bind(':rm', $remark);
+        $this->bind(':id', (int) $attendanceId);
+        $this->execute();
+        return $this->rowCount() > 0;
+    }
+
+    // ---------------- Report ----------------
+
+    /**
+     * @param array $f  ['from','to','user_ids'(array|null),'user_id'(optional)]
+     */
+    public function getReport(array $f) {
+        $sql = 'SELECT a.*, u.name AS employee_name, t.name AS team_name
+                FROM attendance a
+                JOIN users u ON a.user_id = u.user_id
+                LEFT JOIN employees e ON u.user_id = e.user_id
+                LEFT JOIN teams t ON e.team_id = t.team_id
+                WHERE a.work_date BETWEEN :from AND :to';
+        $params = [':from' => $f['from'], ':to' => $f['to']];
+
+        if (is_array($f['user_ids'])) {
+            if (empty($f['user_ids'])) { return []; }
+            $in = implode(',', array_map('intval', $f['user_ids']));
+            $sql .= " AND a.user_id IN ($in)";
+        }
+        if (!empty($f['user_id'])) {
+            $sql .= ' AND a.user_id = :uid';
+            $params[':uid'] = (int) $f['user_id'];
+        }
+        $sql .= ' ORDER BY a.work_date DESC, employee_name ASC';
+
+        $this->query($sql);
+        foreach ($params as $k => $v) { $this->bind($k, $v); }
+        return $this->resultSet();
+    }
+}
