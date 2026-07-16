@@ -2,45 +2,40 @@
 /**
  * Role Model — Handles granular RBAC role and permission management.
  */
-class Role {
-    private $db;
-
-    public function __construct() {
-        $this->db = Database::getInstance();
-    }
+class Role extends Model {
 
     /**
      * Get all roles.
      */
     public function getRoles(): array {
-        $this->db->query('SELECT * FROM roles ORDER BY is_system DESC, role_name ASC');
-        return $this->db->resultSet() ?: [];
+        $this->query('SELECT * FROM roles ORDER BY is_system DESC, role_name ASC');
+        return $this->resultSet() ?: [];
     }
 
     /**
      * Get role by ID.
      */
     public function getRoleById(int $id) {
-        $this->db->query('SELECT * FROM roles WHERE role_id = :id');
-        $this->db->bind(':id', $id);
-        return $this->db->single();
+        $this->query('SELECT * FROM roles WHERE role_id = :id');
+        $this->bind(':id', $id);
+        return $this->single();
     }
 
     /**
      * Get all permissions.
      */
     public function getPermissions(): array {
-        $this->db->query('SELECT * FROM permissions WHERE module IS NOT NULL ORDER BY module ASC, action ASC');
-        return $this->db->resultSet() ?: [];
+        $this->query('SELECT * FROM permissions WHERE module IS NOT NULL ORDER BY module ASC, action ASC');
+        return $this->resultSet() ?: [];
     }
 
     /**
      * Get role permissions mapped by permission_id => scope.
      */
     public function getRolePermissionsMap(int $roleId): array {
-        $this->db->query('SELECT permission_id, scope FROM role_permissions WHERE role_id = :rid');
-        $this->db->bind(':rid', $roleId);
-        $rows = $this->db->resultSet() ?: [];
+        $this->query('SELECT permission_id, scope FROM role_permissions WHERE role_id = :rid');
+        $this->bind(':rid', $roleId);
+        $rows = $this->resultSet() ?: [];
         
         $map = [];
         foreach ($rows as $row) {
@@ -54,11 +49,11 @@ class Role {
      */
     public function addRole(string $name, string $description): int {
         $name = strtolower(str_replace(' ', '_', trim($name)));
-        $this->db->query('INSERT INTO roles (role_name, description, is_system) VALUES (:n, :d, 0)');
-        $this->db->bind(':n', $name);
-        $this->db->bind(':d', trim($description));
-        if ($this->db->execute()) {
-            return (int) $this->db->lastInsertId();
+        $this->query('INSERT INTO roles (role_name, description, is_system) VALUES (:n, :d, 0)');
+        $this->bind(':n', $name);
+        $this->bind(':d', trim($description));
+        if ($this->execute()) {
+            return (int) $this->lastInsertId();
         }
         return 0;
     }
@@ -72,16 +67,16 @@ class Role {
         
         // Cannot rename system roles
         if ($role->is_system) {
-            $this->db->query('UPDATE roles SET description = :d WHERE role_id = :id');
-            $this->db->bind(':d', trim($description));
+            $this->query('UPDATE roles SET description = :d WHERE role_id = :id');
+            $this->bind(':d', trim($description));
         } else {
             $name = strtolower(str_replace(' ', '_', trim($name)));
-            $this->db->query('UPDATE roles SET role_name = :n, description = :d WHERE role_id = :id');
-            $this->db->bind(':n', $name);
-            $this->db->bind(':d', trim($description));
+            $this->query('UPDATE roles SET role_name = :n, description = :d WHERE role_id = :id');
+            $this->bind(':n', $name);
+            $this->bind(':d', trim($description));
         }
-        $this->db->bind(':id', $id);
-        return $this->db->execute();
+        $this->bind(':id', $id);
+        return $this->execute();
     }
 
     /**
@@ -91,7 +86,7 @@ class Role {
         $role = $this->getRoleById($id);
         if (!$role || $role->is_system) return false;
 
-        $conn = $this->db->getConnection();
+        $conn = $this->db; // $this->db is PDO in Model
         try {
             $conn->beginTransaction();
 
@@ -118,7 +113,7 @@ class Role {
      * Expects permissionScopes format: [ permission_id => scope_or_null_or_empty, ... ]
      */
     public function syncPermissions(int $roleId, array $permissionScopes): bool {
-        $conn = $this->db->getConnection();
+        $conn = $this->db; // $this->db is PDO in Model
         try {
             $conn->beginTransaction();
 
