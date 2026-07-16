@@ -7,11 +7,7 @@ class CampaignsController extends Controller {
 
     public function __construct() {
         $this->requireAuth();
-        
-        // Enforce RBAC: Employer has no access to Campaigns list
-        if ($_SESSION['user_role'] === 'employer') {
-            $this->redirect('index.php?route=dashboard/executive');
-        }
+        $this->requirePermission('social_media', 'view');
         
         $this->campaignModel = $this->model('Campaign');
         $this->clientModel = $this->model('Client');
@@ -31,11 +27,9 @@ class CampaignsController extends Controller {
         $this->viewWithLayout('campaigns/index', 'main', $data);
     }
 
-    // Add new campaign (Planned setup)
+    // Add new campaign
     public function add() {
-        if (!in_array($_SESSION['user_role'], ['admin', 'manager'])) {
-            $this->redirect('index.php?route=campaigns/index');
-        }
+        $this->requirePermission('social_media', 'create');
 
         $clients = $this->clientModel->getClients();
 
@@ -89,11 +83,9 @@ class CampaignsController extends Controller {
         $this->viewWithLayout('campaigns/add', 'main', $data);
     }
 
-    // Edit campaign (Adjusting budget or entering actual metrics)
+    // Edit campaign
     public function edit($id) {
-        if (!in_array($_SESSION['user_role'], ['admin', 'manager'])) {
-            $this->redirect('index.php?route=campaigns/index');
-        }
+        $this->requirePermission('social_media', 'edit');
 
         $campaign = $this->campaignModel->getCampaignById($id);
         if (!$campaign) {
@@ -159,9 +151,7 @@ class CampaignsController extends Controller {
 
     // Delete campaign
     public function delete($id) {
-        if (!in_array($_SESSION['user_role'], ['admin', 'manager'])) {
-            $this->redirect('index.php?route=campaigns/index');
-        }
+        $this->requirePermission('social_media', 'delete');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($this->campaignModel->deleteCampaign($id)) {
@@ -176,11 +166,7 @@ class CampaignsController extends Controller {
 
     // Apply AI Budget Recommendation
     public function applyRecommendation() {
-        if (!in_array($_SESSION['user_role'], ['admin', 'manager'])) {
-            header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
-            exit();
-        }
+        $this->requirePermission('social_media', 'manage');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fromId = (int)$_POST['from_campaign_id'];

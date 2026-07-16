@@ -6,11 +6,7 @@ class ClientsController extends Controller {
 
     public function __construct() {
         $this->requireAuth();
-        
-        // Enforce RBAC matrix: Employer has no access to client lists
-        if ($_SESSION['user_role'] === 'employer') {
-            $this->redirect('index.php?route=dashboard/executive');
-        }
+        $this->requirePermission('customers', 'view');
         
         $this->clientModel = $this->model('Client');
     }
@@ -29,11 +25,9 @@ class ClientsController extends Controller {
         $this->viewWithLayout('clients/index', 'main', $data);
     }
 
-    // Add Client (Admin & Manager only)
+    // Add Client
     public function add() {
-        if (!in_array($_SESSION['user_role'], ['admin', 'manager'])) {
-            $this->redirect('index.php?route=clients/index');
-        }
+        $this->requirePermission('customers', 'create');
 
         $data = [
             'title' => 'Add Client | Raptor CRM',
@@ -78,11 +72,9 @@ class ClientsController extends Controller {
         $this->viewWithLayout('clients/add', 'main', $data);
     }
 
-    // Edit Client (Admin & Manager only)
+    // Edit Client
     public function edit($id) {
-        if (!in_array($_SESSION['user_role'], ['admin', 'manager'])) {
-            $this->redirect('index.php?route=clients/index');
-        }
+        $this->requirePermission('customers', 'edit');
 
         $client = $this->clientModel->getClientById($id);
         if (!$client) {
@@ -135,9 +127,7 @@ class ClientsController extends Controller {
 
     // Add Client Contact
     public function addContact() {
-        if (!in_array($_SESSION['user_role'], ['admin', 'manager'])) {
-            $this->redirect('index.php?route=clients/index');
-        }
+        $this->requirePermission('customers', 'edit');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
@@ -163,9 +153,7 @@ class ClientsController extends Controller {
 
     // Delete Client Contact
     public function deleteContact($contactId) {
-        if (!in_array($_SESSION['user_role'], ['admin', 'manager'])) {
-            $this->redirect('index.php?route=clients/index');
-        }
+        $this->requirePermission('customers', 'edit');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
@@ -185,9 +173,7 @@ class ClientsController extends Controller {
 
     // Delete Client
     public function delete($id) {
-        if (!in_array($_SESSION['user_role'], ['admin', 'manager'])) {
-            $this->redirect('index.php?route=clients/index');
-        }
+        $this->requirePermission('customers', 'manage');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($this->clientModel->deleteClient($id)) {

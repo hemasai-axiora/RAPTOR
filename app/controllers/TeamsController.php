@@ -9,13 +9,7 @@ class TeamsController extends Controller {
 
     public function __construct() {
         $this->requireAuth();
-        if (!in_array($_SESSION['user_role'], ['admin', 'manager'])) {
-            $this->viewWithLayout('errors/403', 'main', [
-                'title'   => 'Access Denied',
-                'message' => 'Organization management is limited to Admins and Managers.'
-            ]);
-            exit();
-        }
+        $this->requirePermission('settings', 'manage');
         $this->teamModel = $this->model('Team');
     }
 

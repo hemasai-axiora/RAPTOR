@@ -150,9 +150,22 @@ class Controller {
     }
 
     // Enforce role permission boundary
-    protected function requirePermission($permissionName) {
+    protected function requirePermission($module, $action = null, $record = null) {
         $this->requireAuth();
-        if (!$this->hasPermission($permissionName)) {
+        
+        $permitted = false;
+        if ($action === null) {
+            if (strpos($module, '.') !== false) {
+                list($mod, $act) = explode('.', $module, 2);
+                $permitted = PermissionService::can($mod, $act, $record);
+            } else {
+                $permitted = $this->hasPermission($module);
+            }
+        } else {
+            $permitted = PermissionService::can($module, $action, $record);
+        }
+
+        if (!$permitted) {
             // Render 403 Access Denied
             $this->viewWithLayout('errors/403', 'main', [
                 'title' => 'Access Denied',

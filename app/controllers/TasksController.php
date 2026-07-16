@@ -6,10 +6,7 @@ class TasksController extends Controller {
 
     public function __construct() {
         $this->requireAuth();
-
-        if ($_SESSION['user_role'] === 'employer') {
-            $this->redirect('index.php?route=dashboard/executive');
-        }
+        $this->requirePermission('tasks', 'view');
 
         $this->taskModel = $this->model('Task');
     }
@@ -40,9 +37,7 @@ class TasksController extends Controller {
     }
 
     public function add() {
-        if (!in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader'], true)) {
-            $this->redirect('index.php?route=tasks/index');
-        }
+        $this->requirePermission('tasks', 'create');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
@@ -134,9 +129,7 @@ class TasksController extends Controller {
     }
 
     public function review($id) {
-        if (!in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader'], true)) {
-            $this->redirect('index.php?route=tasks/index');
-        }
+        $this->requirePermission('tasks', 'assign');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
@@ -150,9 +143,7 @@ class TasksController extends Controller {
     }
 
     public function delete($id) {
-        if (!in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader'], true)) {
-            $this->redirect('index.php?route=tasks/index');
-        }
+        $this->requirePermission('tasks', 'assign');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($this->taskModel->deleteTask((int) $id, $this->visibleUserIds())) {

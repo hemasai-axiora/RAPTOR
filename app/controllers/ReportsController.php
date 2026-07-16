@@ -6,6 +6,7 @@ class ReportsController extends Controller {
 
     public function __construct() {
         $this->requireAuth();
+        $this->requirePermission('reports', 'view');
         $this->reportModel = $this->model('ReportSuite');
     }
 
@@ -49,9 +50,7 @@ class ReportsController extends Controller {
     }
 
     public function export() {
-        if ($_SESSION['user_role'] === 'employer') {
-            $this->redirect('index.php?route=reports/index');
-        }
+        $this->requirePermission('reports', 'export');
 
         $visibleUserIds = $this->visibleUserIds();
         $result = $this->reportModel->run(

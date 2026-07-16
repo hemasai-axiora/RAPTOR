@@ -6,6 +6,7 @@ class SocialController extends Controller {
     public function __construct() {
         // Enforce authentication
         $this->requireAuth();
+        $this->requirePermission('social_media', 'view');
     }
 
     // Default route: directs to appropriate view based on role
@@ -22,6 +23,7 @@ class SocialController extends Controller {
 
     // 1. Employee Update Page & Submission
     public function update() {
+        $this->requirePermission('social_media', 'create');
         $socialModel = $this->model('SocialAccount');
         $analyticsModel = $this->model('AnalyticsEntry');
         $postModel = $this->model('Post');
@@ -159,10 +161,7 @@ class SocialController extends Controller {
 
     // 3. Manager Performance Dashboard
     public function manager() {
-        // Enforce Manager role boundary
-        if (!Policy::isManager() && !Policy::isAdmin()) {
-            $this->redirect('index.php?route=social/update');
-        }
+        $this->requirePermission('social_media', 'manage');
 
         $analyticsModel = $this->model('AnalyticsEntry');
         
@@ -183,10 +182,7 @@ class SocialController extends Controller {
 
     // 4. Admin Settings Panel
     public function admin() {
-        // Enforce Admin role boundary
-        if (!Policy::isAdmin()) {
-            $this->redirect('index.php?route=social/update');
-        }
+        $this->requirePermission('social_media', 'manage');
 
         $platformModel = $this->model('Platform');
         $socialModel = $this->model('SocialAccount');

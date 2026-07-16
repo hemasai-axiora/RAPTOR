@@ -7,12 +7,7 @@ class InvoicesController extends Controller {
 
     public function __construct() {
         $this->requireAuth();
-        
-        // Enforce RBAC: Only Admin, Manager, and Finance can access Invoicing
-        $allowedRoles = ['admin', 'manager', 'finance'];
-        if (!in_array($_SESSION['user_role'], $allowedRoles)) {
-            $this->redirect('index.php?route=dashboard/executive');
-        }
+        $this->requirePermission('invoices', 'view');
 
         $this->invoiceModel = $this->model('Invoice');
         $this->clientModel = $this->model('Client');
@@ -33,6 +28,7 @@ class InvoicesController extends Controller {
 
     // Create invoice
     public function add() {
+        $this->requirePermission('invoices', 'create');
         $clients = $this->clientModel->getClients();
 
         // Get single source of truth conversion rate from settings table
@@ -195,12 +191,7 @@ class InvoicesController extends Controller {
 
     // Mark invoice as Paid (admin/finance only) - records UTR number
     public function markPaid($id) {
-        $allowed = ['admin', 'finance'];
-        if (!in_array($_SESSION['user_role'], $allowed)) {
-            $_SESSION['invoice_error'] = 'Access denied. Only Admin and Finance may update payment status.';
-            $this->redirect('index.php?route=invoices/index');
-            return;
-        }
+        $this->requirePermission('invoices', 'edit');
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $utr = trim($_POST['utr_number'] ?? '');
             if (empty($utr)) {
@@ -220,12 +211,7 @@ class InvoicesController extends Controller {
 
     // Mark invoice as Cancelled (admin/finance only) - records cancellation reason
     public function markCancelled($id) {
-        $allowed = ['admin', 'finance'];
-        if (!in_array($_SESSION['user_role'], $allowed)) {
-            $_SESSION['invoice_error'] = 'Access denied. Only Admin and Finance may cancel invoices.';
-            $this->redirect('index.php?route=invoices/index');
-            return;
-        }
+        $this->requirePermission('invoices', 'edit');
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $reason = trim($_POST['cancel_reason'] ?? '');
             if (empty($reason)) {

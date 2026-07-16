@@ -8,6 +8,7 @@ class DashboardController extends Controller {
     public function __construct() {
         // Enforce user authentication for all dashboard routes
         $this->requireAuth();
+        $this->requirePermission('dashboard', 'view');
         $this->monitoringModel = $this->model('Monitoring');
         $this->dashboardModuleModel = $this->model('DashboardModule');
     }
@@ -70,13 +71,7 @@ class DashboardController extends Controller {
     }
 
     public function templates() {
-        if (!Policy::canCreateDashboardTemplate()) {
-            $this->viewWithLayout('errors/403', 'main', [
-                'title' => 'Access Denied',
-                'message' => 'Only analysts and admins can create dashboard templates.'
-            ]);
-            return;
-        }
+        $this->requirePermission('dashboard', 'manage');
 
         $this->viewWithLayout('dashboard/templates', 'main', [
             'title' => 'Dashboard Templates | Raptor CRM',
@@ -88,9 +83,7 @@ class DashboardController extends Controller {
     }
 
     public function createTemplate() {
-        if (!Policy::canCreateDashboardTemplate()) {
-            $this->redirect('index.php?route=dashboard/index');
-        }
+        $this->requirePermission('dashboard', 'manage');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];

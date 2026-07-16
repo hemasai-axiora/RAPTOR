@@ -16,6 +16,7 @@ class AttendanceController extends Controller {
 
     /** Self attendance screen. */
     public function index() {
+        $this->requirePermission('attendance', 'view');
         if ($_SESSION['user_role'] === 'admin') {
             $this->redirect('index.php?route=dashboard/index');
         }
@@ -101,15 +102,8 @@ class AttendanceController extends Controller {
 
     // ================= Oversight: approvals & report =================
 
-    /** Only team leaders, managers, admins may monitor/approve. */
     private function requireOversight() {
-        if (!in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader'])) {
-            $this->viewWithLayout('errors/403', 'main', [
-                'title'   => 'Access Denied',
-                'message' => 'Attendance oversight is limited to Team Leaders, Managers, and Admins.'
-            ]);
-            exit();
-        }
+        $this->requirePermission('attendance', 'approve');
     }
 
     /** Pending attendance exceptions queue (scoped to the viewer's team subtree). */

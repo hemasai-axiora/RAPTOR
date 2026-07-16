@@ -6,11 +6,7 @@ class UsersController extends Controller {
 
     public function __construct() {
         $this->requireAuth();
-        
-        // Employee account management is reserved for Admin and HR.
-        if (!Policy::canManageEmployees()) {
-            $this->redirect('index.php?route=dashboard/executive');
-        }
+        $this->requirePermission('employees', 'view');
 
         $this->userModel = $this->model('User');
     }
@@ -54,6 +50,7 @@ class UsersController extends Controller {
 
     // Add user action
     public function add() {
+        $this->requirePermission('employees', 'create');
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
 
@@ -234,6 +231,7 @@ class UsersController extends Controller {
 
     // Edit user action
     public function edit() {
+        $this->requirePermission('employees', 'edit');
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
 
@@ -416,6 +414,7 @@ class UsersController extends Controller {
 
     // Deactivate user action; physical deletion is disabled by policy.
     public function deactivate($id) {
+        $this->requirePermission('employees', 'delete');
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $this->userModel->deactivateUser((int) $id);
             $this->audit('Deactivated employee account', 'users', (int) $id);
@@ -427,6 +426,7 @@ class UsersController extends Controller {
      * Download sample CSV template.
      */
     public function downloadTemplate() {
+        $this->requirePermission('employees', 'view');
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename=employee_bulk_upload_template.csv');
 
@@ -542,6 +542,7 @@ class UsersController extends Controller {
      * Parse and validate uploaded CSV.
      */
     public function bulkUpload() {
+        $this->requirePermission('employees', 'create');
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->jsonError('Invalid request method.', 405);
         }

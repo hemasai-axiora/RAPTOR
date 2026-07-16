@@ -6,6 +6,7 @@ class NotificationsController extends Controller {
 
     public function __construct() {
         $this->requireAuth();
+        $this->requirePermission('notifications', 'view');
         $this->notificationModel = $this->model('Notification');
     }
 

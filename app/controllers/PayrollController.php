@@ -7,17 +7,14 @@ class PayrollController extends Controller {
 
     public function __construct() {
         $this->requireAuth();
+        $this->requirePermission('payroll', 'view');
         $this->payrollModel = $this->model('Payroll');
         $this->userModel = $this->model('User');
     }
 
     // 1. Payroll Dashboard
     public function dashboard() {
-        $role = $_SESSION['user_role'];
-        if (!in_array($role, ['admin', 'hr', 'finance', 'manager'], true)) {
-            $this->redirect('index.php?route=dashboard/executive');
-            return;
-        }
+        $this->requirePermission('payroll', 'view');
 
         // Fetch payroll runs for overview
         $runs = $this->payrollModel->getPayrollRuns();
@@ -36,11 +33,7 @@ class PayrollController extends Controller {
 
     // 2. Salary Structures Setup
     public function structures() {
-        $role = $_SESSION['user_role'];
-        if (!in_array($role, ['admin', 'hr'], true)) {
-            $this->redirect('index.php?route=payroll/dashboard');
-            return;
-        }
+        $this->requirePermission('payroll', 'edit');
 
         $employees = $this->payrollModel->getActiveEmployees();
 
@@ -64,11 +57,7 @@ class PayrollController extends Controller {
 
     // Save/Update Salary Structure
     public function save_structure() {
-        $role = $_SESSION['user_role'];
-        if (!in_array($role, ['admin', 'hr'], true)) {
-            $this->redirect('index.php?route=payroll/dashboard');
-            return;
-        }
+        $this->requirePermission('payroll', 'edit');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
@@ -113,11 +102,7 @@ class PayrollController extends Controller {
 
     // 3. Process Payroll Runs
     public function processing() {
-        $role = $_SESSION['user_role'];
-        if (!in_array($role, ['admin', 'hr', 'finance'], true)) {
-            $this->redirect('index.php?route=payroll/dashboard');
-            return;
-        }
+        $this->requirePermission('payroll', 'create');
 
         $runs = $this->payrollModel->getPayrollRuns();
 
@@ -144,11 +129,7 @@ class PayrollController extends Controller {
 
     // Start/Generate payroll run for a month
     public function run_generate() {
-        $role = $_SESSION['user_role'];
-        if (!in_array($role, ['admin', 'hr', 'finance'], true)) {
-            $this->redirect('index.php?route=payroll/dashboard');
-            return;
-        }
+        $this->requirePermission('payroll', 'create');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
@@ -261,13 +242,9 @@ class PayrollController extends Controller {
         $this->redirect('index.php?route=payroll/processing');
     }
 
-    // Approve payroll run (Admin/HR only)
+    // Approve payroll run (Admin/HR/Finance can approve prep)
     public function run_approve($runId) {
-        $role = $_SESSION['user_role'];
-        if (!in_array($role, ['admin', 'hr'], true)) {
-            $this->redirect('index.php?route=payroll/dashboard');
-            return;
-        }
+        $this->requirePermission('payroll', 'create');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($this->payrollModel->updateRunStatus($runId, 'approved', 'approved_by', $_SESSION['user_id'])) {
@@ -281,11 +258,7 @@ class PayrollController extends Controller {
 
     // Lock payroll run (Finance only)
     public function run_lock($runId) {
-        $role = $_SESSION['user_role'];
-        if (!in_array($role, ['admin', 'finance'], true)) {
-            $this->redirect('index.php?route=payroll/dashboard');
-            return;
-        }
+        $this->requirePermission('payroll', 'approve');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($this->payrollModel->updateRunStatus($runId, 'locked')) {
@@ -299,11 +272,7 @@ class PayrollController extends Controller {
 
     // Release payslips and execute payments (Finance only)
     public function run_release($runId) {
-        $role = $_SESSION['user_role'];
-        if (!in_array($role, ['admin', 'finance'], true)) {
-            $this->redirect('index.php?route=payroll/dashboard');
-            return;
-        }
+        $this->requirePermission('payroll', 'approve');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($this->payrollModel->updateRunStatus($runId, 'released', 'released_by', $_SESSION['user_id'])) {
@@ -319,11 +288,7 @@ class PayrollController extends Controller {
 
     // Export bank transfer file (NEFT/RTGS CSV format)
     public function export_bank_file($runId) {
-        $role = $_SESSION['user_role'];
-        if (!in_array($role, ['admin', 'finance'], true)) {
-            $this->redirect('index.php?route=payroll/dashboard');
-            return;
-        }
+        $this->requirePermission('payroll', 'approve');
 
         $run = $this->payrollModel->getPayrollRunById($runId);
         if (!$run) {
@@ -398,11 +363,7 @@ class PayrollController extends Controller {
 
     // Bulk Email Payslips to employees in a run
     public function bulk_email_payslips() {
-        $role = $_SESSION['user_role'];
-        if (!in_array($role, ['admin', 'hr', 'finance'], true)) {
-            $this->redirect('index.php?route=payroll/dashboard');
-            return;
-        }
+        $this->requirePermission('payroll', 'create');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
@@ -647,11 +608,7 @@ class PayrollController extends Controller {
 
     // Add Bonus
     public function add_bonus() {
-        $role = $_SESSION['user_role'];
-        if (!in_array($role, ['admin', 'hr', 'finance'], true)) {
-            $this->redirect('index.php?route=payroll/bonuses');
-            return;
-        }
+        $this->requirePermission('payroll', 'create');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
@@ -676,11 +633,7 @@ class PayrollController extends Controller {
 
     // Approve/Pay Bonus
     public function approve_bonus($bonusId) {
-        $role = $_SESSION['user_role'];
-        if (!in_array($role, ['admin', 'hr', 'finance'], true)) {
-            $this->redirect('index.php?route=payroll/bonuses');
-            return;
-        }
+        $this->requirePermission('payroll', 'approve');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];

@@ -1159,10 +1159,29 @@
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
                     </div>
                     <ul class="menu-section-items">
-                        <?php if ($_SESSION['user_role'] === 'admin'): ?>
+                        <?php if (Policy::can('settings', 'manage')): ?>
                         <li class="menu-item <?php echo ($data['title'] === 'Global Settings | Raptor CRM') ? 'active' : ''; ?>">
                             <a href="index.php?route=settings/index">
                                 <i class="fa-solid fa-sliders"></i><span>Global Settings</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (Policy::can('roles', 'manage')): ?>
+                        <li class="menu-item <?php echo (strpos($_GET['route'] ?? '', 'roles') !== false) ? 'active' : ''; ?>">
+                            <a href="index.php?route=roles/index">
+                                <i class="fa-solid fa-user-shield"></i><span>Roles & Permissions</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (Policy::can('settings', 'manage')): ?>
+                        <li class="menu-item <?php echo (isset($_GET['route']) && ($_GET['route'] === 'settings/accessControl' || strpos($_GET['route'], 'settings/userAccess') !== false)) ? 'active' : ''; ?>">
+                            <a href="index.php?route=settings/accessControl">
+                                <i class="fa-solid fa-user-lock"></i><span>User Access Control</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($_GET['route']) && $_GET['route'] === 'settings/auditLogs') ? 'active' : ''; ?>">
+                            <a href="index.php?route=settings/auditLogs">
+                                <i class="fa-solid fa-list-check"></i><span>System Audit Logs</span>
                             </a>
                         </li>
                         <?php endif; ?>

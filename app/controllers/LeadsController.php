@@ -10,10 +10,7 @@ class LeadsController extends Controller {
 
     public function __construct() {
         $this->requireAuth();
-
-        if ($_SESSION['user_role'] === 'employer') {
-            $this->redirect('index.php?route=dashboard/executive');
-        }
+        $this->requirePermission('crm_leads', 'view');
 
         $this->leadModel = $this->model('Lead');
         $this->clientModel = $this->model('Client');
@@ -84,6 +81,7 @@ class LeadsController extends Controller {
     }
 
     public function add() {
+        $this->requirePermission('crm_leads', 'create');
         $data = $this->formData([
             'title' => 'Capture Lead | Raptor CRM',
             'active_tab' => 'operations',
@@ -140,6 +138,7 @@ class LeadsController extends Controller {
         if (!$lead) {
             $this->redirect('index.php?route=leads/index');
         }
+        $this->requirePermission('crm_leads', 'edit', $lead);
 
         $data = $this->formData([
             'title' => 'Edit Lead | Raptor CRM',
@@ -200,11 +199,14 @@ class LeadsController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $status = $_POST['status'] ?? '';
             $lead = $this->leadModel->getLeadById((int) $id, $this->visibleUserIds());
-            if ($this->leadModel->moveStatus((int) $id, $status, $_SESSION['user_id'], $this->visibleUserIds())) {
-                if ($lead && $lead->status !== $status) {
-                    $this->autoScheduleAfterStageChange((int) $id, $status, $lead->assigned_to_user_id);
+            if ($lead) {
+                $this->requirePermission('crm_leads', 'edit', $lead);
+                if ($this->leadModel->moveStatus((int) $id, $status, $_SESSION['user_id'], $this->visibleUserIds())) {
+                    if ($lead->status !== $status) {
+                        $this->autoScheduleAfterStageChange((int) $id, $status, $lead->assigned_to_user_id);
+                    }
+                    $this->audit('Moved lead #' . (int) $id . ' to ' . $status, 'lead', (int) $id);
                 }
-                $this->audit('Moved lead #' . (int) $id . ' to ' . $status, 'lead', (int) $id);
             }
         }
         $allowedReturns = ['leads/pipeline', 'leads/index', 'leads/view/' . (int) $id];
@@ -217,8 +219,12 @@ class LeadsController extends Controller {
 
     public function delete($id) {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if ($this->leadModel->deleteLead((int) $id, $this->visibleUserIds())) {
-                $this->audit('Deleted lead #' . (int) $id, 'lead', (int) $id);
+            $lead = $this->leadModel->getLeadById((int) $id, $this->visibleUserIds());
+            if ($lead) {
+                $this->requirePermission('crm_leads', 'delete', $lead);
+                if ($this->leadModel->deleteLead((int) $id, $this->visibleUserIds())) {
+                    $this->audit('Deleted lead #' . (int) $id, 'lead', (int) $id);
+                }
             }
         }
         $this->redirect('index.php?route=leads/index');
