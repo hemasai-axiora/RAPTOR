@@ -885,6 +885,11 @@
                                 <i class="fa-solid fa-fingerprint"></i><span>My Attendance</span>
                             </a>
                         </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'leaves') ? 'active' : ''; ?>">
+                            <a href="index.php?route=leaves/index">
+                                <i class="fa-solid fa-calendar-day"></i><span>My Leaves</span>
+                            </a>
+                        </li>
                         <?php endif; ?>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'followups') ? 'active' : ''; ?>">
                             <a href="index.php?route=followups/index">
@@ -924,6 +929,16 @@
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'attendance_approvals') ? 'active' : ''; ?>">
                             <a href="index.php?route=attendance/approvals">
                                 <i class="fa-solid fa-user-check"></i><span>Attendance Approvals</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'leave_approvals') ? 'active' : ''; ?>">
+                            <a href="index.php?route=leaves/approvals">
+                                <i class="fa-solid fa-file-signature"></i><span>Leave Approvals</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'leaves_calendar') ? 'active' : ''; ?>">
+                            <a href="index.php?route=leaves/calendar">
+                                <i class="fa-solid fa-calendar-check"></i><span>Leave Calendar</span>
                             </a>
                         </li>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'attendance_report') ? 'active' : ''; ?>">
@@ -1105,6 +1120,19 @@
                         </li>
                         <?php endif; ?>
 
+                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'hrms_dashboard') ? 'active' : ''; ?>">
+                            <a href="index.php?route=hrms/dashboard">
+                                <i class="fa-solid fa-chart-line"></i><span>HRMS Dashboard</span>
+                            </a>
+                        </li>
+                        <?php if (in_array($role, ['admin', 'hr'], true)): ?>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'hrms_reports') ? 'active' : ''; ?>">
+                            <a href="index.php?route=hrms/reports">
+                                <i class="fa-solid fa-file-invoice"></i><span>HRMS Reports</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+
                         <!-- New Payroll Items -->
                         <?php if (in_array($role, ['admin', 'hr', 'finance', 'manager'], true)): ?>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_dashboard') ? 'active' : ''; ?>">
@@ -1240,13 +1268,60 @@
                     </h2>
                 </div>
 
-                <div class="topbar-right">
+                <div class="topbar-right d-flex align-items-center gap-2">
                     <!-- Global Filters -->
                     <select class="filter-select d-none d-lg-block" id="client-selector">
                         <option value="all">All Clients</option>
                         <option value="1">Axiora Tech</option>
                     </select>
                     <input type="text" class="filter-select d-none d-lg-block" id="date-range" placeholder="Date Range">
+                    
+                    <!-- Notification Bell Dropdown -->
+                    <?php
+                    $notifUser = $_SESSION['user_id'] ?? 0;
+                    $unreadNotifs = [];
+                    if ($notifUser > 0) {
+                        try {
+                            $dbConnection = Database::getInstance()->getConnection();
+                            $stmtNotif = $dbConnection->prepare("SELECT * FROM notifications WHERE user_id = :uid AND is_read = 0 ORDER BY created_at DESC LIMIT 5");
+                            $stmtNotif->execute([':uid' => $notifUser]);
+                            $unreadNotifs = $stmtNotif->fetchAll(PDO::FETCH_OBJ) ?: [];
+                        } catch (Exception $e) { $unreadNotifs = []; }
+                    }
+                    $notifCount = count($unreadNotifs);
+                    ?>
+                    <div class="dropdown">
+                        <button type="button" class="theme-toggle position-relative shadow-none border-0 bg-transparent" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications" style="color: var(--text-primary); font-size: 1.1rem; padding: 0 8px;">
+                            <i class="fa-solid fa-bell"></i>
+                            <?php if ($notifCount > 0): ?>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.55rem; padding: 0.25em 0.5em; top: 2px !important;"><?php echo $notifCount; ?></span>
+                            <?php endif; ?>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end py-0 shadow border-0" aria-labelledby="notificationsDropdown" style="width: 300px; background: #1a1c29; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 12px;">
+                            <li class="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center">
+                                <span class="fw-bold text-white small">Notifications Center</span>
+                                <a href="index.php?route=notifications/index" class="text-primary small text-decoration-none" style="font-size: 0.75rem;">View All</a>
+                            </li>
+                            <div style="max-height: 250px; overflow-y: auto;">
+                                <?php if ($notifCount === 0): ?>
+                                    <li class="p-3 text-center text-secondary small">No new notifications.</li>
+                                <?php else: ?>
+                                    <?php foreach ($unreadNotifs as $notif): ?>
+                                        <li class="p-3 border-bottom border-secondary" style="background: rgba(255,255,255,0.02);">
+                                            <a href="<?php echo htmlspecialchars($notif->action_url ?: '#'); ?>" class="text-decoration-none d-block">
+                                                <div class="d-flex justify-content-between">
+                                                    <span class="fw-bold text-white small d-block"><?php echo htmlspecialchars($notif->title); ?></span>
+                                                    <small class="text-secondary" style="font-size: 0.7rem;"><?php echo date('M d', strtotime($notif->created_at)); ?></small>
+                                                </div>
+                                                <span class="text-secondary small d-block mt-1" style="font-size: 0.78rem; line-height: 1.3;"><?php echo htmlspecialchars($notif->message); ?></span>
+                                            </a>
+                                        </li>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
+                        </ul>
+                    </div>
+
                     <button type="button" class="theme-toggle" id="theme-toggle" title="Toggle Theme">
                         <i class="fa-solid fa-moon"></i>
                     </button>

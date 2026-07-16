@@ -52,6 +52,9 @@
                         <td><?php echo !empty($user->date_of_joining) ? date('Y-m-d', strtotime($user->date_of_joining)) : date('Y-m-d', strtotime($user->created_at)); ?></td>
                         <td class="text-end">
                             <div class="d-inline-flex gap-2">
+                                <a href="index.php?route=hrms/profile/<?php echo $user->user_id; ?>" class="btn btn-outline-light btn-sm">
+                                    <i class="fa-solid fa-eye"></i> View Profile
+                                </a>
                                 <button class="btn btn-outline-info btn-sm btn-edit-user" 
                                         data-id="<?php echo $user->user_id; ?>"
                                         data-name="<?php echo htmlspecialchars($user->name); ?>"

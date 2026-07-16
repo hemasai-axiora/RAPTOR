@@ -142,12 +142,46 @@ class AttendanceController extends Controller {
         $this->redirect('index.php?route=attendance/approvals');
     }
 
-    /** Ensure the target attendance row belongs to a user the approver may see. */
+    /** Ensure the target attendance row belongs to a user the approver may see, and matches hierarchy. */
     private function inScope(int $attendanceId): bool {
         $rec = $this->att->getById($attendanceId);
         if (!$rec) { return false; }
-        $scope = $this->visibleUserIds();
-        return $scope === null || in_array((int) $rec->user_id, $scope, true);
+
+        $role = $_SESSION['user_role'];
+        $uid  = (int) $_SESSION['user_id'];
+
+        if ($role === 'admin') {
+            return true; // Admin can approve anything
+        }
+
+        // Fetch owner details
+        $db = Database::getInstance()->getConnection();
+        $stmt = $db->prepare("SELECT u.user_id, r.role_name, e.reporting_manager_id 
+                              FROM users u 
+                              JOIN roles r ON u.role_id = r.role_id
+                              LEFT JOIN employees e ON u.user_id = e.user_id 
+                              WHERE u.user_id = :uid");
+        $stmt->execute([':uid' => $rec->user_id]);
+        $owner = $stmt->fetch(PDO::FETCH_OBJ);
+        if (!$owner) { return false; }
+
+        // Enforce the specific approval hierarchy:
+        if ($owner->role_name === 'employee') {
+            // Employee Attendance -> Manager Approval
+            return ($role === 'manager' || $role === 'team_leader') && (int)$owner->reporting_manager_id === $uid;
+        }
+
+        if (in_array($owner->role_name, ['manager', 'team_leader', 'finance', 'analyst'], true)) {
+            // Manager/Finance/Analyst Attendance -> HR Approval
+            return $role === 'hr';
+        }
+
+        if ($owner->role_name === 'hr') {
+            // HR Attendance -> Admin Approval
+            return $role === 'admin';
+        }
+
+        return false;
     }
 
     /** Attendance report with date range + team scoping. */
