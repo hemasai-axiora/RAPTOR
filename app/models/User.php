@@ -88,7 +88,10 @@ class User extends Model {
 
     // Add user
     public function addUser($data) {
-        $this->db->beginTransaction();
+        $inTx = $this->db->inTransaction();
+        if (!$inTx) {
+            $this->db->beginTransaction();
+        }
         try {
             $this->query('INSERT INTO users (role_id, name, email, password, status, force_password_reset) 
                           VALUES (:rid, :name, :email, :pass, :status, :force_reset)');
@@ -156,17 +159,26 @@ class User extends Model {
                 }
             }
 
-            $this->db->commit();
+            if (!$inTx) {
+                $this->db->commit();
+            }
             return true;
         } catch (Exception $e) {
-            $this->db->rollBack();
+            if (!$inTx) {
+                $this->db->rollBack();
+            } else {
+                throw $e;
+            }
             return false;
         }
     }
 
     // Update user
     public function updateUser($data) {
-        $this->db->beginTransaction();
+        $inTx = $this->db->inTransaction();
+        if (!$inTx) {
+            $this->db->beginTransaction();
+        }
         try {
             if (!empty($data['password'])) {
                 $this->query('UPDATE users SET role_id = :rid, name = :name, email = :email, password = :pass, status = :status, force_password_reset = :force_reset WHERE user_id = :id');
@@ -312,10 +324,16 @@ class User extends Model {
                 }
             }
 
-            $this->db->commit();
+            if (!$inTx) {
+                $this->db->commit();
+            }
             return true;
         } catch (Exception $e) {
-            $this->db->rollBack();
+            if (!$inTx) {
+                $this->db->rollBack();
+            } else {
+                throw $e;
+            }
             return false;
         }
     }

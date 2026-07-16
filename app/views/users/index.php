@@ -747,8 +747,11 @@ $(document).ready(function() {
         $('#btn-confirm-import').html('<span class="spinner-border spinner-border-sm me-2"></span>Importing...').prop('disabled', true);
 
         $.ajax({
-            url: 'index.php?route=users/bulkImport',
+            url: 'index.php?route=users/bulkImport&csrf_token=<?php echo $_SESSION['csrf_token']; ?>',
             type: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '<?php echo $_SESSION['csrf_token']; ?>'
+            },
             data: JSON.stringify(payload),
             contentType: 'application/json',
             success: function(res) {
@@ -813,6 +816,44 @@ $(document).ready(function() {
                         <a href="index.php?route=users/downloadTemplate" class="btn btn-outline-info btn-sm px-3">
                             <i class="fa-solid fa-download me-2"></i>Download CSV Template
                         </a>
+                    </div>
+                    <div class="mb-4">
+                        <button class="btn btn-outline-secondary btn-sm w-100 text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#systemOptionsCollapse" aria-expanded="false" aria-controls="systemOptionsCollapse" style="border-color: rgba(255,255,255,0.1); border-radius: 8px;">
+                            <span><i class="fa-solid fa-circle-info me-2 text-info"></i>View Valid System Options (Departments, Job Titles, Managers)</span>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="collapse mt-2" id="systemOptionsCollapse">
+                            <div class="card card-body bg-dark border-secondary text-white p-3 small" style="background: rgba(255,255,255,0.01) !important; border-radius: 8px;">
+                                <div class="row">
+                                    <div class="col-md-4 mb-2">
+                                        <span class="fw-bold text-primary d-block mb-2" style="font-size:0.8rem;">Departments</span>
+                                        <ul class="list-unstyled text-secondary ps-0 mb-0" style="max-height: 150px; overflow-y: auto; font-size:0.75rem;">
+                                            <?php foreach ($departments as $dept): ?>
+                                                <li><code class="text-info"><?php echo htmlspecialchars($dept); ?></code></li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <span class="fw-bold text-primary d-block mb-2" style="font-size:0.8rem;">Job Titles</span>
+                                        <ul class="list-unstyled text-secondary ps-0 mb-0" style="max-height: 150px; overflow-y: auto; font-size:0.75rem;">
+                                            <?php foreach ($job_titles as $title): ?>
+                                                <li><code class="text-info"><?php echo htmlspecialchars($title); ?></code></li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <span class="fw-bold text-primary d-block mb-2" style="font-size:0.8rem;">Reporting Managers (Emails)</span>
+                                        <ul class="list-unstyled text-secondary ps-0 mb-0" style="max-height: 150px; overflow-y: auto; font-size:0.75rem;">
+                                            <?php if (empty($managers)): ?>
+                                                <li class="text-muted italic">None active</li>
+                                            <?php else: foreach ($managers as $mgr): ?>
+                                                <li><span class="text-secondary" title="<?php echo htmlspecialchars($mgr->name); ?>"><?php echo htmlspecialchars($mgr->email); ?></span></li>
+                                            <?php endforeach; endif; ?>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="mb-4">
                         <label for="csv_file" class="form-label text-secondary small">Select CSV File (Max 5MB / 5,000 rows)</label>

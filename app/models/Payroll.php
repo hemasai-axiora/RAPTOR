@@ -95,7 +95,7 @@ class Payroll extends Model {
     // ---------------- Payroll Details ----------------
 
     public function getPayrollDetailsByRunId($runId) {
-        $this->query('SELECT d.*, e.employee_code, u.name, u.email,
+        $this->query('SELECT d.*, e.employee_code, e.job_title, e.department, u.name, u.email,
                              b.account_holder_name, b.bank_name, b.account_number, b.ifsc_code, b.branch_name, b.account_type
                       FROM payroll_details d
                       JOIN employees e ON d.employee_id = e.employee_id

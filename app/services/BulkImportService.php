@@ -171,14 +171,17 @@ class BulkImportService {
                         $errors[$fieldName] = "Invalid email format.";
                     }
                 } elseif ($fieldSpec['type'] === 'date') {
-                    // Expect YYYY-MM-DD
-                    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $val)) {
-                        $errors[$fieldName] = "Invalid date format. Expected YYYY-MM-DD.";
+                    // Expect DD-MM-YYYY
+                    if (!preg_match('/^\d{2}-\d{2}-\d{4}$/', $val)) {
+                        $errors[$fieldName] = "Invalid date format. Expected DD-MM-YYYY.";
                     } else {
                         // Check if valid date calendar-wise
-                        list($y, $m, $d) = explode('-', $val);
+                        list($d, $m, $y) = explode('-', $val);
                         if (!checkdate((int)$m, (int)$d, (int)$y)) {
                             $errors[$fieldName] = "Invalid calendar date.";
+                        } else {
+                            // Normalize it to YYYY-MM-DD for database query
+                            $mappedRow[$fieldName] = sprintf('%04d-%02d-%02d', (int)$y, (int)$m, (int)$d);
                         }
                     }
                 } elseif ($fieldSpec['type'] === 'number') {

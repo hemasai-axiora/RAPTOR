@@ -48,7 +48,14 @@
                             <td data-label="Manager"><?php echo htmlspecialchars($t->manager_name ?? '—'); ?></td>
                             <td data-label="Branch"><?php echo htmlspecialchars($t->branch_name ?? '—'); ?></td>
                             <td data-label="Territory"><?php echo htmlspecialchars($t->territory_name ?? '—'); ?></td>
-                            <td data-label="Members"><span class="badge bg-info-subtle text-info border border-info-subtle"><?php echo (int) $t->member_count; ?></span></td>
+                            <td data-label="Members">
+                                <button class="badge bg-info-subtle text-info border border-info-subtle btn-view-members"
+                                    style="cursor: pointer; background: transparent; text-align: left;"
+                                    data-team-name="<?php echo htmlspecialchars($t->name); ?>"
+                                    data-bs-toggle="modal" data-bs-target="#teamMembersModal">
+                                    <?php echo (int) $t->member_count; ?>
+                                </button>
+                            </td>
                             <td data-label="Status"><span class="badge bg-<?php echo $t->status === 'active' ? 'success' : 'danger'; ?>-subtle text-<?php echo $t->status === 'active' ? 'success' : 'danger'; ?>"><?php echo strtoupper($t->status); ?></span></td>
                             <td data-label="Actions" class="text-end">
                                 <div class="d-inline-flex gap-2">
@@ -61,7 +68,6 @@
                                         data-territory="<?php echo (int) $t->territory_id; ?>"
                                         data-status="<?php echo $t->status; ?>"
                                         data-bs-toggle="modal" data-bs-target="#editTeamModal"><i class="fa-solid fa-pen"></i></button>
-                                    <span class="badge bg-secondary-subtle text-secondary" title="Deletion is disabled by governance policy">No delete</span>
                                 </div>
                             </td>
                         </tr>
@@ -351,6 +357,34 @@ function territoryOptions($territories, $selected = 0) {
     </form>
 </div></div></div>
 
+<!-- View Team Members Modal -->
+<div class="modal fade" id="teamMembersModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-dark text-white border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="teamMembersModalLabel">Team Members</h5>
+                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle">
+                        <thead>
+                            <tr class="text-secondary">
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Reporting Manager</th>
+                            </tr>
+                        </thead>
+                        <tbody id="team-members-list">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 $(function () {
     $('.btn-edit-team').on('click', function () {
@@ -361,6 +395,30 @@ $(function () {
         $('#et_branch').val(String($(this).data('branch')) === '0' ? '' : $(this).data('branch'));
         $('#et_territory').val(String($(this).data('territory')) === '0' ? '' : $(this).data('territory'));
         $('#et_status').val($(this).data('status'));
+    });
+
+    const teamMembers = <?php echo json_encode($team_members); ?>;
+    
+    $('.btn-view-members').on('click', function () {
+        const teamName = $(this).data('team-name');
+        $('#teamMembersModalLabel').text('Members of ' + teamName);
+        const tbody = $('#team-members-list');
+        tbody.empty();
+        
+        const members = teamMembers.filter(m => m.team_name === teamName);
+        if (members.length === 0) {
+            tbody.append('<tr><td colspan="3" class="text-center text-secondary py-3">No members in this team.</td></tr>');
+        } else {
+            members.forEach(m => {
+                tbody.append(
+                    '<tr>' +
+                    '<td class="text-white fw-semibold">' + $('<div>').text(m.name).html() + '</td>' +
+                    '<td>' + $('<div>').text(m.email).html() + '</td>' +
+                    '<td>' + $('<div>').text(m.manager_name || '—').html() + '</td>' +
+                    '</tr>'
+                );
+            });
+        }
     });
 });
 </script>

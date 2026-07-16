@@ -241,10 +241,15 @@
                     <label for="password" class="form-label mb-0">Password</label>
                     <a href="index.php?route=auth/forgot" class="forgot-pass">Forgot password?</a>
                 </div>
-                <input type="password" name="password" id="password" 
-                       class="form-control <?php echo (!empty($password_err)) ? 'is-invalid' : ''; ?>" 
-                       placeholder="••••••••" required autocomplete="current-password">
-                <div class="invalid-feedback"><?php echo $password_err; ?></div>
+                <div class="position-relative">
+                    <input type="password" name="password" id="password" 
+                           class="form-control pe-5 <?php echo (!empty($password_err)) ? 'is-invalid' : ''; ?>" 
+                           placeholder="••••••••" required autocomplete="current-password">
+                    <button type="button" id="toggle-password" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-secondary pe-3" style="text-decoration: none; border: none; background: none; box-shadow: none; z-index: 10;">
+                        <i class="fa-solid fa-eye-slash" id="toggle-password-icon"></i>
+                    </button>
+                    <div class="invalid-feedback"><?php echo $password_err; ?></div>
+                </div>
             </div>
 
             <!-- Remember Me -->
@@ -277,6 +282,21 @@
                 sync();
             });
             sync();
+        })();
+
+        // Password visibility toggle logic
+        (function() {
+            var toggleBtn = document.getElementById('toggle-password');
+            var passwordInput = document.getElementById('password');
+            var icon = document.getElementById('toggle-password-icon');
+            
+            if (toggleBtn && passwordInput && icon) {
+                toggleBtn.addEventListener('click', function() {
+                    var type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    icon.className = type === 'password' ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+                });
+            }
         })();
     </script>
 </body>

@@ -25,11 +25,28 @@ class UsersController extends Controller {
             }));
         }
 
+        $db = Database::getInstance()->getConnection();
+        
+        // Departments list in system
+        $stmt = $db->query("SELECT DISTINCT department FROM employees WHERE department IS NOT NULL AND department != '' ORDER BY department ASC");
+        $departments = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: ['Sales', 'Marketing', 'Engineering', 'HR', 'Finance', 'Operations', 'Executive'];
+        
+        // Job titles list in system
+        $stmt = $db->query("SELECT DISTINCT job_title FROM employees WHERE job_title IS NOT NULL AND job_title != '' ORDER BY job_title ASC");
+        $jobTitles = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: ['Sales Executive', 'Sales Manager', 'Business Analyst', 'HR Manager', 'System Administrator'];
+        
+        // Active manager/admin emails in system
+        $stmt = $db->query("SELECT name, email FROM users u JOIN roles r ON u.role_id = r.role_id WHERE r.role_name IN ('admin', 'manager', 'team_leader') AND u.status = 'active' ORDER BY name ASC");
+        $managers = $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
+
         $data = [
             'title' => 'Employee Management | Raptor CRM',
             'active_tab' => 'system',
             'users' => $users,
-            'roles' => $roles
+            'roles' => $roles,
+            'departments' => $departments,
+            'job_titles' => $jobTitles,
+            'managers' => $managers
         ];
 
         $this->viewWithLayout('users/index', 'main', $data);
@@ -459,11 +476,11 @@ class UsersController extends Controller {
             'Sales',
             'Sales Manager',
             '',
-            date('Y-m-d'),
+            date('d-m-Y', strtotime('+1 day')),
             'Full-time',
             'active',
             'Office',
-            '1990-05-15',
+            '15-05-1990',
             'Experienced Sales Lead.',
             'Jane Doe - 9876543211',
             'John Doe',
@@ -493,11 +510,11 @@ class UsersController extends Controller {
             'Marketing',
             'Marketing Analyst',
             'john.doe@example.com',
-            date('Y-m-d'),
+            date('d-m-Y', strtotime('+2 days')),
             'Full-time',
             'active',
             'Remote',
-            '1994-08-22',
+            '22-08-1994',
             'Growth marketing specialist.',
             'John Connor - 9876543213',
             'Sarah Connor',
@@ -596,6 +613,14 @@ class UsersController extends Controller {
                     $allowed = array_map('strtolower', $existingDepts);
                     if (!in_array(strtolower($val), $allowed, true)) {
                         return "Department does not exist. Choose from: " . implode(', ', $existingDepts);
+                    }
+                    return null;
+                },
+                'validate_field_date_of_joining' => function($val) {
+                    $today = new DateTime('today');
+                    $doj = DateTime::createFromFormat('Y-m-d', $val);
+                    if ($doj && $doj <= $today) {
+                        return "Date of joining must be a future date (greater than today).";
                     }
                     return null;
                 },

@@ -60,6 +60,7 @@
                                         <i class="fa-solid fa-print"></i>
                                     </a>
                                     <form action="index.php?route=invoices/toggleStatus/<?php echo $invoice->invoice_id; ?>" method="POST">
+                                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                                         <button type="submit" class="btn btn-outline-info btn-sm" title="Toggle Payment Status">
                                             <i class="fa-solid fa-rotate"></i>Mark <?php echo $invoice->status === 'paid' ? 'Unpaid' : 'Paid'; ?>
                                         </button>

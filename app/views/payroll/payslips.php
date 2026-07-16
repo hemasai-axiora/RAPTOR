@@ -25,9 +25,18 @@
 
         <!-- Selected Run Payslips -->
         <?php if ((int)$selected_run_id > 0): ?>
-            <h5 class="text-white mb-3">Employee Payslips</h5>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="text-white mb-0">Employee Payslips</h5>
+                <form action="index.php?route=payroll/bulk_email_payslips" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                    <input type="hidden" name="run_id" value="<?php echo $selected_run_id; ?>">
+                    <button type="submit" class="btn btn-primary btn-sm px-3" style="background: var(--primary); border: none; border-radius: 8px;" onclick="return confirm('Are you sure you want to send payslip email notifications to all employees in this run?');">
+                        <i class="fa-solid fa-paper-plane me-1"></i> Bulk Email Payslips
+                    </button>
+                </form>
+            </div>
             <div class="table-responsive">
-                <table class="table table-dark table-hover align-middle border-secondary small">
+                <table class="table table-dark table-hover align-middle border-secondary small" id="admin-payslips-table">
                     <thead>
                         <tr class="text-secondary">
                             <th>Emp ID</th>
@@ -119,3 +128,19 @@
         </div>
     <?php endif; ?>
 </div>
+
+<script>
+$(document).ready(function() {
+    if ($('#admin-payslips-table').length) {
+        $('#admin-payslips-table').DataTable({
+            "pageLength": 10,
+            "lengthChange": false,
+            "info": false,
+            "searching": true,
+            "language": {
+                "search": "Filter Payslips:"
+            }
+        });
+    }
+});
+</script>
