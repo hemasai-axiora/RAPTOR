@@ -10,6 +10,20 @@ class Invoice extends Model {
         } catch (Exception $e) {
             $this->db->exec("ALTER TABLE invoices ADD COLUMN sender_details TEXT NULL AFTER conversion_rate");
         }
+
+        // Self-healing check: Ensure utr_number column exists
+        try {
+            $this->db->query("SELECT utr_number FROM invoices LIMIT 1");
+        } catch (Exception $e) {
+            $this->db->exec("ALTER TABLE invoices ADD COLUMN utr_number VARCHAR(100) NULL AFTER sender_details");
+        }
+
+        // Self-healing check: Ensure cancel_reason column exists
+        try {
+            $this->db->query("SELECT cancel_reason FROM invoices LIMIT 1");
+        } catch (Exception $e) {
+            $this->db->exec("ALTER TABLE invoices ADD COLUMN cancel_reason TEXT NULL AFTER utr_number");
+        }
     }
 
     // Get all invoices with client name
@@ -53,6 +67,24 @@ class Invoice extends Model {
     public function updateStatus($id, $status) {
         $this->query('UPDATE invoices SET status = :status WHERE invoice_id = :id');
         $this->bind(':status', $status);
+        $this->bind(':id', $id);
+        return $this->execute();
+    }
+
+    // Mark invoice as paid with UTR number
+    public function updatePayment($id, $utrNumber) {
+        $this->query('UPDATE invoices SET status = :status, utr_number = :utr WHERE invoice_id = :id');
+        $this->bind(':status', 'paid');
+        $this->bind(':utr', $utrNumber);
+        $this->bind(':id', $id);
+        return $this->execute();
+    }
+
+    // Mark invoice as cancelled with a reason
+    public function updateCancellation($id, $reason) {
+        $this->query('UPDATE invoices SET status = :status, cancel_reason = :reason WHERE invoice_id = :id');
+        $this->bind(':status', 'cancelled');
+        $this->bind(':reason', $reason);
         $this->bind(':id', $id);
         return $this->execute();
     }
