@@ -1,7 +1,6 @@
 <?php
 // Helpers
-$userRole = $_SESSION['user_role'] ?? '';
-$canFinance = in_array($userRole, ['admin', 'finance']);
+$canFinance = PermissionService::can('invoices', 'edit');
 ?>
 <div class="pulse-card">
     <?php if (!empty($_SESSION['invoice_success'])): ?>
