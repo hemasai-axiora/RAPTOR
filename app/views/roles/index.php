@@ -72,6 +72,7 @@
                                             </a>
                                             <?php if (!$role->is_system): ?>
                                                 <form action="index.php?route=roles/delete/<?php echo $role->role_id; ?>" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this custom role? This will unlink permissions.');">
+                                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                                                     <button type="submit" class="btn btn-sm btn-outline-danger border-0">
                                                         <i class="fa-solid fa-trash-can"></i>
                                                     </button>
@@ -93,6 +94,7 @@
                 <div class="card-body p-4">
                     <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-plus-circle text-primary me-2"></i>Create Custom Role</h5>
                     <form action="index.php?route=roles/add" method="POST">
+                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                         <div class="mb-3">
                             <label for="role_name" class="form-label small fw-bold text-muted text-uppercase">Role Label</label>
                             <input type="text" class="form-control py-2 shadow-none border-gray" id="role_name" name="role_name" placeholder="e.g. Sales Specialist" required>

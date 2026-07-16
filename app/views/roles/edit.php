@@ -27,6 +27,7 @@
     <?php endif; ?>
 
     <form action="index.php?route=roles/edit/<?php echo $data['role']->role_id; ?>" method="POST">
+        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
         <div class="row">
             <!-- Left Panel: Role Meta Data -->
             <div class="col-lg-3 mb-4">

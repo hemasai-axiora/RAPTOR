@@ -27,6 +27,7 @@
     <?php endif; ?>
 
     <form action="index.php?route=settings/saveUserAccess/<?php echo $data['user']->user_id; ?>" method="POST">
+        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
         <div class="row">
             <!-- Left Panel: User Info & Role Assignment -->
             <div class="col-lg-3 mb-4">
