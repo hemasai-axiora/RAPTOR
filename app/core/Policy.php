@@ -26,6 +26,22 @@ class Policy {
         return in_array(self::role(), ['employee', 'sales_person'], true);
     }
 
+    public static function isAnalyst(): bool {
+        return self::role() === 'analyst';
+    }
+
+    public static function isSeniorStaff(): bool {
+        return in_array(self::role(), ['admin', 'hr', 'manager', 'team_leader'], true);
+    }
+
+    public static function canViewLeaveApprovals(): bool {
+        return in_array(self::role(), ['admin', 'hr', 'manager', 'team_leader'], true);
+    }
+
+    public static function canViewAttendanceApprovals(): bool {
+        return in_array(self::role(), ['admin', 'hr', 'manager', 'team_leader'], true);
+    }
+
     public static function canManageEmployees(): bool {
         return self::isAdmin() || self::isHr();
     }

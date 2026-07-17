@@ -33,8 +33,13 @@ $personal = $data['personal'] ?? [];
             <div class="col-md-3 mb-3">
                 <div class="card border-0 shadow-sm p-4 text-center" style="background: rgba(255, 193, 7, 0.12); border-radius: 16px; border: 1px solid rgba(255, 193, 7, 0.25) !important;">
                     <div class="text-warning fs-2 mb-2"><i class="fa-solid fa-user-clock"></i></div>
-                    <h6 class="text-secondary small fw-bold text-uppercase">Pending Attendance</h6>
-                    <h2 class="text-white fw-bold mb-0"><?php echo $stats['pending_attendance'] ?? 0; ?></h2>
+                    <?php if ($role === 'admin'): ?>
+                        <h6 class="text-secondary small fw-bold text-uppercase">Pending HR Attendance</h6>
+                        <h2 class="text-white fw-bold mb-0"><?php echo $stats['pending_hr_attendance'] ?? 0; ?></h2>
+                    <?php else: ?>
+                        <h6 class="text-secondary small fw-bold text-uppercase">Pending Manager Attendance</h6>
+                        <h2 class="text-white fw-bold mb-0"><?php echo $stats['pending_manager_attendance'] ?? 0; ?></h2>
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="col-md-3 mb-3">
@@ -127,7 +132,7 @@ $personal = $data['personal'] ?? [];
                 series: [44, 55, 13, 33],
                 labels: ['Sales', 'Marketing', 'Finance', 'HR'],
                 theme: {
-                    mode: 'dark'
+                    valueToPercent: true
                 },
                 colors: ['#0d6efd', '#25c2e6', '#dc3545', '#198754']
             };
@@ -141,25 +146,32 @@ $personal = $data['personal'] ?? [];
          ======================================================================= -->
     <?php elseif ($role === 'manager' || $role === 'team_leader'): ?>
         <div class="row mb-4">
-            <div class="col-md-4 mb-3">
-                <div class="card border-0 shadow-sm p-4 text-center" style="background: rgba(13, 110, 253, 0.12); border-radius: 16px; border: 1px solid rgba(13, 110, 253, 0.25) !important;">
-                    <div class="text-primary fs-2 mb-2"><i class="fa-solid fa-users"></i></div>
-                    <h6 class="text-secondary small fw-bold text-uppercase">Team Active Size</h6>
-                    <h2 class="text-white fw-bold mb-0"><?php echo $stats['team_size'] ?? 0; ?></h2>
-                </div>
-            </div>
-            <div class="col-md-4 mb-3">
-                <div class="card border-0 shadow-sm p-4 text-center" style="background: rgba(220, 53, 69, 0.12); border-radius: 16px; border: 1px solid rgba(220, 53, 69, 0.25) !important;">
-                    <div class="text-danger fs-2 mb-2"><i class="fa-solid fa-plane-departure"></i></div>
-                    <h6 class="text-secondary small fw-bold text-uppercase">Pending Team Leaves</h6>
-                    <h2 class="text-white fw-bold mb-0"><?php echo $stats['pending_leaves'] ?? 0; ?></h2>
-                </div>
-            </div>
-            <div class="col-md-4 mb-3">
+            <div class="col-md-3 mb-3">
                 <div class="card border-0 shadow-sm p-4 text-center" style="background: rgba(255, 193, 7, 0.12); border-radius: 16px; border: 1px solid rgba(255, 193, 7, 0.25) !important;">
                     <div class="text-warning fs-2 mb-2"><i class="fa-solid fa-user-clock"></i></div>
-                    <h6 class="text-secondary small fw-bold text-uppercase">Pending Team Attendance</h6>
+                    <h6 class="text-secondary small fw-bold text-uppercase">Pending Approvals</h6>
                     <h2 class="text-white fw-bold mb-0"><?php echo $stats['pending_attendance'] ?? 0; ?></h2>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card border-0 shadow-sm p-4 text-center" style="background: rgba(13, 110, 253, 0.12); border-radius: 16px; border: 1px solid rgba(13, 110, 253, 0.25) !important;">
+                    <div class="text-primary fs-2 mb-2"><i class="fa-solid fa-file-invoice"></i></div>
+                    <h6 class="text-secondary small fw-bold text-uppercase">Today's Requests</h6>
+                    <h2 class="text-white fw-bold mb-0"><?php echo $stats['today_requests'] ?? 0; ?></h2>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card border-0 shadow-sm p-4 text-center" style="background: rgba(25, 135, 84, 0.12); border-radius: 16px; border: 1px solid rgba(25, 135, 84, 0.25) !important;">
+                    <div class="text-success fs-2 mb-2"><i class="fa-solid fa-circle-check"></i></div>
+                    <h6 class="text-secondary small fw-bold text-uppercase">Approved Today</h6>
+                    <h2 class="text-white fw-bold mb-0"><?php echo $stats['approved_today'] ?? 0; ?></h2>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card border-0 shadow-sm p-4 text-center" style="background: rgba(220, 53, 69, 0.12); border-radius: 16px; border: 1px solid rgba(220, 53, 69, 0.25) !important;">
+                    <div class="text-danger fs-2 mb-2"><i class="fa-solid fa-circle-xmark"></i></div>
+                    <h6 class="text-secondary small fw-bold text-uppercase">Rejected Today</h6>
+                    <h2 class="text-white fw-bold mb-0"><?php echo $stats['rejected_today'] ?? 0; ?></h2>
                 </div>
             </div>
         </div>

@@ -44,14 +44,14 @@ class PermissionService {
         $permKey = $module . '.' . $action;
 
         // Check if the user has this permission at all
-        if (!isset($perms[$permKey])) {
+        if (!array_key_exists($permKey, $perms)) {
             return false;
         }
 
         $scope = $perms[$permKey]; // 'own', 'team', 'all', or null
 
-        // No record provided or scope is 'all'/null → permission is granted
-        if ($record === null || $scope === 'all' || $scope === null) {
+        // No record provided or scope is 'all'/null/empty → permission is granted
+        if ($record === null || $scope === 'all' || $scope === null || $scope === '') {
             return true;
         }
 
@@ -83,7 +83,7 @@ class PermissionService {
         if (($_SESSION['user_role'] ?? '') === 'admin') return 'all';
         $perms = $_SESSION['rbac_permissions'] ?? [];
         $key   = $module . '.' . $action;
-        return isset($perms[$key]) ? ($perms[$key] ?? null) : null;
+        return array_key_exists($key, $perms) ? $perms[$key] : null;
     }
 
     /**

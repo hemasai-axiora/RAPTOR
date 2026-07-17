@@ -65,9 +65,14 @@ class Hrms extends Model {
             $stmt = $db->query("SELECT COUNT(*) FROM leave_requests WHERE status = 'pending_hr'");
             $stats['pending_leaves'] = (int) $stmt->fetchColumn();
 
-            // Pending attendance
-            $stmt = $db->query("SELECT COUNT(*) FROM attendance WHERE approval_status = 'pending'");
-            $stats['pending_attendance'] = (int) $stmt->fetchColumn();
+            // Pending attendance approvals by role
+            if ($role === 'admin') {
+                $stmt = $db->query("SELECT COUNT(*) FROM attendance a JOIN users u ON a.user_id = u.user_id JOIN roles r ON u.role_id = r.role_id WHERE a.attendance_status = 'Pending' AND r.role_name = 'hr'");
+                $stats['pending_hr_attendance'] = (int) $stmt->fetchColumn();
+            } else { // hr
+                $stmt = $db->query("SELECT COUNT(*) FROM attendance a JOIN users u ON a.user_id = u.user_id JOIN roles r ON u.role_id = r.role_id WHERE a.attendance_status = 'Pending' AND r.role_name IN ('manager', 'team_leader', 'finance', 'analyst')");
+                $stats['pending_manager_attendance'] = (int) $stmt->fetchColumn();
+            }
 
             // Upcoming birthdays (next 30 days)
             $this->query("SELECT u.name, e.date_of_birth, e.job_title, e.profile_photo
@@ -109,9 +114,33 @@ class Hrms extends Model {
             $this->query("SELECT COUNT(*) 
                           FROM attendance a
                           JOIN employees e ON a.user_id = e.user_id
-                          WHERE e.reporting_manager_id = :uid AND a.approval_status = 'pending'");
+                          WHERE e.reporting_manager_id = :uid AND a.attendance_status = 'Pending'");
             $this->bind(':uid', $userId);
             $stats['pending_attendance'] = (int) $this->fetchColumn();
+
+            // Today's attendance requests for their team
+            $this->query("SELECT COUNT(*) 
+                          FROM attendance a
+                          JOIN employees e ON a.user_id = e.user_id
+                          WHERE e.reporting_manager_id = :uid AND a.work_date = CURDATE()");
+            $this->bind(':uid', $userId);
+            $stats['today_requests'] = (int) $this->fetchColumn();
+
+            // Approved today for their team
+            $this->query("SELECT COUNT(*) 
+                          FROM attendance a
+                          JOIN employees e ON a.user_id = e.user_id
+                          WHERE e.reporting_manager_id = :uid AND a.attendance_status = 'Approved' AND DATE(a.approved_at) = CURDATE()");
+            $this->bind(':uid', $userId);
+            $stats['approved_today'] = (int) $this->fetchColumn();
+
+            // Rejected today for their team
+            $this->query("SELECT COUNT(*) 
+                          FROM attendance a
+                          JOIN employees e ON a.user_id = e.user_id
+                          WHERE e.reporting_manager_id = :uid AND a.attendance_status = 'Rejected' AND DATE(a.approved_at) = CURDATE()");
+            $this->bind(':uid', $userId);
+            $stats['rejected_today'] = (int) $this->fetchColumn();
         }
 
         return $stats;

@@ -96,77 +96,91 @@
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
     <script>
-        (function () {
-            var savedTheme = localStorage.getItem('raptor_theme') || 'light';
-            document.documentElement.setAttribute('data-theme', savedTheme === 'dark' ? 'dark' : 'light');
-        })();
+        /* Apply saved theme preference (defaults to light) */
+        var _savedTheme = localStorage.getItem('raptor_theme') || 'light';
+        document.documentElement.setAttribute('data-theme', _savedTheme);
     </script>
 
     <style>
+        /* ═══════════════════════════════════════════════════════════
+           RAPTOR HRMS — Professional Light Theme
+           Primary: #2563EB | Background: #F8FAFC | Cards: #FFFFFF
+           ═══════════════════════════════════════════════════════════ */
         :root {
             color-scheme: light;
-            --bg-dark: #f5f9ff;
-            --panel-dark: #ffffff;
-            --surface-muted: #eef6ff;
-            --surface-soft: #f8fbff;
-            --border-color: rgba(31, 95, 174, 0.12);
-            --border-strong: rgba(31, 95, 174, 0.22);
+            /* Surfaces */
+            --bg-dark:        #F8FAFC;
+            --panel-dark:     #FFFFFF;
+            --surface-muted:  #EFF6FF;
+            --surface-soft:   #F1F5F9;
+            --border-color:   #E2E8F0;
+            --border-strong:  #CBD5E1;
 
-            --text-primary: #0f172a;
-            --text-secondary: #52647a;
-            --text-muted: #7890a8;
+            /* Typography */
+            --text-primary:   #1E293B;
+            --text-secondary: #64748B;
+            --text-muted:     #94A3B8;
 
-            --primary: #1F5FAE;
-            --primary-strong: #174887;
-            --primary-soft: #ecf3fa;
-            --primary-glow: rgba(31, 95, 174, 0.14);
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --info: #06b6d4;
-            --shadow-soft: 0 12px 32px rgba(31, 95, 174, 0.08);
-            --shadow-hover: 0 18px 40px rgba(31, 95, 174, 0.13);
+            /* Brand Colors */
+            --primary:        #2563EB;
+            --primary-strong: #1D4ED8;
+            --primary-soft:   #EFF6FF;
+            --primary-glow:   rgba(37, 99, 235, 0.10);
+            --success:        #10B981;
+            --warning:        #F59E0B;
+            --danger:         #EF4444;
+            --info:           #06B6D4;
 
-            --sidebar-width: 260px;
-            --topbar-height: 70px;
+            /* Shadows */
+            --shadow-soft:  0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(37,99,235,0.07);
+            --shadow-hover: 0 4px 20px rgba(37,99,235,0.15);
+
+            /* Layout */
+            --sidebar-width:  260px;
+            --topbar-height:  70px;
         }
 
         html[data-theme="dark"] {
             color-scheme: dark;
-            --bg-dark: #090f1d;
-            --panel-dark: #111827;
-            --surface-muted: #172033;
-            --surface-soft: #0f172a;
-            --border-color: rgba(255, 255, 255, 0.08);
-            --border-strong: rgba(255, 255, 255, 0.16);
+            /* Surfaces */
+            --bg-dark:        #090F1D;
+            --panel-dark:     #111827;
+            --surface-muted:  #172033;
+            --surface-soft:   #0F172A;
+            --border-color:   rgba(255, 255, 255, 0.08);
+            --border-strong:  rgba(255, 255, 255, 0.16);
 
-            --text-primary: #f8fafc;
-            --text-secondary: #a8b3c7;
-            --text-muted: #718096;
+            /* Typography */
+            --text-primary:   #F8FAFC;
+            --text-secondary: #A8B3C7;
+            --text-muted:     #718096;
 
-            --primary: #4a8ddb;
+            /* Brand Colors */
+            --primary:        #4A8DDB;
             --primary-strong: #1F5FAE;
-            --primary-soft: rgba(74, 141, 219, 0.13);
-            --primary-glow: rgba(74, 141, 219, 0.18);
-            --shadow-soft: 0 12px 32px rgba(0, 0, 0, 0.22);
+            --primary-soft:   rgba(74, 141, 219, 0.13);
+            --primary-glow:   rgba(74, 141, 219, 0.18);
+
+            /* Shadows */
+            --shadow-soft:  0 12px 32px rgba(0, 0, 0, 0.22);
             --shadow-hover: 0 18px 42px rgba(0, 0, 0, 0.32);
         }
+
+        /* ── Dark Theme Badge Colours ── */
+        html[data-theme="dark"] .badge.bg-primary-subtle { color: #93C5FD !important; background-color: rgba(74, 141, 219, 0.2) !important; border-color: rgba(74, 141, 219, 0.3) !important; }
+        html[data-theme="dark"] .badge.bg-success-subtle { color: #86EFAC !important; background-color: rgba(16, 185, 129, 0.2) !important; border-color: rgba(16, 185, 129, 0.3) !important; }
+        html[data-theme="dark"] .badge.bg-danger-subtle  { color: #FCA5A5 !important; background-color: rgba(239, 68, 68, 0.2) !important; border-color: rgba(239, 68, 68, 0.3) !important; }
+        html[data-theme="dark"] .badge.bg-warning-subtle { color: #FDE047 !important; background-color: rgba(245, 158, 129, 0.2) !important; border-color: rgba(245, 158, 129, 0.3) !important; }
+        html[data-theme="dark"] .badge.bg-info-subtle    { color: #67E8F9 !important; background-color: rgba(6, 182, 212, 0.2) !important; border-color: rgba(6, 182, 212, 0.3) !important; }
+        html[data-theme="dark"] .badge.bg-secondary-subtle { color: #A8B3C7 !important; background-color: rgba(255, 255, 255, 0.05) !important; border-color: rgba(255, 255, 255, 0.1) !important; }
+
 
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-dark);
-            background-image:
-                radial-gradient(circle at 12% 8%, var(--primary-glow) 0, transparent 34%),
-                linear-gradient(180deg, rgba(255,255,255,0.78), rgba(255,255,255,0));
             color: var(--text-primary);
             overflow-x: hidden;
             margin: 0;
-        }
-
-        html[data-theme="dark"] body {
-            background-image:
-                radial-gradient(circle at 12% 8%, var(--primary-glow) 0, transparent 36%),
-                linear-gradient(180deg, rgba(14, 23, 42, 0.55), rgba(14, 23, 42, 0));
         }
 
         /* Layout Grid */
@@ -501,51 +515,13 @@
             --bs-btn-hover-bg: var(--primary-strong);
             --bs-btn-hover-border-color: var(--primary-strong);
         }
-        /* Dark Theme High Contrast WCAG AA Overrides */
-        html[data-theme="dark"] .btn-primary {
-            color: #090f1d !important;
-            font-weight: 600;
-        }
-        html[data-theme="dark"] .text-primary {
-            color: #93c5fd !important;
-        }
-        html[data-theme="dark"] .text-success {
-            color: #86efac !important;
-        }
-        html[data-theme="dark"] .text-danger {
-            color: #fca5a5 !important;
-        }
-        html[data-theme="dark"] .text-warning {
-            color: #fde047 !important;
-        }
-        html[data-theme="dark"] .text-info {
-            color: #67e8f9 !important;
-        }
-        html[data-theme="dark"] .badge.bg-primary-subtle, html[data-theme="dark"] .badge.text-primary {
-            color: #93c5fd !important;
-            background-color: rgba(74, 141, 219, 0.2) !important;
-            border-color: rgba(74, 141, 219, 0.3) !important;
-        }
-        html[data-theme="dark"] .badge.bg-success-subtle, html[data-theme="dark"] .badge.text-success {
-            color: #86efac !important;
-            background-color: rgba(16, 185, 129, 0.2) !important;
-            border-color: rgba(16, 185, 129, 0.3) !important;
-        }
-        html[data-theme="dark"] .badge.bg-danger-subtle, html[data-theme="dark"] .badge.text-danger {
-            color: #fca5a5 !important;
-            background-color: rgba(239, 68, 68, 0.2) !important;
-            border-color: rgba(239, 68, 68, 0.3) !important;
-        }
-        html[data-theme="dark"] .badge.bg-warning-subtle, html[data-theme="dark"] .badge.text-warning {
-            color: #fde047 !important;
-            background-color: rgba(245, 158, 129, 0.2) !important;
-            border-color: rgba(245, 158, 129, 0.3) !important;
-        }
-        html[data-theme="dark"] .badge.bg-info-subtle, html[data-theme="dark"] .badge.text-info {
-            color: #67e8f9 !important;
-            background-color: rgba(6, 182, 212, 0.2) !important;
-            border-color: rgba(6, 182, 212, 0.3) !important;
-        }
+        /* ── Light Theme Badge Colours (WCAG AA contrast) ── */
+        .badge.bg-primary-subtle { color: #1D4ED8 !important; background-color: #DBEAFE !important; border-color: #BFDBFE !important; }
+        .badge.bg-success-subtle { color: #065F46 !important; background-color: #D1FAE5 !important; border-color: #A7F3D0 !important; }
+        .badge.bg-danger-subtle  { color: #991B1B !important; background-color: #FEE2E2 !important; border-color: #FECACA !important; }
+        .badge.bg-warning-subtle { color: #92400E !important; background-color: #FEF3C7 !important; border-color: #FDE68A !important; }
+        .badge.bg-info-subtle    { color: #155E75 !important; background-color: #CFFAFE !important; border-color: #A5F3FC !important; }
+        .badge.bg-secondary-subtle { color: #1E293B !important; background-color: #F1F5F9 !important; border-color: #E2E8F0 !important; }
         
         .btn-outline-light, .btn-outline-secondary {
             --bs-btn-color: var(--primary);
@@ -809,7 +785,7 @@
     <?php
         $role = $_SESSION['user_role'] ?? '';
         $isEmployee = Policy::isEmployee();
-        $salesRoles = ['admin', 'manager', 'team_leader', 'employee', 'sales_person'];
+        $salesRoles = ['admin', 'manager', 'team_leader', 'employee', 'sales_person', 'hr', 'finance'];
     ?>
     <div id="wrapper">
         <!-- Sidebar Navigation -->
@@ -818,9 +794,9 @@
                 <div class="d-flex align-items-center justify-content-between w-100">
                     <div class="d-flex align-items-center gap-2">
                         <img src="<?php echo URLROOT; ?>/logo.png" alt="Raptor Logo" class="brand-logo-img" style="height: 32px; width: auto; object-fit: contain;">
-                        <span class="sidebar-brand-text text-white" style="font-size: 1.15rem; font-weight: 700; letter-spacing: -0.5px;">RAPTOR</span>
+                        <span class="sidebar-brand-text" style="font-size: 1.15rem; font-weight: 700; letter-spacing: -0.5px; color: var(--text-primary);">RAPTOR</span>
                     </div>
-                    <button type="button" class="btn-close btn-close-white d-lg-none" id="close-sidebar-btn" aria-label="Close" style="font-size: 0.8rem;"></button>
+                    <button type="button" class="btn-close d-lg-none" id="close-sidebar-btn" aria-label="Close" style="font-size: 0.8rem;"></button>
                 </div>
                 <span class="sidebar-brand-desc text-secondary mt-1" style="font-size: 0.72rem; font-weight: 500;">Digital Marketing Hub</span>
             </div>
@@ -913,7 +889,7 @@
                 <?php endif; ?>
 
                 <!-- 3. Monitoring Accordion Group -->
-                <?php if (in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader'])): ?>
+                <?php if (in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader', 'hr'], true)): ?>
                 <li class="menu-section" data-section="monitoring">
                     <div class="menu-section-header">
                         <i class="fa-solid fa-desktop section-icon"></i>
@@ -951,7 +927,7 @@
                 <?php endif; ?>
 
                 <!-- 4. Operations Accordion Group -->
-                <?php if ($_SESSION['user_role'] !== 'employer'): ?>
+                <?php if (in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader'], true)): ?>
                 <li class="menu-section" data-section="operations">
                     <div class="menu-section-header">
                         <i class="fa-solid fa-briefcase section-icon"></i>
@@ -1017,7 +993,7 @@
                 <?php endif; ?>
 
                 <!-- 5. Finance Accordion Group -->
-                <?php if (in_array($_SESSION['user_role'], ['admin', 'manager'])): ?>
+                <?php if (in_array($_SESSION['user_role'], ['admin', 'manager', 'finance'], true)): ?>
                 <li class="menu-section" data-section="finance">
                     <div class="menu-section-header">
                         <i class="fa-solid fa-file-invoice-dollar section-icon"></i>
@@ -1035,6 +1011,7 @@
                 <?php endif; ?>
 
                 <!-- 6. Marketing Accordion Group -->
+                <?php if (in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader', 'analyst'], true)): ?>
                 <li class="menu-section" data-section="marketing">
                     <div class="menu-section-header">
                         <i class="fa-solid fa-share-nodes section-icon"></i>
@@ -1063,8 +1040,10 @@
                         <?php endif; ?>
                     </ul>
                 </li>
+                <?php endif; ?> <!-- end Marketing -->
 
                 <!-- 7. Reports Accordion Group -->
+                <?php if (!Policy::isEmployee()): ?>
                 <li class="menu-section" data-section="reports">
                     <div class="menu-section-header">
                         <i class="fa-solid fa-chart-pie section-icon"></i>
@@ -1086,6 +1065,7 @@
                         </li>
                     </ul>
                 </li>
+                <?php endif; ?> <!-- end Reports -->
 
                 <!-- 8. HR & Payroll Accordion Group -->
                 <?php if (in_array($role, ['admin', 'manager', 'team_leader', 'hr', 'finance', 'employee', 'sales_person'], true)): ?>
@@ -1187,6 +1167,11 @@
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
                     </div>
                     <ul class="menu-section-items">
+                        <li class="menu-item <?php echo (isset($_GET['route']) && $_GET['route'] === 'hrms/profile/' . $_SESSION['user_id']) ? 'active' : ''; ?>">
+                            <a href="index.php?route=hrms/profile/<?php echo $_SESSION['user_id']; ?>">
+                                <i class="fa-solid fa-address-card"></i><span>My Profile</span>
+                            </a>
+                        </li>
                         <?php if (Policy::can('settings', 'manage')): ?>
                         <li class="menu-item <?php echo ($data['title'] === 'Global Settings | Raptor CRM') ? 'active' : ''; ?>">
                             <a href="index.php?route=settings/index">
@@ -1280,37 +1265,46 @@
                     <?php
                     $notifUser = $_SESSION['user_id'] ?? 0;
                     $unreadNotifs = [];
+                    $totalUnreadCount = 0;
                     if ($notifUser > 0) {
                         try {
                             $dbConnection = Database::getInstance()->getConnection();
+                            // Total unread count for badge
+                            $stmtCount = $dbConnection->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = :uid AND is_read = 0");
+                            $stmtCount->execute([':uid' => $notifUser]);
+                            $totalUnreadCount = (int) $stmtCount->fetchColumn();
+
+                            // Top 5 unread notifications for dropdown
                             $stmtNotif = $dbConnection->prepare("SELECT * FROM notifications WHERE user_id = :uid AND is_read = 0 ORDER BY created_at DESC LIMIT 5");
                             $stmtNotif->execute([':uid' => $notifUser]);
                             $unreadNotifs = $stmtNotif->fetchAll(PDO::FETCH_OBJ) ?: [];
-                        } catch (Exception $e) { $unreadNotifs = []; }
+                        } catch (Exception $e) { 
+                            $unreadNotifs = []; 
+                            $totalUnreadCount = 0;
+                        }
                     }
-                    $notifCount = count($unreadNotifs);
                     ?>
                     <div class="dropdown">
                         <button type="button" class="theme-toggle position-relative shadow-none border-0 bg-transparent" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications" style="color: var(--text-primary); font-size: 1.1rem; padding: 0 8px;">
                             <i class="fa-solid fa-bell"></i>
-                            <?php if ($notifCount > 0): ?>
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.55rem; padding: 0.25em 0.5em; top: 2px !important;"><?php echo $notifCount; ?></span>
+                            <?php if ($totalUnreadCount > 0): ?>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.55rem; padding: 0.25em 0.5em; top: 2px !important;"><?php echo $totalUnreadCount; ?></span>
                             <?php endif; ?>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end py-0 shadow border-0" aria-labelledby="notificationsDropdown" style="width: 300px; background: #1a1c29; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 12px;">
+                        <ul class="dropdown-menu dropdown-menu-end py-0 shadow-sm" aria-labelledby="notificationsDropdown" style="width: 320px; min-width: 320px; background: var(--panel-dark); border: 1px solid var(--border-color); border-radius: 12px;">
                             <li class="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center">
-                                <span class="fw-bold text-white small">Notifications Center</span>
+                                <span class="fw-bold small" style="color: var(--text-primary);">Notifications Center</span>
                                 <a href="index.php?route=notifications/index" class="text-primary small text-decoration-none" style="font-size: 0.75rem;">View All</a>
                             </li>
                             <div style="max-height: 250px; overflow-y: auto;">
-                                <?php if ($notifCount === 0): ?>
+                                <?php if (empty($unreadNotifs)): ?>
                                     <li class="p-3 text-center text-secondary small">No new notifications.</li>
                                 <?php else: ?>
                                     <?php foreach ($unreadNotifs as $notif): ?>
-                                        <li class="p-3 border-bottom border-secondary" style="background: rgba(255,255,255,0.02);">
+                                        <li class="p-3 border-bottom" style="border-color: var(--border-color) !important; background: var(--surface-soft);">
                                             <a href="<?php echo htmlspecialchars($notif->action_url ?: '#'); ?>" class="text-decoration-none d-block">
                                                 <div class="d-flex justify-content-between">
-                                                    <span class="fw-bold text-white small d-block"><?php echo htmlspecialchars($notif->title); ?></span>
+                                                    <span class="fw-bold small d-block" style="color: var(--text-primary);"><?php echo htmlspecialchars($notif->title); ?></span>
                                                     <small class="text-secondary" style="font-size: 0.7rem;"><?php echo date('M d', strtotime($notif->created_at)); ?></small>
                                                 </div>
                                                 <span class="text-secondary small d-block mt-1" style="font-size: 0.78rem; line-height: 1.3;"><?php echo htmlspecialchars($notif->message); ?></span>
@@ -1322,9 +1316,11 @@
                         </ul>
                     </div>
 
-                    <button type="button" class="theme-toggle" id="theme-toggle" title="Toggle Theme">
-                        <i class="fa-solid fa-moon"></i>
+                    <!-- Theme Toggle Button -->
+                    <button type="button" class="theme-toggle" id="theme-toggle" title="Toggle Dark / Light Mode">
+                        <i class="fa-solid fa-moon" id="theme-toggle-icon"></i>
                     </button>
+
                 </div>
             </header>
 

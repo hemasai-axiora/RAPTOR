@@ -68,4 +68,19 @@ class Notification extends Model {
         $this->bind(':ua', substr($userAgent, 0, 255));
         return $this->execute();
     }
+
+    public function addNotification(int $userId, string $title, string $message, string $type = 'system', ?string $actionUrl = null, string $severity = 'info', ?string $category = null, ?string $dedupeKey = null): bool {
+        $this->query('INSERT INTO notifications 
+                        (user_id, title, message, type, action_url, severity, category, dedupe_key) 
+                      VALUES (:uid, :title, :message, :type, :action_url, :severity, :category, :dedupe_key)');
+        $this->bind(':uid', $userId);
+        $this->bind(':title', $title);
+        $this->bind(':message', $message);
+        $this->bind(':type', $type);
+        $this->bind(':action_url', $actionUrl);
+        $this->bind(':severity', $severity);
+        $this->bind(':category', $category);
+        $this->bind(':dedupe_key', $dedupeKey);
+        return $this->execute();
+    }
 }

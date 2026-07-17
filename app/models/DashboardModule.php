@@ -173,7 +173,7 @@ class DashboardModule extends Model {
                 WHERE $notificationSql AND created_at BETWEEN :from AND :to ORDER BY created_at DESC LIMIT 5", $from, $to),
             'review_queue' => [
                 'tasks' => $this->scalar("SELECT COUNT(*) FROM tasks WHERE $assignedSql AND review_status = 'pending_review'", $from, $to),
-                'attendance' => $this->scalar("SELECT COUNT(*) FROM attendance WHERE $userSql AND approval_status = 'pending'", $from, $to),
+                'attendance' => $this->scalar("SELECT COUNT(*) FROM attendance WHERE $userSql AND attendance_status = 'Pending'", $from, $to),
             ],
             'tasks' => [
                 'pending' => $this->scalar("SELECT COUNT(*) FROM tasks WHERE $assignedSql AND status = 'pending'", $from, $to),

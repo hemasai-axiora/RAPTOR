@@ -41,7 +41,13 @@
                 <?php foreach ($users as $user): ?>
                     <tr style="border-bottom: 1px solid var(--border-color);">
                         <td class="text-white font-monospace"><?php echo htmlspecialchars($user->employee_code ?? 'SYS-ADMIN'); ?></td>
-                        <td class="font-weight-bold text-white"><?php echo htmlspecialchars($user->name); ?></td>
+                        <td class="font-weight-bold">
+                            <a href="index.php?route=hrms/profile/<?php echo $user->user_id; ?>" 
+                               style="color: var(--primary); font-weight: 600; text-decoration: none;"
+                               onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                                <?php echo htmlspecialchars($user->name); ?>
+                            </a>
+                        </td>
                         <td><?php echo htmlspecialchars($user->email); ?></td>
                         <td>
                             <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
@@ -52,9 +58,7 @@
                         <td><?php echo !empty($user->date_of_joining) ? date('Y-m-d', strtotime($user->date_of_joining)) : date('Y-m-d', strtotime($user->created_at)); ?></td>
                         <td class="text-end">
                             <div class="d-inline-flex gap-2">
-                                <a href="index.php?route=hrms/profile/<?php echo $user->user_id; ?>" class="btn btn-outline-light btn-sm">
-                                    <i class="fa-solid fa-eye"></i> View Profile
-                                </a>
+
                                 <button class="btn btn-outline-info btn-sm btn-edit-user" 
                                         data-id="<?php echo $user->user_id; ?>"
                                         data-name="<?php echo htmlspecialchars($user->name); ?>"

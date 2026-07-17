@@ -42,11 +42,11 @@ class ReportSuite extends Model {
                     'Status' => 'status', 'Login' => 'login_at', 'Logout' => 'logout_at',
                     'Worked Min' => 'worked_minutes', 'Break Min' => 'break_minutes',
                     'Late' => 'is_late', 'Early Logout' => 'is_early_logout',
-                    'Approval' => 'approval_status',
+                    'Approval' => 'attendance_status',
                 ], "SELECT a.work_date, u.name AS employee_name, COALESCE(t.name,'-') AS team_name,
                            a.status, a.login_at, a.logout_at, a.worked_minutes, a.break_minutes,
                            IF(a.is_late,'Yes','No') AS is_late, IF(a.is_early_logout,'Yes','No') AS is_early_logout,
-                           a.approval_status
+                           a.attendance_status
                     FROM attendance a
                     JOIN users u ON a.user_id = u.user_id
                     LEFT JOIN employees e ON u.user_id = e.user_id

@@ -122,7 +122,7 @@ class AttendanceController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $this->requireAuth(); // re-validates CSRF on POST
             if ($this->inScope((int) $id)) {
-                $ok = $this->att->setApproval((int) $id, 'approved', (int) $_SESSION['user_id']);
+                $ok = $this->att->setApproval((int) $id, 'Approved', (int) $_SESSION['user_id']);
                 if ($ok) { $this->audit('Approved attendance #' . (int) $id, 'attendance', (int) $id); }
             }
         }
@@ -135,7 +135,7 @@ class AttendanceController extends Controller {
             $this->requireAuth();
             $remark = isset($_POST['remark']) ? substr(trim($_POST['remark']), 0, 255) : null;
             if ($this->inScope((int) $id)) {
-                $ok = $this->att->setApproval((int) $id, 'rejected', (int) $_SESSION['user_id'], $remark);
+                $ok = $this->att->setApproval((int) $id, 'Rejected', (int) $_SESSION['user_id'], $remark);
                 if ($ok) { $this->audit('Rejected attendance #' . (int) $id, 'attendance', (int) $id); }
             }
         }
@@ -150,8 +150,9 @@ class AttendanceController extends Controller {
         $role = $_SESSION['user_role'];
         $uid  = (int) $_SESSION['user_id'];
 
-        if ($role === 'admin') {
-            return true; // Admin can approve anything
+        // Enforce: Cannot approve their own attendance
+        if ((int) $rec->user_id === $uid) {
+            return false;
         }
 
         // Fetch owner details
@@ -165,20 +166,20 @@ class AttendanceController extends Controller {
         $owner = $stmt->fetch(PDO::FETCH_OBJ);
         if (!$owner) { return false; }
 
-        // Enforce the specific approval hierarchy:
-        if ($owner->role_name === 'employee') {
-            // Employee Attendance -> Manager Approval
-            return ($role === 'manager' || $role === 'team_leader') && (int)$owner->reporting_manager_id === $uid;
+        // Enforce specific approval workflow hierarchy:
+        if ($role === 'manager' || $role === 'team_leader') {
+            // Manager/Team Leader can only approve employees assigned to them (Employee / Sales Person)
+            return in_array($owner->role_name, ['employee', 'sales_person'], true) && (int) $owner->reporting_manager_id === $uid;
         }
 
-        if (in_array($owner->role_name, ['manager', 'team_leader', 'finance', 'analyst'], true)) {
-            // Manager/Finance/Analyst Attendance -> HR Approval
-            return $role === 'hr';
+        if ($role === 'hr') {
+            // HR can only approve Manager, Team Leader, Finance, and Analyst attendance
+            return in_array($owner->role_name, ['manager', 'team_leader', 'finance', 'analyst'], true);
         }
 
-        if ($owner->role_name === 'hr') {
-            // HR Attendance -> Admin Approval
-            return $role === 'admin';
+        if ($role === 'admin') {
+            // Admin can only approve HR attendance
+            return $owner->role_name === 'hr';
         }
 
         return false;

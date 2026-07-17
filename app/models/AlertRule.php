@@ -181,7 +181,7 @@ class AlertRule extends Model {
                                            CONCAT(u.name, ' has a pending attendance exception.') AS message,
                                            'index.php?route=attendance/approvals' AS action_url
                                     FROM attendance a JOIN users u ON a.user_id = u.user_id
-                                    WHERE a.approval_status = 'pending'
+                                    WHERE a.attendance_status = 'Pending'
                                     UNION ALL
                                     SELECT CONCAT('task-', t.task_id) AS dedupe_id, t.assigned_to_user_id AS owner_user_id,
                                            'Task review pending' AS title,
