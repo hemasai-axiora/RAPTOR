@@ -147,6 +147,7 @@ $initials   = count($words) > 1
                         <span class="profile-field-value <?php echo empty($p->address) ? 'empty' : ''; ?>">
                             <?php echo !empty($p->address) ? nl2br(htmlspecialchars($p->address)) : '—'; ?>
                         </span>
+                    </div>
                     <div class="col-12">
                         <span class="profile-field-label">Skills</span>
                         <?php if (!empty($p->skills)): ?>
