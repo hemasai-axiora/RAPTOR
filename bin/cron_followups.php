@@ -6,8 +6,8 @@
  * reminders, escalates leads not contacted within the configured SLA, and
  * refreshes lead ageing quality.
  *
- * Suggested crontab:
- *   */15 * * * * php /var/www/raptor/bin/cron_followups.php >> /var/log/raptor_cron.log 2>&1
+ * Suggested crontab schedule:
+ *   Every 15 minutes: php /var/www/raptor/bin/cron_followups.php >> /var/log/raptor_cron.log 2>&1
  */
 
 require_once dirname(__DIR__) . '/app/config/config.php';

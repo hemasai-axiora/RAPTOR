@@ -5,8 +5,8 @@
  * Recomputes achieved values for approved targets from communications,
  * meetings/demos, leads, revenue, and approved tasks.
  *
- * Suggested crontab:
- *   */30 * * * * php /var/www/raptor/bin/cron_target_progress.php >> /var/log/raptor_cron.log 2>&1
+ * Suggested crontab schedule:
+ *   Every 30 minutes: php /var/www/raptor/bin/cron_target_progress.php >> /var/log/raptor_cron.log 2>&1
  */
 
 require_once dirname(__DIR__) . '/app/config/config.php';
