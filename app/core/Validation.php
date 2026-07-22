@@ -48,16 +48,41 @@ class Validation {
         return preg_match('/^[A-Za-z\s\'-]{2,}$/', $name) === 1;
     }
 
+    // Centralized real numeric identifier rule (rejects 0000000000, 1111111111, 1234567890)
+    public static function validateRealNumericIdentifier($val, ?int $length = null): bool {
+        $val = trim((string)$val);
+        if ($val === '' || !preg_match('/^\d+$/', $val)) {
+            return false;
+        }
+        if ($length !== null && strlen($val) !== $length) {
+            return false;
+        }
+        if (preg_match('/^(\d)\1+$/', $val)) {
+            return false;
+        }
+        $dummies = ['1234567890', '0123456789', '9876543210', '0987654321', '123456789012', '987654321098'];
+        if (in_array($val, $dummies, true)) {
+            return false;
+        }
+        return true;
+    }
+
+    // Ensure text contains at least one letter or digit
+    public static function validateHasAlphanumeric($val): bool {
+        $val = trim((string)$val);
+        return $val !== '' && preg_match('/[a-zA-Z0-9]/', $val) === 1;
+    }
+
     // Email address validation (with valid TLD check)
     public static function validateEmail($email): bool {
         $email = trim($email);
-        return filter_var($email, FILTER_VALIDATE_EMAIL) && preg_match('/@[^.]+\.[A-Za-z]{2,}/', $email) === 1;
+        return filter_var($email, FILTER_VALIDATE_EMAIL) && preg_match('/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/', $email) === 1;
     }
 
-    // Phone number: exactly 10 digits starting with 6-9
+    // Phone number: exactly 10 digits starting with 6-9 and not dummy/repetitive
     public static function validatePhoneNumber($phone): bool {
         $phone = trim($phone);
-        return preg_match('/^[6-9]\d{9}$/', $phone) === 1;
+        return self::validateRealNumericIdentifier($phone, 10) && preg_match('/^[6-9]/', $phone) === 1;
     }
 
     // Job title: min 2, contains letters, allowed chars (spaces, &, /)
@@ -82,10 +107,10 @@ class Validation {
         return preg_match('/^[A-Za-z\s&.]+$/', $bank) === 1;
     }
 
-    // Account number: numeric only
+    // Account number: numeric only, valid length (9-18 chars), non-dummy
     public static function validateAccountNumber($acc): bool {
         $acc = trim($acc);
-        return preg_match('/^\d+$/', $acc) === 1;
+        return self::validateRealNumericIdentifier($acc) && strlen($acc) >= 9 && strlen($acc) <= 18;
     }
 
     // IFSC code standard Indian format
@@ -108,10 +133,10 @@ class Validation {
         return preg_match('/^[A-Z]{5}[0-9]{4}[A-Z]$/', $pan) === 1;
     }
 
-    // Aadhaar number: exactly 12 digits
+    // Aadhaar number: exactly 12 digits, non-dummy
     public static function validateAadhaarNumber($aadhaar): bool {
         $aadhaar = trim($aadhaar);
-        return preg_match('/^\d{12}$/', $aadhaar) === 1;
+        return self::validateRealNumericIdentifier($aadhaar, 12);
     }
 
     // Salary: positive numeric > 0
@@ -120,10 +145,10 @@ class Validation {
         return is_numeric($salary) && (float)$salary > 0;
     }
 
-    // UAN: exactly 12 digits
+    // UAN: exactly 12 digits, non-dummy
     public static function validateUan($uan): bool {
         $uan = trim($uan);
-        return preg_match('/^\d{12}$/', $uan) === 1;
+        return self::validateRealNumericIdentifier($uan, 12);
     }
 
     // ESIC number: exactly 17 digits

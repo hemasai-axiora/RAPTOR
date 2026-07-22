@@ -197,10 +197,15 @@
             background-color: var(--panel-dark);
             border-right: 1px solid var(--border-color);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 100;
+            z-index: 1000;
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            height: 100vh;
         }
 
         #sidebar.collapsed {
@@ -371,6 +376,8 @@
             display: flex;
             flex-direction: column;
             min-width: 0;
+            margin-left: var(--sidebar-width);
+            transition: margin-left 0.3s ease;
         }
 
         #topbar {
@@ -738,6 +745,9 @@
                 width: 70px !important;
                 margin-left: 0 !important;
             }
+            #sidebar.collapsed + #content-wrapper {
+                margin-left: 70px !important;
+            }
             #sidebar.collapsed .sidebar-brand {
                 align-items: center !important;
                 justify-content: center !important;
@@ -810,13 +820,13 @@
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
                     </div>
                     <ul class="menu-section-items">
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'dashboard_module') ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'dashboard_module' && (!isset($data['title']) || strpos($data['title'], 'Templates') === false)) ? 'active' : ''; ?>">
                             <a href="index.php?route=dashboard/index">
                                 <i class="fa-solid fa-table-columns"></i><span>Dashboard Module</span>
                             </a>
                         </li>
                         <?php if (Policy::canCreateDashboardTemplate()): ?>
-                        <li class="menu-item <?php echo ($data['title'] === 'Dashboard Templates | Raptor CRM') ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo (isset($data['title']) && strpos($data['title'], 'Templates') !== false) ? 'active' : ''; ?>">
                             <a href="index.php?route=dashboard/templates">
                                 <i class="fa-solid fa-sliders"></i><span>Dashboard Templates</span>
                             </a>

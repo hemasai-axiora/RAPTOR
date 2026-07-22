@@ -6,7 +6,11 @@ class UsersController extends Controller {
 
     public function __construct() {
         $this->requireAuth();
-        $this->requirePermission('employees', 'view');
+        $role = $_SESSION['user_role'] ?? '';
+        if (!in_array($role, ['admin', 'hr'], true)) {
+            $this->redirect('index.php?route=dashboard/index');
+            return;
+        }
 
         $this->userModel = $this->model('User');
     }
@@ -92,6 +96,11 @@ class UsersController extends Controller {
 
             if ($this->userModel->isEmployeeCodeExists($data['employee_code'])) {
                 $_SESSION['user_error'] = 'Employee ID already exists.';
+                $this->redirect('index.php?route=users/index');
+                return;
+            }
+            if (!empty($data['employee_code']) && !Validation::validateHasAlphanumeric($data['employee_code'])) {
+                $_SESSION['user_error'] = 'Employee ID must contain alphanumeric characters.';
                 $this->redirect('index.php?route=users/index');
                 return;
             }

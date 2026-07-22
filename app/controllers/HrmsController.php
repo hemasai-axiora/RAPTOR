@@ -144,6 +144,24 @@ class HrmsController extends Controller {
 
         $from = $_GET['from'] ?? date('Y-m-01');
         $to = $_GET['to'] ?? date('Y-m-d');
+        $today = date('Y-m-d');
+
+        if ($to < $from) {
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="error.csv"');
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['Error', 'To Date cannot be earlier than From Date.']);
+            fclose($out);
+            exit();
+        }
+        if ($type !== 'employees' && ($from > $today || $to > $today)) {
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="error.csv"');
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['Error', 'From Date and To Date cannot be in the future.']);
+            fclose($out);
+            exit();
+        }
         
         $db = Database::getInstance()->getConnection();
 

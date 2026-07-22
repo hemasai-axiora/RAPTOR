@@ -6,7 +6,7 @@ class DashboardModule extends Model {
         'executive' => [
             'label' => 'Executive & Analytics Overview',
             'description' => 'Leadership and analyst KPIs across revenue, pipeline, activity, and risk.',
-            'roles' => ['admin', 'manager', 'employer', 'analyst'],
+            'roles' => ['admin', 'manager', 'employer', 'analyst', 'finance'],
             'widgets' => ['revenue', 'pipeline', 'lead_funnel', 'activity_mix', 'risk_alerts', 'top_performers'],
         ],
         'sales_command' => [
@@ -24,7 +24,7 @@ class DashboardModule extends Model {
         'pipeline_revenue' => [
             'label' => 'Pipeline & Revenue',
             'description' => 'Lead pipeline, forecast value, conversions, and revenue movement.',
-            'roles' => ['admin', 'manager', 'team_leader', 'employee', 'sales_person'],
+            'roles' => ['admin', 'manager', 'team_leader', 'employee', 'sales_person', 'finance'],
             'widgets' => ['pipeline', 'revenue', 'lead_funnel', 'conversion_rate', 'high_value_leads', 'source_mix'],
         ],
         'performance_targets' => [

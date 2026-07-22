@@ -87,8 +87,24 @@ class DashboardController extends Controller {
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
+            $name = strip_tags(trim($_POST['name'] ?? $_POST['template_name'] ?? ''));
+            $desc = strip_tags(trim($_POST['description'] ?? ''));
+
+            if (empty($name) || !Validation::validateHasAlphanumeric($name)) {
+                $_SESSION['template_error'] = 'Template Name must contain alphanumeric characters.';
+                $this->redirect('index.php?route=dashboard/templates');
+                return;
+            }
+
+            if (!empty($desc) && !Validation::validateHasAlphanumeric($desc)) {
+                $_SESSION['template_error'] = 'Description must contain alphanumeric characters.';
+                $this->redirect('index.php?route=dashboard/templates');
+                return;
+            }
+
             $this->dashboardModuleModel->createTemplate($_POST, (int) $_SESSION['user_id'], $_SESSION['user_role']);
             $this->audit('Created dashboard template', 'dashboard_templates');
+            $_SESSION['template_success'] = 'Dashboard template created successfully.';
         }
 
         $this->redirect('index.php?route=dashboard/templates');

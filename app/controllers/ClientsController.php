@@ -58,6 +58,16 @@ class ClientsController extends Controller {
             // Validate
             if (empty($data['company_name'])) {
                 $data['company_name_err'] = 'Company name is required';
+            } else {
+                $startTs = strtotime($data['contract_start']);
+                $endTs = strtotime($data['contract_end']);
+                if ($data['contract_start'] !== '' && (!$startTs || date('Y', $startTs) < 2000)) {
+                    $data['company_name_err'] = 'Contract start date must be Year 2000 or later.';
+                } elseif ($data['contract_end'] !== '' && (!$endTs || date('Y', $endTs) < 2000)) {
+                    $data['company_name_err'] = 'Contract end date must be Year 2000 or later.';
+                } elseif ($data['contract_start'] !== '' && $data['contract_end'] !== '' && $endTs < $startTs) {
+                    $data['company_name_err'] = 'Contract end date cannot be earlier than start date.';
+                }
             }
 
             if (empty($data['company_name_err'])) {
@@ -110,6 +120,16 @@ class ClientsController extends Controller {
 
             if (empty($data['company_name'])) {
                 $data['company_name_err'] = 'Company name is required';
+            } else {
+                $startTs = strtotime($data['contract_start']);
+                $endTs = strtotime($data['contract_end']);
+                if ($data['contract_start'] !== '' && (!$startTs || date('Y', $startTs) < 2000)) {
+                    $data['company_name_err'] = 'Contract start date must be Year 2000 or later.';
+                } elseif ($data['contract_end'] !== '' && (!$endTs || date('Y', $endTs) < 2000)) {
+                    $data['company_name_err'] = 'Contract end date must be Year 2000 or later.';
+                } elseif ($data['contract_start'] !== '' && $data['contract_end'] !== '' && $endTs < $startTs) {
+                    $data['company_name_err'] = 'Contract end date cannot be earlier than start date.';
+                }
             }
 
             if (empty($data['company_name_err'])) {

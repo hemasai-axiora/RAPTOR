@@ -138,6 +138,17 @@ class CalendarController extends Controller {
         $endDate = $_POST['end_date'] ?? '';
 
         if ($title !== '' && $startDate !== '' && $endDate !== '') {
+            if (!preg_match('/[a-zA-Z0-9]/', $title)) {
+                $_SESSION['calendar_error'] = 'Event Title must contain alphanumeric characters.';
+                $this->redirect('index.php?route=calendar/index');
+                return;
+            }
+            if ($description !== '' && !preg_match('/[a-zA-Z0-9]/', $description)) {
+                $_SESSION['calendar_error'] = 'Event Description must contain alphanumeric characters if provided.';
+                $this->redirect('index.php?route=calendar/index');
+                return;
+            }
+
             $startTs = strtotime($startDate);
             $endTs = strtotime($endDate);
 

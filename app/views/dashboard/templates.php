@@ -7,6 +7,13 @@
         <a href="index.php?route=dashboard/index" class="btn btn-outline-secondary btn-sm">Back to Dashboards</a>
     </div>
 
+<?php if (!empty($_SESSION['template_error'])): ?>
+    <div class="alert alert-danger mb-3"><?php echo htmlspecialchars($_SESSION['template_error']); unset($_SESSION['template_error']); ?></div>
+<?php endif; ?>
+<?php if (!empty($_SESSION['template_success'])): ?>
+    <div class="alert alert-success mb-3"><?php echo htmlspecialchars($_SESSION['template_success']); unset($_SESSION['template_success']); ?></div>
+<?php endif; ?>
+
     <form action="index.php?route=dashboard/createTemplate" method="POST" class="row g-3 p-3 rounded-3 mb-4" style="background: var(--surface-soft); border: 1px solid var(--border-color);">
         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
         <div class="col-md-4">

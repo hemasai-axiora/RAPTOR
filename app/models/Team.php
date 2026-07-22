@@ -42,7 +42,9 @@ class Team extends Model {
     }
 
     public function deleteTeam($id) {
-        return false;
+        $this->query('DELETE FROM teams WHERE team_id = :id');
+        $this->bind(':id', $id);
+        return $this->execute();
     }
 
     private function bindTeam($d) {
@@ -98,7 +100,9 @@ class Team extends Model {
     }
 
     public function deleteBranch($id) {
-        return false;
+        $this->query('DELETE FROM branches WHERE branch_id = :id');
+        $this->bind(':id', $id);
+        return $this->execute();
     }
 
     // ---------------- Territories ----------------
@@ -118,7 +122,9 @@ class Team extends Model {
     }
 
     public function deleteTerritory($id) {
-        return false;
+        $this->query('DELETE FROM territories WHERE territory_id = :id');
+        $this->bind(':id', $id);
+        return $this->execute();
     }
 
     // ---------------- Geofences ----------------
@@ -141,7 +147,9 @@ class Team extends Model {
     }
 
     public function deleteGeofence($id) {
-        return false;
+        $this->query('DELETE FROM geofences WHERE geofence_id = :id');
+        $this->bind(':id', $id);
+        return $this->execute();
     }
 
     public function isGeofenceEnabled(): bool {

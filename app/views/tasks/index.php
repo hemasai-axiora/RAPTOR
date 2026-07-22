@@ -10,6 +10,9 @@ $completionPct = $metrics['total'] > 0 ? round(($metrics['approved'] / $metrics[
 <?php if (!empty($_SESSION['task_error'])): ?>
     <div class="alert alert-danger"><?php echo htmlspecialchars($_SESSION['task_error']); unset($_SESSION['task_error']); ?></div>
 <?php endif; ?>
+<?php if (!empty($_SESSION['task_success'])): ?>
+    <div class="alert alert-success"><?php echo htmlspecialchars($_SESSION['task_success']); unset($_SESSION['task_success']); ?></div>
+<?php endif; ?>
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>

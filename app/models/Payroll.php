@@ -54,7 +54,9 @@ class Payroll extends Model {
                       LEFT JOIN users u ON r.created_by = u.user_id
                       LEFT JOIN users a ON r.approved_by = a.user_id
                       LEFT JOIN users l ON r.released_by = l.user_id
+                      WHERE r.month_year <= :current_month
                       ORDER BY r.month_year DESC');
+        $this->bind(':current_month', date('Y-m'));
         return $this->resultSet();
     }
 
@@ -123,9 +125,10 @@ class Payroll extends Model {
         $this->query('SELECT d.*, r.month_year, r.status as run_status
                       FROM payroll_details d
                       JOIN payroll_runs r ON d.payroll_run_id = r.payroll_run_id
-                      WHERE d.employee_id = :emp_id AND r.status = "released"
+                      WHERE d.employee_id = :emp_id AND r.status = "released" AND r.month_year <= :current_month
                       ORDER BY r.month_year DESC');
         $this->bind(':emp_id', $employeeId);
+        $this->bind(':current_month', date('Y-m'));
         return $this->resultSet();
     }
 

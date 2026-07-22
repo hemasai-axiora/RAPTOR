@@ -77,8 +77,14 @@ class InvoicesController extends Controller {
             }
             if (empty($data['due_date'])) {
                 $data['due_date_err'] = 'Please enter a due date';
-            } elseif (strtotime($data['due_date']) < strtotime(date('Y-m-d'))) {
-                $data['due_date_err'] = 'Due date cannot be earlier than invoice date';
+            } else {
+                $dueTs = strtotime($data['due_date']);
+                $todayTs = strtotime(date('Y-m-d'));
+                if (!$dueTs) {
+                    $data['due_date_err'] = 'Invalid due date format';
+                } elseif ($dueTs < $todayTs) {
+                    $data['due_date_err'] = 'Due date cannot be earlier than invoice creation date';
+                }
             }
 
             if (empty($data['amount_err']) && empty($data['client_err']) && empty($data['due_date_err'])) {

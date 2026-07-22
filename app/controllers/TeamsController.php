@@ -9,7 +9,11 @@ class TeamsController extends Controller {
 
     public function __construct() {
         $this->requireAuth();
-        $this->requirePermission('settings', 'manage');
+        $role = $_SESSION['user_role'] ?? '';
+        if ($role !== 'admin' && $role !== 'manager') {
+            $this->redirect('index.php?route=dashboard/index');
+            return;
+        }
         $this->teamModel = $this->model('Team');
     }
 

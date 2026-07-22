@@ -280,8 +280,12 @@ class LeadsController extends Controller {
             $data['first_name_err'] = 'First name must be between 2 and 50 characters, containing only letters, spaces, hyphens, or apostrophes.';
         }
         
-        if (!empty($data['last_name']) && !preg_match("/^[A-Za-z\s'\-]{2,50}$/", $data['last_name'])) {
-            $data['last_name_err'] = 'Last name must contain only letters, spaces, hyphens, or apostrophes, and be between 2 and 50 characters.';
+        if (!empty($data['last_name'])) {
+            if (!preg_match("/^[A-Za-z\s'\-]{2,50}$/", $data['last_name'])) {
+                $data['last_name_err'] = 'Last name must contain only letters, spaces, hyphens, or apostrophes, and be between 2 and 50 characters.';
+            } elseif (!empty($data['first_name']) && strtolower($data['first_name']) === strtolower($data['last_name'])) {
+                $data['last_name_err'] = 'Last name cannot be identical to first name.';
+            }
         }
         
         if (empty($data['lead_source'])) {
@@ -293,8 +297,9 @@ class LeadsController extends Controller {
         }
 
         if (!empty($data['email'])) {
-            if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-                $data['email_err'] = 'Please enter a valid email address.';
+            require_once APPROOT . '/core/Validation.php';
+            if (!Validation::validateEmail($data['email'])) {
+                $data['email_err'] = 'Please enter a valid email address with a domain extension (e.g. .com).';
             }
         }
 
@@ -302,6 +307,22 @@ class LeadsController extends Controller {
             if (!preg_match("/^[0-9\s\+\-\(\)\.]{7,20}$/", $data['phone'])) {
                 $data['phone_err'] = 'Phone number must contain only numbers and standard formatting symbols (+, -, parentheses, spaces, dots) and be between 7 and 20 characters.';
             }
+        }
+
+        if (!empty($data['company_name']) && !preg_match('/[a-zA-Z0-9]/', $data['company_name'])) {
+            $data['first_name_err'] = 'Company name must contain alphanumeric characters.';
+        }
+
+        if (!empty($data['location']) && !preg_match('/[a-zA-Z0-9]/', $data['location'])) {
+            $data['first_name_err'] = 'Location must contain alphanumeric characters.';
+        }
+
+        if (!empty($data['lost_reason']) && !preg_match('/[a-zA-Z0-9]/', $data['lost_reason'])) {
+            $data['first_name_err'] = 'Lost reason must contain alphanumeric characters.';
+        }
+
+        if (!empty($data['campaign_source']) && !preg_match('/[a-zA-Z0-9]/', $data['campaign_source'])) {
+            $data['first_name_err'] = 'Campaign source must contain alphanumeric characters.';
         }
         
         if (!in_array($data['status'], Lead::STATUSES, true)) {

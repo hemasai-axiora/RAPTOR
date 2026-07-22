@@ -185,14 +185,16 @@ class AttendanceController extends Controller {
         return false;
     }
 
-    /** Attendance report with date range + team scoping. */
     public function report() {
         $this->requireOversight();
         [$from, $to] = $this->reportRange();
         $error = '';
         $rows = [];
+        $today = date('Y-m-d');
         if ($to < $from) {
             $error = 'To Date cannot be earlier than From Date.';
+        } elseif ($from > $today || $to > $today) {
+            $error = 'From Date and To Date cannot be in the future.';
         } else {
             $rows = $this->att->getReport(['from' => $from, 'to' => $to, 'user_ids' => $this->visibleUserIds()]);
         }
@@ -211,8 +213,14 @@ class AttendanceController extends Controller {
     public function exportReport() {
         $this->requireOversight();
         [$from, $to] = $this->reportRange();
+        $today = date('Y-m-d');
         if ($to < $from) {
             $_SESSION['report_error'] = 'To Date cannot be earlier than From Date.';
+            $this->redirect('index.php?route=attendance/report&from=' . urlencode($from) . '&to=' . urlencode($to));
+            return;
+        }
+        if ($from > $today || $to > $today) {
+            $_SESSION['report_error'] = 'From Date and To Date cannot be in the future.';
             $this->redirect('index.php?route=attendance/report&from=' . urlencode($from) . '&to=' . urlencode($to));
             return;
         }

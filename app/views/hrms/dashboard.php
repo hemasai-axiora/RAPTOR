@@ -54,7 +54,7 @@ $personal = $data['personal'] ?? [];
         <div class="row">
             <!-- Left Side Column: Birthdays & Anniversaries -->
             <div class="col-lg-6 mb-4">
-                <div class="card border-0 shadow-sm p-4 mb-4" style="background: #1a1d27; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;">
+                <div class="card border-0 shadow-sm p-4 mb-4" style="background: var(--panel-dark); border: 1px solid var(--border-color) !important; border-radius: 16px;">
                     <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-cake-candles text-primary me-2"></i>Upcoming Birthdays (Next 30 Days)</h5>
                     <div class="d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto;">
                         <?php if (empty($stats['birthdays'])): ?>
@@ -76,7 +76,7 @@ $personal = $data['personal'] ?? [];
                     </div>
                 </div>
 
-                <div class="card border-0 shadow-sm p-4" style="background: #1a1d27; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;">
+                <div class="card border-0 shadow-sm p-4" style="background: var(--panel-dark); border: 1px solid var(--border-color) !important; border-radius: 16px;">
                     <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-award text-success me-2"></i>Work Anniversaries</h5>
                     <div class="d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto;">
                         <?php if (empty($stats['anniversaries'])): ?>
@@ -101,12 +101,12 @@ $personal = $data['personal'] ?? [];
 
             <!-- Right Side Column: Chart/Analytics Visualization -->
             <div class="col-lg-6 mb-4">
-                <div class="card border-0 shadow-sm p-4 mb-4" style="background: #1a1d27; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;">
+                <div class="card border-0 shadow-sm p-4 mb-4" style="background: var(--panel-dark); border: 1px solid var(--border-color) !important; border-radius: 16px;">
                     <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-chart-pie text-primary me-2"></i>Department Distribution</h5>
                     <div id="dept-chart" style="min-height: 250px;"></div>
                 </div>
 
-                <div class="card border-0 shadow-sm p-4" style="background: #1a1d27; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;">
+                <div class="card border-0 shadow-sm p-4" style="background: var(--panel-dark); border: 1px solid var(--border-color) !important; border-radius: 16px;">
                     <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-umbrella-beach text-warning me-2"></i>Organizational Holidays</h5>
                     <div class="row">
                         <?php foreach ($data['holidays'] as $h): ?>
@@ -178,7 +178,7 @@ $personal = $data['personal'] ?? [];
 
         <div class="row">
             <div class="col-lg-6 mb-4">
-                <div class="card border-0 shadow-sm p-4" style="background: #1a1d27; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;">
+                <div class="card border-0 shadow-sm p-4" style="background: var(--panel-dark); border: 1px solid var(--border-color) !important; border-radius: 16px;">
                     <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-envelope text-primary me-2"></i>Action Required</h5>
                     <div class="d-flex flex-column gap-2">
                         <a href="index.php?route=leaves/approvals" class="btn btn-outline-danger btn-sm text-start p-3 w-100 mb-2" style="border-radius:10px;">
@@ -191,7 +191,7 @@ $personal = $data['personal'] ?? [];
                 </div>
             </div>
             <div class="col-lg-6 mb-4">
-                <div class="card border-0 shadow-sm p-4" style="background: #1a1d27; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;">
+                <div class="card border-0 shadow-sm p-4" style="background: var(--panel-dark); border: 1px solid var(--border-color) !important; border-radius: 16px;">
                     <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-umbrella-beach text-warning me-2"></i>Holidays</h5>
                     <div class="row">
                         <?php foreach ($data['holidays'] as $h): ?>
@@ -239,7 +239,7 @@ $personal = $data['personal'] ?? [];
 
         <div class="row">
             <div class="col-lg-6 mb-4">
-                <div class="card border-0 shadow-sm p-4" style="background: #1a1d27; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;">
+                <div class="card border-0 shadow-sm p-4" style="background: var(--panel-dark); border: 1px solid var(--border-color) !important; border-radius: 16px;">
                     <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-bolt text-primary me-2"></i>Quick Actions</h5>
                     <div class="d-flex flex-column gap-2">
                         <a href="index.php?route=attendance/index" class="btn btn-outline-success p-3 text-start w-100" style="border-radius:10px;">
@@ -252,7 +252,7 @@ $personal = $data['personal'] ?? [];
                 </div>
             </div>
             <div class="col-lg-6 mb-4">
-                <div class="card border-0 shadow-sm p-4" style="background: #1a1d27; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;">
+                <div class="card border-0 shadow-sm p-4" style="background: var(--panel-dark); border: 1px solid var(--border-color) !important; border-radius: 16px;">
                     <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-umbrella-beach text-warning me-2"></i>Holidays</h5>
                     <div class="row">
                         <?php foreach ($data['holidays'] as $h): ?>

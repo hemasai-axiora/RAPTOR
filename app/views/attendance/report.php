@@ -133,10 +133,10 @@ $totHrs = round($totMins / 60, 1);
                         <?php echo htmlspecialchars($r->team_name ?? '—'); ?>
                     </td>
                     <td style="padding:0.85rem 1rem; color: var(--text-primary); font-size:0.88rem; font-weight: 500;">
-                        <?php echo $r->login_at ? date('h:i A', strtotime($r->login_at)) : '—'; ?>
+                        <?php echo $r->login_at ? formatToLocalTime($r->login_at, 'h:i A') : '—'; ?>
                     </td>
                     <td style="padding:0.85rem 1rem; color: var(--text-primary); font-size:0.88rem; font-weight: 500;">
-                        <?php echo $r->logout_at ? date('h:i A', strtotime($r->logout_at)) : '—'; ?>
+                        <?php echo $r->logout_at ? formatToLocalTime($r->logout_at, 'h:i A') : '—'; ?>
                     </td>
                     <td style="padding:0.85rem 1rem; color: var(--text-primary); font-size:0.88rem; font-weight: 600;">
                         <?php echo floor($r->worked_minutes / 60) . 'h ' . ($r->worked_minutes % 60) . 'm'; ?>

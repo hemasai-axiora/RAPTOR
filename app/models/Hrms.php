@@ -92,7 +92,8 @@ class Hrms extends Model {
             $stats['anniversaries'] = $this->resultSet() ?: [];
 
             // Payroll runs
-            $stmt = $db->query("SELECT COUNT(*) FROM payroll_runs");
+            $stmt = $db->prepare("SELECT COUNT(*) FROM payroll_runs WHERE month_year <= :current_month");
+            $stmt->execute([':current_month' => date('Y-m')]);
             $stats['payroll_runs'] = (int) $stmt->fetchColumn();
         }
 

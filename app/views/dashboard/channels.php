@@ -234,7 +234,8 @@ $(document).ready(function() {
                 { name: 'Total Engagements', type: 'bar', data: engagements },
                 { name: 'Engagement Rate (%)', type: 'line', data: er }
             ],
-            chart: { height: 350, type: 'line', toolbar: { show: false } },
+            chart: { height: 350, type: 'line', toolbar: { show: false }, redrawOnWindowResize: true, redrawOnParentResize: true },
+            responsive: [{ breakpoint: 768, options: { chart: { height: 280 }, legend: { position: 'bottom' } } }],
             stroke: { width: [0, 3], curve: 'smooth' },
             colors: ['#6366f1', '#06b6d4'],
             labels: labels,

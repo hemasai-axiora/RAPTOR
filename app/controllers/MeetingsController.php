@@ -18,12 +18,20 @@ class MeetingsController extends Controller {
     }
 
     public function index() {
+        $dateFrom = $_GET['date_from'] ?? date('Y-m-d', strtotime('-29 days'));
+        $dateTo = $_GET['date_to'] ?? date('Y-m-d');
+        if ($dateTo < $dateFrom) {
+            $_SESSION['meeting_error'] = 'To Date cannot be earlier than From Date.';
+            $dateFrom = date('Y-m-d', strtotime('-29 days'));
+            $dateTo = date('Y-m-d');
+        }
+
         $filters = [
             'assigned_to_user_id' => $_GET['assigned_to_user_id'] ?? '',
             'type' => $_GET['type'] ?? '',
             'status' => $_GET['status'] ?? '',
-            'date_from' => $this->dateBoundary($_GET['date_from'] ?? date('Y-m-d', strtotime('-29 days')), '00:00:00'),
-            'date_to' => $this->dateBoundary($_GET['date_to'] ?? date('Y-m-d'), '23:59:59'),
+            'date_from' => $this->dateBoundary($dateFrom, '00:00:00'),
+            'date_to' => $this->dateBoundary($dateTo, '23:59:59'),
         ];
         if (Policy::isEmployee()) {
             $filters['assigned_to_user_id'] = $_SESSION['user_id'];

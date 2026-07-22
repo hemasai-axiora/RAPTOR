@@ -1,6 +1,11 @@
 <!-- Sprint 12 Reports Center -->
 
 <div class="row g-4">
+    <div class="col-12">
+        <?php if (!empty($_SESSION['reports_error'])): ?>
+            <div class="alert alert-danger mb-3"><?php echo htmlspecialchars($_SESSION['reports_error']); unset($_SESSION['reports_error']); ?></div>
+        <?php endif; ?>
+    </div>
     <div class="col-12 col-xl-4">
         <div class="pulse-card">
             <h4 class="text-white mb-4"><i class="fa-solid fa-chart-column text-primary me-2"></i>Reports Center</h4>

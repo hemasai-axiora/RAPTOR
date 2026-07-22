@@ -62,8 +62,10 @@ class Attendance extends Model {
         $cfg      = $this->getShiftConfig();
         $date     = date('Y-m-d');
         $now      = date('Y-m-d H:i:s');
-        $latestOk = strtotime($date . ' ' . $cfg['shift_start']) + $cfg['grace_minutes'] * 60;
-        $isLate   = time() > $latestOk;
+        $localNow = formatToLocalTime($now, 'Y-m-d H:i:s');
+        $localTime = date('H:i:s', strtotime($localNow));
+        $latestOk = date('H:i:s', strtotime($cfg['shift_start']) + $cfg['grace_minutes'] * 60);
+        $isLate   = $localTime > $latestOk;
 
         // Geofence: null = not evaluated, 1 = inside a fence, 0 = outside all fences.
         $geoOk = $this->evalGeofence($d['lat'], $d['lng']);
@@ -160,11 +162,13 @@ class Attendance extends Model {
      *                   (geofencing disabled, no coords, or no fences defined).
      */
     private function evalGeofence($lat, $lng): ?int {
-        if ($lat === null || $lng === null) { return null; }
-
         $this->query("SELECT setting_value FROM settings WHERE setting_key = 'attendance.geofence_enabled'");
         $row = $this->single();
-        if (!$row || (string) $row->setting_value !== '1') { return null; }
+        $geofenceEnabled = ($row && (string) $row->setting_value === '1');
+
+        if (!$geofenceEnabled) { return null; }
+
+        if ($lat === null || $lng === null || $lat === '' || $lng === '') { return 0; }
 
         $this->query("SELECT center_lat, center_lng, radius_m FROM geofences WHERE type = 'office' AND active = 1");
         $fences = $this->resultSet();
@@ -208,7 +212,9 @@ class Attendance extends Model {
         $worked = (int) round((time() - strtotime($rec->login_at)) / 60) - (int) $rec->break_minutes;
         if ($worked < 0) { $worked = 0; }
 
-        $isEarly = time() < strtotime($date . ' ' . $cfg['shift_end']);
+        $localNow = formatToLocalTime($now, 'Y-m-d H:i:s');
+        $localTime = date('H:i:s', strtotime($localNow));
+        $isEarly = $localTime < $cfg['shift_end'];
         $status  = ($worked < $cfg['halfday_minutes']) ? 'half_day' : 'present';
 
         $this->query('UPDATE attendance SET

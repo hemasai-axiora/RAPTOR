@@ -46,8 +46,9 @@
 
                 <div class="list-group list-group-flush" style="max-height: 150px; overflow-y: auto;">
                     <?php foreach ($platforms as $p): ?>
+                        <?php $iconClass = (strpos(strtolower($p->name), 'twitter') !== false || strtolower($p->name) === 'x') ? 'fa-brands fa-x-twitter' : htmlspecialchars($p->icon); ?>
                         <div class="list-group-item bg-transparent border-secondary text-white px-0 py-2 d-flex justify-content-between align-items-center">
-                            <span><i class="<?php echo $p->icon; ?> me-2 text-primary"></i><?php echo htmlspecialchars($p->name); ?></span>
+                            <span><i class="<?php echo $iconClass; ?> me-2 text-primary"></i><?php echo htmlspecialchars($p->name); ?></span>
                             <form action="index.php?route=social/removePlatform" method="POST" onsubmit="return confirm('Are you sure you want to delete this platform?');">
                                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                                 <input type="hidden" name="platform_id" value="<?php echo $p->platform_id; ?>">

@@ -48,7 +48,7 @@ $fileUrl = function ($key) { return 'index.php?route=file/show&key=' . urlencode
                         <?php echo date('M d, Y', strtotime($p->work_date)); ?>
                     </td>
                     <td style="padding:0.85rem 1rem; color: var(--text-primary); font-size:0.88rem; font-weight: 500;">
-                        <?php echo $p->login_at ? date('h:i A', strtotime($p->login_at)) : '—'; ?>
+                        <?php echo $p->login_at ? formatToLocalTime($p->login_at, 'h:i A') : '—'; ?>
                     </td>
                     <td style="padding:0.85rem 1rem;">
                         <div class="d-flex gap-1 flex-wrap">

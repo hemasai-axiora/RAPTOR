@@ -65,13 +65,13 @@ $fileUrl = function ($key) { return 'index.php?route=file/show&key=' . urlencode
             <div class="row text-center g-2 mb-3">
                 <div class="col-6">
                     <div class="text-secondary small">Check-in</div>
-                    <div class="text-white fs-5 fw-semibold"><?php echo date('h:i A', strtotime($today->login_at)); ?></div>
+                    <div class="text-white fs-5 fw-semibold"><?php echo formatToLocalTime($today->login_at, 'h:i A'); ?></div>
                     <?php if ($today->is_late): ?><span class="badge bg-danger-subtle text-danger">LATE</span><?php endif; ?>
                 </div>
                 <div class="col-6">
                     <div class="text-secondary small">Check-out</div>
                     <div class="text-white fs-5 fw-semibold">
-                        <?php echo $hasLogout ? date('h:i A', strtotime($today->logout_at)) : '—'; ?>
+                        <?php echo $hasLogout ? formatToLocalTime($today->logout_at, 'h:i A') : '—'; ?>
                     </div>
                     <?php if ($hasLogout && $today->is_early_logout): ?><span class="badge bg-warning-subtle text-warning">EARLY</span><?php endif; ?>
                 </div>
@@ -97,7 +97,7 @@ $fileUrl = function ($key) { return 'index.php?route=file/show&key=' . urlencode
             <!-- Break control -->
             <div class="mb-3">
                 <?php if ($open_break): ?>
-                    <div class="alert alert-warning py-2 text-center mb-2">On break since <?php echo date('h:i A', strtotime($open_break->start_at)); ?></div>
+                    <div class="alert alert-warning py-2 text-center mb-2">On break since <?php echo formatToLocalTime($open_break->start_at, 'h:i A'); ?></div>
                     <button id="btn-break" class="btn btn-outline-warning w-100" data-break="end">
                         <i class="fa-solid fa-mug-hot me-2"></i>End Break
                     </button>

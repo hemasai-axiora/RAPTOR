@@ -136,6 +136,13 @@ class PayrollController extends Controller {
             $month = trim($_POST['month_year'] ?? '');
 
             if (preg_match('/^\d{4}-\d{2}$/', $month)) {
+                $currentMonth = date('Y-m');
+                if ($month > $currentMonth) {
+                    $_SESSION['payroll_error'] = "Cannot generate payroll for future months.";
+                    $this->redirect('index.php?route=payroll/dashboard');
+                    return;
+                }
+
                 // Check if run already exists
                 $existing = $this->payrollModel->getPayrollRunByMonth($month);
                 if ($existing && $existing->status !== 'generated') {

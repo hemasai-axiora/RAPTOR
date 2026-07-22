@@ -17,12 +17,20 @@ class CommunicationsController extends Controller {
     }
 
     public function index() {
+        $dateFrom = $_GET['date_from'] ?? date('Y-m-d', strtotime('-29 days'));
+        $dateTo = $_GET['date_to'] ?? date('Y-m-d');
+        if ($dateTo < $dateFrom) {
+            $_SESSION['communication_error'] = 'To Date cannot be earlier than From Date.';
+            $dateFrom = date('Y-m-d', strtotime('-29 days'));
+            $dateTo = date('Y-m-d');
+        }
+
         $filters = [
             'user_id' => $_GET['user_id'] ?? '',
             'channel' => $_GET['channel'] ?? '',
             'direction' => $_GET['direction'] ?? '',
-            'date_from' => $this->dateBoundary($_GET['date_from'] ?? date('Y-m-d', strtotime('-29 days')), '00:00:00'),
-            'date_to' => $this->dateBoundary($_GET['date_to'] ?? date('Y-m-d'), '23:59:59'),
+            'date_from' => $this->dateBoundary($dateFrom, '00:00:00'),
+            'date_to' => $this->dateBoundary($dateTo, '23:59:59'),
         ];
         if (Policy::isEmployee()) {
             $filters['user_id'] = $_SESSION['user_id'];
@@ -51,6 +59,13 @@ class CommunicationsController extends Controller {
         $proofKey = null;
         try {
             if (!empty($_FILES['proof']['name'])) {
+                $ext = strtolower(pathinfo($_FILES['proof']['name'], PATHINFO_EXTENSION));
+                $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+                if (!in_array($ext, $allowed, true)) {
+                    $_SESSION['communication_error'] = 'Invalid file type. Only image files (JPG, PNG, WEBP, GIF) are allowed for communication proof.';
+                    $this->redirect('index.php?route=communications/index');
+                    return;
+                }
                 $proofKey = Storage::put($_FILES['proof'], 'communication-proof');
             }
         } catch (RuntimeException $e) {
@@ -63,16 +78,38 @@ class CommunicationsController extends Controller {
             $leadId = null;
         }
 
+        $happenedAt = $this->normalizeDatetime($_POST['happened_at'] ?? '') ?: date('Y-m-d H:i:s');
+        if (strtotime($happenedAt) > time()) {
+            $_SESSION['communication_error'] = 'Happened At date/time cannot be in the future.';
+            $this->redirect('index.php?route=communications/index');
+            return;
+        }
+
+        $outcome = strip_tags(trim($_POST['outcome'] ?? ''));
+        $note = strip_tags(trim($_POST['note'] ?? ''));
+
+        if ($outcome !== '' && !preg_match('/[a-zA-Z0-9]/', $outcome)) {
+            $_SESSION['communication_error'] = 'Outcome must contain alphanumeric characters.';
+            $this->redirect('index.php?route=communications/index');
+            return;
+        }
+
+        if ($note !== '' && !preg_match('/[a-zA-Z0-9]/', $note)) {
+            $_SESSION['communication_error'] = 'Note must contain alphanumeric characters.';
+            $this->redirect('index.php?route=communications/index');
+            return;
+        }
+
         $id = $this->communicationModel->add([
             'lead_id' => $leadId,
             'user_id' => $_SESSION['user_id'],
             'channel' => $_POST['channel'] ?? 'call',
             'direction' => $_POST['direction'] ?? 'made',
             'duration_seconds' => (int) ($_POST['duration_minutes'] ?? 0) * 60,
-            'outcome' => strip_tags(trim($_POST['outcome'] ?? '')),
-            'note' => strip_tags(trim($_POST['note'] ?? '')),
+            'outcome' => $outcome,
+            'note' => $note,
             'proof_url' => $proofKey,
-            'happened_at' => $this->normalizeDatetime($_POST['happened_at'] ?? '') ?: date('Y-m-d H:i:s'),
+            'happened_at' => $happenedAt,
         ]);
 
         if ($id) {

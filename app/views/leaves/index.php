@@ -136,12 +136,12 @@ $earned = number_format((float)($data['balances']->earned_leave ?? 15.00), 1);
                         <div class="col-6">
                             <label for="from_date" class="leave-label">From Date</label>
                             <input type="date" class="form-control" id="from_date" name="from_date"
-                                   required style="border-color: #CBD5E1; border-radius: 8px;">
+                                   min="<?php echo date('Y-m-d'); ?>" required style="border-color: #CBD5E1; border-radius: 8px;">
                         </div>
                         <div class="col-6">
                             <label for="to_date" class="leave-label">To Date</label>
                             <input type="date" class="form-control" id="to_date" name="to_date"
-                                   required style="border-color: #CBD5E1; border-radius: 8px;">
+                                   min="<?php echo date('Y-m-d'); ?>" required style="border-color: #CBD5E1; border-radius: 8px;">
                         </div>
                     </div>
 

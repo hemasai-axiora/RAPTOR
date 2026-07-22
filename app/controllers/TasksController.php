@@ -41,24 +41,54 @@ class TasksController extends Controller {
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
+            $title = strip_tags(trim($_POST['title'] ?? ''));
+            $assignedTo = trim($_POST['assigned_to_user_id'] ?? '');
+            $startDate = $this->normalizeDatetime($_POST['start_date'] ?? '');
+            $deadline = $this->normalizeDatetime($_POST['deadline'] ?? '');
+
+            if (empty($title) || !preg_match('/[a-zA-Z]/', $title)) {
+                $_SESSION['task_error'] = 'Task Title must contain at least one letter.';
+                $this->redirect('index.php?route=tasks/index');
+                return;
+            }
+
+            if (empty($assignedTo)) {
+                $_SESSION['task_error'] = 'Please assign the task to a user.';
+                $this->redirect('index.php?route=tasks/index');
+                return;
+            }
+
+            if (empty($deadline)) {
+                $_SESSION['task_error'] = 'Deadline is required.';
+                $this->redirect('index.php?route=tasks/index');
+                return;
+            }
+
+            if (!empty($startDate) && strtotime($deadline) < strtotime($startDate)) {
+                $_SESSION['task_error'] = 'Deadline cannot be earlier than start date.';
+                $this->redirect('index.php?route=tasks/index');
+                return;
+            }
+
             $data = [
-                'assigned_to_user_id' => trim($_POST['assigned_to_user_id'] ?? ''),
+                'assigned_to_user_id' => $assignedTo,
                 'created_by_user_id' => $_SESSION['user_id'],
-                'title' => strip_tags(trim($_POST['title'] ?? '')),
+                'title' => $title,
                 'description' => strip_tags(trim($_POST['description'] ?? '')),
-                'start_date' => $this->normalizeDatetime($_POST['start_date'] ?? ''),
+                'start_date' => $startDate,
                 'priority' => trim($_POST['priority'] ?? 'medium'),
-                'deadline' => $this->normalizeDatetime($_POST['deadline'] ?? ''),
+                'deadline' => $deadline,
                 'estimated_hours' => $_POST['estimated_hours'] ?? 0,
                 'remarks' => strip_tags(trim($_POST['remarks'] ?? '')),
                 'status' => 'pending',
             ];
 
-            if ($data['title'] !== '' && $data['assigned_to_user_id'] !== '' && $data['deadline']) {
-                $taskId = $this->taskModel->addTask($data);
-                if ($taskId) {
-                    $this->audit('Created task: ' . $data['title'], 'task', (int) $taskId, null, $data);
-                }
+            $taskId = $this->taskModel->addTask($data);
+            if ($taskId) {
+                $this->audit('Created task: ' . $data['title'], 'task', (int) $taskId, null, $data);
+                $_SESSION['task_success'] = 'Task created successfully.';
+            } else {
+                $_SESSION['task_error'] = 'Something went wrong while saving the task.';
             }
         }
         $this->redirect('index.php?route=tasks/index');

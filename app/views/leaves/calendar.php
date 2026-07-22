@@ -1,7 +1,7 @@
 <div class="pulse-card">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h4 class="text-white mb-0"><i class="fa-solid fa-calendar-check text-primary me-2"></i>Holiday & Leave Calendar</h4>
-        <a href="index.php?route=leaves/index" class="btn btn-outline-light btn-sm px-3">
+        <a href="index.php?route=leaves/index" class="btn btn-outline-primary btn-sm px-3" style="border-radius: 8px;">
             <i class="fa-solid fa-arrow-left me-1"></i>Back to Leaves
         </a>
     </div>
@@ -9,8 +9,8 @@
     <div class="row">
         <!-- Leaves Calendar (Left Column) -->
         <div class="col-lg-8 mb-4">
-            <div class="card border-0 shadow-sm p-4" style="background: #1a1d27; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;">
-                <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-plane-departure text-success me-2"></i>Approved Leaves List</h5>
+            <div class="card border-0 shadow-sm p-4" style="background: var(--panel-dark); border: 1px solid var(--border-color) !important; border-radius: 16px;">
+                <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-plane-departure text-primary me-2"></i>Approved Leaves List</h5>
                 <div class="table-responsive">
                     <table class="table table-dark table-hover align-middle border-secondary mb-0" id="approved-leaves-table">
                         <thead>
@@ -35,12 +35,12 @@
                                     <tr class="small" style="border-bottom: 1px solid var(--border-color);">
                                         <td class="text-white fw-bold"><?php echo htmlspecialchars($l->employee_name); ?></td>
                                         <td>
-                                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
                                                 <?php echo htmlspecialchars($l->leave_type); ?>
                                             </span>
                                         </td>
-                                        <td><?php echo htmlspecialchars($l->from_date); ?></td>
-                                        <td><?php echo htmlspecialchars($l->to_date); ?></td>
+                                        <td class="text-secondary"><?php echo htmlspecialchars($l->from_date); ?></td>
+                                        <td class="text-secondary"><?php echo htmlspecialchars($l->to_date); ?></td>
                                         <td class="text-white fw-bold"><?php echo $days; ?> Days</td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -53,7 +53,7 @@
 
         <!-- Holiday List (Right Column) -->
         <div class="col-lg-4 mb-4">
-            <div class="card border-0 shadow-sm p-4" style="background: #1a1d27; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;">
+            <div class="card border-0 shadow-sm p-4" style="background: var(--panel-dark); border: 1px solid var(--border-color) !important; border-radius: 16px;">
                 <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-holly-berry text-warning me-2"></i>Upcoming Holidays</h5>
                 <div class="d-flex flex-column gap-3">
                     <?php if (empty($data['holidays'])): ?>
@@ -62,16 +62,14 @@
                         <?php foreach ($data['holidays'] as $h): ?>
                             <?php 
                                 $isPast = strtotime($h->holiday_date) < time();
-                                $bgClass = $isPast ? 'bg-secondary bg-opacity-10' : 'bg-warning bg-opacity-15';
-                                $borderClass = $isPast ? 'border-secondary' : 'border-warning';
-                                $textClass = $isPast ? 'text-secondary' : 'text-warning';
+                                $badgeStyle = $isPast ? 'background: var(--surface-soft); border: 1px solid var(--border-color); color: var(--text-secondary);' : 'background: #FEF3C7; border: 1px solid #FDE047; color: #92400E;';
                             ?>
-                            <div class="p-3 rounded border <?php echo $borderClass; ?> <?php echo $bgClass; ?> d-flex justify-content-between align-items-center">
+                            <div class="p-3 rounded d-flex justify-content-between align-items-center" style="<?php echo $badgeStyle; ?> border-radius: 12px !important;">
                                 <div>
-                                    <h6 class="text-white fw-bold mb-0 small"><?php echo htmlspecialchars($h->holiday_name); ?></h6>
-                                    <small class="text-secondary"><?php echo date('l', strtotime($h->holiday_date)); ?></small>
+                                    <h6 class="fw-bold mb-0 small" style="color: inherit;"><?php echo htmlspecialchars($h->holiday_name); ?></h6>
+                                    <small style="opacity: 0.85;"><?php echo date('l', strtotime($h->holiday_date)); ?></small>
                                 </div>
-                                <span class="<?php echo $textClass; ?> fw-bold small"><?php echo date('M d, Y', strtotime($h->holiday_date)); ?></span>
+                                <span class="fw-bold small" style="color: inherit;"><?php echo date('M d, Y', strtotime($h->holiday_date)); ?></span>
                             </div>
                         <?php endforeach; ?>
                     <?php endif; ?>

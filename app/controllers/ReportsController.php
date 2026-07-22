@@ -11,6 +11,14 @@ class ReportsController extends Controller {
     }
 
     public function index() {
+        $from = $_GET['from'] ?? '';
+        $to = $_GET['to'] ?? '';
+        if ($from !== '' && $to !== '' && $to < $from) {
+            $_SESSION['reports_error'] = 'To Date cannot be earlier than From Date.';
+            $_GET['from'] = date('Y-m-d', strtotime('-30 days'));
+            $_GET['to'] = date('Y-m-d');
+        }
+
         $visibleUserIds = $this->visibleUserIds();
         $data = [
             'title' => 'Reports Center | Raptor CRM',
@@ -25,6 +33,14 @@ class ReportsController extends Controller {
     }
 
     public function run() {
+        $from = $_GET['from'] ?? '';
+        $to = $_GET['to'] ?? '';
+        if ($from !== '' && $to !== '' && $to < $from) {
+            $_SESSION['reports_error'] = 'To Date cannot be earlier than From Date.';
+            $this->redirect('index.php?route=reports/index');
+            return;
+        }
+
         $visibleUserIds = $this->visibleUserIds();
         $result = $this->reportModel->run(
             $_GET['report_key'] ?? 'daily_summary',

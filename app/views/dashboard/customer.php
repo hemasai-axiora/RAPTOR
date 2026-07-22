@@ -251,7 +251,8 @@ $(document).ready(function() {
                 { name: 'Neutral Sentiment', data: neutral },
                 { name: 'Negative Sentiment', data: negative }
             ],
-            chart: { height: 250, type: 'line', toolbar: { show: false } },
+            chart: { height: 250, type: 'line', toolbar: { show: false }, redrawOnWindowResize: true, redrawOnParentResize: true },
+            responsive: [{ breakpoint: 768, options: { chart: { height: 220 }, legend: { position: 'bottom' } } }],
             colors: ['#10b981', '#64748b', '#ef4444'],
             stroke: { width: 3, curve: 'smooth' },
             xaxis: { type: 'datetime', categories: dates },

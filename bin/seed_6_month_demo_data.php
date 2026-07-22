@@ -356,13 +356,15 @@ try {
     for ($i = 1; $i <= 72; $i++) {
         $clientId = $clientIds[array_rand($clientIds)];
         $status = $i % 5 === 0 ? 'overdue' : ($i % 3 === 0 ? 'unpaid' : 'paid');
+        $createdDate = dateBetween('2026-01-07', '2026-07-06');
+        $dueDate = date('Y-m-d', strtotime($createdDate . ' +30 days'));
         insertRow($db, 'invoices', [
             'client_id' => $clientId,
             'invoice_number' => 'INV-DEMO-' . str_pad((string) $i, 4, '0', STR_PAD_LEFT),
             'amount' => rand(30000, 250000),
             'status' => $status,
-            'due_date' => dateBetween('2026-01-15', '2026-07-20'),
-            'created_at' => dt(dateBetween('2026-01-07', '2026-07-06'), 10),
+            'due_date' => $dueDate,
+            'created_at' => dt($createdDate, 10),
         ]);
     }
 

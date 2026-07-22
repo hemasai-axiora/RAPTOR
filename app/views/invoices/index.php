@@ -16,11 +16,25 @@ $canFinance = PermissionService::can('invoices', 'edit');
         </div>
     <?php endif; ?>
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="text-white mb-0">Billing &amp; Invoices Ledger</h4>
         <a href="index.php?route=invoices/add" class="btn btn-primary btn-sm px-3 py-2" style="background: var(--primary); border: none; border-radius: 8px;">
             <i class="fa-solid fa-file-invoice me-2"></i>Generate Invoice
         </a>
+    </div>
+
+    <!-- Complete Invoice Status Filter -->
+    <div class="row g-2 mb-4">
+        <div class="col-md-4 col-lg-3">
+            <select id="invoice-status-filter" class="form-select bg-dark border-secondary text-white" style="border-radius: 8px;">
+                <option value="">All Invoice Statuses</option>
+                <option value="unpaid">Unpaid</option>
+                <option value="paid">Paid</option>
+                <option value="overdue">Overdue</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="draft">Draft</option>
+            </select>
+        </div>
     </div>
 
     <div class="table-responsive">
@@ -240,7 +254,7 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>
     $(document).ready(function() {
         if ($('#invoices-table tbody tr').length > 1 || !$('#invoices-table tbody tr td').hasClass('text-center')) {
-            $('#invoices-table').DataTable({
+            var table = $('#invoices-table').DataTable({
                 "pageLength": 10,
                 "lengthChange": false,
                 "info": false,
@@ -248,6 +262,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 "language": {
                     "search": "Filter Invoices:"
                 }
+            });
+            $('#invoice-status-filter').on('change', function() {
+                var val = $(this).val();
+                table.column(4).search(val ? val : '', false, true).draw();
             });
         }
     });

@@ -68,9 +68,22 @@ class LeavesController extends Controller {
 
             $tsFrom = strtotime($fromDate);
             $tsTo = strtotime($toDate);
+            $todayTs = strtotime(date('Y-m-d'));
             
+            if ($tsFrom < $todayTs) {
+                $_SESSION['leaves_error'] = 'Leave application From Date must be present or future date.';
+                $this->redirect('index.php?route=leaves/index');
+                return;
+            }
+
             if ($tsTo < $tsFrom) {
                 $_SESSION['leaves_error'] = 'To Date cannot be earlier than From Date.';
+                $this->redirect('index.php?route=leaves/index');
+                return;
+            }
+
+            if (!empty($reason) && !Validation::validateHasAlphanumeric($reason)) {
+                $_SESSION['leaves_error'] = 'Leave reason must contain alphanumeric characters.';
                 $this->redirect('index.php?route=leaves/index');
                 return;
             }

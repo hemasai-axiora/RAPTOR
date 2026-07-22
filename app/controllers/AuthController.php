@@ -173,16 +173,21 @@ class AuthController extends Controller {
             }
 
             if (empty($data['otp_err']) && empty($data['password_err']) && empty($data['confirm_password_err'])) {
-                if ($this->userModel->resetPassword($email, $password)) {
-                    // Clear session OTP
-                    unset($_SESSION['forgot_otp']);
-                    unset($_SESSION['forgot_email']);
-                    unset($_SESSION['forgot_expires']);
-
-                    $_SESSION['login_success'] = 'Password reset successfully. You can now log in.';
-                    $this->redirect('index.php?route=auth/login');
+                $user = $this->userModel->findUserByEmail($email);
+                if ($user && password_verify($password, $user->password)) {
+                    $data['password_err'] = 'New password cannot be identical to your current password.';
                 } else {
-                    $data['password_err'] = 'Failed to reset password. Please try again.';
+                    if ($this->userModel->resetPassword($email, $password)) {
+                        // Clear session OTP
+                        unset($_SESSION['forgot_otp']);
+                        unset($_SESSION['forgot_email']);
+                        unset($_SESSION['forgot_expires']);
+
+                        $_SESSION['login_success'] = 'Password reset successfully. You can now log in.';
+                        $this->redirect('index.php?route=auth/login');
+                    } else {
+                        $data['password_err'] = 'Failed to reset password. Please try again.';
+                    }
                 }
             }
         }
@@ -225,15 +230,20 @@ class AuthController extends Controller {
                 }
 
                 if (empty($data['password_err']) && empty($data['confirm_password_err'])) {
-                    $db = Database::getInstance()->getConnection();
-                    $hashed = password_hash($password, PASSWORD_BCRYPT, ['cost' => 10]);
-                    $stmt = $db->prepare('UPDATE users SET password = :pass, force_password_reset = 0 WHERE user_id = :id');
-                    if ($stmt->execute([':pass' => $hashed, ':id' => $_SESSION['user_id']])) {
-                        $_SESSION['force_password_reset'] = 0;
-                        $_SESSION['user_success'] = 'Password updated successfully. You are now logged in.';
-                        $this->redirectByRole($_SESSION['user_role']);
+                    $user = $this->userModel->getUserById($_SESSION['user_id']);
+                    if ($user && password_verify($password, $user->password)) {
+                        $data['password_err'] = 'New password cannot be identical to your current password.';
                     } else {
-                        $data['password_err'] = 'Failed to update password. Please try again.';
+                        $db = Database::getInstance()->getConnection();
+                        $hashed = password_hash($password, PASSWORD_BCRYPT, ['cost' => 10]);
+                        $stmt = $db->prepare('UPDATE users SET password = :pass, force_password_reset = 0 WHERE user_id = :id');
+                        if ($stmt->execute([':pass' => $hashed, ':id' => $_SESSION['user_id']])) {
+                            $_SESSION['force_password_reset'] = 0;
+                            $_SESSION['user_success'] = 'Password updated successfully. You are now logged in.';
+                            $this->redirectByRole($_SESSION['user_role']);
+                        } else {
+                            $data['password_err'] = 'Failed to update password. Please try again.';
+                        }
                     }
                 }
             }
