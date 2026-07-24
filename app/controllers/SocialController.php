@@ -371,6 +371,7 @@ class SocialController extends Controller {
         $socialModel = $this->model('SocialAccount');
         $platformModel = $this->model('Platform');
         $leadModel = $this->model('Lead');
+        $analyticsModel = $this->model('AnalyticsEntry');
 
         $platforms = $platformModel->getPlatforms();
         $assignedAccounts = $socialModel->getAssignedAccountsForUser($userId);
@@ -379,12 +380,16 @@ class SocialController extends Controller {
         $scopeIds = $this->visibleUserIds();
         $leads = $leadModel->getLeads([], $scopeIds);
 
+        // Fetch database link click logs
+        $clickLogs = $analyticsModel->getLinkClicks(null, 100);
+
         $this->viewWithLayout('social/leads', 'main', [
             'title' => 'Lead Generation Hub | Raptor CRM',
             'active_tab' => 'social_leads',
             'platforms' => $platforms,
             'assignedAccounts' => $assignedAccounts,
-            'leads' => $leads
+            'leads' => $leads,
+            'clickLogs' => $clickLogs
         ]);
     }
 
@@ -551,5 +556,137 @@ class SocialController extends Controller {
         fputcsv($output, ['Alex Rivera', 'alex@riveramedia.com', '+1 555-0244', 'Rivera Media', 'Instagram', 'Inquired about monthly ad budget management']);
         fclose($output);
         exit;
+    }
+
+    // Track link click and redirect visitor
+    public function click() {
+        $accId = (int)($_GET['acc'] ?? 0);
+        $targetUrl = trim($_GET['url'] ?? '');
+        $shortCode = trim($_GET['code'] ?? '');
+
+        $analyticsModel = $this->model('AnalyticsEntry');
+        
+        if (empty($targetUrl)) {
+            $targetUrl = "index.php?route=social/capture&acc=" . $accId;
+        }
+
+        // Log click event into database (IP, user agent, referrer, timestamp)
+        $analyticsModel->logLinkClick($accId, $shortCode ?: "ACC-$accId", $targetUrl);
+
+        // Also increment view/click count for account
+        if ($accId) {
+            $socialModel = $this->model('SocialAccount');
+            $acc = $socialModel->getAccountById($accId);
+            if ($acc) {
+                $analyticsModel->logEntry([
+                    'platform_id' => $acc->platform_id,
+                    'account_id' => $accId,
+                    'post_id' => null,
+                    'likes' => 0,
+                    'comments' => 0,
+                    'shares' => 0,
+                    'views' => 1,
+                    'clicks' => 1,
+                    'custom_notes' => "Link clicked by visitor",
+                    'updated_by' => !empty($_SESSION['user_id']) ? $_SESSION['user_id'] : 1
+                ]);
+            }
+        }
+
+        // Redirect visitor to target URL
+        header("Location: " . $targetUrl);
+        exit;
+    }
+
+    // Public Customer Lead Capture Form (No Auth Required)
+    public function capture() {
+        $accId = (int)($_GET['acc'] ?? 0);
+
+        $socialModel = $this->model('SocialAccount');
+        $account = $accId ? $socialModel->getAccountById($accId) : null;
+
+        // Log link visit event in database
+        $analyticsModel = $this->model('AnalyticsEntry');
+        $analyticsModel->logLinkClick($accId, "CAP-$accId", "index.php?route=social/capture&acc=" . $accId);
+
+        $this->view('social/capture', [
+            'title' => 'Get in Touch | Raptor CRM',
+            'account' => $account
+        ]);
+    }
+
+    // Process Public Lead Form Submission
+    public function submitPublicLead() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
+
+            $fullName = trim($_POST['name'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+            $phone = trim($_POST['phone'] ?? '');
+            $company = trim($_POST['company_name'] ?? '');
+            $notes = trim($_POST['notes'] ?? '');
+            $accId = (int)($_POST['account_id'] ?? 0);
+
+            if (empty($fullName) || empty($email) || empty($phone)) {
+                $_SESSION['flash_error'] = "Full Name, Email, and Phone Number are required.";
+                $this->redirect("index.php?route=social/capture&acc=" . $accId);
+                return;
+            }
+
+            $parts = explode(' ', $fullName, 2);
+            $firstName = $parts[0];
+            $lastName = $parts[1] ?? '';
+
+            // Find account handler/assignee
+            $socialModel = $this->model('SocialAccount');
+            $account = $accId ? $socialModel->getAccountById($accId) : null;
+            $assigneeId = !empty($account->assigned_users) ? $account->assigned_users[0]->user_id : 1;
+            $platformName = $account ? $account->platform_name : 'Social Media Link';
+
+            $leadData = [
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'email' => $email,
+                'phone' => $phone,
+                'company_name' => $company ?: 'Public Link Visitor',
+                'status' => 'new',
+                'lead_quality' => 'hot',
+                'lead_value' => 0.00,
+                'lead_source' => 'Public Link (' . $platformName . ')',
+                'assigned_to_user_id' => $assigneeId,
+                'changed_by_user_id' => $assigneeId
+            ];
+
+            $leadModel = $this->model('Lead');
+            $leadId = $leadModel->addLead($leadData);
+
+            if ($leadId) {
+                // Log entry in analytics history
+                $analyticsModel = $this->model('AnalyticsEntry');
+                $analyticsModel->logEntry([
+                    'platform_id' => $account ? $account->platform_id : 1,
+                    'account_id' => $accId ?: 1,
+                    'post_id' => null,
+                    'likes' => 0,
+                    'comments' => 0,
+                    'shares' => 0,
+                    'views' => 1,
+                    'leads_generated' => 1,
+                    'lead_details' => "$fullName ($email, $phone)",
+                    'custom_notes' => "Public Link Click Lead: $notes",
+                    'updated_by' => $assigneeId
+                ]);
+
+                // Also log link click event in database
+                $analyticsModel->logLinkClick($accId, "LEAD-SUBMIT", "Public Lead Form: $fullName");
+
+                $this->view('social/capture_success', [
+                    'title' => 'Inquiry Submitted | Thank You',
+                    'name' => $fullName
+                ]);
+                return;
+            }
+        }
+        $this->redirect('index.php?route=auth/login');
     }
 }

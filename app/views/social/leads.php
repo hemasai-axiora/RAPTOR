@@ -240,6 +240,92 @@
             </div>
         </div>
     </div>
+
+    <!-- Row 3: Tracked Account Links & Database Link Visitor Clicks Log Table -->
+    <div class="row g-4 mt-2">
+        <!-- Assigned Account Shareable Links -->
+        <div class="col-lg-5">
+            <div class="pulse-card h-100">
+                <h5 class="text-white mb-3 border-bottom pb-2 border-secondary" style="font-size: 1.05rem;">
+                    <i class="fa-solid fa-link text-info me-2"></i>Trackable Shareable Links
+                </h5>
+                <p class="text-secondary small mb-3">
+                    Share these unique links on social media or in messages. When anyone opens or uses the link, their click is automatically saved to the database.
+                </p>
+
+                <?php if (empty($assignedAccounts)): ?>
+                    <p class="text-secondary small">No assigned accounts available for link generation.</p>
+                <?php else: ?>
+                    <div class="list-group list-group-flush">
+                        <?php foreach ($assignedAccounts as $acc): ?>
+                            <?php 
+                                $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . ($_SERVER['HTTP_HOST'] ?? '98.94.227.211');
+                                $trackedUrl = $baseUrl . "/public/index.php?route=social/click&acc=" . $acc->account_id;
+                            ?>
+                            <div class="list-group-item bg-dark text-white border-secondary rounded mb-2 p-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <span class="fw-bold"><i class="fa-solid fa-share-nodes text-primary me-2"></i><?php echo htmlspecialchars($acc->profile_name); ?></span>
+                                        <span class="badge bg-secondary ms-2 small"><?php echo htmlspecialchars($acc->platform_name ?? 'Social Media'); ?></span>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-info" onclick="navigator.clipboard.writeText('<?php echo $trackedUrl; ?>'); alert('Tracked link copied to clipboard!');">
+                                        <i class="fa-solid fa-copy me-1"></i>Copy Link
+                                    </button>
+                                </div>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control bg-black text-info border-secondary small" value="<?php echo htmlspecialchars($trackedUrl); ?>" readonly>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Database Link Visitor Clicks Log Table -->
+        <div class="col-lg-7">
+            <div class="pulse-card h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2 border-secondary">
+                    <div>
+                        <h5 class="text-white mb-0"><i class="fa-solid fa-database text-warning me-2"></i>Database Link Clicks &amp; Usage Logs</h5>
+                        <span class="text-secondary small">Live database audit trail of visitors using your marketing links.</span>
+                    </div>
+                    <span class="badge bg-primary rounded-pill"><?php echo count($clickLogs ?? []); ?> Clicks Recorded</span>
+                </div>
+
+                <div class="table-responsive" style="max-height: 360px; overflow-y: auto;">
+                    <table class="table table-hover text-white align-middle mb-0" style="font-size: 0.85rem;">
+                        <thead class="bg-dark sticky-top">
+                            <tr class="text-secondary">
+                                <th>Timestamp</th>
+                                <th>Target / Link</th>
+                                <th>Visitor IP</th>
+                                <th>User Agent / Device</th>
+                                <th>Referrer</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($clickLogs)): ?>
+                                <tr>
+                                    <td colspan="5" class="text-center text-secondary py-4">No link click events recorded in database yet.</td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($clickLogs as $cl): ?>
+                                    <tr>
+                                        <td class="small text-secondary text-nowrap"><?php echo date('Y-m-d H:i:s', strtotime($cl->clicked_at)); ?></td>
+                                        <td class="fw-semibold text-info text-truncate" style="max-width: 150px;"><?php echo htmlspecialchars($cl->target_url); ?></td>
+                                        <td><code class="px-2 py-1 bg-dark text-warning rounded small"><?php echo htmlspecialchars($cl->ip_address ?? '0.0.0.0'); ?></code></td>
+                                        <td class="small text-secondary text-truncate" style="max-width: 180px;" title="<?php echo htmlspecialchars($cl->user_agent ?? ''); ?>"><?php echo htmlspecialchars($cl->user_agent ?? 'Unknown'); ?></td>
+                                        <td class="small text-secondary"><?php echo htmlspecialchars($cl->referrer ?? 'Direct'); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>

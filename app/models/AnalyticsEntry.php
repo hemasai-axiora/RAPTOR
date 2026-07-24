@@ -6,6 +6,7 @@ class AnalyticsEntry extends Model {
     public function __construct() {
         parent::__construct();
         $this->ensureLeadColumns();
+        $this->ensureLinkTrackingTables();
     }
 
     /** Ensure lead generation columns exist in analytics_entries and analytics_history */
@@ -23,6 +24,38 @@ class AnalyticsEntry extends Model {
                     // Column already exists
                 }
             }
+        }
+    }
+
+    /** Ensure link tracking and click logging tables exist in database */
+    private function ensureLinkTrackingTables() {
+        try {
+            $this->query("CREATE TABLE IF NOT EXISTS tracked_links (
+                link_id INT AUTO_INCREMENT PRIMARY KEY,
+                short_code VARCHAR(32) UNIQUE NOT NULL,
+                target_url VARCHAR(500) NOT NULL,
+                platform_id INT DEFAULT NULL,
+                account_id INT DEFAULT NULL,
+                created_by_user_id INT NOT NULL,
+                title VARCHAR(255) DEFAULT 'Marketing Link',
+                click_count INT DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            $this->execute();
+
+            $this->query("CREATE TABLE IF NOT EXISTS link_clicks (
+                click_id INT AUTO_INCREMENT PRIMARY KEY,
+                link_id INT DEFAULT NULL,
+                short_code VARCHAR(32) DEFAULT NULL,
+                target_url VARCHAR(500) NOT NULL,
+                ip_address VARCHAR(45) DEFAULT NULL,
+                user_agent VARCHAR(255) DEFAULT NULL,
+                referrer VARCHAR(255) DEFAULT NULL,
+                clicked_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            $this->execute();
+        } catch (Exception $e) {
+            // Tables exist
         }
     }
     
@@ -315,5 +348,50 @@ class AnalyticsEntry extends Model {
             }
         }
         return $rows;
+    }
+
+    // Log a link click event into database
+    public function logLinkClick($linkId, $shortCode, $targetUrl, $ip = null, $ua = null, $referrer = null) {
+        try {
+            if ($linkId) {
+                $this->query("UPDATE tracked_links SET click_count = click_count + 1 WHERE link_id = :lid");
+                $this->bind(':lid', (int)$linkId);
+                $this->execute();
+            } elseif ($shortCode) {
+                $this->query("UPDATE tracked_links SET click_count = click_count + 1 WHERE short_code = :sc");
+                $this->bind(':sc', $shortCode);
+                $this->execute();
+            }
+
+            $this->query("INSERT INTO link_clicks (link_id, short_code, target_url, ip_address, user_agent, referrer)
+                          VALUES (:lid, :sc, :url, :ip, :ua, :ref)");
+            $this->bind(':lid', $linkId ? (int)$linkId : null);
+            $this->bind(':sc', $shortCode ?: null);
+            $this->bind(':url', $targetUrl);
+            $this->bind(':ip', $ip ?: ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'));
+            $this->bind(':ua', $ua ?: ($_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'));
+            $this->bind(':ref', $referrer ?: ($_SERVER['HTTP_REFERER'] ?? 'Direct'));
+            $this->execute();
+            return true;
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    // Get click history logs from database
+    public function getLinkClicks($linkId = null, $limit = 100) {
+        $sql = "SELECT lc.*, tl.title as link_title 
+                FROM link_clicks lc
+                LEFT JOIN tracked_links tl ON lc.link_id = tl.link_id";
+        if ($linkId) {
+            $sql .= " WHERE lc.link_id = :lid";
+        }
+        $sql .= " ORDER BY lc.clicked_at DESC LIMIT " . (int)$limit;
+
+        $this->query($sql);
+        if ($linkId) {
+            $this->bind(':lid', (int)$linkId);
+        }
+        return $this->resultSet();
     }
 }
