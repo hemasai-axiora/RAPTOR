@@ -93,10 +93,15 @@ class Security {
 
     public static function recordLoginAttempt(string $email, bool $success): void {
         try {
+            $cleanEmail = strtolower(trim($email));
+            if ($success) {
+                $delStmt = self::db()->prepare('DELETE FROM login_attempts WHERE email = :email');
+                $delStmt->execute([':email' => $cleanEmail]);
+            }
             $stmt = self::db()->prepare('INSERT INTO login_attempts (email, ip_address, user_agent, success)
                 VALUES (:email, :ip, :ua, :success)');
             $stmt->execute([
-                ':email' => strtolower(trim($email)),
+                ':email' => $cleanEmail,
                 ':ip' => self::clientIp(),
                 ':ua' => self::userAgent(),
                 ':success' => $success ? 1 : 0,
@@ -107,17 +112,15 @@ class Security {
     }
 
     public static function loginLocked(string $email): bool {
-        $max = (int) self::setting('auth.max_failed_attempts', 5);
+        $max = (int) self::setting('auth.max_failed_attempts', 15);
         $minutes = (int) self::setting('auth.lockout_minutes', 15);
         try {
             $cutoff = date('Y-m-d H:i:s', time() - (max(1, $minutes) * 60));
             $stmt = self::db()->prepare('SELECT COUNT(*) FROM login_attempts
                 WHERE success = 0
                   AND email = :email
-                  AND ip_address = :ip
                   AND attempted_at >= :cutoff');
             $stmt->bindValue(':email', strtolower(trim($email)));
-            $stmt->bindValue(':ip', self::clientIp());
             $stmt->bindValue(':cutoff', $cutoff);
             $stmt->execute();
             return (int) $stmt->fetchColumn() >= max(1, $max);
