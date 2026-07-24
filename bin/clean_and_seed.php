@@ -148,8 +148,8 @@ foreach ($analystModules as $mod) {
 }
 echo "Granted HR & Payroll, Employees, and Reports permissions to Analyst role.\n";
 // Seed New Users
-// Password is 'Password123!'
-$hash = password_hash('Password123!', PASSWORD_BCRYPT, ['cost' => 10]);
+// Password is 'Raptor@12345'
+$hash = password_hash('Raptor@12345', PASSWORD_BCRYPT, ['cost' => 10]);
 
 $usersToSeed = [
     'ceo' => [
