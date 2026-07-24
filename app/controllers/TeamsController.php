@@ -19,6 +19,24 @@ class TeamsController extends Controller {
 
     public function index() {
         $mgrId = $_SESSION['user_role'] === 'manager' ? (int) $_SESSION['user_id'] : null;
+        
+        // Assemble parent-child hierarchy tree
+        $users = $this->teamModel->getOrgHierarchy();
+        $tree = [];
+        $nodes = [];
+        foreach ($users as $u) {
+            $u->children = [];
+            $nodes[$u->user_id] = $u;
+        }
+        foreach ($users as $u) {
+            $parentId = $u->reporting_manager_id;
+            if ($parentId && isset($nodes[$parentId])) {
+                $nodes[$parentId]->children[] = $u;
+            } else {
+                $tree[] = $u;
+            }
+        }
+
         $data = [
             'title'       => 'Organization | Raptor CRM',
             'active_tab'  => 'system',
@@ -30,6 +48,7 @@ class TeamsController extends Controller {
             'geofences'   => $this->teamModel->getGeofences(),
             'geofence_enabled' => $this->teamModel->isGeofenceEnabled(),
             'team_members' => $this->teamModel->getTeamMembers($mgrId),
+            'hierarchy_tree' => $tree,
         ];
         $this->viewWithLayout('teams/index', 'main', $data);
     }
@@ -186,5 +205,78 @@ class TeamsController extends Controller {
             $this->audit('Geofence enforcement ' . ($on ? 'enabled' : 'disabled'), 'settings');
         }
         $this->redirect('index.php?route=teams/index');
+    }
+
+    /** Update reporting manager and team for an employee (Sprint 2) */
+    public function updateHierarchy() {
+        $role = $_SESSION['user_role'] ?? '';
+        if ($role !== 'admin' && $role !== 'ceo') {
+            $this->jsonError('Unauthorized. Only Admins and CEOs can edit the hierarchy.', 403);
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $userId = isset($_POST['user_id']) ? (int) $_POST['user_id'] : 0;
+            $managerId = isset($_POST['manager_id']) ? (int) $_POST['manager_id'] : 0;
+            $teamId = isset($_POST['team_id']) ? (int) $_POST['team_id'] : 0;
+
+            if ($userId <= 0) {
+                $this->jsonError('Invalid user specified.');
+            }
+
+            // A user cannot report to themselves
+            if ($userId === $managerId) {
+                $this->jsonError('A user cannot report to themselves.');
+            }
+
+            // Check for circular dependency
+            if ($managerId > 0 && $this->isDescendant($userId, $managerId)) {
+                $this->jsonError('Circular dependency detected: a manager cannot report to their own subordinate.');
+            }
+
+            $mgrVal = $managerId > 0 ? $managerId : null;
+            $teamVal = $teamId > 0 ? $teamId : null;
+
+            try {
+                $db = Database::getInstance()->getConnection();
+                
+                // Update employees table
+                $stmt = $db->prepare("UPDATE employees SET reporting_manager_id = :mgr, team_id = :team WHERE user_id = :uid");
+                $stmt->execute([
+                    ':mgr' => $mgrVal,
+                    ':team' => $teamVal,
+                    ':uid' => $userId
+                ]);
+
+                $this->audit('Updated employee hierarchy/team for user ID: ' . $userId, 'employee', $userId);
+                $this->jsonOk(null, 'Hierarchy updated successfully.');
+            } catch (Exception $e) {
+                $this->jsonError('Database error: ' . $e->getMessage());
+            }
+        } else {
+            $this->jsonError('Invalid request method.');
+        }
+    }
+
+    /** Helper function to check if target manager is a descendant of the user */
+    private function isDescendant($userId, $targetManagerId) {
+        try {
+            $db = Database::getInstance()->getConnection();
+            $stmt = $db->prepare("SELECT user_id, reporting_manager_id FROM employees WHERE user_id = :uid");
+            $stmt->execute([':uid' => $targetManagerId]);
+            $emp = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$emp) {
+                return false;
+            }
+            $parent = $emp['reporting_manager_id'];
+            if ($parent == $userId) {
+                return true;
+            }
+            if ($parent > 0) {
+                return $this->isDescendant($userId, $parent);
+            }
+        } catch (Exception $e) {
+            return false;
+        }
+        return false;
     }
 }

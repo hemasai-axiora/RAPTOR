@@ -139,7 +139,7 @@
                                                                    id="scope-<?php echo $p->permission_id; ?>-none" value="none" 
                                                                    <?php echo $activeScope === 'none' ? 'checked' : ''; ?>>
                                                             <label class="btn btn-outline-danger btn-sm border-gray" for="scope-<?php echo $p->permission_id; ?>-none">
-                                                                <i class="fa-solid fa-ban me-1 d-none d-lg-inline"></i> None
+                                                                <i class="fa-solid fa-ban me-1 d-none d-lg-inline"></i> No Access
                                                             </label>
 
                                                             <!-- Own radio -->
@@ -147,7 +147,7 @@
                                                                    id="scope-<?php echo $p->permission_id; ?>-own" value="own" 
                                                                    <?php echo $activeScope === 'own' ? 'checked' : ''; ?>>
                                                             <label class="btn btn-outline-warning btn-sm border-gray" for="scope-<?php echo $p->permission_id; ?>-own">
-                                                                <i class="fa-solid fa-user me-1 d-none d-lg-inline"></i> Own
+                                                                <i class="fa-solid fa-user me-1 d-none d-lg-inline"></i> Self Only
                                                             </label>
 
                                                             <!-- Team radio -->
@@ -155,7 +155,7 @@
                                                                    id="scope-<?php echo $p->permission_id; ?>-team" value="team" 
                                                                    <?php echo $activeScope === 'team' ? 'checked' : ''; ?>>
                                                             <label class="btn btn-outline-info btn-sm border-gray" for="scope-<?php echo $p->permission_id; ?>-team">
-                                                                <i class="fa-solid fa-users me-1 d-none d-lg-inline"></i> Team
+                                                                <i class="fa-solid fa-users me-1 d-none d-lg-inline"></i> Team Only
                                                             </label>
 
                                                             <!-- All radio -->
@@ -163,7 +163,7 @@
                                                                    id="scope-<?php echo $p->permission_id; ?>-all" value="all" 
                                                                    <?php echo $activeScope === 'all' ? 'checked' : ''; ?>>
                                                             <label class="btn btn-outline-success btn-sm border-gray" for="scope-<?php echo $p->permission_id; ?>-all">
-                                                                <i class="fa-solid fa-globe me-1 d-none d-lg-inline"></i> All
+                                                                <i class="fa-solid fa-globe me-1 d-none d-lg-inline"></i> Full Access
                                                             </label>
                                                         </div>
                                                     </div>

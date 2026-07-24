@@ -67,14 +67,6 @@ if (!empty($assignedAccounts) && isset($platforms) && isset($groupedAccounts)) {
                                 <option value=""><?php echo $hasPlatforms ? 'Select Account' : 'No accounts available'; ?></option>
                             </select>
                         </div>
-
-                        <!-- Post Selection -->
-                        <div class="col-12">
-                            <label for="post_id" class="form-label text-secondary">Target Post (Optional)</label>
-                            <select name="post_id" id="post_id" class="filter-select w-100" disabled style="padding: 0.6rem 1rem;">
-                                <option value=""><?php echo $hasPlatforms ? 'Account-level metrics (No post)' : 'No accounts available'; ?></option>
-                            </select>
-                        </div>
                     </div>
 
                     <h5 class="text-white mb-3 border-bottom pb-2 border-secondary" style="font-size: 1rem;"><i class="fa-solid fa-gauge me-2 text-primary"></i>Analytics Metrics</h5>
@@ -165,6 +157,74 @@ if (!empty($assignedAccounts) && isset($platforms) && isset($groupedAccounts)) {
             </div>
         </div>
     </div>
+
+    <!-- Employee Analytics & Lead Updates History Table -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="pulse-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-white mb-0"><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>Submitted Analytics &amp; Lead History</h5>
+                    <button type="button" onclick="exportHistoryCSV()" class="btn btn-sm btn-success fw-bold">
+                        <i class="fa-solid fa-file-excel me-1"></i>Export Excel (CSV)
+                    </button>
+                </div>
+                <div class="table-responsive" style="max-height: 450px; overflow-y: auto;">
+                    <table class="table table-hover text-white align-middle mb-0" id="history-table" style="font-size: 0.85rem;">
+                        <thead class="bg-dark sticky-top">
+                            <tr class="text-secondary">
+                                <th>Timestamp</th>
+                                <th>Platform</th>
+                                <th>Account</th>
+                                <th>Post / Content</th>
+                                <th class="text-center">Likes</th>
+                                <th class="text-center">Comments</th>
+                                <th class="text-center">Shares</th>
+                                <th class="text-center">Views</th>
+                                <th class="text-center">Reach</th>
+                                <th class="text-center">Impressions</th>
+                                <th class="text-center">Clicks</th>
+                                <th class="text-center">Followers</th>
+                                <th class="text-center text-success">Leads</th>
+                                <th>Lead Details</th>
+                                <th class="text-center">Engagement Rate</th>
+                                <th>Updated By</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($history)): ?>
+                                <tr>
+                                    <td colspan="17" class="text-center text-secondary py-4">No social analytics logged yet.</td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($history as $h): ?>
+                                    <tr>
+                                        <td class="small text-secondary text-nowrap"><?php echo date('Y-m-d H:i', strtotime($h->created_at)); ?></td>
+                                        <td><span class="badge bg-secondary bg-opacity-20 text-white"><?php echo htmlspecialchars($h->platform_name); ?></span></td>
+                                        <td class="fw-bold" style="color: var(--text-color, #0f172a);"><?php echo htmlspecialchars($h->profile_name); ?></td>
+                                        <td class="small text-secondary"><?php echo $h->post_content ? htmlspecialchars(substr($h->post_content, 0, 30)) . '...' : 'Account-level Update'; ?></td>
+                                        <td class="text-center"><?php echo number_format($h->likes); ?></td>
+                                        <td class="text-center"><?php echo number_format($h->comments); ?></td>
+                                        <td class="text-center"><?php echo number_format($h->shares); ?></td>
+                                        <td class="text-center"><?php echo number_format($h->views); ?></td>
+                                        <td class="text-center"><?php echo number_format($h->reach ?? 0); ?></td>
+                                        <td class="text-center"><?php echo number_format($h->impressions ?? 0); ?></td>
+                                        <td class="text-center"><?php echo number_format($h->clicks ?? 0); ?></td>
+                                        <td class="text-center"><?php echo number_format($h->followers_gained ?? 0); ?></td>
+                                        <td class="text-center"><span class="badge bg-success fw-bold"><?php echo number_format($h->leads_generated ?? 0); ?></span></td>
+                                        <td class="small text-secondary"><?php echo !empty($h->lead_details) ? htmlspecialchars($h->lead_details) : '-'; ?></td>
+                                        <td class="text-center"><span class="badge bg-info text-dark fw-bold"><?php echo $h->engagement_rate; ?>%</span></td>
+                                        <td class="small text-nowrap"><?php echo htmlspecialchars($h->updated_by_name); ?></td>
+                                        <td class="small text-secondary"><?php echo !empty($h->custom_notes) ? htmlspecialchars($h->custom_notes) : '-'; ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -244,4 +304,29 @@ document.addEventListener('DOMContentLoaded', function() {
         inp.addEventListener('input', calculateER);
     });
 });
+
+// Client-side CSV export
+function exportHistoryCSV() {
+    const table = document.getElementById('history-table');
+    if (!table) return;
+    const rows = Array.from(table.querySelectorAll('tr'));
+    
+    let csv = [];
+    rows.forEach(row => {
+        let cols = Array.from(row.querySelectorAll('th, td')).map(col => {
+            let text = col.innerText.replace(/"/g, '""').trim();
+            return `"${text}"`;
+        });
+        csv.push(cols.join(','));
+    });
+
+    const csvFile = new Blob([csv.join('\n')], {type: 'text/csv'});
+    const downloadLink = document.createElement('a');
+    downloadLink.download = 'social_analytics_history.csv';
+    downloadLink.href = window.URL.createObjectURL(csvFile);
+    downloadLink.style.display = 'none';
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+}
 </script>

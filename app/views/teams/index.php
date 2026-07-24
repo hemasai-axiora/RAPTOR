@@ -1,5 +1,175 @@
 <?php $csrf = $_SESSION['csrf_token']; ?>
 
+<?php
+if (!function_exists('renderOrgTree')) {
+    function renderOrgTree($nodes) {
+        $isEditor = ($_SESSION['user_role'] === 'admin' || $_SESSION['user_role'] === 'ceo');
+        echo '<ul>';
+        foreach ($nodes as $node) {
+            $avatarIcon = 'fa-user-tie text-primary';
+            if ($node->role_name === 'ceo') {
+                $avatarIcon = 'fa-crown text-warning animate-pulse';
+            } elseif ($node->role_name === 'admin') {
+                $avatarIcon = 'fa-user-shield text-danger';
+            } elseif ($node->role_name === 'manager') {
+                $avatarIcon = 'fa-briefcase text-warning';
+            } elseif ($node->role_name === 'team_leader') {
+                $avatarIcon = 'fa-users-gear text-info';
+            } else {
+                $avatarIcon = 'fa-user text-secondary';
+            }
+            
+            $dragAttributes = '';
+            $editButton = '';
+            
+            if ($isEditor) {
+                $dragAttributes = ' draggable="true" class="org-node draggable-node drop-zone position-relative" data-user-id="' . $node->user_id . '" data-user-name="' . htmlspecialchars($node->name) . '" data-manager-id="' . ($node->reporting_manager_id ?? 0) . '" data-team-id="' . ($node->team_id ?? 0) . '"';
+                $editButton = '<button class="btn btn-sm btn-link p-0 text-secondary position-absolute edit-hierarchy-btn" style="top: 8px; right: 8px; z-index: 10;" data-user-id="' . $node->user_id . '" data-user-name="' . htmlspecialchars($node->name) . '" data-manager-id="' . ($node->reporting_manager_id ?? 0) . '" data-team-id="' . ($node->team_id ?? 0) . '"><i class="fa-solid fa-pencil"></i></button>';
+            } else {
+                $dragAttributes = ' class="org-node"';
+            }
+            
+            echo '<li>';
+            echo '<div' . $dragAttributes . '>';
+            echo $editButton;
+            echo '  <div class="org-node-avatar"><i class="fa-solid ' . $avatarIcon . '" style="font-size: 1.6rem;"></i></div>';
+            echo '  <div class="org-node-name fw-bold mt-1 text-white">' . htmlspecialchars($node->name) . '</div>';
+            
+            // Display Employee ID
+            $empId = !empty($node->employee_code) ? htmlspecialchars($node->employee_code) : 'N/A';
+            echo '  <div class="org-node-id text-secondary small mt-1" style="font-size: 0.72rem; font-weight: 500;">ID: ' . $empId . '</div>';
+            
+            // Display Role
+            echo '  <div class="org-node-role text-muted small text-uppercase mt-1" style="font-size: 0.68rem; font-weight: 700; letter-spacing: 0.5px;">' . htmlspecialchars($node->role_name) . '</div>';
+            
+            echo '</div>';
+            if (!empty($node->children)) {
+                renderOrgTree($node->children);
+            }
+            echo '</li>';
+        }
+        echo '</ul>';
+    }
+}
+?>
+<style>
+/* CSS for Org Chart / Tree */
+.org-tree-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    padding: 30px 10px;
+    background: var(--surface-soft);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+.org-tree {
+    display: inline-block;
+    min-width: 100%;
+    text-align: center;
+}
+.org-tree ul {
+    padding-top: 20px; 
+    position: relative;
+    transition: all 0.5s;
+    display: flex;
+    justify-content: center;
+}
+.org-tree li {
+    float: left; 
+    text-align: center;
+    list-style-type: none;
+    position: relative;
+    padding: 20px 8px 0 8px;
+    transition: all 0.5s;
+}
+/* Connector lines */
+.org-tree li::before, .org-tree li::after {
+    content: '';
+    position: absolute; 
+    top: 0; 
+    right: 50%;
+    border-top: 2px solid var(--border-strong);
+    width: 50%; 
+    height: 20px;
+}
+.org-tree li::after {
+    right: auto; 
+    left: 50%;
+    border-left: 2px solid var(--border-strong);
+}
+.org-tree li:only-child::after, .org-tree li:only-child::before {
+    display: none;
+}
+.org-tree li:only-child { 
+    padding-top: 0;
+}
+.org-tree li:first-child::before, .org-tree li:last-child::after {
+    border: 0 none;
+}
+.org-tree li:last-child::before {
+    border-right: 2px solid var(--border-strong);
+    border-radius: 0 5px 0 0;
+}
+.org-tree li:first-child::after {
+    border-radius: 5px 0 0 0;
+}
+.org-tree ul ul::before {
+    content: '';
+    position: absolute; 
+    top: 0; 
+    left: 50%;
+    border-left: 2px solid var(--border-strong);
+    width: 0; 
+    height: 20px;
+}
+/* Node styling */
+.org-node {
+    border: 1px solid var(--border-color);
+    padding: 12px 18px;
+    text-decoration: none;
+    color: var(--text-primary);
+    display: inline-block;
+    border-radius: 12px;
+    background-color: var(--panel-dark);
+    box-shadow: var(--shadow-soft);
+    transition: all 0.25s ease-in-out;
+    min-width: 150px;
+    text-align: center;
+}
+.org-node:hover {
+    background: var(--surface-muted);
+    border-color: var(--primary);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hover);
+}
+.org-node-avatar {
+    width: 42px;
+    height: 42px;
+    background: var(--surface-soft);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px auto;
+    border: 1px solid var(--border-color);
+}
+.draggable-node {
+    cursor: grab;
+}
+.draggable-node:active {
+    cursor: grabbing;
+}
+.dragging {
+    opacity: 0.4;
+    border: 2px dashed var(--primary) !important;
+}
+.drag-over {
+    border: 2px dashed var(--success) !important;
+    background: rgba(46, 196, 182, 0.05) !important;
+    transform: scale(1.05);
+}
+</style>
+
 <?php if (!empty($_SESSION['team_error'])): ?>
     <div class="alert alert-danger border-0 shadow mb-3" style="background: rgba(220, 53, 69, 0.15); color: #e63946;">
         <i class="fa-solid fa-triangle-exclamation me-2"></i> <?php echo $_SESSION['team_error']; unset($_SESSION['team_error']); ?>
@@ -14,12 +184,25 @@
 <!-- Section tabs -->
 <ul class="nav nav-pills mb-3 gap-2" id="orgTabs" role="tablist">
     <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-teams" type="button"><i class="fa-solid fa-people-group me-2"></i>Teams</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-hierarchy" type="button"><i class="fa-solid fa-sitemap me-2"></i>Hierarchy Tree</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-branches" type="button"><i class="fa-solid fa-building me-2"></i>Branches</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-territories" type="button"><i class="fa-solid fa-map-location-dot me-2"></i>Territories</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-geofences" type="button"><i class="fa-solid fa-location-crosshairs me-2"></i>Geofences</button></li>
 </ul>
 
 <div class="tab-content">
+    <!-- ===================== HIERARCHY TREE ===================== -->
+    <div class="tab-pane fade" id="tab-hierarchy">
+        <div class="pulse-card">
+            <h4 class="text-white mb-4">Organization Hierarchy Tree</h4>
+            <div class="org-tree-wrapper">
+                <div class="org-tree">
+                    <?php renderOrgTree($hierarchy_tree); ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ===================== TEAMS ===================== -->
     <div class="tab-pane fade show active" id="tab-teams">
         <div class="pulse-card">
@@ -420,5 +603,191 @@ $(function () {
             });
         }
     });
+
+    // --- Edit Hierarchy Modal Population & Submission ---
+    let ehModal = null;
+    if (document.getElementById('editNodeHierarchyModal')) {
+        ehModal = new bootstrap.Modal(document.getElementById('editNodeHierarchyModal'));
+    }
+
+    $('.edit-hierarchy-btn').on('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const userId = $(this).data('user-id');
+        const userName = $(this).data('user-name');
+        const managerId = $(this).data('manager-id');
+        const teamId = $(this).data('team-id');
+        
+        $('#eh_user_id').val(userId);
+        $('#eh_user_name').val(userName);
+        
+        // Disable option for self in reporting manager select
+        $('#eh_manager_id option').prop('disabled', false);
+        $('#eh_manager_id option[value="' + userId + '"]').prop('disabled', true);
+        
+        $('#eh_manager_id').val(managerId);
+        $('#eh_team_id').val(teamId);
+        $('#eh-error-msg').hide();
+        
+        if (ehModal) ehModal.show();
+    });
+
+    $('#edit-hierarchy-form').on('submit', function (e) {
+        e.preventDefault();
+        const btn = $('#btn-save-hierarchy').prop('disabled', true).text('Saving…');
+        const fd = new FormData(this);
+        
+        fetch('index.php?route=teams/updateHierarchy', {
+            method: 'POST',
+            body: fd
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                if (ehModal) ehModal.hide();
+                location.reload();
+            } else {
+                $('#eh-error-msg').text(d.message).show();
+                btn.prop('disabled', false).text('Save Changes');
+            }
+        })
+        .catch(() => {
+            $('#eh-error-msg').text('Network error.').show();
+            btn.prop('disabled', false).text('Save Changes');
+        });
+    });
+
+    // --- Drag & Drop Hierarchy Handling ---
+    let draggedNode = null;
+
+    $('.draggable-node').on('dragstart', function (e) {
+        draggedNode = this;
+        $(this).addClass('dragging');
+        e.originalEvent.dataTransfer.setData('text/plain', $(this).data('user-id'));
+        e.originalEvent.dataTransfer.effectAllowed = 'move';
+    });
+
+    $('.draggable-node').on('dragend', function () {
+        $(this).removeClass('dragging');
+        $('.draggable-node').removeClass('drag-over');
+        draggedNode = null;
+    });
+
+    $('.drop-zone').on('dragover', function (e) {
+        e.preventDefault();
+        const targetUserId = $(this).data('user-id');
+        const draggedUserId = draggedNode ? $(draggedNode).data('user-id') : null;
+        
+        if (targetUserId === draggedUserId) return;
+        
+        $(this).addClass('drag-over');
+        e.originalEvent.dataTransfer.dropEffect = 'move';
+    });
+
+    $('.drop-zone').on('dragleave', function () {
+        $(this).removeClass('drag-over');
+    });
+
+    $('.drop-zone').on('drop', function (e) {
+        e.preventDefault();
+        $(this).removeClass('drag-over');
+        
+        const targetUserId = $(this).data('user-id');
+        const draggedUserId = parseInt(e.originalEvent.dataTransfer.getData('text/plain'), 10);
+        
+        if (!draggedUserId || draggedUserId === targetUserId) return;
+        
+        const draggedName = $(draggedNode).data('user-name');
+        const targetName = $(this).data('user-name');
+        
+        if (confirm('Change reporting manager of ' + draggedName + ' to ' + targetName + '?')) {
+            const fd = new FormData();
+            fd.append('csrf_token', '<?php echo $_SESSION['csrf_token']; ?>');
+            fd.append('user_id', draggedUserId);
+            fd.append('manager_id', targetUserId);
+            fd.append('team_id', $(draggedNode).data('team-id'));
+            
+            fetch('index.php?route=teams/updateHierarchy', {
+                method: 'POST',
+                body: fd
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    location.reload();
+                } else {
+                    alert(d.message);
+                }
+            })
+            .catch(() => {
+                alert('Network error while saving hierarchy.');
+            });
+        }
+    });
 });
 </script>
+
+<?php
+$dbConn = Database::getInstance()->getConnection();
+// Fetch active users for reporting selection
+$allUsersStmt = $dbConn->query("SELECT u.user_id, u.name, r.role_name FROM users u JOIN roles r ON u.role_id = r.role_id WHERE u.status = 'active' ORDER BY u.name ASC");
+$allUsers = $allUsersStmt->fetchAll(PDO::FETCH_OBJ);
+
+// Fetch active teams
+$allTeamsStmt = $dbConn->query("SELECT team_id, name FROM teams WHERE status = 'active' ORDER BY name ASC");
+$allTeams = $allTeamsStmt->fetchAll(PDO::FETCH_OBJ);
+?>
+
+<!-- Edit Node Hierarchy Modal -->
+<div class="modal fade" id="editNodeHierarchyModal" tabindex="-1" aria-labelledby="editNodeHierarchyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-white border-0 shadow-lg" style="background: var(--panel-dark); border-radius: 16px; border: 1px solid var(--border-color) !important;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-white" id="editNodeHierarchyModalLabel"><i class="fa-solid fa-sitemap me-2 text-primary"></i>Edit Employee Hierarchy</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="edit-hierarchy-form">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                <input type="hidden" id="eh_user_id" name="user_id">
+                
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small fw-bold text-uppercase">Employee Name</label>
+                        <input type="text" id="eh_user_name" class="form-control bg-dark text-white border-secondary shadow-none" readonly style="border-radius: 8px;">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small fw-bold text-uppercase">Reporting Manager</label>
+                        <select id="eh_manager_id" name="manager_id" class="form-select bg-dark text-white border-secondary shadow-none" style="border-radius: 8px;">
+                            <option value="0">— None (Top Level) —</option>
+                            <?php foreach ($allUsers as $u): ?>
+                                <option value="<?php echo $u->user_id; ?>"><?php echo htmlspecialchars($u->name); ?> (<?php echo strtoupper($u->role_name); ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text text-muted small mt-1">Select the person this employee reports to directly.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small fw-bold text-uppercase">Assign to Team</label>
+                        <select id="eh_team_id" name="team_id" class="form-select bg-dark text-white border-secondary shadow-none" style="border-radius: 8px;">
+                            <option value="0">— None —</option>
+                            <?php foreach ($allTeams as $t): ?>
+                                <option value="<?php echo $t->team_id; ?>"><?php echo htmlspecialchars($t->name); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text text-muted small mt-1">Assign this employee to a specific sales team.</div>
+                    </div>
+                    
+                    <div id="eh-error-msg" class="text-danger small mt-2" style="display: none;"></div>
+                </div>
+                
+                <div class="modal-footer border-0 pt-0 justify-content-end gap-2">
+                    <button type="button" class="btn btn-outline-secondary px-4 py-2 border-0 shadow-none" data-bs-dismiss="modal" style="border-radius: 8px;">Cancel</button>
+                    <button type="submit" id="btn-save-hierarchy" class="btn btn-primary px-4 py-2 border-0 shadow-sm" style="background: var(--primary); border: none; border-radius: 8px;">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+

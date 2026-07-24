@@ -1,7 +1,15 @@
 <div class="row justify-content-center">
     <div class="col-lg-8">
         <div class="pulse-card">
-            <h4 class="text-white mb-4">Edit Client Company</h4>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="text-white mb-0">Edit Client Company</h4>
+                <form action="index.php?route=clients/delete/<?php echo $client_id; ?>" method="POST" onsubmit="return confirm('Are you sure you want to delete this client company and all associated contacts?');">
+                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                    <button type="submit" class="btn btn-outline-danger btn-sm px-3">
+                        <i class="fa-solid fa-trash-can me-2"></i>Delete Client
+                    </button>
+                </form>
+            </div>
             
             <form action="index.php?route=clients/edit/<?php echo $client_id; ?>" method="POST">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
@@ -36,25 +44,25 @@
 
                     <div class="col-md-6">
                         <label for="contract_start" class="form-label text-secondary">Contract Start Date</label>
-                        <input type="date" name="contract_start" id="contract_start" class="form-control" value="<?php echo htmlspecialchars($contract_start); ?>">
+                        <input type="date" name="contract_start" id="contract_start" class="form-control" value="<?php echo htmlspecialchars($contract_start ?? ''); ?>">
                     </div>
 
                     <div class="col-md-6">
                         <label for="contract_end" class="form-label text-secondary">Contract End Date</label>
-                        <input type="date" name="contract_end" id="contract_end" class="form-control" value="<?php echo htmlspecialchars($contract_end); ?>">
+                        <input type="date" name="contract_end" id="contract_end" class="form-control" value="<?php echo htmlspecialchars($contract_end ?? ''); ?>">
                     </div>
 
                     <div class="col-12">
                         <label for="package_details" class="form-label text-secondary">Package & Retainer Details</label>
-                        <textarea name="package_details" id="package_details" class="form-control" rows="3"><?php echo htmlspecialchars($package_details); ?></textarea>
+                        <textarea name="package_details" id="package_details" class="form-control" rows="3"><?php echo htmlspecialchars($package_details ?? ''); ?></textarea>
                     </div>
 
                     <div class="col-12">
                         <label for="billing_address" class="form-label text-secondary">Billing Address</label>
-                        <textarea name="billing_address" id="billing_address" class="form-control" rows="2"><?php echo htmlspecialchars($billing_address); ?></textarea>
+                        <textarea name="billing_address" id="billing_address" class="form-control" rows="2"><?php echo htmlspecialchars($billing_address ?? ''); ?></textarea>
                     </div>
 
-                    <div class="col-12 d-flex justify-content-end gap-3 mt-4">
+                    <div class="col-12 d-flex justify-content-between align-items-center mt-4">
                         <a href="index.php?route=clients/index" class="btn btn-outline-light px-4">Cancel</a>
                         <button type="submit" class="btn btn-primary px-4" style="background: var(--primary); border: none;">Save Changes</button>
                     </div>

@@ -12,12 +12,6 @@ class App {
         // Parse route: controller/method
         if ($route) {
             $parts = explode('/', trim($route, '/'));
-            $methodName = $parts[1] ?? '';
-            if ($methodName !== '' && stripos($methodName, 'delete') === 0) {
-                http_response_code(403);
-                echo 'Deletion is disabled by governance policy. Use archive/deactivate or submit an edit request.';
-                exit();
-            }
             
             // Format controller name (e.g. auth -> AuthController)
             if (isset($parts[0])) {

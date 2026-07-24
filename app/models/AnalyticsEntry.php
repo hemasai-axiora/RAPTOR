@@ -3,6 +3,29 @@
 
 class AnalyticsEntry extends Model {
     
+    public function __construct() {
+        parent::__construct();
+        $this->ensureLeadColumns();
+    }
+
+    /** Ensure lead generation columns exist in analytics_entries and analytics_history */
+    private function ensureLeadColumns() {
+        $cols = [
+            'leads_generated' => 'INT DEFAULT 0',
+            'lead_details' => 'TEXT NULL'
+        ];
+        foreach (['analytics_entries', 'analytics_history'] as $tbl) {
+            foreach ($cols as $colName => $colDef) {
+                try {
+                    $this->query("ALTER TABLE $tbl ADD COLUMN $colName $colDef");
+                    $this->execute();
+                } catch (Exception $e) {
+                    // Column already exists
+                }
+            }
+        }
+    }
+    
     // Log a new analytics entry (updates the latest entries table and inserts to history)
     public function logEntry($data) {
         $db = $this->db;
@@ -15,6 +38,9 @@ class AnalyticsEntry extends Model {
             $shares = (int)($data['shares'] ?? 0);
             $views = (int)($data['views'] ?? 1);
             if ($views <= 0) $views = 1;
+
+            $leads_generated = (int)($data['leads_generated'] ?? 0);
+            $lead_details = !empty($data['lead_details']) ? trim($data['lead_details']) : null;
             
             $engagement_rate = $data['engagement_rate'] ?? (($likes + $comments + $shares) / $views * 100);
             $engagement_rate = round(min(100.0, max(0.0, $engagement_rate)), 2);
@@ -36,8 +62,8 @@ class AnalyticsEntry extends Model {
                 $this->query('UPDATE analytics_entries 
                               SET likes = :likes, comments = :comments, shares = :shares, views = :views, 
                                   reach = :reach, impressions = :impressions, clicks = :clicks, 
-                                  followers_gained = :followers_gained, engagement_rate = :engagement_rate, 
-                                  custom_notes = :custom_notes, updated_by = :updated_by, updated_at = NOW()
+                                  followers_gained = :followers_gained, leads_generated = :leads_generated, lead_details = :lead_details,
+                                  engagement_rate = :engagement_rate, custom_notes = :custom_notes, updated_by = :updated_by, updated_at = NOW()
                               WHERE entry_id = :entry_id');
                 $this->bind(':likes', $likes);
                 $this->bind(':comments', $comments);
@@ -47,6 +73,8 @@ class AnalyticsEntry extends Model {
                 $this->bind(':impressions', (int)($data['impressions'] ?? 0));
                 $this->bind(':clicks', (int)($data['clicks'] ?? 0));
                 $this->bind(':followers_gained', (int)($data['followers_gained'] ?? 0));
+                $this->bind(':leads_generated', $leads_generated);
+                $this->bind(':lead_details', $lead_details);
                 $this->bind(':engagement_rate', $engagement_rate);
                 $this->bind(':custom_notes', $data['custom_notes'] ?? null);
                 $this->bind(':updated_by', $data['updated_by']);
@@ -55,8 +83,8 @@ class AnalyticsEntry extends Model {
             } else {
                 // Insert new latest entry
                 $this->query('INSERT INTO analytics_entries 
-                              (platform_id, account_id, post_id, likes, comments, shares, views, reach, impressions, clicks, followers_gained, engagement_rate, custom_notes, updated_by) 
-                              VALUES (:platform_id, :account_id, :post_id, :likes, :comments, :shares, :views, :reach, :impressions, :clicks, :followers_gained, :engagement_rate, :custom_notes, :updated_by)');
+                              (platform_id, account_id, post_id, likes, comments, shares, views, reach, impressions, clicks, followers_gained, leads_generated, lead_details, engagement_rate, custom_notes, updated_by) 
+                              VALUES (:platform_id, :account_id, :post_id, :likes, :comments, :shares, :views, :reach, :impressions, :clicks, :followers_gained, :leads_generated, :lead_details, :engagement_rate, :custom_notes, :updated_by)');
                 $this->bind(':platform_id', $data['platform_id']);
                 $this->bind(':account_id', $data['account_id']);
                 $this->bind(':post_id', $data['post_id'] ?? null);
@@ -68,6 +96,8 @@ class AnalyticsEntry extends Model {
                 $this->bind(':impressions', (int)($data['impressions'] ?? 0));
                 $this->bind(':clicks', (int)($data['clicks'] ?? 0));
                 $this->bind(':followers_gained', (int)($data['followers_gained'] ?? 0));
+                $this->bind(':leads_generated', $leads_generated);
+                $this->bind(':lead_details', $lead_details);
                 $this->bind(':engagement_rate', $engagement_rate);
                 $this->bind(':custom_notes', $data['custom_notes'] ?? null);
                 $this->bind(':updated_by', $data['updated_by']);
@@ -77,8 +107,8 @@ class AnalyticsEntry extends Model {
 
             // Insert into history (stores every single log event)
             $this->query('INSERT INTO analytics_history 
-                          (entry_id, platform_id, account_id, post_id, likes, comments, shares, views, reach, impressions, clicks, followers_gained, engagement_rate, custom_notes, updated_by, created_at) 
-                          VALUES (:entry_id, :platform_id, :account_id, :post_id, :likes, :comments, :shares, :views, :reach, :impressions, :clicks, :followers_gained, :engagement_rate, :custom_notes, :updated_by, NOW())');
+                          (entry_id, platform_id, account_id, post_id, likes, comments, shares, views, reach, impressions, clicks, followers_gained, leads_generated, lead_details, engagement_rate, custom_notes, updated_by, created_at) 
+                          VALUES (:entry_id, :platform_id, :account_id, :post_id, :likes, :comments, :shares, :views, :reach, :impressions, :clicks, :followers_gained, :leads_generated, :lead_details, :engagement_rate, :custom_notes, :updated_by, NOW())');
             $this->bind(':entry_id', $entryId);
             $this->bind(':platform_id', $data['platform_id']);
             $this->bind(':account_id', $data['account_id']);
@@ -91,9 +121,12 @@ class AnalyticsEntry extends Model {
             $this->bind(':impressions', (int)($data['impressions'] ?? 0));
             $this->bind(':clicks', (int)($data['clicks'] ?? 0));
             $this->bind(':followers_gained', (int)($data['followers_gained'] ?? 0));
+            $this->bind(':leads_generated', $leads_generated);
+            $this->bind(':lead_details', $lead_details);
             $this->bind(':engagement_rate', $engagement_rate);
             $this->bind(':custom_notes', $data['custom_notes'] ?? null);
             $this->bind(':updated_by', $data['updated_by']);
+            $this->execute();
             $this->execute();
 
             $db->commit();

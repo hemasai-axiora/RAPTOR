@@ -269,14 +269,48 @@ $(function () {
         fd.append('lng', coords.lng);
         fd.append('accuracy', coords.accuracy);
 
+        if (!currentAction) {
+            btn.prop('disabled', false).html('<i class="fa-solid fa-camera me-2"></i>Capture &amp; Submit');
+            msg('Action invalid or not selected. Please reload and try again.', false);
+            return;
+        }
+
         fetch('index.php?route=attendance/' + currentAction, { method: 'POST', body: fd })
-            .then(r => r.json())
+            .then(async r => {
+                const text = await r.text();
+                let d;
+                try {
+                    d = JSON.parse(text);
+                } catch (e) {
+                    throw new Error(text || ('Server HTTP error (' + r.status + ')'));
+                }
+                return d;
+            })
             .then(d => {
                 msg(d.message, d.success);
-                if (d.success) { setTimeout(() => location.reload(), 900); }
-                else { btn.prop('disabled', false).html('<i class="fa-solid fa-camera me-2"></i>Capture &amp; Submit'); }
+                if (d.success) {
+                    if (currentAction === 'checkout') {
+                        // Trigger celebratory confetti
+                        if (typeof confetti === 'function') {
+                            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                            setTimeout(() => {
+                                confetti({ particleCount: 100, spread: 120, origin: { y: 0.6 } });
+                            }, 300);
+                        }
+                        // Show success modal
+                        const successModal = new bootstrap.Modal(document.getElementById('clockOutSuccessModal'));
+                        successModal.show();
+                    } else {
+                        setTimeout(() => location.reload(), 900);
+                    }
+                } else {
+                    btn.prop('disabled', false).html('<i class="fa-solid fa-camera me-2"></i>Capture &amp; Submit');
+                }
             })
-            .catch(() => { btn.prop('disabled', false).html('<i class="fa-solid fa-camera me-2"></i>Capture &amp; Submit'); msg('Network error.', false); });
+            .catch(err => {
+                btn.prop('disabled', false).html('<i class="fa-solid fa-camera me-2"></i>Capture &amp; Submit');
+                msg(err.message || 'Network error.', false);
+            });
     });
 
     // --- Break start/end ---
@@ -305,3 +339,25 @@ $(function () {
     }
 });
 </script>
+
+<!-- Clock Out Success Modal -->
+<div class="modal fade" id="clockOutSuccessModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-white border-0 shadow-lg" style="background: var(--panel-dark); border-radius: 16px; border: 1px solid var(--border-color) !important;">
+            <div class="modal-body text-center p-5">
+                <div class="mb-4">
+                    <span style="font-size: 4rem;">🎉</span>
+                </div>
+                <h3 class="fw-bold mb-3" style="color: var(--text-primary);">Clocked Out Successfully!</h3>
+                <p style="color: var(--text-secondary); font-size: 1.05rem; line-height: 1.5;">Great job today! You have successfully recorded your clock-out. Have a wonderful rest of your day!</p>
+                <div class="mt-4">
+                    <button type="button" class="btn btn-primary px-4 py-2 fw-bold border-0 shadow-sm" onclick="location.reload();" style="background: var(--primary); border-radius: 8px;">
+                        Done
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>

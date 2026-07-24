@@ -160,12 +160,13 @@ $csrf = $_SESSION['csrf_token'] ?? '';
                                                             class="form-select override-select shadow-none" 
                                                             data-default="<?php echo $roleDefaultScope; ?>"
                                                             style="font-size:0.85rem; font-weight:600; border-radius:8px; padding-top:0.45rem; padding-bottom:0.45rem;">
-                                                        <option value="inherit" <?php echo $activeVal === 'inherit' ? 'selected' : ''; ?>>Inherit (Role Default)</option>
-                                                        <option value="revoke" <?php echo $activeVal === 'revoke' ? 'selected' : ''; ?>>Revoke (Block Access)</option>
-                                                        <option value="grant_own" <?php echo $activeVal === 'grant_own' ? 'selected' : ''; ?>>Grant (Own Records)</option>
-                                                        <option value="grant_team" <?php echo $activeVal === 'grant_team' ? 'selected' : ''; ?>>Grant (Team Records)</option>
-                                                        <option value="grant_all" <?php echo $activeVal === 'grant_all' ? 'selected' : ''; ?>>Grant (All Records)</option>
+                                                        <option value="inherit" <?php echo $activeVal === 'inherit' ? 'selected' : ''; ?>>Use Role Default (Inherit)</option>
+                                                        <option value="revoke" <?php echo $activeVal === 'revoke' ? 'selected' : ''; ?>>Block Access (Revoke)</option>
+                                                        <option value="grant_own" <?php echo $activeVal === 'grant_own' ? 'selected' : ''; ?>>Access: Own Records Only</option>
+                                                        <option value="grant_team" <?php echo $activeVal === 'grant_team' ? 'selected' : ''; ?>>Access: Entire Team</option>
+                                                        <option value="grant_all" <?php echo $activeVal === 'grant_all' ? 'selected' : ''; ?>>Access: Entire Company</option>
                                                     </select>
+                                                    <div class="override-help-text text-secondary mt-1 small font-italic" style="font-size: 0.76rem;"></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -249,6 +250,28 @@ $(function () {
         const val = $el.val();
         $el.removeClass('select-state-inherit select-state-revoke select-state-grant_own select-state-grant_team select-state-grant_all');
         $el.addClass('select-state-' + val);
+
+        // Update explanation help text dynamically
+        const defaultScope = $el.data('default') || 'none';
+        let helpText = '';
+        switch(val) {
+            case 'inherit':
+                helpText = '✨ Inherited: Uses default role scope (' + defaultScope.toUpperCase() + ')';
+                break;
+            case 'revoke':
+                helpText = '🚫 Blocked: Access is explicitly revoked.';
+                break;
+            case 'grant_own':
+                helpText = '👤 Restricted: Own records access only.';
+                break;
+            case 'grant_team':
+                helpText = '👥 Team Level: Access to team records.';
+                break;
+            case 'grant_all':
+                helpText = '🌐 Full Access: Access to all records.';
+                break;
+        }
+        $el.siblings('.override-help-text').text(helpText);
     }
 
     $('.override-select').each(function () {

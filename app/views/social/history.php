@@ -48,30 +48,37 @@
     <!-- History Table -->
     <div class="pulse-card card-glow px-0 py-2">
         <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-            <table class="table table-hover text-white mb-0" id="history-table">
+            <table class="table table-hover text-white mb-0 align-middle" id="history-table" style="font-size: 0.85rem;">
                 <thead class="bg-dark sticky-top" style="z-index: 5;">
                     <tr style="border-bottom: 2px solid var(--border-color);">
-                        <th class="px-4 py-3" onclick="sortTable(0)">Timestamp <i class="fa-solid fa-sort small ms-1 text-secondary"></i></th>
+                        <th class="px-3 py-3" onclick="sortTable(0)">Timestamp <i class="fa-solid fa-sort small ms-1 text-secondary"></i></th>
                         <th class="py-3" onclick="sortTable(1)">Platform <i class="fa-solid fa-sort small ms-1 text-secondary"></i></th>
                         <th class="py-3" onclick="sortTable(2)">Account <i class="fa-solid fa-sort small ms-1 text-secondary"></i></th>
                         <th class="py-3" onclick="sortTable(3)">Post / Content <i class="fa-solid fa-sort small ms-1 text-secondary"></i></th>
                         <th class="py-3 text-center" onclick="sortTable(4)">Likes <i class="fa-solid fa-sort small ms-1 text-secondary"></i></th>
                         <th class="py-3 text-center" onclick="sortTable(5)">Comments <i class="fa-solid fa-sort small ms-1 text-secondary"></i></th>
-                        <th class="py-3 text-center" onclick="sortTable(6)">Views <i class="fa-solid fa-sort small ms-1 text-secondary"></i></th>
-                        <th class="py-3 text-center" onclick="sortTable(7)">Engagement Rate <i class="fa-solid fa-sort small ms-1 text-secondary"></i></th>
-                        <th class="py-3" onclick="sortTable(8)">Updated By <i class="fa-solid fa-sort small ms-1 text-secondary"></i></th>
-                        <th class="px-4 py-3">Notes</th>
+                        <th class="py-3 text-center" onclick="sortTable(6)">Shares <i class="fa-solid fa-sort small ms-1 text-secondary"></i></th>
+                        <th class="py-3 text-center" onclick="sortTable(7)">Views <i class="fa-solid fa-sort small ms-1 text-secondary"></i></th>
+                        <th class="py-3 text-center">Reach</th>
+                        <th class="py-3 text-center">Impressions</th>
+                        <th class="py-3 text-center">Clicks</th>
+                        <th class="py-3 text-center">Followers</th>
+                        <th class="py-3 text-center text-success">Leads</th>
+                        <th class="py-3">Lead Details</th>
+                        <th class="py-3 text-center" onclick="sortTable(14)">Engagement Rate <i class="fa-solid fa-sort small ms-1 text-secondary"></i></th>
+                        <th class="py-3" onclick="sortTable(15)">Updated By <i class="fa-solid fa-sort small ms-1 text-secondary"></i></th>
+                        <th class="px-3 py-3">Notes</th>
                     </tr>
                 </thead>
                 <tbody class="table-group-divider" style="border-top: 1px solid var(--border-color);">
                     <?php if (empty($history)): ?>
                         <tr>
-                            <td colspan="10" class="text-center text-secondary py-5">No social analytics history available.</td>
+                            <td colspan="17" class="text-center text-secondary py-5">No social analytics history available.</td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($history as $h): ?>
                             <tr class="align-middle border-bottom border-secondary border-opacity-10" style="transition: background 0.15s ease;">
-                                <td class="px-4 py-3 small text-secondary">
+                                <td class="px-3 py-3 small text-secondary text-nowrap">
                                     <?php echo date('Y-m-d h:i:s A', strtotime($h->created_at)); ?>
                                 </td>
                                 <td>
@@ -79,27 +86,34 @@
                                         <i class="<?php echo $h->platform_icon; ?> me-1 text-primary"></i><?php echo htmlspecialchars($h->platform_name); ?>
                                     </span>
                                 </td>
-                                <td class="fw-semibold"><?php echo htmlspecialchars($h->profile_name); ?></td>
+                                <td class="fw-semibold text-nowrap" style="color: var(--text-color, #0f172a);"><?php echo htmlspecialchars($h->profile_name); ?></td>
                                 <td class="small text-secondary">
-                                    <?php echo $h->post_content ? htmlspecialchars(substr($h->post_content, 0, 45)) . '...' : '<span class="text-muted italic">Account-level Update</span>'; ?>
+                                    <?php echo $h->post_content ? htmlspecialchars(substr($h->post_content, 0, 35)) . '...' : '<span class="text-muted italic">Account-level Update</span>'; ?>
                                 </td>
                                 <td class="text-center fw-semibold"><?php echo number_format($h->likes); ?></td>
                                 <td class="text-center"><?php echo number_format($h->comments); ?></td>
+                                <td class="text-center"><?php echo number_format($h->shares); ?></td>
                                 <td class="text-center text-secondary"><?php echo number_format($h->views); ?></td>
+                                <td class="text-center"><?php echo number_format($h->reach ?? 0); ?></td>
+                                <td class="text-center"><?php echo number_format($h->impressions ?? 0); ?></td>
+                                <td class="text-center"><?php echo number_format($h->clicks ?? 0); ?></td>
+                                <td class="text-center"><?php echo number_format($h->followers_gained ?? 0); ?></td>
+                                <td class="text-center"><span class="badge bg-success fw-bold"><?php echo number_format($h->leads_generated ?? 0); ?></span></td>
+                                <td class="small text-secondary"><?php echo !empty($h->lead_details) ? htmlspecialchars($h->lead_details) : '-'; ?></td>
                                 <td class="text-center">
                                     <span class="badge <?php echo $h->engagement_rate >= 5.0 ? 'bg-success' : ($h->engagement_rate >= 1.0 ? 'bg-warning text-dark' : 'bg-danger'); ?>">
                                         <?php echo $h->engagement_rate; ?>%
                                     </span>
                                 </td>
                                 <td>
-                                    <div class="d-flex align-items-center">
+                                    <div class="d-flex align-items-center text-nowrap">
                                         <div class="avatar-circle-sm me-2 bg-primary text-white d-flex align-items-center justify-content-center fw-semibold" style="width: 24px; height: 24px; border-radius: 50%; font-size: 0.72rem;">
                                             <?php echo strtoupper(substr($h->updated_by_name, 0, 2)); ?>
                                         </div>
                                         <span><?php echo htmlspecialchars($h->updated_by_name); ?></span>
                                     </div>
                                 </td>
-                                <td class="px-4 small text-secondary text-truncate" style="max-width: 150px;" title="<?php echo htmlspecialchars($h->custom_notes); ?>">
+                                <td class="px-3 small text-secondary text-truncate" style="max-width: 150px;" title="<?php echo htmlspecialchars($h->custom_notes); ?>">
                                     <?php echo htmlspecialchars($h->custom_notes); ?>
                                 </td>
                             </tr>

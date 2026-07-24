@@ -122,7 +122,7 @@ class HrmsController extends Controller {
     /** Display HRMS Reports interface. */
     public function reports() {
         $role = $_SESSION['user_role'];
-        if (!in_array($role, ['admin', 'hr'], true)) {
+        if (!in_array($role, ['admin', 'ceo', 'hr', 'analyst'], true)) {
             $this->redirect('index.php?route=dashboard/index');
             return;
         }
@@ -137,7 +137,7 @@ class HrmsController extends Controller {
     /** Export CSV Reports based on type. */
     public function exportReport($type = '') {
         $role = $_SESSION['user_role'];
-        if (!in_array($role, ['admin', 'hr'], true)) {
+        if (!in_array($role, ['admin', 'ceo', 'hr', 'analyst'], true)) {
             $this->redirect('index.php?route=dashboard/index');
             return;
         }

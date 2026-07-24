@@ -888,11 +888,6 @@
                                 <i class="fa-solid fa-route"></i><span>My Route</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'social_update') ? 'active' : ''; ?>">
-                            <a href="index.php?route=social/update">
-                                <i class="fa-brands fa-instagram"></i><span>Log Social Stats</span>
-                            </a>
-                        </li>
                         <?php endif; ?>
                     </ul>
                 </li>
@@ -1021,7 +1016,7 @@
                 <?php endif; ?>
 
                 <!-- 6. Marketing Accordion Group -->
-                <?php if (in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader', 'analyst'], true)): ?>
+                <?php if (isset($_SESSION['user_role'])): ?>
                 <li class="menu-section" data-section="marketing">
                     <div class="menu-section-header">
                         <i class="fa-solid fa-share-nodes section-icon"></i>
@@ -1034,6 +1029,11 @@
                                 <i class="fa-solid fa-pen-to-square"></i><span>Update Social Stats</span>
                             </a>
                         </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'social_leads') ? 'active' : ''; ?>">
+                            <a href="index.php?route=social/leads">
+                                <i class="fa-solid fa-user-plus"></i><span>Lead Generation</span>
+                            </a>
+                        </li>
                         <?php if (in_array($_SESSION['user_role'], ['admin', 'manager'])): ?>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'social_manager') ? 'active' : ''; ?>">
                             <a href="index.php?route=social/manager">
@@ -1041,13 +1041,11 @@
                             </a>
                         </li>
                         <?php endif; ?>
-                        <?php if ($_SESSION['user_role'] === 'admin'): ?>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'social_admin') ? 'active' : ''; ?>">
                             <a href="index.php?route=social/admin">
-                                <i class="fa-solid fa-gears"></i><span>Social Configurations</span>
+                                <i class="fa-solid fa-folder-tree"></i><span>Accounts Directory</span>
                             </a>
                         </li>
-                        <?php endif; ?>
                     </ul>
                 </li>
                 <?php endif; ?> <!-- end Marketing -->
@@ -1078,7 +1076,7 @@
                 <?php endif; ?> <!-- end Reports -->
 
                 <!-- 8. HR & Payroll Accordion Group -->
-                <?php if (in_array($role, ['admin', 'manager', 'team_leader', 'hr', 'finance', 'employee', 'sales_person'], true)): ?>
+                <?php if (in_array($role, ['admin', 'ceo', 'manager', 'team_leader', 'hr', 'finance', 'analyst', 'employee', 'sales_person'], true)): ?>
                 <li class="menu-section" data-section="hr">
                     <div class="menu-section-header">
                         <i class="fa-solid fa-users-gear section-icon"></i>
@@ -1102,7 +1100,7 @@
                         </li>
                         <?php endif; ?>
                         
-                        <?php if (in_array($role, ['admin', 'manager'], true)): ?>
+                        <?php if (in_array($role, ['admin', 'ceo', 'manager', 'analyst'], true)): ?>
                         <li class="menu-item <?php echo ($data['title'] === 'Organization | Raptor CRM') ? 'active' : ''; ?>">
                             <a href="index.php?route=teams/index">
                                 <i class="fa-solid fa-sitemap"></i><span>Organization</span>
@@ -1115,7 +1113,7 @@
                                 <i class="fa-solid fa-chart-line"></i><span>HRMS Dashboard</span>
                             </a>
                         </li>
-                        <?php if (in_array($role, ['admin', 'hr'], true)): ?>
+                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'analyst'], true)): ?>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'hrms_reports') ? 'active' : ''; ?>">
                             <a href="index.php?route=hrms/reports">
                                 <i class="fa-solid fa-file-invoice"></i><span>HRMS Reports</span>
@@ -1124,7 +1122,7 @@
                         <?php endif; ?>
 
                         <!-- New Payroll Items -->
-                        <?php if (in_array($role, ['admin', 'hr', 'finance', 'manager'], true)): ?>
+                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'finance', 'manager', 'analyst'], true)): ?>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_dashboard') ? 'active' : ''; ?>">
                             <a href="index.php?route=payroll/dashboard">
                                 <i class="fa-solid fa-chart-pie"></i><span>Payroll Dashboard</span>
@@ -1132,7 +1130,7 @@
                         </li>
                         <?php endif; ?>
 
-                        <?php if (in_array($role, ['admin', 'hr'], true)): ?>
+                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'analyst'], true)): ?>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_structures') ? 'active' : ''; ?>">
                             <a href="index.php?route=payroll/structures">
                                 <i class="fa-solid fa-calculator"></i><span>Salary Structures</span>
@@ -1140,7 +1138,7 @@
                         </li>
                         <?php endif; ?>
 
-                        <?php if (in_array($role, ['admin', 'hr', 'finance'], true)): ?>
+                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'finance', 'analyst'], true)): ?>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_processing') ? 'active' : ''; ?>">
                             <a href="index.php?route=payroll/processing">
                                 <i class="fa-solid fa-file-invoice-dollar"></i><span>Payroll Runs</span>

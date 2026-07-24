@@ -1,4 +1,17 @@
 <div class="pulse-card">
+    <?php if (isset($_SESSION['client_success'])): ?>
+        <div class="alert alert-success alert-dismissible fade show border-0 mb-3" role="alert" style="background: rgba(25, 135, 84, 0.15); color: #2ec4b6;">
+            <i class="fa-solid fa-circle-check me-2"></i><?php echo $_SESSION['client_success']; unset($_SESSION['client_success']); ?>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <?php endif; ?>
+    <?php if (isset($_SESSION['client_error'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show border-0 mb-3" role="alert" style="background: rgba(220, 53, 69, 0.15); color: #e63946;">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i><?php echo $_SESSION['client_error']; unset($_SESSION['client_error']); ?>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <?php endif; ?>
+
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h4 class="text-white mb-0">Client Directory</h4>
         <?php if ($can_edit): ?>
@@ -51,12 +64,9 @@
                             </td>
                             <?php if ($can_edit): ?>
                                 <td class="text-end">
-                                    <div class="d-inline-flex gap-2">
-                                        <a href="index.php?route=clients/edit/<?php echo $client->client_id; ?>" class="btn btn-outline-light btn-sm" title="Edit">
-                                            <i class="fa-solid fa-pen-to-square"></i>
-                                        </a>
-                                        <span class="badge bg-secondary-subtle text-secondary" title="Deletion is disabled by governance policy">No delete</span>
-                                    </div>
+                                    <a href="index.php?route=clients/edit/<?php echo $client->client_id; ?>" class="btn btn-outline-light btn-sm" title="Edit Client">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </a>
                                 </td>
                             <?php endif; ?>
                         </tr>

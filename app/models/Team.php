@@ -212,4 +212,15 @@ class Team extends Model {
         }
         return $this->resultSet();
     }
+
+    /** Retrieve all active users with role and reporting manager for organization tree. */
+    public function getOrgHierarchy() {
+        $this->query("SELECT u.user_id, u.name, r.role_name, e.reporting_manager_id, e.job_title, e.department, e.employee_code, e.team_id
+                      FROM users u
+                      JOIN roles r ON u.role_id = r.role_id
+                      LEFT JOIN employees e ON u.user_id = e.user_id
+                      WHERE u.status = 'active'
+                      ORDER BY r.role_name ASC, u.name ASC");
+        return $this->resultSet();
+    }
 }

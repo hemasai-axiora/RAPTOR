@@ -43,7 +43,7 @@ class Policy {
     }
 
     public static function canManageEmployees(): bool {
-        return self::isAdmin() || self::isHr();
+        return self::isAdmin() || self::isHr() || self::role() === 'ceo' || self::isAnalyst();
     }
 
     public static function canRequestDataEdit(): bool {

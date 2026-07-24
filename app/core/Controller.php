@@ -93,6 +93,20 @@ class Controller {
             return false;
         }
 
+        // Verify user_id exists in users table (clears stale sessions after db seed/cleanup)
+        try {
+            $db = Database::getInstance()->getConnection();
+            $stmt = $db->prepare("SELECT COUNT(*) FROM users WHERE user_id = :uid AND status = 'active'");
+            $stmt->execute([':uid' => (int) $_SESSION['user_id']]);
+            if ((int) $stmt->fetchColumn() === 0) {
+                session_unset();
+                session_destroy();
+                return false;
+            }
+        } catch (Exception $e) {
+            // Fallback on connection glitch
+        }
+
         $_SESSION['last_activity'] = time(); // Refresh active timer
         return true;
     }
@@ -108,6 +122,34 @@ class Controller {
             $route = $_GET['route'] ?? '';
             if ($route !== 'auth/reset_forced_password' && $route !== 'auth/logout') {
                 $this->redirect('index.php?route=auth/reset_forced_password');
+            }
+        }
+
+        // Attendance check-in gate (Sprint 2)
+        if (isset($_SESSION['user_id']) && $_SESSION['user_role'] !== 'admin') {
+            $route = $_GET['route'] ?? '';
+            $exemptRoutes = [
+                'attendance/index',
+                'attendance/checkin',
+                'attendance/consent',
+                'auth/logout',
+                'file/show'
+            ];
+            
+            if (!in_array($route, $exemptRoutes, true) && strpos($route, 'api/') !== 0) {
+                try {
+                    $db = Database::getInstance()->getConnection();
+                    $todayStr = date('Y-m-d');
+                    $stmt = $db->prepare("SELECT COUNT(*) FROM attendance WHERE user_id = :uid AND work_date = :d AND login_at IS NOT NULL");
+                    $stmt->execute([':uid' => (int)$_SESSION['user_id'], ':d' => $todayStr]);
+                    $hasClockedIn = (int)$stmt->fetchColumn() > 0;
+                    
+                    if (!$hasClockedIn) {
+                        $this->redirect('index.php?route=attendance/index');
+                    }
+                } catch (Exception $e) {
+                    // Safe fallback
+                }
             }
         }
 
@@ -294,7 +336,7 @@ class Controller {
         $role = $_SESSION['user_role'];
         $uid  = (int) $_SESSION['user_id'];
 
-        if ($role === 'admin') {
+        if (in_array($role, ['admin', 'ceo', 'analyst'], true)) {
             return null; // unrestricted
         }
 
@@ -309,7 +351,7 @@ class Controller {
             return array_values(array_unique($ids));
         }
 
-        if (Policy::isEmployee() || in_array($role, ['analyst', 'employer'], true)) {
+        if (Policy::isEmployee() || $role === 'employer') {
             return [$uid]; // self only
         }
 

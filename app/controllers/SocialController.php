@@ -46,6 +46,8 @@ class SocialController extends Controller {
                 'impressions' => (int)($_POST['impressions'] ?? 0),
                 'clicks' => (int)($_POST['clicks'] ?? 0),
                 'followers_gained' => (int)($_POST['followers_gained'] ?? 0),
+                'leads_generated' => (int)($_POST['leads_generated'] ?? 0),
+                'lead_details' => trim($_POST['lead_details'] ?? ''),
                 'custom_notes' => trim($_POST['custom_notes'] ?? ''),
                 'updated_by' => $userId
             ];
@@ -82,17 +84,17 @@ class SocialController extends Controller {
                     $account = $socialModel->getAccountById($data['account_id']);
                     
                     // Find reporting manager for this employee
-                    $this->db->query("SELECT reporting_manager_id FROM employees WHERE user_id = :uid LIMIT 1");
-                    $this->db->bind(':uid', $userId);
-                    $mgrId = $this->db->single();
+                    $userModel->query("SELECT reporting_manager_id FROM employees WHERE user_id = :uid LIMIT 1");
+                    $userModel->bind(':uid', $userId);
+                    $mgrId = $userModel->single();
 
                     $recipients = [];
                     if ($mgrId && !empty($mgrId->reporting_manager_id)) {
                         $recipients[] = $mgrId->reporting_manager_id;
                     } else {
                         // Notify all managers/admins
-                        $this->db->query("SELECT user_id FROM users u JOIN roles r ON u.role_id = r.role_id WHERE r.role_name IN ('manager', 'admin') AND u.status = 'active'");
-                        foreach ($this->db->resultSet() as $mgr) {
+                        $userModel->query("SELECT user_id FROM users u JOIN roles r ON u.role_id = r.role_id WHERE r.role_name IN ('manager', 'admin') AND u.status = 'active'");
+                        foreach ($userModel->resultSet() as $mgr) {
                             $recipients[] = $mgr->user_id;
                         }
                     }
@@ -128,12 +130,17 @@ class SocialController extends Controller {
         // Get active platforms
         $platforms = $platformModel->getPlatforms();
 
+        // Get scoped history for updates table
+        $scopeIds = $this->visibleUserIds();
+        $history = $analyticsModel->getCompleteHistory($scopeIds);
+
         $this->viewWithLayout('social/update', 'main', [
             'title' => 'Log Social Analytics',
             'active_tab' => 'social_update',
             'platforms' => $platforms,
             'assignedAccounts' => $assignedAccounts,
-            'groupedAccounts' => $groupedAccounts
+            'groupedAccounts' => $groupedAccounts,
+            'history' => $history
         ]);
     }
 
@@ -180,43 +187,44 @@ class SocialController extends Controller {
         ]);
     }
 
-    // 4. Admin Settings Panel
+    // 4. Social Accounts Directory & Credentials Panel
     public function admin() {
-        $this->requirePermission('social_media', 'manage');
+        $this->requireAuth();
+        $isEmployee = in_array($_SESSION['user_role'] ?? '', ['employee', 'sales_person'], true);
 
         $platformModel = $this->model('Platform');
         $socialModel = $this->model('SocialAccount');
         $userModel = $this->model('User');
 
         $platforms = $platformModel->getPlatforms();
-        $accounts = $socialModel->getAccounts();
         
-        // Get employees/managers for assignments dropdown
-        $users = $userModel->getUsers();
-        $employees = [];
-        foreach ($users as $u) {
-            if ($u->role_name === 'employee' || $u->role_name === 'sales_person') {
-                $employees[] = $u;
-            }
+        if ($isEmployee) {
+            $accounts = $socialModel->getAssignedAccountsForUser($_SESSION['user_id']);
+        } else {
+            $accounts = $socialModel->getAccounts();
         }
+        
+        // Get all active employees for assignments dropdown
+        $employees = $userModel->getUsers();
 
         // Get clients list
         $clientModel = $this->model('Client');
         $clients = $clientModel->getClients();
 
         $this->viewWithLayout('social/admin', 'main', [
-            'title' => 'Admin Social Configuration',
+            'title' => 'Accounts Directory | Raptor CRM',
             'active_tab' => 'social_admin',
             'platforms' => $platforms,
             'accounts' => $accounts,
             'employees' => $employees,
-            'clients' => $clients
+            'clients' => $clients,
+            'is_employee' => $isEmployee
         ]);
     }
 
-    // Admin POST action: Add Platform
+    // POST action: Add Platform
     public function addPlatform() {
-        if (!Policy::isAdmin()) $this->jsonError('Unauthorized.', 403);
+        if (!in_array($_SESSION['user_role'], ['admin', 'ceo', 'manager', 'analyst'], true)) $this->jsonError('Unauthorized.', 403);
         $platformModel = $this->model('Platform');
         
         $name = trim($_POST['name'] ?? '');
@@ -232,9 +240,9 @@ class SocialController extends Controller {
         $this->redirect('index.php?route=social/admin');
     }
 
-    // Admin POST action: Remove Platform
+    // POST action: Remove Platform
     public function removePlatform() {
-        if (!Policy::isAdmin()) $this->jsonError('Unauthorized.', 403);
+        if (!in_array($_SESSION['user_role'], ['admin', 'ceo', 'manager', 'analyst'], true)) $this->jsonError('Unauthorized.', 403);
         $platformModel = $this->model('Platform');
         $id = (int)($_POST['platform_id'] ?? 0);
         $platformModel->removePlatform($id);
@@ -242,15 +250,18 @@ class SocialController extends Controller {
         $this->redirect('index.php?route=social/admin');
     }
 
-    // Admin POST action: Add Account
+    // POST action: Add Account with Credentials
     public function addAccount() {
-        if (!Policy::isAdmin()) $this->jsonError('Unauthorized.', 403);
+        if (!in_array($_SESSION['user_role'], ['admin', 'ceo', 'manager', 'analyst'], true)) $this->jsonError('Unauthorized.', 403);
         $socialModel = $this->model('SocialAccount');
         $platformModel = $this->model('Platform');
 
         $client_id = (int)$_POST['client_id'];
         $platform_id = (int)$_POST['platform_id'];
         $profile_name = trim($_POST['profile_name'] ?? '');
+        $username = trim($_POST['username'] ?? '');
+        $account_password = trim($_POST['account_password'] ?? '');
+        $account_notes = trim($_POST['account_notes'] ?? '');
         $profile_url = trim($_POST['profile_url'] ?? '');
 
         if (empty($profile_name)) {
@@ -265,17 +276,46 @@ class SocialController extends Controller {
             'platform_id' => $platform_id,
             'platform' => $plat ? strtolower($plat->name) : 'unknown',
             'profile_name' => $profile_name,
+            'username' => $username,
+            'account_password' => $account_password,
+            'account_notes' => $account_notes,
             'profile_url' => $profile_url
         ];
 
         $socialModel->addAccount($data);
-        $_SESSION['flash_success'] = "Social account created successfully.";
+        $_SESSION['flash_success'] = "Social account & credentials stored successfully.";
         $this->redirect('index.php?route=social/admin');
     }
 
-    // Admin POST action: Assign Account
+    // POST action: Save Manager Remarks / Review Comment
+    public function saveRemarks() {
+        if (!in_array($_SESSION['user_role'], ['admin', 'ceo', 'manager', 'analyst'], true)) {
+            $_SESSION['flash_error'] = "Unauthorized access.";
+            $this->redirect('index.php?route=social/admin');
+            return;
+        }
+
+        $account_id = (int)($_POST['account_id'] ?? 0);
+        $manager_remarks = trim($_POST['manager_remarks'] ?? '');
+
+        if (!$account_id) {
+            $_SESSION['flash_error'] = "Invalid social account ID.";
+            $this->redirect('index.php?route=social/admin');
+            return;
+        }
+
+        $socialModel = $this->model('SocialAccount');
+        if ($socialModel->saveManagerRemarks($account_id, $manager_remarks)) {
+            $_SESSION['flash_success'] = "Manager review comment updated successfully.";
+        } else {
+            $_SESSION['flash_error'] = "Failed to update manager review comment.";
+        }
+        $this->redirect('index.php?route=social/admin');
+    }
+
+    // POST action: Assign Account
     public function assignAccount() {
-        if (!Policy::isAdmin()) $this->jsonError('Unauthorized.', 403);
+        if (!in_array($_SESSION['user_role'], ['admin', 'ceo', 'manager', 'analyst'], true)) $this->jsonError('Unauthorized.', 403);
         $socialModel = $this->model('SocialAccount');
 
         $account_id = (int)$_POST['account_id'];
@@ -300,9 +340,9 @@ class SocialController extends Controller {
         $this->redirect('index.php?route=social/admin');
     }
 
-    // Admin POST action: Unassign Account
+    // POST action: Unassign Account
     public function unassignAccount() {
-        if (!Policy::isAdmin()) $this->jsonError('Unauthorized.', 403);
+        if (!in_array($_SESSION['user_role'], ['admin', 'ceo', 'manager', 'analyst'], true)) $this->jsonError('Unauthorized.', 403);
         $socialModel = $this->model('SocialAccount');
 
         $account_id = (int)$_POST['account_id'];
@@ -313,13 +353,203 @@ class SocialController extends Controller {
         $this->redirect('index.php?route=social/admin');
     }
 
-    // Admin POST action: Archive / Move Account
+    // POST action: Archive / Move Account
     public function archiveAccount() {
-        if (!Policy::isAdmin()) $this->jsonError('Unauthorized.', 403);
+        if (!in_array($_SESSION['user_role'], ['admin', 'ceo', 'manager', 'analyst'], true)) $this->jsonError('Unauthorized.', 403);
         $socialModel = $this->model('SocialAccount');
         $id = (int)($_POST['account_id'] ?? 0);
         $socialModel->archiveAccount($id);
         $_SESSION['flash_success'] = "Account archived (disconnected) successfully.";
         $this->redirect('index.php?route=social/admin');
+    }
+
+    // 5. Dedicated Lead Generation Hub Action
+    public function leads() {
+        $this->requireAuth();
+        $userId = $_SESSION['user_id'];
+
+        $socialModel = $this->model('SocialAccount');
+        $platformModel = $this->model('Platform');
+        $leadModel = $this->model('Lead');
+
+        $platforms = $platformModel->getPlatforms();
+        $assignedAccounts = $socialModel->getAssignedAccountsForUser($userId);
+
+        // Fetch leads
+        $scopeIds = $this->visibleUserIds();
+        $leads = $leadModel->getLeads([], $scopeIds);
+
+        $this->viewWithLayout('social/leads', 'main', [
+            'title' => 'Lead Generation Hub | Raptor CRM',
+            'active_tab' => 'social_leads',
+            'platforms' => $platforms,
+            'assignedAccounts' => $assignedAccounts,
+            'leads' => $leads
+        ]);
+    }
+
+    // POST: Manual Lead Entry Submission from Marketing
+    public function addLeadFromMarketing() {
+        $this->requireAuth();
+        $userId = $_SESSION['user_id'];
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
+
+            $fullName = trim($_POST['name'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+            $phone = trim($_POST['phone'] ?? '');
+            $company = trim($_POST['company_name'] ?? '');
+            $platformId = (int)($_POST['platform_id'] ?? 0);
+            $leadValue = (float)($_POST['lead_value'] ?? 0.00);
+            $notes = trim($_POST['notes'] ?? '');
+
+            if (empty($fullName) || empty($email) || empty($phone)) {
+                $_SESSION['flash_error'] = "Full Name, Email Address, and Phone Number are required.";
+                $this->redirect('index.php?route=social/leads');
+                return;
+            }
+
+            // Split name into first and last
+            $parts = explode(' ', $fullName, 2);
+            $firstName = $parts[0];
+            $lastName = $parts[1] ?? '';
+
+            // Determine lead source platform name
+            $platformModel = $this->model('Platform');
+            $plat = $platformModel->getPlatformById($platformId);
+            $sourceName = $plat ? 'Social Media (' . $plat->name . ')' : 'Social Media Organic';
+
+            $leadData = [
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'email' => $email,
+                'phone' => $phone,
+                'company_name' => $company ?: 'Independent Lead',
+                'status' => 'new',
+                'lead_quality' => 'warm',
+                'lead_value' => $leadValue,
+                'lead_source' => $sourceName,
+                'assigned_to_user_id' => $userId,
+                'changed_by_user_id' => $userId
+            ];
+
+            $leadModel = $this->model('Lead');
+            $leadId = $leadModel->addLead($leadData);
+
+            if ($leadId) {
+                // Also record in analytics history
+                $analyticsModel = $this->model('AnalyticsEntry');
+                $analyticsModel->logEntry([
+                    'platform_id' => $platformId ?: 1,
+                    'account_id' => 1,
+                    'post_id' => null,
+                    'likes' => 0,
+                    'comments' => 0,
+                    'shares' => 0,
+                    'views' => 1,
+                    'leads_generated' => 1,
+                    'lead_details' => "$fullName ($email, $phone)",
+                    'custom_notes' => "Marketing Lead Generated: $notes",
+                    'updated_by' => $userId
+                ]);
+
+                $_SESSION['flash_success'] = "Lead '$fullName' created and registered successfully!";
+            } else {
+                $_SESSION['flash_error'] = "Failed to create lead entry.";
+            }
+
+            $this->redirect('index.php?route=social/leads');
+        }
+    }
+
+    // POST: Bulk CSV Upload for Generated Leads
+    public function uploadLeadsCsv() {
+        $this->requireAuth();
+        $userId = $_SESSION['user_id'];
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
+            $file = $_FILES['csv_file'];
+
+            if ($file['error'] !== UPLOAD_ERR_OK || empty($file['tmp_name'])) {
+                $_SESSION['flash_error'] = "Please select a valid CSV file for upload.";
+                $this->redirect('index.php?route=social/leads');
+                return;
+            }
+
+            $handle = fopen($file['tmp_name'], 'r');
+            if (!$handle) {
+                $_SESSION['flash_error'] = "Could not open uploaded CSV file.";
+                $this->redirect('index.php?route=social/leads');
+                return;
+            }
+
+            $leadModel = $this->model('Lead');
+            $importedCount = 0;
+            $rowNum = 0;
+
+            // Read header row
+            $header = fgetcsv($handle);
+
+            while (($row = fgetcsv($handle)) !== false) {
+                $rowNum++;
+                if (empty(array_filter($row))) continue;
+
+                $name = trim($row[0] ?? '');
+                $email = trim($row[1] ?? '');
+                $phone = trim($row[2] ?? '');
+                $company = trim($row[3] ?? '');
+                $platform = trim($row[4] ?? 'Social Media');
+                $notes = trim($row[5] ?? '');
+
+                if (empty($name) && empty($email) && empty($phone)) continue;
+
+                $parts = explode(' ', $name, 2);
+                $firstName = $parts[0] ?? 'Lead';
+                $lastName = $parts[1] ?? ("#" . $rowNum);
+
+                $leadData = [
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                    'email' => $email ?: null,
+                    'phone' => $phone ?: null,
+                    'company_name' => $company ?: 'CSV Import',
+                    'status' => 'new',
+                    'lead_quality' => 'warm',
+                    'lead_value' => 0.00,
+                    'lead_source' => 'CSV Import (' . ($platform ?: 'Social Media') . ')',
+                    'assigned_to_user_id' => $userId,
+                    'changed_by_user_id' => $userId
+                ];
+
+                if ($leadModel->addLead($leadData)) {
+                    $importedCount++;
+                }
+            }
+
+            fclose($handle);
+
+            if ($importedCount > 0) {
+                $_SESSION['flash_success'] = "Successfully imported $importedCount leads from CSV file!";
+            } else {
+                $_SESSION['flash_error'] = "No valid lead records found in CSV file.";
+            }
+
+            $this->redirect('index.php?route=social/leads');
+        }
+    }
+
+    // GET: Sample CSV Template Download
+    public function downloadSampleLeadsCsv() {
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=sample_social_leads_import.csv');
+
+        $output = fopen('php://output', 'w');
+        fputcsv($output, ['Full Name', 'Email Address', 'Phone Number', 'Company Name', 'Platform', 'Notes / Inquiry']);
+        fputcsv($output, ['John Doe', 'john.doe@example.com', '+1 555-0192', 'Acme Marketing', 'Facebook', 'Interested in social media growth package']);
+        fputcsv($output, ['Sarah Smith', 'sarah.s@techcorp.io', '+1 555-0198', 'TechCorp Inc', 'LinkedIn', 'Requested demo for digital leads automation']);
+        fputcsv($output, ['Alex Rivera', 'alex@riveramedia.com', '+1 555-0244', 'Rivera Media', 'Instagram', 'Inquired about monthly ad budget management']);
+        fclose($output);
+        exit;
     }
 }

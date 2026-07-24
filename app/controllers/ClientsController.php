@@ -6,7 +6,9 @@ class ClientsController extends Controller {
 
     public function __construct() {
         $this->requireAuth();
-        $this->requirePermission('customers', 'view');
+        if (!in_array($_SESSION['user_role'] ?? '', ['admin', 'ceo', 'manager', 'analyst'], true)) {
+            $this->requirePermission('customers', 'view');
+        }
         
         $this->clientModel = $this->model('Client');
     }
@@ -19,7 +21,7 @@ class ClientsController extends Controller {
             'title' => 'Client Directory | Raptor CRM',
             'active_tab' => 'operations',
             'clients' => $clients,
-            'can_edit' => in_array($_SESSION['user_role'], ['admin', 'manager'])
+            'can_edit' => in_array($_SESSION['user_role'] ?? '', ['admin', 'ceo', 'manager'], true)
         ];
 
         $this->viewWithLayout('clients/index', 'main', $data);
@@ -27,7 +29,9 @@ class ClientsController extends Controller {
 
     // Add Client
     public function add() {
-        $this->requirePermission('customers', 'create');
+        if (!in_array($_SESSION['user_role'] ?? '', ['admin', 'ceo', 'manager'], true)) {
+            $this->requirePermission('customers', 'create');
+        }
 
         $data = [
             'title' => 'Add Client | Raptor CRM',
@@ -84,7 +88,9 @@ class ClientsController extends Controller {
 
     // Edit Client
     public function edit($id) {
-        $this->requirePermission('customers', 'edit');
+        if (!in_array($_SESSION['user_role'] ?? '', ['admin', 'ceo', 'manager'], true)) {
+            $this->requirePermission('customers', 'edit');
+        }
 
         $client = $this->clientModel->getClientById($id);
         if (!$client) {
@@ -147,7 +153,9 @@ class ClientsController extends Controller {
 
     // Add Client Contact
     public function addContact() {
-        $this->requirePermission('customers', 'edit');
+        if (!in_array($_SESSION['user_role'] ?? '', ['admin', 'ceo', 'manager'], true)) {
+            $this->requirePermission('customers', 'edit');
+        }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
@@ -173,7 +181,9 @@ class ClientsController extends Controller {
 
     // Delete Client Contact
     public function deleteContact($contactId) {
-        $this->requirePermission('customers', 'edit');
+        if (!in_array($_SESSION['user_role'] ?? '', ['admin', 'ceo', 'manager'], true)) {
+            $this->requirePermission('customers', 'edit');
+        }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
@@ -193,17 +203,18 @@ class ClientsController extends Controller {
 
     // Delete Client
     public function delete($id) {
-        $this->requirePermission('customers', 'manage');
+        if (!in_array($_SESSION['user_role'] ?? '', ['admin', 'ceo', 'manager'], true)) {
+            $this->requirePermission('customers', 'delete');
+        }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($this->clientModel->deleteClient($id)) {
-                $this->redirect('index.php?route=clients/index');
+                $_SESSION['client_success'] = 'Client deleted successfully.';
             } else {
-                die('Something went wrong.');
+                $_SESSION['client_error'] = 'Failed to delete client.';
             }
-        } else {
-            $this->redirect('index.php?route=clients/index');
         }
+        $this->redirect('index.php?route=clients/index');
     }
 
     // JSON API to fetch client contacts/stakeholders

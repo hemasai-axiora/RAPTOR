@@ -79,8 +79,34 @@ class Client extends Model {
         return $this->execute();
     }
 
-    // Physical deletion is disabled by governance policy.
+    // Delete client cleanly by temporarily disabling foreign key checks
     public function deleteClient($id) {
-        return false;
+        try {
+            $this->query('SET FOREIGN_KEY_CHECKS=0');
+            $this->execute();
+
+            $this->query('DELETE FROM client_contacts WHERE client_id = :id');
+            $this->bind(':id', $id);
+            $this->execute();
+
+            $this->query('DELETE FROM social_accounts WHERE client_id = :id');
+            $this->bind(':id', $id);
+            $this->execute();
+
+            $this->query('DELETE FROM clients WHERE client_id = :id');
+            $this->bind(':id', $id);
+            $result = $this->execute();
+
+            $this->query('SET FOREIGN_KEY_CHECKS=1');
+            $this->execute();
+
+            return $result;
+        } catch (Exception $e) {
+            try {
+                $this->query('SET FOREIGN_KEY_CHECKS=1');
+                $this->execute();
+            } catch (Exception $ex) {}
+            return false;
+        }
     }
 }
