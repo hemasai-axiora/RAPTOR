@@ -32,10 +32,10 @@ $completionPct = $metrics['total'] > 0 ? round(($metrics['approved'] / $metrics[
     <input type="hidden" name="route" value="tasks/index">
     <div class="row g-3 align-items-end">
         <?php if (!Policy::isEmployee()): ?>
-            <div class="col-md-4">
-                <label class="form-label text-secondary">Owner</label>
+            <div class="col-md-3">
+                <label class="form-label text-secondary">Owner / Employee</label>
                 <select name="assigned_to_user_id" class="form-select bg-dark border-secondary text-white">
-                    <option value="">All visible</option>
+                    <option value="">All Owners</option>
                     <?php foreach ($assignees as $user): ?>
                         <option value="<?php echo $user->user_id; ?>" <?php echo (string) $filters['assigned_to_user_id'] === (string) $user->user_id ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($user->name); ?>
@@ -43,18 +43,31 @@ $completionPct = $metrics['total'] > 0 ? round(($metrics['approved'] / $metrics[
                     <?php endforeach; ?>
                 </select>
             </div>
+            <div class="col-md-3">
+                <label class="form-label text-secondary">Assignee Team</label>
+                <select name="team_id" class="form-select bg-dark border-secondary text-white">
+                    <option value="">All Teams</option>
+                    <?php if (!empty($teams)): ?>
+                        <?php foreach ($teams as $t): ?>
+                            <option value="<?php echo $t->team_id; ?>" <?php echo (string) ($filters['team_id'] ?? '') === (string) $t->team_id ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($t->name); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
+            </div>
         <?php endif; ?>
-        <div class="col-md-4">
+        <div class="col-md-<?php echo Policy::isEmployee() ? '6' : '3'; ?>">
             <label class="form-label text-secondary">Review Status</label>
             <select name="review_status" class="form-select bg-dark border-secondary text-white">
-                <option value="">All</option>
+                <option value="">All Statuses</option>
                 <?php foreach ($review_statuses as $status): ?>
                     <option value="<?php echo $status; ?>" <?php echo $filters['review_status'] === $status ? 'selected' : ''; ?>><?php echo strtoupper(str_replace('_', ' ', $status)); ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
-        <div class="col-md-2">
-            <button class="btn btn-outline-light w-100" type="submit"><i class="fa-solid fa-filter me-2"></i>Filter</button>
+        <div class="col-md-<?php echo Policy::isEmployee() ? '6' : '3'; ?>">
+            <button class="btn btn-outline-light w-100" type="submit"><i class="fa-solid fa-filter me-2"></i>Filter Tasks</button>
         </div>
     </div>
 </form>
@@ -108,7 +121,14 @@ $completionPct = $metrics['total'] > 0 ? round(($metrics['approved'] / $metrics[
                                 <span class="badge bg-<?php echo $reviewTone; ?>-subtle text-<?php echo $reviewTone; ?> border border-<?php echo $reviewTone; ?>-subtle">
                                     <?php echo strtoupper(str_replace('_', ' ', $task->review_status)); ?>
                                 </span>
-                                <span class="text-secondary small"><i class="fa-regular fa-user me-1"></i><?php echo htmlspecialchars($task->assignee_name); ?></span>
+                                <?php if (!empty($task->team_name)): ?>
+                                    <span class="badge bg-primary bg-opacity-20 text-primary border border-primary border-opacity-30">
+                                        <i class="fa-solid fa-users me-1"></i>Team: <?php echo htmlspecialchars($task->team_name); ?>
+                                    </span>
+                                <?php endif; ?>
+                                <?php if (!empty($task->assignee_name)): ?>
+                                    <span class="text-secondary small"><i class="fa-regular fa-user me-1"></i><?php echo htmlspecialchars($task->assignee_name); ?></span>
+                                <?php endif; ?>
                             </div>
 
                             <?php if ($task->proof_url): ?>
@@ -126,7 +146,7 @@ $completionPct = $metrics['total'] > 0 ? round(($metrics['approved'] / $metrics[
                                     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                                     <div class="row g-2">
                                         <div class="col-5">
-                                            <input type="number" min="0" max="100" name="progress_percent" class="form-control form-control-sm bg-dark border-secondary text-white" value="<?php echo (int) $task->progress_percent; ?>" title="Progress">
+                                            <input type="number" min="0" max="100" name="progress_percent" class="form-control form-control-sm bg-dark border-secondary text-white" value="<?php echo (int) $task->progress_percent; ?>" title="Progress %">
                                         </div>
                                         <div class="col-5">
                                             <input type="number" min="0" step="0.25" name="actual_hours" class="form-control form-control-sm bg-dark border-secondary text-white" value="<?php echo htmlspecialchars($task->actual_hours ?? '0.00'); ?>" title="Actual hours">
@@ -200,16 +220,29 @@ $completionPct = $metrics['total'] > 0 ? round(($metrics['approved'] / $metrics[
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label text-secondary">Task Title *</label>
-                        <input type="text" name="title" class="form-control bg-dark border-secondary text-white" required>
+                        <input type="text" name="title" class="form-control bg-dark border-secondary text-white" required placeholder="Task title / objective...">
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label text-secondary">Assign Owner *</label>
-                        <select name="assigned_to_user_id" class="form-select bg-dark border-secondary text-white" required>
-                            <option value="">Select member</option>
-                            <?php foreach ($assignees as $user): ?>
-                                <option value="<?php echo $user->user_id; ?>"><?php echo htmlspecialchars($user->name); ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary">Assign to Team</label>
+                            <select name="team_id" class="form-select bg-dark border-secondary text-white">
+                                <option value="">Select Team (Optional)</option>
+                                <?php if (!empty($teams)): ?>
+                                    <?php foreach ($teams as $t): ?>
+                                        <option value="<?php echo $t->team_id; ?>"><?php echo htmlspecialchars($t->name); ?></option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary">Assign Employee Owner</label>
+                            <select name="assigned_to_user_id" class="form-select bg-dark border-secondary text-white">
+                                <option value="">Select Employee (Optional)</option>
+                                <?php foreach ($assignees as $user): ?>
+                                    <option value="<?php echo $user->user_id; ?>"><?php echo htmlspecialchars($user->name); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
                     <div class="row g-3">
                         <div class="col-md-6">

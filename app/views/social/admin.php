@@ -5,8 +5,18 @@ $isEmployee = !empty($is_employee);
 // Compute Summary Metrics for Dashboard
 $totalAccountsCount = count($accounts);
 $assignedCount = 0;
+$newCount = 0;
+$suspendedCount = 0;
+$recreatedCount = 0;
+$activeCount = 0;
 $uniqueTeam = [];
 foreach ($accounts as $acc) {
+    $st = strtolower($acc->status ?? 'active');
+    if ($st === 'new_account' || $st === 'new') $newCount++;
+    elseif ($st === 'suspended') $suspendedCount++;
+    elseif ($st === 'recreated') $recreatedCount++;
+    elseif ($st === 'active' || $st === 'active_account') $activeCount++;
+    
     if (!empty($acc->assigned_employees)) {
         $assignedCount++;
         $names = array_map('trim', explode(',', $acc->assigned_employees));
@@ -86,47 +96,69 @@ body.dark-mode .social-nav-pills .nav-link:hover,
 
     <!-- Summary Metrics Dashboard Cards -->
     <div class="row g-3 mb-4">
-        <div class="col-xl-3 col-md-6">
-            <div class="pulse-card d-flex align-middle align-items-center p-3 shadow-sm">
-                <div class="rounded-3 text-white me-3 d-flex align-items-center justify-content-center shadow-sm" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); width: 54px; height: 54px;">
-                    <span style="font-size: 1.6rem;">📱</span>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="pulse-card d-flex align-items-center p-3 shadow-sm">
+                <div class="rounded-3 text-white me-3 d-flex align-items-center justify-content-center shadow-sm" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); width: 44px; height: 44px;">
+                    <span style="font-size: 1.3rem;">📱</span>
                 </div>
                 <div>
-                    <span class="text-secondary small fw-semibold text-uppercase">Total Accounts</span>
-                    <h3 class="mb-0 mt-1 fw-bold" style="color: var(--text-color, #1e293b);"><?php echo $totalAccountsCount; ?></h3>
+                    <span class="text-secondary small fw-semibold text-uppercase" style="font-size:0.75rem;">Total</span>
+                    <h4 class="mb-0 mt-1 fw-bold" style="color: var(--text-color, #1e293b);"><?php echo $totalAccountsCount; ?></h4>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="pulse-card d-flex align-middle align-items-center p-3 shadow-sm">
-                <div class="rounded-3 text-white me-3 d-flex align-items-center justify-content-center shadow-sm" style="background: linear-gradient(135deg, #10b981, #059669); width: 54px; height: 54px;">
-                    <span style="font-size: 1.6rem;">📋</span>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="pulse-card d-flex align-items-center p-3 shadow-sm">
+                <div class="rounded-3 text-white me-3 d-flex align-items-center justify-content-center shadow-sm" style="background: linear-gradient(135deg, #10b981, #059669); width: 44px; height: 44px;">
+                    <span style="font-size: 1.3rem;">✅</span>
                 </div>
                 <div>
-                    <span class="text-secondary small fw-semibold text-uppercase">Assigned Accounts</span>
-                    <h3 class="mb-0 mt-1 fw-bold" style="color: var(--text-color, #1e293b);"><?php echo $assignedCount; ?></h3>
+                    <span class="text-secondary small fw-semibold text-uppercase" style="font-size:0.75rem;">Active</span>
+                    <h4 class="mb-0 mt-1 fw-bold text-success"><?php echo $activeCount; ?></h4>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="pulse-card d-flex align-middle align-items-center p-3 shadow-sm">
-                <div class="rounded-3 text-white me-3 d-flex align-items-center justify-content-center shadow-sm" style="background: linear-gradient(135deg, #06b6d4, #0891b2); width: 54px; height: 54px;">
-                    <span style="font-size: 1.6rem;">👥</span>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="pulse-card d-flex align-items-center p-3 shadow-sm">
+                <div class="rounded-3 text-white me-3 d-flex align-items-center justify-content-center shadow-sm" style="background: linear-gradient(135deg, #06b6d4, #0891b2); width: 44px; height: 44px;">
+                    <span style="font-size: 1.3rem;">✨</span>
                 </div>
                 <div>
-                    <span class="text-secondary small fw-semibold text-uppercase">Handling Team Members</span>
-                    <h3 class="mb-0 mt-1 fw-bold" style="color: var(--text-color, #1e293b);"><?php echo $handlingTeamCount; ?></h3>
+                    <span class="text-secondary small fw-semibold text-uppercase" style="font-size:0.75rem;">New</span>
+                    <h4 class="mb-0 mt-1 fw-bold text-info"><?php echo $newCount; ?></h4>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="pulse-card d-flex align-middle align-items-center p-3 shadow-sm">
-                <div class="rounded-3 text-white me-3 d-flex align-items-center justify-content-center shadow-sm" style="background: linear-gradient(135deg, #f59e0b, #d97706); width: 54px; height: 54px;">
-                    <span style="font-size: 1.6rem;">🌐</span>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="pulse-card d-flex align-items-center p-3 shadow-sm">
+                <div class="rounded-3 text-white me-3 d-flex align-items-center justify-content-center shadow-sm" style="background: linear-gradient(135deg, #ef4444, #dc2626); width: 44px; height: 44px;">
+                    <span style="font-size: 1.3rem;">🚫</span>
                 </div>
                 <div>
-                    <span class="text-secondary small fw-semibold text-uppercase">Active Platforms</span>
-                    <h3 class="mb-0 mt-1 fw-bold" style="color: var(--text-color, #1e293b);"><?php echo $platformsCount; ?></h3>
+                    <span class="text-secondary small fw-semibold text-uppercase" style="font-size:0.75rem;">Suspended</span>
+                    <h4 class="mb-0 mt-1 fw-bold text-danger"><?php echo $suspendedCount; ?></h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="pulse-card d-flex align-items-center p-3 shadow-sm">
+                <div class="rounded-3 text-white me-3 d-flex align-items-center justify-content-center shadow-sm" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); width: 44px; height: 44px;">
+                    <span style="font-size: 1.3rem;">🔄</span>
+                </div>
+                <div>
+                    <span class="text-secondary small fw-semibold text-uppercase" style="font-size:0.75rem;">Recreated</span>
+                    <h4 class="mb-0 mt-1 fw-bold text-primary"><?php echo $recreatedCount; ?></h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="pulse-card d-flex align-items-center p-3 shadow-sm">
+                <div class="rounded-3 text-white me-3 d-flex align-items-center justify-content-center shadow-sm" style="background: linear-gradient(135deg, #f59e0b, #d97706); width: 44px; height: 44px;">
+                    <span style="font-size: 1.3rem;">📋</span>
+                </div>
+                <div>
+                    <span class="text-secondary small fw-semibold text-uppercase" style="font-size:0.75rem;">Assigned</span>
+                    <h4 class="mb-0 mt-1 fw-bold"><?php echo $assignedCount; ?></h4>
                 </div>
             </div>
         </div>
@@ -173,7 +205,7 @@ body.dark-mode .social-nav-pills .nav-link:hover,
 
                 <!-- Search Bar & Filtering Bar -->
                 <div class="row g-2 mb-4 p-3 rounded border border-secondary border-opacity-25" style="background: rgba(0, 0, 0, 0.15);">
-                    <div class="col-md-5">
+                    <div class="col-md-4">
                         <label for="socialSearchInput" class="form-label text-secondary small mb-1"><i class="fa-solid fa-magnifying-glass me-1"></i>Search Accounts</label>
                         <input type="text" id="socialSearchInput" class="form-control form-control-sm" placeholder="Search by account profile, handle, platform, or team member...">
                     </div>
@@ -188,13 +220,24 @@ body.dark-mode .social-nav-pills .nav-link:hover,
                         </select>
                     </div>
                     <?php endif; ?>
-                    <div class="col-md-<?php echo $isEmployee ? '7' : '4'; ?>">
+                    <div class="col-md-<?php echo $isEmployee ? '4' : '25'; ?>" style="flex: 1;">
                         <label for="platformFilter" class="form-label text-secondary small mb-1"><i class="fa-solid fa-icons me-1"></i>Filter by Platform</label>
                         <select id="platformFilter" class="form-select form-select-sm style-select">
                             <option value="">All Social Media Platforms</option>
                             <?php foreach ($platforms as $p): ?>
                                 <option value="<?php echo htmlspecialchars(strtolower($p->name)); ?>"><?php echo htmlspecialchars($p->name); ?></option>
                             <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-<?php echo $isEmployee ? '4' : '25'; ?>" style="flex: 1;">
+                        <label for="statusFilter" class="form-label text-secondary small mb-1"><i class="fa-solid fa-tags me-1"></i>Filter by Status</label>
+                        <select id="statusFilter" class="form-select form-select-sm style-select">
+                            <option value="">All Account Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="new_account">New Account</option>
+                            <option value="suspended">Suspended Account</option>
+                            <option value="recreated">Recreated Account</option>
+                            <option value="disconnected">Disconnected</option>
                         </select>
                     </div>
                 </div>
@@ -228,13 +271,15 @@ body.dark-mode .social-nav-pills .nav-link:hover,
                                     $usrName = htmlspecialchars($acc->username ?? ('@' . strtolower(str_replace(' ', '', $profName))));
                                     $empNames = htmlspecialchars($acc->assigned_employees ?? '');
                                     $clientName = htmlspecialchars($acc->company_name ?? 'Raptor Enterprise');
+                                    $rawStatus = strtolower($acc->status ?? 'active');
                                     ?>
                                     <tr class="account-row" 
                                         data-profile="<?php echo strtolower($profName); ?>"
                                         data-username="<?php echo strtolower($usrName); ?>"
                                         data-platform="<?php echo strtolower($platName); ?>"
                                         data-employee="<?php echo strtolower($empNames); ?>"
-                                        data-client="<?php echo strtolower($clientName); ?>">
+                                        data-client="<?php echo strtolower($clientName); ?>"
+                                        data-status="<?php echo $rawStatus; ?>">
                                         <td>
                                             <div class="fw-bold" style="color: var(--text-color, #0f172a);">
                                                 <i class="<?php echo htmlspecialchars($acc->platform_icon ?? 'fa-solid fa-share-nodes'); ?> me-2 text-primary"></i>
@@ -293,17 +338,46 @@ body.dark-mode .social-nav-pills .nav-link:hover,
                                         </td>
 
                                         <td>
-                                            <span class="badge bg-<?php echo ($acc->status ?? 'active') === 'active' ? 'success' : 'secondary'; ?>">
-                                                <?php echo htmlspecialchars(ucfirst($acc->status ?? 'active')); ?>
-                                            </span>
+                                            <?php if ($rawStatus === 'new_account' || $rawStatus === 'new'): ?>
+                                                <span class="badge bg-info text-dark px-2 py-1 fw-bold"><i class="fa-solid fa-sparkles me-1"></i>New Account</span>
+                                            <?php elseif ($rawStatus === 'suspended'): ?>
+                                                <span class="badge bg-danger px-2 py-1 fw-bold"><i class="fa-solid fa-ban me-1"></i>Suspended</span>
+                                            <?php elseif ($rawStatus === 'recreated'): ?>
+                                                <span class="badge bg-primary px-2 py-1 fw-bold"><i class="fa-solid fa-arrows-rotate me-1"></i>Recreated</span>
+                                            <?php elseif ($rawStatus === 'disconnected' || $rawStatus === 'archived'): ?>
+                                                <span class="badge bg-secondary px-2 py-1"><i class="fa-solid fa-box-archive me-1"></i>Disconnected</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-success px-2 py-1 fw-bold"><i class="fa-solid fa-circle-check me-1"></i>Active</span>
+                                            <?php endif; ?>
                                         </td>
                                         <?php if (!$isEmployee): ?>
                                             <td class="text-end">
-                                                <form action="index.php?route=social/archiveAccount" method="POST" onsubmit="return confirm('Are you sure you want to disconnect/archive this account?');">
-                                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                                                    <input type="hidden" name="account_id" value="<?php echo $acc->account_id; ?>">
-                                                    <button type="submit" class="btn btn-sm btn-outline-warning" style="padding: 0.25rem 0.6rem;"><i class="fa-solid fa-box-archive"></i> Disconnect</button>
-                                                </form>
+                                                <div class="d-flex justify-content-end gap-1">
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
+                                                            Status
+                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow">
+                                                            <li><h6 class="dropdown-header">Change Status</h6></li>
+                                                            <li>
+                                                                <form action="index.php?route=social/updateAccountStatus" method="POST">
+                                                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                                                    <input type="hidden" name="account_id" value="<?php echo $acc->account_id; ?>">
+                                                                    <button name="status" value="active" class="dropdown-item text-success small"><i class="fa-solid fa-circle-check me-2"></i>Active</button>
+                                                                    <button name="status" value="new_account" class="dropdown-item text-info small"><i class="fa-solid fa-sparkles me-2"></i>New Account</button>
+                                                                    <button name="status" value="suspended" class="dropdown-item text-danger small"><i class="fa-solid fa-ban me-2"></i>Suspended Account</button>
+                                                                    <button name="status" value="recreated" class="dropdown-item text-primary small"><i class="fa-solid fa-arrows-rotate me-2"></i>Recreated Account</button>
+                                                                    <button name="status" value="disconnected" class="dropdown-item text-secondary small"><i class="fa-solid fa-box-archive me-2"></i>Disconnected</button>
+                                                                </form>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                    <form action="index.php?route=social/archiveAccount" method="POST" onsubmit="return confirm('Are you sure you want to disconnect/archive this account?');">
+                                                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                                        <input type="hidden" name="account_id" value="<?php echo $acc->account_id; ?>">
+                                                        <button type="submit" class="btn btn-sm btn-outline-warning" title="Disconnect" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;"><i class="fa-solid fa-box-archive"></i></button>
+                                                    </form>
+                                                </div>
                                             </td>
                                         <?php endif; ?>
                                     </tr>
@@ -637,6 +711,7 @@ $(function () {
         const searchVal = $('#socialSearchInput').val().toLowerCase().trim();
         const empVal = $('#employeeFilter').val() ? $('#employeeFilter').val().toLowerCase().trim() : '';
         const platVal = $('#platformFilter').val() ? $('#platformFilter').val().toLowerCase().trim() : '';
+        const statusVal = $('#statusFilter').val() ? $('#statusFilter').val().toLowerCase().trim() : '';
 
         $('#accountsTableBody tr.account-row').each(function () {
             const profile = $(this).data('profile') || '';
@@ -644,6 +719,7 @@ $(function () {
             const platform = $(this).data('platform') || '';
             const employee = $(this).data('employee') || '';
             const client = $(this).data('client') || '';
+            const status = $(this).data('status') || '';
 
             const matchesSearch = !searchVal || 
                 profile.indexOf(searchVal) !== -1 || 
@@ -654,8 +730,9 @@ $(function () {
 
             const matchesEmp = !empVal || employee.indexOf(empVal) !== -1;
             const matchesPlat = !platVal || platform.indexOf(platVal) !== -1;
+            const matchesStatus = !statusVal || status === statusVal || (statusVal === 'new_account' && status === 'new');
 
-            if (matchesSearch && matchesEmp && matchesPlat) {
+            if (matchesSearch && matchesEmp && matchesPlat && matchesStatus) {
                 $(this).show();
             } else {
                 $(this).hide();
@@ -664,6 +741,6 @@ $(function () {
     }
 
     $('#socialSearchInput').on('keyup input', filterAccountsTable);
-    $('#employeeFilter, #platformFilter').on('change', filterAccountsTable);
+    $('#employeeFilter, #platformFilter, #statusFilter').on('change', filterAccountsTable);
 });
 </script>

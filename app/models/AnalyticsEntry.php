@@ -160,13 +160,15 @@ class AnalyticsEntry extends Model {
             $this->bind(':custom_notes', $data['custom_notes'] ?? null);
             $this->bind(':updated_by', $data['updated_by']);
             $this->execute();
-            $this->execute();
 
             $db->commit();
             return true;
         } catch (Exception $e) {
-            $db->rollBack();
-            throw $e;
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            error_log("AnalyticsEntry::logEntry error: " . $e->getMessage());
+            return false;
         }
     }
 

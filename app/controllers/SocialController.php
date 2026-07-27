@@ -353,6 +353,28 @@ class SocialController extends Controller {
         $this->redirect('index.php?route=social/admin');
     }
 
+    // POST action: Update Social Account Status (Active, New Account, Suspended, Recreated, Disconnected)
+    public function updateAccountStatus() {
+        $this->requireAuth();
+        if (!in_array($_SESSION['user_role'], ['admin', 'ceo', 'manager', 'analyst', 'team_leader'], true)) {
+            $_SESSION['flash_error'] = "Unauthorized access.";
+            $this->redirect('index.php?route=social/admin');
+            return;
+        }
+        $id = (int)($_POST['account_id'] ?? 0);
+        $status = trim($_POST['status'] ?? 'active');
+        $validStatuses = ['active', 'new_account', 'suspended', 'recreated', 'disconnected'];
+        if ($id > 0 && in_array($status, $validStatuses, true)) {
+            $socialModel = $this->model('SocialAccount');
+            $socialModel->updateStatus($id, $status);
+            $readable = ucwords(str_replace('_', ' ', $status));
+            $_SESSION['flash_success'] = "Social account status updated to '$readable'.";
+        } else {
+            $_SESSION['flash_error'] = "Invalid account or status selected.";
+        }
+        $this->redirect('index.php?route=social/admin');
+    }
+
     // POST action: Archive / Move Account
     public function archiveAccount() {
         if (!in_array($_SESSION['user_role'], ['admin', 'ceo', 'manager', 'analyst'], true)) $this->jsonError('Unauthorized.', 403);
@@ -443,21 +465,42 @@ class SocialController extends Controller {
             $leadId = $leadModel->addLead($leadData);
 
             if ($leadId) {
-                // Also record in analytics history
-                $analyticsModel = $this->model('AnalyticsEntry');
-                $analyticsModel->logEntry([
-                    'platform_id' => $platformId ?: 1,
-                    'account_id' => 1,
-                    'post_id' => null,
-                    'likes' => 0,
-                    'comments' => 0,
-                    'shares' => 0,
-                    'views' => 1,
-                    'leads_generated' => 1,
-                    'lead_details' => "$fullName ($email, $phone)",
-                    'custom_notes' => "Marketing Lead Generated: $notes",
-                    'updated_by' => $userId
-                ]);
+                // Safely record in analytics history if a valid social account exists
+                try {
+                    $socialModel = $this->model('SocialAccount');
+                    $assignedAccounts = $socialModel->getAssignedAccountsForUser($userId);
+                    $targetAccId = null;
+                    if ($platformId) {
+                        foreach ($assignedAccounts as $acc) {
+                            if ((int)$acc->platform_id === $platformId) {
+                                $targetAccId = $acc->account_id;
+                                break;
+                            }
+                        }
+                    }
+                    if (!$targetAccId && !empty($assignedAccounts)) {
+                        $targetAccId = $assignedAccounts[0]->account_id;
+                    }
+
+                    if ($targetAccId) {
+                        $analyticsModel = $this->model('AnalyticsEntry');
+                        $analyticsModel->logEntry([
+                            'platform_id' => $platformId ?: 1,
+                            'account_id' => $targetAccId,
+                            'post_id' => null,
+                            'likes' => 0,
+                            'comments' => 0,
+                            'shares' => 0,
+                            'views' => 1,
+                            'leads_generated' => 1,
+                            'lead_details' => "$fullName ($email, $phone)",
+                            'custom_notes' => "Marketing Lead Generated: $notes",
+                            'updated_by' => $userId
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    error_log("Analytics log error on lead creation: " . $e->getMessage());
+                }
 
                 $_SESSION['flash_success'] = "Lead '$fullName' created and registered successfully!";
             } else {
@@ -465,7 +508,10 @@ class SocialController extends Controller {
             }
 
             $this->redirect('index.php?route=social/leads');
+            return;
         }
+
+        $this->redirect('index.php?route=social/leads');
     }
 
     // POST: Bulk CSV Upload for Generated Leads
@@ -661,21 +707,27 @@ class SocialController extends Controller {
             $leadId = $leadModel->addLead($leadData);
 
             if ($leadId) {
-                // Log entry in analytics history
+                // Log entry in analytics history if valid account exists
                 $analyticsModel = $this->model('AnalyticsEntry');
-                $analyticsModel->logEntry([
-                    'platform_id' => $account ? $account->platform_id : 1,
-                    'account_id' => $accId ?: 1,
-                    'post_id' => null,
-                    'likes' => 0,
-                    'comments' => 0,
-                    'shares' => 0,
-                    'views' => 1,
-                    'leads_generated' => 1,
-                    'lead_details' => "$fullName ($email, $phone)",
-                    'custom_notes' => "Public Link Click Lead: $notes",
-                    'updated_by' => $assigneeId
-                ]);
+                if (!empty($accId) && $account) {
+                    try {
+                        $analyticsModel->logEntry([
+                            'platform_id' => $account->platform_id,
+                            'account_id' => $accId,
+                            'post_id' => null,
+                            'likes' => 0,
+                            'comments' => 0,
+                            'shares' => 0,
+                            'views' => 1,
+                            'leads_generated' => 1,
+                            'lead_details' => "$fullName ($email, $phone)",
+                            'custom_notes' => "Public Link Click Lead: $notes",
+                            'updated_by' => $assigneeId
+                        ]);
+                    } catch (\Throwable $e) {
+                        error_log("Analytics log error on public lead: " . $e->getMessage());
+                    }
+                }
 
                 // Also log link click event in database
                 $analyticsModel->logLinkClick($accId, "LEAD-SUBMIT", "Public Lead Form: $fullName");

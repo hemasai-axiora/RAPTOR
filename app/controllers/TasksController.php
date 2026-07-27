@@ -14,12 +14,14 @@ class TasksController extends Controller {
     public function index() {
         $filters = [
             'assigned_to_user_id' => $_GET['assigned_to_user_id'] ?? '',
+            'team_id' => $_GET['team_id'] ?? '',
             'review_status' => $_GET['review_status'] ?? '',
         ];
         if (Policy::isEmployee()) {
             $filters['assigned_to_user_id'] = $_SESSION['user_id'];
         }
 
+        $teamModel = $this->model('Team');
         $visible = $this->visibleUserIds();
         $data = [
             'title' => 'Task Board | Raptor CRM',
@@ -29,6 +31,7 @@ class TasksController extends Controller {
             'can_assign' => in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader'], true),
             'can_review' => in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader'], true),
             'assignees' => $this->getAssignees(),
+            'teams' => $teamModel->getTeams(),
             'filters' => $filters,
             'review_statuses' => Task::REVIEW_STATUSES,
         ];
@@ -43,6 +46,7 @@ class TasksController extends Controller {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
             $title = strip_tags(trim($_POST['title'] ?? ''));
             $assignedTo = trim($_POST['assigned_to_user_id'] ?? '');
+            $teamId = trim($_POST['team_id'] ?? '');
             $startDate = $this->normalizeDatetime($_POST['start_date'] ?? '');
             $deadline = $this->normalizeDatetime($_POST['deadline'] ?? '');
 
@@ -52,8 +56,8 @@ class TasksController extends Controller {
                 return;
             }
 
-            if (empty($assignedTo)) {
-                $_SESSION['task_error'] = 'Please assign the task to a user.';
+            if (empty($assignedTo) && empty($teamId)) {
+                $_SESSION['task_error'] = 'Please assign the task to an employee or a team.';
                 $this->redirect('index.php?route=tasks/index');
                 return;
             }
@@ -71,7 +75,8 @@ class TasksController extends Controller {
             }
 
             $data = [
-                'assigned_to_user_id' => $assignedTo,
+                'assigned_to_user_id' => $assignedTo ?: null,
+                'team_id' => $teamId ?: null,
                 'created_by_user_id' => $_SESSION['user_id'],
                 'title' => $title,
                 'description' => strip_tags(trim($_POST['description'] ?? '')),

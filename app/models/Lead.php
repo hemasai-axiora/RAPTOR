@@ -234,9 +234,9 @@ class Lead extends Model {
 
     private function bindLeadFields(array $data): void {
         $probability = $this->decimal($data['probability'] ?? $data['conversion_probability'] ?? 0);
-        $convertedAt = $data['status'] === 'converted'
-            ? ($data['converted_at'] ?: date('Y-m-d H:i:s'))
-            : ($data['converted_at'] ?: null);
+        $convertedAt = ($data['status'] ?? '') === 'converted'
+            ? (!empty($data['converted_at']) ? $data['converted_at'] : date('Y-m-d H:i:s'))
+            : (!empty($data['converted_at']) ? $data['converted_at'] : null);
 
         $this->bind(':client_id', $this->nullableInt($data['client_id'] ?? null));
         $this->bind(':assigned_to_user_id', $this->nullableInt($data['assigned_to_user_id'] ?? null));
@@ -246,17 +246,17 @@ class Lead extends Model {
         $this->bind(':company_name', $data['company_name'] ?? null);
         $this->bind(':email', (!isset($data['email']) || trim($data['email']) === '') ? null : trim($data['email']));
         $this->bind(':phone', (!isset($data['phone']) || trim($data['phone']) === '') ? null : trim($data['phone']));
-        $this->bind(':status', $data['status']);
-        $this->bind(':lead_quality', $data['lead_quality']);
+        $this->bind(':status', $data['status'] ?? 'new');
+        $this->bind(':lead_quality', $data['lead_quality'] ?? 'warm');
         $this->bind(':conversion_probability', $probability);
         $this->bind(':probability', $probability);
         $this->bind(':lead_value', $this->decimal($data['lead_value'] ?? 0));
-        $this->bind(':lead_source', $data['lead_source']);
+        $this->bind(':lead_source', $data['lead_source'] ?? 'Direct');
         $this->bind(':campaign_source', $data['campaign_source'] ?? null);
         $this->bind(':product_id', $this->nullableInt($data['product_id'] ?? null));
         $this->bind(':location', $data['location'] ?? null);
         $this->bind(':priority', $data['priority'] ?? 'medium');
-        $this->bind(':next_follow_up_at', $data['next_follow_up_at'] ?: null);
+        $this->bind(':next_follow_up_at', !empty($data['next_follow_up_at']) ? $data['next_follow_up_at'] : null);
         $this->bind(':lost_reason', $data['lost_reason'] ?? null);
         $this->bind(':converted_at', $convertedAt);
     }

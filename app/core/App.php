@@ -46,7 +46,7 @@ class App {
         // Call a callback with array of params
         try {
             call_user_func_array([$this->currentController, $this->currentMethod], $this->params);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             // Handle error (render 404 or 500)
             if (defined('APP_ENV') && APP_ENV === 'production') {
                 http_response_code(500);

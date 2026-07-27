@@ -87,6 +87,14 @@ class SocialAccount extends Model {
         return $this->execute();
     }
 
+    // Update account status (active, new_account, suspended, recreated, disconnected)
+    public function updateStatus($id, $status) {
+        $this->query('UPDATE social_accounts SET status = :status WHERE account_id = :id');
+        $this->bind(':status', $status);
+        $this->bind(':id', (int)$id);
+        return $this->execute();
+    }
+
     // Archive / Disable account (soft delete)
     public function archiveAccount($id) {
         $this->query('UPDATE social_accounts SET status = "disconnected" WHERE account_id = :id');

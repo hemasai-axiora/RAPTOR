@@ -67,6 +67,14 @@ if (!empty($assignedAccounts) && isset($platforms) && isset($groupedAccounts)) {
                                 <option value=""><?php echo $hasPlatforms ? 'Select Account' : 'No accounts available'; ?></option>
                             </select>
                         </div>
+
+                        <!-- Post Selection (Optional) -->
+                        <div class="col-md-12 mt-2">
+                            <label for="post_id" class="form-label text-secondary">Target Post / Content <span class="small text-secondary">(Optional)</span></label>
+                            <select name="post_id" id="post_id" class="filter-select w-100" disabled style="padding: 0.6rem 1rem;">
+                                <option value="">Account-level metrics (No specific post)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <h5 class="text-white mb-3 border-bottom pb-2 border-secondary" style="font-size: 1rem;"><i class="fa-solid fa-gauge me-2 text-primary"></i>Analytics Metrics</h5>
@@ -237,50 +245,57 @@ document.addEventListener('DOMContentLoaded', function() {
     const postSelect = document.getElementById('post_id');
 
     // Platform change trigger
-    platformSelect.addEventListener('change', function() {
-        const pid = this.value;
-        accountSelect.innerHTML = pid ? '<option value="">Select Account</option>' : '<option value="">No Accounts Available</option>';
-        postSelect.innerHTML = '<option value="">Account-level metrics (No post)</option>';
-        accountSelect.disabled = true;
-        postSelect.disabled = true;
+    if (platformSelect) {
+        platformSelect.addEventListener('change', function() {
+            const pid = this.value;
+            accountSelect.innerHTML = pid ? '<option value="">Select Account</option>' : '<option value="">No Accounts Available</option>';
+            if (postSelect) {
+                postSelect.innerHTML = '<option value="">Account-level metrics (No post)</option>';
+                postSelect.disabled = true;
+            }
+            accountSelect.disabled = true;
 
-        if (pid && groupedAccounts[pid]) {
-            groupedAccounts[pid].forEach(acc => {
-                const opt = document.createElement('option');
-                opt.value = acc.account_id;
-                opt.textContent = acc.profile_name + ' (' + acc.company_name + ')';
-                accountSelect.appendChild(opt);
-            });
-            accountSelect.disabled = false;
-        }
-    });
+            if (pid && groupedAccounts[pid]) {
+                groupedAccounts[pid].forEach(acc => {
+                    const opt = document.createElement('option');
+                    opt.value = acc.account_id;
+                    opt.textContent = acc.profile_name + (acc.company_name ? ' (' + acc.company_name + ')' : '');
+                    accountSelect.appendChild(opt);
+                });
+                accountSelect.disabled = false;
+            }
+        });
+    }
 
     // Account change trigger
-    accountSelect.addEventListener('change', function() {
-        const aid = this.value;
-        const pid = platformSelect.value;
-        postSelect.innerHTML = '<option value="">Account-level metrics (No post)</option>';
-        postSelect.disabled = true;
+    if (accountSelect) {
+        accountSelect.addEventListener('change', function() {
+            const aid = this.value;
+            const pid = platformSelect ? platformSelect.value : '';
+            if (postSelect) {
+                postSelect.innerHTML = '<option value="">Account-level metrics (No post)</option>';
+                postSelect.disabled = true;
+            }
 
-        if (pid && aid) {
-            fetch('index.php?route=social/getPostsByAccount&accountId=' + aid)
-                .then(r => r.json())
-                .then(res => {
-                    if (res.success && res.data.length > 0 && platformSelect.value && accountSelect.value) {
-                        res.data.forEach(post => {
-                            const opt = document.createElement('option');
-                            opt.value = post.post_id;
-                            // truncate content for option text
-                            const truncated = post.content.length > 40 ? post.content.substring(0, 40) + '...' : post.content;
-                            opt.textContent = 'Post: "' + truncated + '"';
-                            postSelect.appendChild(opt);
-                        });
-                        postSelect.disabled = false;
-                    }
-                })
-                .catch(err => console.error('Error fetching posts:', err));
-        }
-    });
+            if (pid && aid && postSelect) {
+                fetch('index.php?route=social/getPostsByAccount&accountId=' + aid)
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.success && res.data && res.data.length > 0 && platformSelect.value && accountSelect.value) {
+                            res.data.forEach(post => {
+                                const opt = document.createElement('option');
+                                opt.value = post.post_id;
+                                const truncated = post.content.length > 40 ? post.content.substring(0, 40) + '...' : post.content;
+                                opt.textContent = 'Post: "' + truncated + '"';
+                                postSelect.appendChild(opt);
+                            });
+                            postSelect.disabled = false;
+                        }
+                    })
+                    .catch(err => console.error('Error fetching posts:', err));
+            }
+        });
+    }
 
     // Auto-calculate engagement rate
     const likesInput = document.getElementById('likes');

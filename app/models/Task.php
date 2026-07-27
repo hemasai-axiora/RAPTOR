@@ -6,14 +6,29 @@ class Task extends Model {
     public const PRIORITIES = ['low', 'medium', 'high'];
     public const REVIEW_STATUSES = ['not_submitted', 'pending_review', 'approved', 'rejected'];
 
+    public function __construct() {
+        parent::__construct();
+        $this->ensureTeamColumn();
+    }
+
+    private function ensureTeamColumn() {
+        try {
+            $this->query("ALTER TABLE tasks ADD COLUMN team_id INT NULL AFTER assigned_to_user_id");
+            $this->execute();
+        } catch (Exception $e) {
+            // Column exists
+        }
+    }
+
     public function getTasks(?array $visibleUserIds = null, array $filters = []) {
         [$where, $params] = $this->buildWhere($visibleUserIds, $filters);
         $this->query('SELECT t.*, u_assignee.name AS assignee_name, u_creator.name AS creator_name,
-                             u_reviewer.name AS reviewer_name
+                             u_reviewer.name AS reviewer_name, tm.name AS team_name
                       FROM tasks t
-                      JOIN users u_assignee ON t.assigned_to_user_id = u_assignee.user_id
-                      JOIN users u_creator ON t.created_by_user_id = u_creator.user_id
+                      LEFT JOIN users u_assignee ON t.assigned_to_user_id = u_assignee.user_id
+                      LEFT JOIN users u_creator ON t.created_by_user_id = u_creator.user_id
                       LEFT JOIN users u_reviewer ON t.reviewed_by = u_reviewer.user_id
+                      LEFT JOIN teams tm ON t.team_id = tm.team_id
                       ' . $where . '
                       ORDER BY t.deadline ASC, t.task_id ASC');
         $this->bindParams($params);
@@ -27,13 +42,14 @@ class Task extends Model {
 
     public function addTask($data) {
         $this->query('INSERT INTO tasks
-            (assigned_to_user_id, created_by_user_id, title, description, start_date, priority, deadline,
+            (assigned_to_user_id, team_id, created_by_user_id, title, description, start_date, priority, deadline,
              status, progress_percent, estimated_hours, remarks)
             VALUES
-            (:assigned, :creator, :title, :desc, :start_date, :priority, :deadline,
+            (:assigned, :team_id, :creator, :title, :desc, :start_date, :priority, :deadline,
              :status, :progress, :estimated, :remarks)');
 
-        $this->bind(':assigned', (int) $data['assigned_to_user_id']);
+        $this->bind(':assigned', !empty($data['assigned_to_user_id']) ? (int) $data['assigned_to_user_id'] : null);
+        $this->bind(':team_id', !empty($data['team_id']) ? (int) $data['team_id'] : null);
         $this->bind(':creator', (int) $data['created_by_user_id']);
         $this->bind(':title', $data['title']);
         $this->bind(':desc', $data['description'] ?? null);
@@ -212,8 +228,13 @@ class Task extends Model {
                     $keys[] = $key;
                     $params[$key] = (int) $id;
                 }
-                $where[] = 't.assigned_to_user_id IN (' . implode(',', $keys) . ')';
+                $where[] = '(t.assigned_to_user_id IN (' . implode(',', $keys) . ') OR t.created_by_user_id IN (' . implode(',', $keys) . ') OR t.team_id IN (SELECT team_id FROM employees WHERE user_id IN (' . implode(',', $keys) . ')))';
             }
+        }
+
+        if (!empty($filters['team_id'])) {
+            $where[] = 't.team_id = :team_id';
+            $params[':team_id'] = (int)$filters['team_id'];
         }
 
         foreach (['task_id', 'assigned_to_user_id', 'status', 'review_status'] as $field) {
