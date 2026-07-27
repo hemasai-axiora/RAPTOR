@@ -29,6 +29,7 @@ $handlingTeamCount = count($uniqueTeam);
 $platformsCount = count($platforms);
 ?>
 <style>
+<style>
 /* Theme-Adaptive Navigation Pills */
 .social-nav-pills .nav-link {
     color: #334155 !important;
@@ -49,6 +50,16 @@ $platformsCount = count($platforms);
     background: var(--primary, #2563eb) !important;
     border-color: var(--primary, #2563eb) !important;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+/* Clickable Metric Card Hover Effects */
+.metric-filter-card {
+    cursor: pointer;
+    transition: all 0.22s ease-in-out;
+}
+.metric-filter-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.25) !important;
 }
 
 /* Dark Theme Overrides */
@@ -94,10 +105,10 @@ body.dark-mode .social-nav-pills .nav-link:hover,
         </div>
     <?php endif; ?>
 
-    <!-- Summary Metrics Dashboard Cards -->
+    <!-- Summary Metrics Dashboard Cards (Click to Filter Table / Jump to Section) -->
     <div class="row g-3 mb-4">
         <div class="col-xl-2 col-md-4 col-6">
-            <div class="pulse-card d-flex align-items-center p-3 shadow-sm">
+            <div class="pulse-card metric-filter-card d-flex align-items-center p-3 shadow-sm" data-status-filter="" title="Click to view all accounts">
                 <div class="rounded-3 text-white me-3 d-flex align-items-center justify-content-center shadow-sm" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); width: 44px; height: 44px;">
                     <span style="font-size: 1.3rem;">📱</span>
                 </div>
@@ -108,7 +119,7 @@ body.dark-mode .social-nav-pills .nav-link:hover,
             </div>
         </div>
         <div class="col-xl-2 col-md-4 col-6">
-            <div class="pulse-card d-flex align-items-center p-3 shadow-sm">
+            <div class="pulse-card metric-filter-card d-flex align-items-center p-3 shadow-sm" data-status-filter="active" title="Click to filter Active accounts">
                 <div class="rounded-3 text-white me-3 d-flex align-items-center justify-content-center shadow-sm" style="background: linear-gradient(135deg, #10b981, #059669); width: 44px; height: 44px;">
                     <span style="font-size: 1.3rem;">✅</span>
                 </div>
@@ -119,7 +130,7 @@ body.dark-mode .social-nav-pills .nav-link:hover,
             </div>
         </div>
         <div class="col-xl-2 col-md-4 col-6">
-            <div class="pulse-card d-flex align-items-center p-3 shadow-sm">
+            <div class="pulse-card metric-filter-card d-flex align-items-center p-3 shadow-sm" data-status-filter="new_account" title="Click to filter New accounts">
                 <div class="rounded-3 text-white me-3 d-flex align-items-center justify-content-center shadow-sm" style="background: linear-gradient(135deg, #06b6d4, #0891b2); width: 44px; height: 44px;">
                     <span style="font-size: 1.3rem;">✨</span>
                 </div>
@@ -130,7 +141,7 @@ body.dark-mode .social-nav-pills .nav-link:hover,
             </div>
         </div>
         <div class="col-xl-2 col-md-4 col-6">
-            <div class="pulse-card d-flex align-items-center p-3 shadow-sm">
+            <div class="pulse-card metric-filter-card d-flex align-items-center p-3 shadow-sm" data-status-filter="suspended" title="Click to filter Suspended accounts">
                 <div class="rounded-3 text-white me-3 d-flex align-items-center justify-content-center shadow-sm" style="background: linear-gradient(135deg, #ef4444, #dc2626); width: 44px; height: 44px;">
                     <span style="font-size: 1.3rem;">🚫</span>
                 </div>
@@ -141,7 +152,7 @@ body.dark-mode .social-nav-pills .nav-link:hover,
             </div>
         </div>
         <div class="col-xl-2 col-md-4 col-6">
-            <div class="pulse-card d-flex align-items-center p-3 shadow-sm">
+            <div class="pulse-card metric-filter-card d-flex align-items-center p-3 shadow-sm" data-status-filter="recreated" title="Click to filter Recreated accounts">
                 <div class="rounded-3 text-white me-3 d-flex align-items-center justify-content-center shadow-sm" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); width: 44px; height: 44px;">
                     <span style="font-size: 1.3rem;">🔄</span>
                 </div>
@@ -152,7 +163,7 @@ body.dark-mode .social-nav-pills .nav-link:hover,
             </div>
         </div>
         <div class="col-xl-2 col-md-4 col-6">
-            <div class="pulse-card d-flex align-items-center p-3 shadow-sm">
+            <div class="pulse-card metric-filter-card d-flex align-items-center p-3 shadow-sm" <?php echo !$isEmployee ? 'data-target-tab="assign"' : 'data-status-filter=""'; ?> title="Click to view assigned accounts">
                 <div class="rounded-3 text-white me-3 d-flex align-items-center justify-content-center shadow-sm" style="background: linear-gradient(135deg, #f59e0b, #d97706); width: 44px; height: 44px;">
                     <span style="font-size: 1.3rem;">📋</span>
                 </div>
@@ -749,6 +760,34 @@ $(function () {
             }
         });
     }
+
+    // Interactive Metric Cards Click Handler
+    $('.metric-filter-card').on('click', function () {
+        const targetTab = $(this).data('target-tab');
+        const filterVal = $(this).data('status-filter');
+
+        if (targetTab) {
+            // Activate Assign Tab
+            const tabBtn = document.getElementById(targetTab + '-tab');
+            if (tabBtn) {
+                const tab = new bootstrap.Tab(tabBtn);
+                tab.show();
+            }
+        } else {
+            // Activate Directory Tab
+            const directoryTab = document.getElementById('directory-tab');
+            if (directoryTab) {
+                const tab = new bootstrap.Tab(directoryTab);
+                tab.show();
+            }
+            // Filter by selected status
+            $('#statusFilter').val(filterVal).trigger('change');
+            
+            // Visual highlight effect on status filter
+            $('#statusFilter').addClass('border-primary').focus();
+            setTimeout(() => { $('#statusFilter').removeClass('border-primary'); }, 1200);
+        }
+    });
 
     $('#socialSearchInput').on('keyup input', filterAccountsTable);
     $('#employeeFilter, #platformFilter, #statusFilter').on('change', filterAccountsTable);
