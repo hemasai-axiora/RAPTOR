@@ -50,23 +50,28 @@ if (!empty($assignedAccounts) && isset($platforms) && isset($groupedAccounts)) {
                             <label for="platform_id" class="form-label text-secondary">Platform</label>
                             <select name="platform_id" id="platform_id" class="filter-select w-100" required <?php echo !$hasPlatforms ? 'disabled' : ''; ?> style="padding: 0.6rem 1rem;">
                                 <option value=""><?php echo $hasPlatforms ? 'Select Platform' : 'No accounts available'; ?></option>
-                                <?php if ($hasPlatforms): ?>
-                                    <?php foreach ($platforms as $plat): ?>
-                                        <?php if (isset($groupedAccounts[$plat->platform_id])): ?>
-                                            <option value="<?php echo $plat->platform_id; ?>"><?php echo htmlspecialchars($plat->name); ?></option>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </select>
-                        </div>
+                                 <?php if ($hasPlatforms): ?>
+                                     <?php foreach ($platforms as $plat): ?>
+                                         <?php 
+                                         $pid = $plat->platform_id;
+                                         $pkey = 'p_' . $pid;
+                                         $hasAcc = !empty($groupedAccounts[$pid]) || !empty($groupedAccounts[$pkey]);
+                                         ?>
+                                         <?php if ($hasAcc): ?>
+                                             <option value="<?php echo $plat->platform_id; ?>"><?php echo htmlspecialchars($plat->name); ?></option>
+                                         <?php endif; ?>
+                                     <?php endforeach; ?>
+                                 <?php endif; ?>
+                             </select>
+                         </div>
 
-                        <!-- Account Selection -->
-                        <div class="col-md-6">
-                            <label for="account_id" class="form-label text-secondary">Social Account</label>
-                            <select name="account_id" id="account_id" class="filter-select w-100" required disabled style="padding: 0.6rem 1rem;">
-                                <option value=""><?php echo $hasPlatforms ? 'Select Account' : 'No accounts available'; ?></option>
-                            </select>
-                        </div>
+                         <!-- Account Selection -->
+                         <div class="col-md-6">
+                             <label for="account_id" class="form-label text-secondary">Social Account</label>
+                             <select name="account_id" id="account_id" class="filter-select w-100" required disabled style="padding: 0.6rem 1rem;">
+                                 <option value=""><?php echo $hasPlatforms ? 'Select Account' : 'No accounts available'; ?></option>
+                             </select>
+                         </div>
 
                         <!-- Post Selection (Optional) -->
                         <div class="col-md-12 mt-2">
@@ -248,6 +253,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!platformSelect || !accountSelect) return;
         const pid = platformSelect.value;
         const key = 'p_' + pid;
+        const accList = (groupedAccounts && (groupedAccounts[key] || groupedAccounts[pid])) ? (groupedAccounts[key] || groupedAccounts[pid]) : [];
+
         accountSelect.innerHTML = pid ? '<option value="">Select Account</option>' : '<option value="">No Accounts Available</option>';
         if (postSelect) {
             postSelect.innerHTML = '<option value="">Account-level metrics (No post)</option>';
@@ -255,15 +262,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         accountSelect.disabled = true;
 
-        if (pid && groupedAccounts[key] && groupedAccounts[key].length > 0) {
-            groupedAccounts[key].forEach(acc => {
+        if (pid && accList && accList.length > 0) {
+            accList.forEach(acc => {
                 const opt = document.createElement('option');
                 opt.value = acc.account_id;
                 opt.textContent = acc.profile_name + (acc.company_name ? ' (' + acc.company_name + ')' : '');
                 accountSelect.appendChild(opt);
             });
             accountSelect.disabled = false;
-            if (groupedAccounts[key].length === 1) {
+            if (accList.length === 1) {
                 accountSelect.selectedIndex = 1;
                 accountSelect.dispatchEvent(new Event('change'));
             }
