@@ -882,11 +882,6 @@
                                 <i class="fa-solid fa-bell"></i><span>My Follow-ups</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'tasks/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'tasks') !== false)) ? 'active' : ''; ?>">
-                            <a href="index.php?route=tasks/index">
-                                <i class="fa-solid fa-list-check"></i><span>My Tasks & Board</span>
-                            </a>
-                        </li>
                         <?php if ($isEmployee || $role === 'team_leader'): ?>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'myroute') ? 'active' : ''; ?>">
                             <a href="index.php?route=location/myday">
