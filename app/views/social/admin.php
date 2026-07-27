@@ -456,13 +456,23 @@ body.dark-mode .social-nav-pills .nav-link:hover,
                             <?php else: ?>
                                 <?php foreach ($assignments as $asg): ?>
                                     <tr>
-                                        <td class="fw-semibold text-white"><?php echo htmlspecialchars($asg->profile_name); ?></td>
-                                        <td><span class="small"><i class="<?php echo $asg->platform_icon; ?> me-1 text-primary"></i><?php echo htmlspecialchars($asg->platform_name); ?></span></td>
-                                        <td><span class="badge bg-primary bg-opacity-20 text-primary px-2 py-1"><i class="fa-solid fa-user me-1"></i><?php echo htmlspecialchars($asg->employee_name); ?></span></td>
+                                        <td class="fw-bold" style="color: var(--text-color, #0f172a); font-size: 0.95rem;"><?php echo htmlspecialchars($asg->profile_name); ?></td>
+                                        <td style="color: var(--text-color, #1e293b);"><span class="small fw-semibold"><i class="<?php echo $asg->platform_icon; ?> me-1 text-primary"></i><?php echo htmlspecialchars($asg->platform_name); ?></span></td>
                                         <td>
-                                            <span class="badge <?php echo $asg->is_shared ? 'bg-success' : 'bg-secondary'; ?> bg-opacity-15 text-<?php echo $asg->is_shared ? 'success' : 'secondary'; ?>">
-                                                <?php echo $asg->is_shared ? 'Enabled' : 'Single User Only'; ?>
+                                            <span class="badge px-3 py-2 fw-bold shadow-sm" style="background: #2563eb; color: #ffffff !important; font-size: 0.85rem;">
+                                                <i class="fa-solid fa-user me-1 text-white"></i><?php echo htmlspecialchars($asg->employee_name); ?>
                                             </span>
+                                        </td>
+                                        <td>
+                                            <?php if ($asg->is_shared): ?>
+                                                <span class="badge px-2 py-1 fw-bold" style="background: #10b981; color: #ffffff !important; font-size: 0.82rem;">
+                                                    <i class="fa-solid fa-users me-1"></i>Shared Access Enabled
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="badge px-2 py-1 fw-semibold" style="background: #64748b; color: #ffffff !important; font-size: 0.82rem;">
+                                                    <i class="fa-solid fa-user-lock me-1"></i>Dedicated Single User
+                                                </span>
+                                            <?php endif; ?>
                                         </td>
                                         <td class="text-end">
                                             <form action="index.php?route=social/unassignAccount" method="POST" onsubmit="return confirm('Are you sure you want to unassign this account?');">
