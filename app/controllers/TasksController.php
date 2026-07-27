@@ -17,8 +17,8 @@ class TasksController extends Controller {
             'team_id' => $_GET['team_id'] ?? '',
             'review_status' => $_GET['review_status'] ?? '',
         ];
-        if (Policy::isEmployee()) {
-            $filters['assigned_to_user_id'] = $_SESSION['user_id'];
+        if (Policy::isEmployee() && empty($_GET['assigned_to_user_id'])) {
+            // Employee sees tasks assigned to them or their team via $visibleUserIds scoping
         }
 
         $teamModel = $this->model('Team');

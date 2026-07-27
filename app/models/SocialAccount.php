@@ -139,14 +139,14 @@ class SocialAccount extends Model {
         return $this->resultSet();
     }
 
-    // Get accounts assigned to a user
+    // Get accounts assigned to a user (including active, new_account, suspended, recreated)
     public function getAssignedAccountsForUser($userId) {
         $this->query('SELECT s.*, p.name as platform_name, p.icon as platform_icon, c.company_name
                       FROM assignments a
                       JOIN social_accounts s ON a.account_id = s.account_id
                       LEFT JOIN platforms p ON s.platform_id = p.platform_id
                       LEFT JOIN clients c ON s.client_id = c.client_id
-                      WHERE a.user_id = :user_id AND s.status = "active"');
+                      WHERE a.user_id = :user_id AND s.status != "disconnected"');
         $this->bind(':user_id', $userId);
         $results = $this->resultSet();
 
@@ -155,7 +155,7 @@ class SocialAccount extends Model {
                           FROM social_accounts s
                           LEFT JOIN platforms p ON s.platform_id = p.platform_id
                           LEFT JOIN clients c ON s.client_id = c.client_id
-                          WHERE s.status = "active"');
+                          WHERE s.status != "disconnected"');
             $results = $this->resultSet();
         }
 

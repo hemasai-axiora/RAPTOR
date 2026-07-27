@@ -238,33 +238,44 @@ if (!empty($assignedAccounts) && isset($platforms) && isset($groupedAccounts)) {
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Map account grouping in JS
-    const groupedAccounts = <?php echo json_encode((object)$groupedAccounts); ?>;
+    const groupedAccounts = <?php echo json_encode($groupedAccounts); ?>;
     
     const platformSelect = document.getElementById('platform_id');
     const accountSelect = document.getElementById('account_id');
     const postSelect = document.getElementById('post_id');
 
+    function populateAccounts() {
+        if (!platformSelect || !accountSelect) return;
+        const pid = platformSelect.value;
+        const key = 'p_' + pid;
+        accountSelect.innerHTML = pid ? '<option value="">Select Account</option>' : '<option value="">No Accounts Available</option>';
+        if (postSelect) {
+            postSelect.innerHTML = '<option value="">Account-level metrics (No post)</option>';
+            postSelect.disabled = true;
+        }
+        accountSelect.disabled = true;
+
+        if (pid && groupedAccounts[key] && groupedAccounts[key].length > 0) {
+            groupedAccounts[key].forEach(acc => {
+                const opt = document.createElement('option');
+                opt.value = acc.account_id;
+                opt.textContent = acc.profile_name + (acc.company_name ? ' (' + acc.company_name + ')' : '');
+                accountSelect.appendChild(opt);
+            });
+            accountSelect.disabled = false;
+            if (groupedAccounts[key].length === 1) {
+                accountSelect.selectedIndex = 1;
+                accountSelect.dispatchEvent(new Event('change'));
+            }
+        }
+    }
+
     // Platform change trigger
     if (platformSelect) {
-        platformSelect.addEventListener('change', function() {
-            const pid = this.value;
-            accountSelect.innerHTML = pid ? '<option value="">Select Account</option>' : '<option value="">No Accounts Available</option>';
-            if (postSelect) {
-                postSelect.innerHTML = '<option value="">Account-level metrics (No post)</option>';
-                postSelect.disabled = true;
-            }
-            accountSelect.disabled = true;
-
-            if (pid && groupedAccounts[pid]) {
-                groupedAccounts[pid].forEach(acc => {
-                    const opt = document.createElement('option');
-                    opt.value = acc.account_id;
-                    opt.textContent = acc.profile_name + (acc.company_name ? ' (' + acc.company_name + ')' : '');
-                    accountSelect.appendChild(opt);
-                });
-                accountSelect.disabled = false;
-            }
-        });
+        platformSelect.addEventListener('change', populateAccounts);
+        if (platformSelect.value) {
+            populateAccounts();
+        }
     }
 
     // Account change trigger

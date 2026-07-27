@@ -121,10 +121,11 @@ class SocialController extends Controller {
         // Get assigned accounts for this employee
         $assignedAccounts = $socialModel->getAssignedAccountsForUser($userId);
         
-        // Group accounts by platform name for easy selection
+        // Group accounts by platform for easy JS selection
         $groupedAccounts = [];
         foreach ($assignedAccounts as $acc) {
-            $groupedAccounts[$acc->platform_id][] = $acc;
+            $key = 'p_' . $acc->platform_id;
+            $groupedAccounts[$key][] = $acc;
         }
 
         // Get active platforms
