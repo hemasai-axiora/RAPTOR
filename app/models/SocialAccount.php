@@ -23,6 +23,12 @@ class SocialAccount extends Model {
                 // Column already exists
             }
         }
+        try {
+            $this->query("ALTER TABLE social_accounts MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'active'");
+            $this->execute();
+        } catch (Exception $e) {
+            // Column already modified
+        }
     }
 
     // Get all accounts with assigned employee names
