@@ -14,15 +14,14 @@
 
 <div class="row g-3">
     <div class="col-md-6">
-        <label for="first_name" class="form-label text-secondary">First Name *</label>
-        <input type="text" name="first_name" id="first_name" class="form-control <?php echo (!empty($first_name_err)) ? 'is-invalid' : ''; ?>" value="<?php echo htmlspecialchars($first_name); ?>" required pattern="[A-Za-z\s'\-]{2,50}" title="First name must be between 2 and 50 characters containing only letters, spaces, hyphens, or apostrophes.">
-        <div class="invalid-feedback"><?php echo htmlspecialchars($first_name_err); ?></div>
+        <label for="lead_code" class="form-label text-secondary">Lead ID</label>
+        <input type="text" name="lead_code" id="lead_code" class="form-control bg-dark border-secondary text-secondary" value="<?php echo htmlspecialchars($lead_code ?? 'Auto-generated (e.g. LD-2026-00001)'); ?>" readonly disabled>
     </div>
 
     <div class="col-md-6">
-        <label for="last_name" class="form-label text-secondary">Last Name</label>
-        <input type="text" name="last_name" id="last_name" class="form-control <?php echo (!empty($last_name_err)) ? 'is-invalid' : ''; ?>" value="<?php echo htmlspecialchars($last_name); ?>" pattern="[A-Za-z\s'\-]{0,50}" title="Last name must contain only letters, spaces, hyphens, or apostrophes.">
-        <div class="invalid-feedback"><?php echo htmlspecialchars($last_name_err); ?></div>
+        <label for="first_name" class="form-label text-secondary">Lead Name *</label>
+        <input type="text" name="first_name" id="first_name" class="form-control <?php echo (!empty($first_name_err)) ? 'is-invalid' : ''; ?>" value="<?php echo htmlspecialchars($first_name); ?>" required pattern="[A-Za-z\s'\-]{2,50}" title="Lead name must be between 2 and 50 characters.">
+        <div class="invalid-feedback"><?php echo htmlspecialchars($first_name_err); ?></div>
     </div>
 
     <div class="col-md-6">
@@ -55,14 +54,22 @@
     </div>
 
     <div class="col-md-6">
-        <label for="assigned_to_user_id" class="form-label text-secondary">Assign Owner</label>
-        <select name="assigned_to_user_id" id="assigned_to_user_id" class="form-select bg-dark border-secondary text-white" <?php echo Policy::isEmployee() ? 'disabled' : ''; ?>>
+        <label for="owner_employee_id" class="form-label text-secondary">Assign Owner (Employee)</label>
+        <select name="owner_employee_id" id="owner_employee_id" class="form-select bg-dark border-secondary text-white" <?php echo Policy::isEmployee() ? 'disabled' : ''; ?>>
             <option value="">Leave unassigned</option>
-            <?php foreach ($assignees as $user): ?>
-                <option value="<?php echo $user->user_id; ?>" <?php echo (string) $assigned_to_user_id === (string) $user->user_id ? 'selected' : ''; ?>>
-                    <?php echo htmlspecialchars($user->name); ?> (<?php echo htmlspecialchars($user->role_name); ?>)
-                </option>
-            <?php endforeach; ?>
+            <?php if (!empty($employees)): ?>
+                <?php foreach ($employees as $emp): ?>
+                    <option value="<?php echo $emp->employee_id; ?>" <?php echo (string) ($owner_employee_id ?? '') === (string) $emp->employee_id || (string) ($assigned_to_user_id ?? '') === (string) $emp->user_id ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($emp->name); ?> (<?php echo htmlspecialchars($emp->job_title ?: $emp->role_name); ?>)
+                    </option>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <?php foreach ($assignees as $user): ?>
+                    <option value="<?php echo $user->user_id; ?>" <?php echo (string) ($assigned_to_user_id ?? '') === (string) $user->user_id ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($user->name); ?> (<?php echo htmlspecialchars($user->role_name); ?>)
+                    </option>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </select>
     </div>
 

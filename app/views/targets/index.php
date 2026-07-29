@@ -163,11 +163,11 @@
                         </div>
                         <div class="col-md-2">
                             <label class="form-label text-secondary">Start</label>
-                            <input type="date" name="start_date" class="form-control bg-dark border-secondary text-white" value="<?php echo date('Y-m-01'); ?>" required>
+                            <input type="date" name="start_date" class="form-control bg-dark border-secondary text-white" value="<?php echo date('Y-m-01'); ?>" min="<?php echo date('Y-m-01'); ?>" required>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label text-secondary">End</label>
-                            <input type="date" name="end_date" class="form-control bg-dark border-secondary text-white" value="<?php echo date('Y-m-t'); ?>" required>
+                            <input type="date" name="end_date" class="form-control bg-dark border-secondary text-white" value="<?php echo date('Y-m-t'); ?>" min="<?php echo date('Y-m-01'); ?>" required>
                         </div>
                     </div>
 

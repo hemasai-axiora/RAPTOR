@@ -78,7 +78,23 @@ class SettingsController extends Controller {
                 'alerts.email_enabled',
                 'alerts.email_from',
                 'reports.email_enabled',
-                'reports.digest_recipients'
+                'reports.digest_recipients',
+
+                // Week Off Configurations
+                'attendance.week_off_days',
+                'attendance.alt_saturday_off',
+                'attendance.allow_week_off_override',
+
+                // Leave Policy Configurations
+                'leave.approval_workflow',
+                'leave.min_notice_days',
+                'leave.year_start_month',
+                'leave.types_json',
+
+                // Shift Roster Configurations
+                'attendance.roster_mode',
+                'attendance.roster_publish_lead_days',
+                'attendance.shift_templates_json'
             ];
 
             try {
@@ -89,10 +105,17 @@ class SettingsController extends Controller {
                                             ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)');
 
                 foreach ($settingKeys as $key) {
-                    $value = isset($_POST[$key]) ? trim($_POST[$key]) : '';
-                    if (in_array($key, ['attendance.geofence_enabled', 'location.tracking_enabled', 'alerts.cron_enabled', 'alerts.web_push_enabled', 'alerts.email_enabled', 'reports.email_enabled'], true)) {
+                    if ($key === 'attendance.week_off_days') {
+                        $weekOffArr = $_POST['attendance_week_off_days'] ?? [];
+                        $value = is_array($weekOffArr) ? implode(',', array_map('trim', $weekOffArr)) : '';
+                    } else {
+                        $value = isset($_POST[$key]) ? trim($_POST[$key]) : '';
+                    }
+
+                    if (in_array($key, ['attendance.geofence_enabled', 'location.tracking_enabled', 'alerts.cron_enabled', 'alerts.web_push_enabled', 'alerts.email_enabled', 'reports.email_enabled', 'attendance.allow_week_off_override'], true)) {
                         $value = isset($_POST[$key]) ? '1' : '0';
                     }
+
                     $stmt->execute([
                         ':key' => $key,
                         ':val' => $value

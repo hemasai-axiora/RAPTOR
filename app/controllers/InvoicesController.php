@@ -29,6 +29,8 @@ class InvoicesController extends Controller {
     // Create invoice
     public function add() {
         $this->requirePermission('invoices', 'create');
+        $customerModel = $this->model('Customer');
+        $customers = $customerModel->getCustomers();
         $clients = $this->clientModel->getClients();
 
         // Get single source of truth conversion rate from settings table
@@ -36,12 +38,16 @@ class InvoicesController extends Controller {
         $stmt = $db->query("SELECT setting_value FROM settings WHERE setting_key = 'billing.conversion_rate_usd_to_inr'");
         $conversionRate = (float)($stmt->fetchColumn() ?: 83.50);
 
+        $selectedCustomerId = trim($_GET['customer_id'] ?? $_POST['customer_id'] ?? '');
+
         $data = [
             'title' => 'Generate Invoice | Raptor CRM',
             'active_tab' => 'finance',
+            'customers' => $customers,
             'clients' => $clients,
-            'client_id' => '',
-            'invoice_number' => 'INV-' . time(),
+            'customer_id' => $selectedCustomerId,
+            'client_id' => trim($_GET['client_id'] ?? $_POST['client_id'] ?? ''),
+            'invoice_number' => $this->invoiceModel->generateInvoiceNumber(),
             'amount' => '',
             'status' => 'unpaid',
             'due_date' => date('Y-m-d', strtotime('+30 days')),
@@ -57,7 +63,11 @@ class InvoicesController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
 
+            $data['customer_id'] = trim($_POST['customer_id'] ?? '');
             $data['client_id'] = trim($_POST['client_id'] ?? '');
+            $data['customer_code'] = trim($_POST['customer_code'] ?? '');
+            $data['lead_id'] = trim($_POST['lead_id'] ?? '');
+            $data['lead_code'] = trim($_POST['lead_code'] ?? '');
             $data['invoice_number'] = trim($_POST['invoice_number'] ?? '');
             $data['amount'] = trim($_POST['amount'] ?? '');
             $data['status'] = trim($_POST['status'] ?? 'unpaid');
@@ -69,8 +79,8 @@ class InvoicesController extends Controller {
             $data['due_date_err'] = '';
 
             // Validate
-            if (empty($data['client_id'])) {
-                $data['client_err'] = 'Please select a client';
+            if (empty($data['customer_id']) && empty($data['client_id'])) {
+                $data['client_err'] = 'Please select a customer or client company';
             }
             if (empty($data['amount']) || !is_numeric($data['amount'])) {
                 $data['amount_err'] = 'Please enter a valid amount';

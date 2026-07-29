@@ -19,6 +19,13 @@ class ReportSuite extends Model {
         'demo' => 'Demo',
         'revenue' => 'Revenue',
         'performance' => 'Employee / Manager / Team Performance',
+        'campaign_performance' => 'Campaign Performance',
+        'content_performance' => 'Content & Social Performance',
+        'customer_summary' => 'Customer Summary',
+        'invoice_summary' => 'Invoice & Billing Summary',
+        'account_sales_churn_risk' => 'Account Sales & Churn Risk',
+        'leave_attendance_compliance' => 'Leave & Attendance Compliance',
+        'pipeline_conversion_funnel' => 'Pipeline Conversion Funnel',
         'daily_summary' => 'Daily Summary',
         'monthly_summary' => 'Monthly Summary',
     ];
@@ -195,6 +202,106 @@ class ReportSuite extends Model {
                     LEFT JOIN employees e ON u.user_id = e.user_id
                     WHERE ps.start_date <= :to AND ps.end_date >= :from $userSql
                     ORDER BY ps.period, ps.overall_score DESC", $params);
+
+            case 'campaign_performance':
+                return $this->simpleReport($key, $filters, [
+                    'Campaign Code' => 'campaign_code', 'Campaign Name' => 'name', 'Channel' => 'channel',
+                    'Status' => 'status', 'Owner' => 'owner_name', 'Budget ($)' => 'budget',
+                    'Actual Spend ($)' => 'actual_spend', 'Start Date' => 'start_date', 'End Date' => 'end_date'
+                ], "SELECT c.campaign_code, c.name, c.channel, c.status, COALESCE(u.name, 'Unassigned') AS owner_name,
+                           c.budget, c.actual_spend, c.start_date, c.end_date
+                    FROM campaigns c
+                    LEFT JOIN users u ON c.owner_user_id = u.user_id
+                    LEFT JOIN employees e ON u.user_id = e.user_id
+                    WHERE DATE(c.created_at) BETWEEN :from AND :to $userSql
+                    ORDER BY c.created_at DESC", $params);
+
+            case 'content_performance':
+                return $this->simpleReport($key, $filters, [
+                    'Post Code' => 'post_code', 'Title' => 'title', 'Platform' => 'platform',
+                    'Type' => 'content_type', 'Status' => 'status', 'Published' => 'published_at',
+                    'Likes' => 'current_likes', 'Comments' => 'current_comments', 'Shares' => 'current_shares',
+                    'Reach' => 'current_reach', 'Eng Rate %' => 'current_engagement_rate'
+                ], "SELECT p.post_code, COALESCE(p.title, p.content) AS title, p.platform,
+                           p.content_type, p.status, p.published_at,
+                           COALESCE(p.current_likes, 0) AS current_likes,
+                           COALESCE(p.current_comments, 0) AS current_comments,
+                           COALESCE(p.current_shares, 0) AS current_shares,
+                           COALESCE(p.current_reach, 0) AS current_reach,
+                           COALESCE(p.current_engagement_rate, 0.00) AS current_engagement_rate
+                    FROM posts p
+                    WHERE DATE(COALESCE(p.published_at, p.created_at)) BETWEEN :from AND :to
+                    ORDER BY p.post_id DESC", $params);
+
+            case 'customer_summary':
+                return $this->simpleReport($key, $filters, [
+                    'Customer Code' => 'customer_code', 'Company' => 'company_name', 'Email' => 'email',
+                    'Owner' => 'owner_name', 'Onboarded' => 'onboarding_date', 'Status' => 'status',
+                    'Contract Value ($)' => 'contract_value'
+                ], "SELECT c.customer_code, COALESCE(c.company_name, CONCAT(c.first_name, ' ', COALESCE(c.last_name, ''))) AS company_name,
+                           c.email, COALESCE(u.name, 'Unassigned') AS owner_name, c.onboarding_date,
+                           c.status, c.contract_value
+                    FROM customers c
+                    LEFT JOIN employees e ON c.owner_employee_id = e.employee_id
+                    LEFT JOIN users u ON e.user_id = u.user_id
+                    WHERE DATE(c.created_at) BETWEEN :from AND :to $userSql
+                    ORDER BY c.customer_id DESC", $params);
+
+            case 'invoice_summary':
+                return $this->simpleReport($key, $filters, [
+                    'Invoice Code' => 'invoice_code', 'Customer Name' => 'customer_name',
+                    'Issue Date' => 'issue_date', 'Due Date' => 'due_date', 'Status' => 'status',
+                    'Subtotal ($)' => 'subtotal', 'Tax ($)' => 'tax_amount', 'Total Amount ($)' => 'total_amount'
+                ], "SELECT i.invoice_code, COALESCE(c.company_name, i.client_company_name, 'N/A') AS customer_name,
+                           i.issue_date, i.due_date, i.status, i.subtotal, i.tax_amount, i.total_amount
+                    FROM invoices i
+                    LEFT JOIN customers c ON i.customer_id = c.customer_id
+                    WHERE DATE(i.issue_date) BETWEEN :from AND :to
+                    ORDER BY i.invoice_id DESC", $params);
+
+            case 'account_sales_churn_risk':
+                return $this->simpleReport($key, $filters, [
+                    'Customer Code' => 'customer_code', 'Company' => 'company_name',
+                    'Account Manager' => 'owner_name', 'Contract Value ($)' => 'contract_value',
+                    'Status' => 'status', 'Contract End' => 'contract_end_date', 'Last Activity' => 'last_activity_at'
+                ], "SELECT c.customer_code, COALESCE(c.company_name, CONCAT(c.first_name, ' ', COALESCE(c.last_name, ''))) AS company_name,
+                           COALESCE(u.name, 'Unassigned') AS owner_name, c.contract_value, c.status,
+                           c.contract_end_date, MAX(asa.created_at) AS last_activity_at
+                    FROM customers c
+                    LEFT JOIN employees e ON c.owner_employee_id = e.employee_id
+                    LEFT JOIN users u ON e.user_id = u.user_id
+                    LEFT JOIN account_sales_activities asa ON c.customer_id = asa.customer_id
+                    WHERE 1=1 $userSql
+                    GROUP BY c.customer_id
+                    ORDER BY c.customer_id DESC", $params);
+
+            case 'leave_attendance_compliance':
+                return $this->simpleReport($key, $filters, [
+                    'Employee' => 'employee_name', 'Leave Type' => 'leave_type_name', 'Year' => 'leave_year',
+                    'Allocated' => 'allocated_days', 'Carried Forward' => 'carried_forward_days',
+                    'Consumed' => 'consumed_days', 'Pending' => 'pending_days', 'Available' => 'available_days'
+                ], "SELECT u.name AS employee_name, lt.name AS leave_type_name, elb.leave_year,
+                           elb.allocated_days, elb.carried_forward_days, elb.consumed_days,
+                           elb.pending_days, elb.available_days
+                    FROM employee_leave_balances elb
+                    JOIN employees e ON elb.employee_id = e.employee_id
+                    JOIN users u ON e.user_id = u.user_id
+                    JOIN leave_types lt ON elb.leave_type_id = lt.id
+                    WHERE 1=1 $userSql
+                    ORDER BY u.name ASC, lt.name ASC", $params);
+
+            case 'pipeline_conversion_funnel':
+                return $this->simpleReport($key, $filters, [
+                    'Stage / Status' => 'status', 'Total Leads' => 'lead_count',
+                    'Total Pipeline Value ($)' => 'total_value', 'Avg Probability %' => 'avg_prob'
+                ], "SELECT l.status, COUNT(*) AS lead_count, COALESCE(SUM(l.lead_value), 0) AS total_value,
+                           ROUND(AVG(COALESCE(l.probability, l.conversion_probability, 0)), 1) AS avg_prob
+                    FROM leads l
+                    LEFT JOIN users u ON l.assigned_to_user_id = u.user_id
+                    LEFT JOIN employees e ON u.user_id = e.user_id
+                    WHERE DATE(l.created_at) BETWEEN :from AND :to $userSql
+                    GROUP BY l.status
+                    ORDER BY lead_count DESC", $params);
 
             case 'monthly_summary':
             case 'daily_summary':

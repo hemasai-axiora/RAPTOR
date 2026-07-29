@@ -106,6 +106,10 @@
            RAPTOR HRMS — Professional Light Theme
            Primary: #2563EB | Background: #F8FAFC | Cards: #FFFFFF
            ═══════════════════════════════════════════════════════════ */
+        html {
+            font-size: 83.5%; /* Scaled down base rem size for global 25-30% application density */
+        }
+
         :root {
             color-scheme: light;
             /* Surfaces */
@@ -135,9 +139,9 @@
             --shadow-soft:  0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(37,99,235,0.07);
             --shadow-hover: 0 4px 20px rgba(37,99,235,0.15);
 
-            /* Layout */
-            --sidebar-width:  260px;
-            --topbar-height:  70px;
+            /* Layout Density */
+            --sidebar-width:  230px;
+            --topbar-height:  54px;
         }
 
         html[data-theme="dark"] {
@@ -181,6 +185,46 @@
             color: var(--text-primary);
             overflow-x: hidden;
             margin: 0;
+            line-height: 1.45;
+        }
+
+        /* High-density Table & Form Global Overrides */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border-radius: 8px;
+        }
+
+        .table {
+            font-size: 0.85rem;
+            margin-bottom: 0;
+        }
+
+        .table th {
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            white-space: nowrap;
+            padding: 0.55rem 0.65rem;
+        }
+
+        .table td {
+            padding: 0.5rem 0.65rem;
+            vertical-align: middle;
+        }
+
+        .form-control, .form-select {
+            font-size: 0.85rem;
+            padding: 0.35rem 0.65rem;
+            border-radius: 6px;
+        }
+
+        .btn {
+            font-size: 0.85rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            min-height: 32px;
         }
 
         /* Layout Grid */
@@ -946,12 +990,7 @@
                                 <i class="fa-solid fa-briefcase"></i><span>Clients Directory</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'campaigns/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'campaigns') !== false)) ? 'active' : ''; ?>">
-                            <a href="index.php?route=campaigns/index">
-                                <i class="fa-solid fa-bullhorn"></i><span>Campaign Registry</span>
-                            </a>
-                        </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'calendar') ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'calendar' && (!isset($_GET['route']) || strpos($_GET['route'], 'posts') === false)) ? 'active' : ''; ?>">
                             <a href="index.php?route=calendar/index">
                                 <i class="fa-solid fa-calendar-days"></i><span>Content Calendar</span>
                             </a>
@@ -962,6 +1001,16 @@
                         <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'leads/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'leads') !== false)) ? 'active' : ''; ?>">
                             <a href="index.php?route=leads/index">
                                 <i class="fa-solid fa-address-book"></i><span>Leads Manager</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'customers/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'customers') !== false)) ? 'active' : ''; ?>">
+                            <a href="index.php?route=customers/index">
+                                <i class="fa-solid fa-address-card"></i><span>Customer Directory</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'account_sales/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'account_sales') !== false)) ? 'active' : ''; ?>">
+                            <a href="index.php?route=account_sales/index">
+                                <i class="fa-solid fa-chart-line"></i><span>Account Sales</span>
                             </a>
                         </li>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'communications') ? 'active' : ''; ?>">
@@ -1024,14 +1073,14 @@
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
                     </div>
                     <ul class="menu-section-items">
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'social_update') ? 'active' : ''; ?>">
-                            <a href="index.php?route=social/update">
-                                <i class="fa-solid fa-pen-to-square"></i><span>Update Social Stats</span>
+                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'campaigns/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'campaigns') !== false)) ? 'active' : ''; ?>">
+                            <a href="index.php?route=campaigns/index">
+                                <i class="fa-solid fa-bullhorn"></i><span>Campaign Registry</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'social_leads') ? 'active' : ''; ?>">
-                            <a href="index.php?route=social/leads">
-                                <i class="fa-solid fa-user-plus"></i><span>Lead Generation</span>
+                        <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'posts') !== false) ? 'active' : ''; ?>">
+                            <a href="index.php?route=posts/index">
+                                <i class="fa-solid fa-rectangle-list"></i><span>Content Management & Analytics</span>
                             </a>
                         </li>
                         <?php if (in_array($_SESSION['user_role'], ['admin', 'manager'])): ?>
@@ -1044,6 +1093,11 @@
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'social_admin') ? 'active' : ''; ?>">
                             <a href="index.php?route=social/admin">
                                 <i class="fa-solid fa-folder-tree"></i><span>Accounts Directory</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'website_analytics/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'website_analytics') !== false)) ? 'active' : ''; ?>">
+                            <a href="index.php?route=website_analytics/index">
+                                <i class="fa-solid fa-chart-pie"></i><span>Website Analytics</span>
                             </a>
                         </li>
                     </ul>
@@ -1088,6 +1142,14 @@
                         <li class="menu-item <?php echo ($data['title'] === 'Employee Management | Raptor CRM') ? 'active' : ''; ?>">
                             <a href="index.php?route=users/index">
                                 <i class="fa-solid fa-users"></i><span>Employee Directory</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        
+                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'manager'], true)): ?>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'leave_balances') ? 'active' : ''; ?>">
+                            <a href="index.php?route=leaves/balances">
+                                <i class="fa-solid fa-scale-balanced"></i><span>Leave Balances</span>
                             </a>
                         </li>
                         <?php endif; ?>

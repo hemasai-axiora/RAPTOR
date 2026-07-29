@@ -13,6 +13,49 @@ class CampaignsController extends Controller {
         $this->clientModel = $this->model('Client');
     }
 
+    private function getEmployees() {
+        try {
+            $db = Database::getInstance()->getConnection();
+            $stmt = $db->prepare('SELECT e.employee_id, e.user_id, u.name, e.job_title, e.department, r.role_name
+                                  FROM employees e
+                                  JOIN users u ON e.user_id = u.user_id
+                                  JOIN roles r ON u.role_id = r.role_id
+                                  WHERE u.status = "active" AND e.status = "active"
+                                  ORDER BY u.name ASC');
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_OBJ);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    private function handleFileUpload(?array $file): ?string {
+        if (!$file || empty($file['name']) || $file['error'] !== UPLOAD_ERR_OK) {
+            return null;
+        }
+
+        $allowedExts = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'doc', 'docx'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+        if (!in_array($ext, $allowedExts, true)) {
+            return null;
+        }
+
+        $uploadDir = APPROOT . '/../public/uploads/campaigns/';
+        if (!is_dir($uploadDir)) {
+            @mkdir($uploadDir, 0755, true);
+        }
+
+        $filename = 'proof_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        $targetPath = $uploadDir . $filename;
+
+        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+            return 'uploads/campaigns/' . $filename;
+        }
+
+        return null;
+    }
+
     // List all campaigns
     public function index() {
         $campaigns = $this->campaignModel->getCampaigns();
@@ -32,14 +75,23 @@ class CampaignsController extends Controller {
         $this->requirePermission('social_media', 'create');
 
         $clients = $this->clientModel->getClients();
+        $employees = $this->getEmployees();
 
         $data = [
             'title' => 'Create Campaign | Raptor CRM',
             'active_tab' => 'operations',
             'clients' => $clients,
+            'employees' => $employees,
+            'campaign_code' => 'Auto-generated (e.g. CMP-2026-00001)',
             'client_id' => '',
+            'owner_employee_id' => '',
             'name' => '',
-            'channel' => '',
+            'channel' => 'LinkedIn',
+            'campaign_type' => 'online',
+            'vendor_name' => '',
+            'location' => '',
+            'reach_estimate' => '',
+            'proof_of_execution' => '',
             'budget' => '',
             'start_date' => '',
             'end_date' => '',
@@ -52,13 +104,25 @@ class CampaignsController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
 
-            $data['client_id'] = trim($_POST['client_id']);
-            $data['name'] = trim($_POST['name']);
-            $data['channel'] = trim($_POST['channel']);
-            $data['budget'] = trim($_POST['budget']);
-            $data['start_date'] = trim($_POST['start_date']);
+            $data['campaign_code'] = null;
+            $data['client_id'] = trim($_POST['client_id'] ?? '');
+            $data['owner_employee_id'] = trim($_POST['owner_employee_id'] ?? '');
+            $data['name'] = trim($_POST['name'] ?? '');
+            $data['channel'] = trim($_POST['channel'] ?? 'LinkedIn');
+            $data['campaign_type'] = in_array($_POST['campaign_type'] ?? '', ['online', 'offline'], true) ? $_POST['campaign_type'] : 'online';
+            $data['vendor_name'] = trim($_POST['vendor_name'] ?? '');
+            $data['location'] = trim($_POST['location'] ?? '');
+            $data['reach_estimate'] = trim($_POST['reach_estimate'] ?? '');
+            $data['budget'] = trim($_POST['budget'] ?? '');
+            $data['start_date'] = trim($_POST['start_date'] ?? '');
             $data['end_date'] = !empty($_POST['end_date']) ? trim($_POST['end_date']) : null;
-            $data['status'] = trim($_POST['status']);
+            $data['status'] = trim($_POST['status'] ?? 'active');
+
+            // Handle Proof of Execution File Upload
+            $uploadedPath = $this->handleFileUpload($_FILES['proof_of_execution_file'] ?? null);
+            if ($uploadedPath) {
+                $data['proof_of_execution'] = $uploadedPath;
+            }
 
             // Validate
             if (empty($data['client_id'])) {
@@ -93,15 +157,24 @@ class CampaignsController extends Controller {
         }
 
         $clients = $this->clientModel->getClients();
+        $employees = $this->getEmployees();
 
         $data = [
             'title' => 'Edit Campaign | Raptor CRM',
             'active_tab' => 'operations',
             'clients' => $clients,
+            'employees' => $employees,
             'campaign_id' => $campaign->campaign_id,
+            'campaign_code' => $campaign->campaign_code ?: ('CMP-' . date('Y') . '-' . sprintf('%05d', $campaign->campaign_id)),
             'client_id' => $campaign->client_id,
+            'owner_employee_id' => $campaign->owner_employee_id,
             'name' => $campaign->name,
             'channel' => $campaign->channel,
+            'campaign_type' => $campaign->campaign_type ?? 'online',
+            'vendor_name' => $campaign->vendor_name,
+            'location' => $campaign->location,
+            'reach_estimate' => $campaign->reach_estimate,
+            'proof_of_execution' => $campaign->proof_of_execution,
             'budget' => $campaign->budget,
             'spend' => $campaign->spend,
             'revenue_influenced' => $campaign->revenue_influenced,
@@ -116,15 +189,26 @@ class CampaignsController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
 
-            $data['client_id'] = trim($_POST['client_id']);
-            $data['name'] = trim($_POST['name']);
-            $data['channel'] = trim($_POST['channel']);
-            $data['budget'] = trim($_POST['budget']);
-            $data['spend'] = trim($_POST['spend']);
-            $data['revenue_influenced'] = trim($_POST['revenue_influenced']);
-            $data['start_date'] = trim($_POST['start_date']);
+            $data['client_id'] = trim($_POST['client_id'] ?? '');
+            $data['owner_employee_id'] = trim($_POST['owner_employee_id'] ?? '');
+            $data['name'] = trim($_POST['name'] ?? '');
+            $data['channel'] = trim($_POST['channel'] ?? 'LinkedIn');
+            $data['campaign_type'] = in_array($_POST['campaign_type'] ?? '', ['online', 'offline'], true) ? $_POST['campaign_type'] : 'online';
+            $data['vendor_name'] = trim($_POST['vendor_name'] ?? '');
+            $data['location'] = trim($_POST['location'] ?? '');
+            $data['reach_estimate'] = trim($_POST['reach_estimate'] ?? '');
+            $data['budget'] = trim($_POST['budget'] ?? '');
+            $data['spend'] = trim($_POST['spend'] ?? '0');
+            $data['revenue_influenced'] = trim($_POST['revenue_influenced'] ?? '0');
+            $data['start_date'] = trim($_POST['start_date'] ?? '');
             $data['end_date'] = !empty($_POST['end_date']) ? trim($_POST['end_date']) : null;
-            $data['status'] = trim($_POST['status']);
+            $data['status'] = trim($_POST['status'] ?? 'active');
+
+            // Handle Proof of Execution File Upload
+            $uploadedPath = $this->handleFileUpload($_FILES['proof_of_execution_file'] ?? null);
+            if ($uploadedPath) {
+                $data['proof_of_execution'] = $uploadedPath;
+            }
 
             // Validate
             if (empty($data['client_id'])) {

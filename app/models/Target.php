@@ -3,7 +3,7 @@
 
 class Target extends Model {
     public const PERIODS = ['daily', 'weekly', 'monthly'];
-    public const STATUSES = ['draft', 'pending_approval', 'approved', 'rejected'];
+    public const STATUSES = ['draft', 'pending_approval', 'approved', 'completed', 'rejected'];
 
     public function getCategories() {
         $this->query('SELECT * FROM target_categories WHERE active = TRUE ORDER BY name ASC');
@@ -104,7 +104,7 @@ class Target extends Model {
     }
 
     public function recomputeAll(): int {
-        $this->query('SELECT target_id FROM targets WHERE status = "approved"');
+        $this->query('SELECT target_id FROM targets WHERE status IN ("approved", "completed")');
         $rows = $this->resultSet();
         $count = 0;
         foreach ($rows as $row) {
@@ -136,6 +136,23 @@ class Target extends Model {
             $this->bind(':pct2', $pct);
             $this->execute();
         }
+
+        // Status State Machine: If completion rate >= 100%, update status to 'completed'
+        if ($items) {
+            $updatedTarget = $this->getTargetById($targetId, null);
+            if ($updatedTarget) {
+                if ($updatedTarget->avg_completion >= 100.0 && $updatedTarget->status === 'approved') {
+                    $this->query('UPDATE targets SET status = "completed" WHERE target_id = :id');
+                    $this->bind(':id', $targetId);
+                    $this->execute();
+                } elseif ($updatedTarget->avg_completion < 100.0 && $updatedTarget->status === 'completed') {
+                    $this->query('UPDATE targets SET status = "approved" WHERE target_id = :id');
+                    $this->bind(':id', $targetId);
+                    $this->execute();
+                }
+            }
+        }
+
         return true;
     }
 
@@ -195,15 +212,31 @@ class Target extends Model {
 
         $sql = null;
         if ($category === 'calls') {
-            $sql = 'SELECT COUNT(*) FROM communications WHERE user_id IN (' . $in['sql'] . ') AND channel = "call" AND happened_at BETWEEN :start AND :end';
+            $sql = 'SELECT (
+                (SELECT COUNT(*) FROM communications WHERE user_id IN (' . $in['sql'] . ') AND channel = "call" AND happened_at BETWEEN :start AND :end)
+                +
+                (SELECT COUNT(*) FROM account_sales_activities asa JOIN employees e ON asa.assigned_rep_employee_id = e.employee_id WHERE e.user_id IN (' . $in['sql'] . ') AND asa.activity_type = "Call" AND asa.created_at BETWEEN :start AND :end)
+            )';
         } elseif ($category === 'emails') {
-            $sql = 'SELECT COUNT(*) FROM communications WHERE user_id IN (' . $in['sql'] . ') AND channel = "email" AND happened_at BETWEEN :start AND :end';
+            $sql = 'SELECT (
+                (SELECT COUNT(*) FROM communications WHERE user_id IN (' . $in['sql'] . ') AND channel = "email" AND happened_at BETWEEN :start AND :end)
+                +
+                (SELECT COUNT(*) FROM account_sales_activities asa JOIN employees e ON asa.assigned_rep_employee_id = e.employee_id WHERE e.user_id IN (' . $in['sql'] . ') AND asa.activity_type = "Email" AND asa.created_at BETWEEN :start AND :end)
+            )';
         } elseif ($category === 'messages') {
             $sql = 'SELECT COUNT(*) FROM communications WHERE user_id IN (' . $in['sql'] . ') AND channel IN ("whatsapp","sms","social") AND happened_at BETWEEN :start AND :end';
         } elseif ($category === 'meetings') {
-            $sql = 'SELECT COUNT(*) FROM meetings WHERE assigned_to_user_id IN (' . $in['sql'] . ') AND type = "meeting" AND status = "completed" AND scheduled_start BETWEEN :start AND :end';
+            $sql = 'SELECT (
+                (SELECT COUNT(*) FROM meetings WHERE assigned_to_user_id IN (' . $in['sql'] . ') AND type = "meeting" AND (status = "completed" OR status = "checked_in") AND scheduled_start BETWEEN :start AND :end)
+                +
+                (SELECT COUNT(*) FROM account_sales_activities asa JOIN employees e ON asa.assigned_rep_employee_id = e.employee_id WHERE e.user_id IN (' . $in['sql'] . ') AND asa.activity_type = "Meeting" AND asa.created_at BETWEEN :start AND :end)
+            )';
         } elseif ($category === 'demos') {
-            $sql = 'SELECT COUNT(*) FROM meetings WHERE assigned_to_user_id IN (' . $in['sql'] . ') AND type = "demo" AND status = "completed" AND scheduled_start BETWEEN :start AND :end';
+            $sql = 'SELECT (
+                (SELECT COUNT(*) FROM meetings WHERE assigned_to_user_id IN (' . $in['sql'] . ') AND type = "demo" AND (status = "completed" OR status = "checked_in") AND scheduled_start BETWEEN :start AND :end)
+                +
+                (SELECT COUNT(*) FROM account_sales_activities asa JOIN employees e ON asa.assigned_rep_employee_id = e.employee_id WHERE e.user_id IN (' . $in['sql'] . ') AND asa.activity_type = "Demo" AND asa.created_at BETWEEN :start AND :end)
+            )';
         } elseif ($category === 'leads') {
             $sql = 'SELECT COUNT(*) FROM leads WHERE assigned_to_user_id IN (' . $in['sql'] . ') AND created_at BETWEEN :start AND :end';
         } elseif ($category === 'conversions') {
@@ -211,7 +244,7 @@ class Target extends Model {
         } elseif ($category === 'revenue') {
             $sql = 'SELECT COALESCE(SUM(lead_value), 0) FROM leads WHERE assigned_to_user_id IN (' . $in['sql'] . ') AND status = "converted" AND COALESCE(converted_at, updated_at) BETWEEN :start AND :end';
         } elseif ($category === 'tasks') {
-            $sql = 'SELECT COUNT(*) FROM tasks WHERE assigned_to_user_id IN (' . $in['sql'] . ') AND review_status = "approved" AND COALESCE(reviewed_at, completed_at, updated_at) BETWEEN :start AND :end';
+            $sql = 'SELECT COUNT(*) FROM tasks WHERE assigned_to_user_id IN (' . $in['sql'] . ') AND (status = "completed" OR review_status = "approved") AND COALESCE(reviewed_at, completed_at, updated_at, start_date) BETWEEN :start AND :end';
         }
 
         if (!$sql) {

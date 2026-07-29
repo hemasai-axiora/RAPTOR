@@ -4,6 +4,19 @@
 // Require config before session setup so environment constants are available.
 require_once dirname(dirname(__FILE__)) . '/app/config/config.php';
 
+// Configure Error Reporting & Logging based on environment
+if (APP_ENV === 'production' || env('DISPLAY_ERRORS', '0') === '0') {
+    ini_set('display_errors', '0');
+    error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED & ~E_WARNING);
+} else {
+    ini_set('display_errors', '1');
+    error_reporting(E_ALL);
+}
+ini_set('log_errors', '1');
+if (defined('APPROOT')) {
+    @ini_set('error_log', APPROOT . '/../logs/php_error.log');
+}
+
 $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
     || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
 

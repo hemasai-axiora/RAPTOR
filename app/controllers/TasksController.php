@@ -68,6 +68,18 @@ class TasksController extends Controller {
                 return;
             }
 
+            if (!empty($startDate) && strtotime($startDate) < strtotime(date('Y-m-d 00:00:00'))) {
+                $_SESSION['task_error'] = 'Start date & time cannot be in the past.';
+                $this->redirect('index.php?route=tasks/index');
+                return;
+            }
+
+            if (strtotime($deadline) < strtotime(date('Y-m-d 00:00:00'))) {
+                $_SESSION['task_error'] = 'Deadline date & time cannot be in the past.';
+                $this->redirect('index.php?route=tasks/index');
+                return;
+            }
+
             if (!empty($startDate) && strtotime($deadline) < strtotime($startDate)) {
                 $_SESSION['task_error'] = 'Deadline cannot be earlier than start date.';
                 $this->redirect('index.php?route=tasks/index');

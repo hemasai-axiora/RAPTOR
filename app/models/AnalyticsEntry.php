@@ -194,14 +194,17 @@ class AnalyticsEntry extends Model {
 
     // Get complete chronological updates history timeline for visible scoping
     public function getCompleteHistory($userIds = null) {
-        $sql = 'SELECT h.*, u.name as updated_by_name, p.name as platform_name, s.profile_name, pt.content as post_content
+        $sql = 'SELECT h.*, u.name as updated_by_name,
+                       COALESCE(p.name, pt.platform, "LinkedIn") as platform_name,
+                       COALESCE(s.profile_name, "Official Account") as profile_name,
+                       COALESCE(pt.post_code, pt.title, pt.content) as post_content
                 FROM analytics_history h
                 JOIN users u ON h.updated_by = u.user_id
-                JOIN platforms p ON h.platform_id = p.platform_id
-                JOIN social_accounts s ON h.account_id = s.account_id
+                LEFT JOIN platforms p ON h.platform_id = p.platform_id
+                LEFT JOIN social_accounts s ON h.account_id = s.account_id
                 LEFT JOIN posts pt ON h.post_id = pt.post_id';
         
-        if ($userIds !== null) {
+        if ($userIds !== null && !empty($userIds)) {
             $sql .= ' WHERE h.updated_by IN (' . implode(',', array_map('intval', $userIds)) . ')';
         }
         

@@ -481,11 +481,11 @@ if (!function_exists('getInitialsBadge')) {
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label text-secondary small fw-semibold">Start Date & Time</label>
-                            <input type="datetime-local" name="start_date" class="form-control">
+                            <input type="datetime-local" name="start_date" class="form-control" min="<?php echo date('Y-m-d\TH:i'); ?>">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-secondary small fw-semibold">Deadline *</label>
-                            <input type="datetime-local" name="deadline" class="form-control" required>
+                            <input type="datetime-local" name="deadline" class="form-control" min="<?php echo date('Y-m-d\TH:i'); ?>" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-secondary small fw-semibold">Priority</label>

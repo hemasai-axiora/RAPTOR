@@ -15,6 +15,9 @@ class TargetsController extends Controller {
     }
 
     public function index() {
+        // Auto-recompute active targets so completion percentages reflect live activity data
+        $this->targetModel->recomputeAll();
+
         $filters = [
             'status' => $_GET['status'] ?? '',
             'period' => $_GET['period'] ?? '',

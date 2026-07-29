@@ -67,7 +67,19 @@ $canFinance = PermissionService::can('invoices', 'edit');
                         ?>
                         <tr style="border-bottom: 1px solid var(--border-color);">
                             <td class="font-weight-bold text-white"><?php echo htmlspecialchars($invoice->invoice_number); ?></td>
-                            <td><?php echo htmlspecialchars($invoice->company_name); ?></td>
+                            <td>
+                                <div class="fw-bold text-white"><?php echo htmlspecialchars($invoice->company_name); ?></div>
+                                <?php if (!empty($invoice->customer_code) || !empty($invoice->lead_code)): ?>
+                                    <div class="d-flex align-items-center gap-1 mt-1">
+                                        <?php if (!empty($invoice->customer_code)): ?>
+                                            <span class="badge bg-primary-subtle text-primary font-monospace px-1.5 py-0.5" style="font-size:0.65rem;" title="Customer ID"><?php echo htmlspecialchars($invoice->customer_code); ?></span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($invoice->lead_code)): ?>
+                                            <span class="badge bg-info-subtle text-info font-monospace px-1.5 py-0.5" style="font-size:0.65rem;" title="Originating Lead ID"><?php echo htmlspecialchars($invoice->lead_code); ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
                             <td class="text-end font-weight-bold text-white"><?php echo ($invoice->currency === 'INR') ? '₹' : '$'; ?><?php echo number_format($invoice->amount, 2); ?></td>
                             <td><?php echo htmlspecialchars($invoice->due_date); ?></td>
                             <td>

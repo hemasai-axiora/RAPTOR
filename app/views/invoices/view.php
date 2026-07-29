@@ -177,6 +177,12 @@
                 <div class="billing-title">Billed To</div>
                 <div class="billing-value">
                     <strong><?php echo htmlspecialchars($invoice->company_name); ?></strong><br>
+                    <?php if (!empty($invoice->customer_code)): ?>
+                        <small class="text-muted font-monospace">Customer Ref: <strong><?php echo htmlspecialchars($invoice->customer_code); ?></strong></small><br>
+                    <?php endif; ?>
+                    <?php if (!empty($invoice->lead_code)): ?>
+                        <small class="text-muted font-monospace">Originating Lead: <strong><?php echo htmlspecialchars($invoice->lead_code); ?></strong></small><br>
+                    <?php endif; ?>
                     <?php echo nl2br(htmlspecialchars($invoice->billing_address ?? 'N/A')); ?><br>
                     Email: <?php echo htmlspecialchars($invoice->client_email ?? 'N/A'); ?>
                 </div>

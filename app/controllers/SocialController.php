@@ -743,4 +743,19 @@ class SocialController extends Controller {
         }
         $this->redirect('index.php?route=auth/login');
     }
+
+    public function logCredentialReveal() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $accountId = (int)($_POST['account_id'] ?? 0);
+            $accountName = trim($_POST['profile_name'] ?? 'Social Account');
+            
+            if ($accountId > 0) {
+                $this->audit("Revealed credentials for social account: {$accountName} (ID #{$accountId})", 'social_account', $accountId);
+            }
+            
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true]);
+            exit();
+        }
+    }
 }

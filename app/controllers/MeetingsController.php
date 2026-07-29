@@ -4,6 +4,8 @@
 class MeetingsController extends Controller {
     private $meetingModel;
     private $leadModel;
+    private $userModel;
+    private $customerModel;
 
     public function __construct() {
         $this->requireAuth();
@@ -15,6 +17,7 @@ class MeetingsController extends Controller {
         $this->meetingModel = $this->model('Meeting');
         $this->leadModel = $this->model('Lead');
         $this->userModel = $this->model('User');
+        $this->customerModel = $this->model('Customer');
     }
 
     public function index() {
@@ -46,6 +49,7 @@ class MeetingsController extends Controller {
             'statuses' => Meeting::STATUSES,
             'users' => $this->getUsers(),
             'leads' => $this->leadModel->getLeads([], $this->visibleUserIds()),
+            'customers' => $this->customerModel->getCustomers(),
         ];
 
         $this->viewWithLayout('meetings/index', 'main', $data);
@@ -69,9 +73,20 @@ class MeetingsController extends Controller {
             ? $_SESSION['user_id']
             : ($_POST['assigned_to_user_id'] ?? $_SESSION['user_id']);
         
-        $leadId = $_POST['lead_id'] ?? null;
-        if ($leadId !== null && $leadId !== '' && !$this->leadModel->getLeadById((int) $leadId, $this->visibleUserIds())) {
-            $leadId = null;
+        $linkType = $_POST['link_type'] ?? 'lead';
+        $leadId = null;
+        $customerId = null;
+
+        if ($linkType === 'lead') {
+            $lId = $_POST['lead_id'] ?? null;
+            if ($lId !== null && $lId !== '' && $this->leadModel->getLeadById((int) $lId, $this->visibleUserIds())) {
+                $leadId = (int) $lId;
+            }
+        } elseif ($linkType === 'customer') {
+            $cId = $_POST['customer_id'] ?? null;
+            if ($cId !== null && $cId !== '' && $this->customerModel->getCustomerById((int) $cId)) {
+                $customerId = (int) $cId;
+            }
         }
 
         $title = strip_tags(trim($_POST['title'] ?? ''));
@@ -79,6 +94,7 @@ class MeetingsController extends Controller {
 
         $id = $this->meetingModel->add([
             'lead_id' => $leadId,
+            'customer_id' => $customerId,
             'assigned_to_user_id' => $assigned,
             'created_by_user_id' => $_SESSION['user_id'],
             'type' => $_POST['type'] ?? 'meeting',
@@ -100,11 +116,16 @@ class MeetingsController extends Controller {
                 $recipients[] = $owner->email;
             }
 
-            // 2. The Lead
+            // 2. The Lead or Customer
             if ($leadId) {
                 $lead = $this->leadModel->getLeadById((int) $leadId, $this->visibleUserIds());
                 if ($lead && !empty($lead->email)) {
                     $recipients[] = $lead->email;
+                }
+            } elseif ($customerId) {
+                $customer = $this->customerModel->getCustomerById((int) $customerId);
+                if ($customer && !empty($customer->email)) {
+                    $recipients[] = $customer->email;
                 }
             }
 

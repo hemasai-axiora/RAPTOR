@@ -10,10 +10,16 @@ $statusTone = [
         <div class="pulse-card mb-4">
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
                 <div>
-                    <h4 class="text-white mb-1"><?php echo htmlspecialchars($lead->first_name . ' ' . ($lead->last_name ?? '')); ?></h4>
+                    <div class="mb-1">
+                        <span class="badge bg-dark border border-secondary text-primary font-monospace me-2" style="font-size:0.85rem;"><?php echo htmlspecialchars($lead->lead_code ?: ('LD-' . date('Y') . '-' . sprintf('%05d', $lead->lead_id))); ?></span>
+                    </div>
+                    <h4 class="text-white mb-1"><?php echo htmlspecialchars(trim($lead->first_name . ' ' . ($lead->last_name ?? ''))); ?></h4>
                     <div class="text-secondary"><?php echo htmlspecialchars($lead->lead_company_name ?: $lead->client_company_name ?: 'Individual lead'); ?></div>
                 </div>
                 <div class="d-flex gap-2">
+                    <?php if ($lead->status === 'converted'): ?>
+                        <a href="index.php?route=customers/addFromLead/<?php echo $lead->lead_id; ?>" class="btn btn-success btn-sm"><i class="fa-solid fa-user-check me-2"></i>Convert to Customer</a>
+                    <?php endif; ?>
                     <a href="index.php?route=leads/edit/<?php echo $lead->lead_id; ?>" class="btn btn-outline-light btn-sm"><i class="fa-solid fa-user-pen me-2"></i>Edit</a>
                     <a href="index.php?route=leads/index" class="btn btn-outline-secondary btn-sm">Back</a>
                 </div>
@@ -25,7 +31,7 @@ $statusTone = [
                     <?php foreach ($duplicates as $dup): ?>
                         <div>
                             <a class="text-warning" href="index.php?route=leads/view/<?php echo $dup->lead_id; ?>">
-                                <?php echo htmlspecialchars($dup->first_name . ' ' . ($dup->last_name ?? '')); ?>
+                                <?php echo htmlspecialchars(trim($dup->first_name . ' ' . ($dup->last_name ?? ''))); ?>
                             </a>
                             <?php echo htmlspecialchars(' matches by phone/email'); ?>
                         </div>
@@ -39,8 +45,8 @@ $statusTone = [
                     <span class="badge bg-<?php echo $statusTone; ?>-subtle text-<?php echo $statusTone; ?> border border-<?php echo $statusTone; ?>-subtle"><?php echo strtoupper($lead->status); ?></span>
                 </div>
                 <div class="col-sm-6 col-xl-4">
-                    <div class="text-secondary small">Owner</div>
-                    <div class="text-white"><?php echo htmlspecialchars($lead->assignee_name ?? 'Unassigned'); ?></div>
+                    <div class="text-secondary small">Owner (Employee)</div>
+                    <div class="text-white"><?php echo htmlspecialchars($lead->owner_employee_name ?: $lead->assignee_name ?: 'Unassigned'); ?><?php echo !empty($lead->owner_job_title) ? ' <span class="text-secondary small">(' . htmlspecialchars($lead->owner_job_title) . ')</span>' : ''; ?></div>
                 </div>
                 <div class="col-sm-6 col-xl-4">
                     <div class="text-secondary small">Team</div>
@@ -93,19 +99,22 @@ $statusTone = [
         </div>
 
         <div class="pulse-card">
-            <h5 class="text-white mb-3">Stage Move</h5>
-            <div class="d-flex flex-wrap gap-2">
-                <?php foreach ($statuses as $status): ?>
-                    <form action="index.php?route=leads/move/<?php echo $lead->lead_id; ?>" method="POST">
-                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
-                        <input type="hidden" name="status" value="<?php echo $status; ?>">
-                        <input type="hidden" name="return" value="leads/view/<?php echo $lead->lead_id; ?>">
-                        <button class="btn btn-sm <?php echo $lead->status === $status ? 'btn-primary' : 'btn-outline-light'; ?>" <?php echo $lead->status === $status ? 'disabled' : ''; ?>>
-                            <?php echo strtoupper($status); ?>
-                        </button>
-                    </form>
-                <?php endforeach; ?>
-            </div>
+            <h5 class="text-white mb-3">Advance Stage</h5>
+            <?php
+                $validNextStages = Lead::getValidNextStages($lead->status);
+            ?>
+            <?php if (!empty($validNextStages)): ?>
+                <div class="d-flex flex-wrap gap-2">
+                    <?php foreach ($validNextStages as $targetStage): ?>
+                        <a href="index.php?route=leads/pipeline" class="btn btn-sm <?php echo $targetStage === 'lost' ? 'btn-outline-danger' : 'btn-primary'; ?>">
+                            <i class="fa-solid <?php echo $targetStage === 'lost' ? 'fa-circle-xmark' : 'fa-circle-right'; ?> me-1"></i>
+                            Move to <?php echo strtoupper($targetStage); ?> (via Pipeline)
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="text-secondary small">This lead is in a terminal stage (<strong><?php echo strtoupper($lead->status); ?></strong>). No further stage moves are permitted.</div>
+            <?php endif; ?>
         </div>
 
         <div class="pulse-card mt-4">
@@ -244,15 +253,27 @@ $statusTone = [
         </div>
 
         <div class="pulse-card mb-4">
-            <h5 class="text-white mb-3">Status History</h5>
+            <h5 class="text-white mb-3"><i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>Stage History Audit Trail</h5>
             <?php if (empty($status_history)): ?>
-                <div class="text-secondary">No status history yet.</div>
+                <div class="text-secondary small">No status history logged yet.</div>
             <?php endif; ?>
             <?php foreach ($status_history as $item): ?>
-                <div class="border-bottom border-secondary border-opacity-10 pb-3 mb-3">
-                    <div class="text-white"><?php echo htmlspecialchars(strtoupper($item->from_status ?: 'created') . ' -> ' . strtoupper($item->to_status)); ?></div>
-                    <div class="text-secondary small"><?php echo htmlspecialchars($item->changed_by_name ?? 'System'); ?> - <?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($item->changed_at))); ?></div>
-                    <?php if ($item->note): ?><div class="text-secondary small"><?php echo htmlspecialchars($item->note); ?></div><?php endif; ?>
+                <div class="border-bottom border-secondary border-opacity-25 pb-3 mb-3">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="badge bg-secondary text-uppercase" style="font-size:0.7rem;"><?php echo htmlspecialchars(strtoupper($item->from_status ?: 'created')); ?></span>
+                        <i class="fa-solid fa-arrow-right text-primary" style="font-size:0.75rem;"></i>
+                        <span class="badge bg-<?php echo $item->to_status === 'lost' ? 'danger' : ($item->to_status === 'converted' ? 'success' : 'primary'); ?> text-uppercase" style="font-size:0.7rem;"><?php echo htmlspecialchars(strtoupper($item->to_status)); ?></span>
+                    </div>
+                    <div class="text-secondary small mb-1">
+                        <i class="fa-solid fa-user me-1 text-info"></i><?php echo htmlspecialchars($item->changed_by_name ?? 'System'); ?>
+                        <span class="mx-1">•</span>
+                        <i class="fa-solid fa-clock me-1"></i><?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($item->changed_at))); ?>
+                    </div>
+                    <?php if (!empty($item->note)): ?>
+                        <div class="bg-dark bg-opacity-50 p-2 rounded text-white small border border-secondary border-opacity-25 mt-1">
+                            <i class="fa-solid fa-quote-left me-1 text-secondary"></i><?php echo htmlspecialchars($item->note); ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
             <?php endforeach; ?>
         </div>

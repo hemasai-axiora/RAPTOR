@@ -8,11 +8,13 @@ class Meeting extends Model {
     public function getMeetings(array $filters = [], ?array $visibleUserIds = null) {
         [$where, $params] = $this->buildWhere($filters, $visibleUserIds);
         $this->query('SELECT m.*, u.name AS assignee_name, cu.name AS creator_name,
-                             l.first_name, l.last_name, l.company_name AS lead_company_name
+                             l.first_name AS lead_first_name, l.last_name AS lead_last_name, l.lead_code, l.company_name AS lead_company_name,
+                             c.company_name AS customer_company_name, c.customer_code, c.first_name AS customer_first_name
                       FROM meetings m
                       JOIN users u ON m.assigned_to_user_id = u.user_id
                       LEFT JOIN users cu ON m.created_by_user_id = cu.user_id
                       LEFT JOIN leads l ON m.lead_id = l.lead_id
+                      LEFT JOIN customers c ON m.customer_id = c.customer_id
                       ' . $where . '
                       ORDER BY m.scheduled_start ASC, m.meeting_id ASC');
         $this->bindParams($params);
@@ -21,6 +23,10 @@ class Meeting extends Model {
 
     public function getForLead(int $leadId) {
         return $this->getMeetings(['lead_id' => $leadId], null);
+    }
+
+    public function getForCustomer(int $customerId) {
+        return $this->getMeetings(['customer_id' => $customerId], null);
     }
 
     public function getById(int $id, ?array $visibleUserIds = null) {
@@ -40,11 +46,12 @@ class Meeting extends Model {
 
     public function add(array $data) {
         $this->query('INSERT INTO meetings
-            (lead_id, assigned_to_user_id, created_by_user_id, type, title, scheduled_start,
+            (lead_id, customer_id, assigned_to_user_id, created_by_user_id, type, title, scheduled_start,
              scheduled_end, location, status)
             VALUES
-            (:lead_id, :assigned, :creator, :type, :title, :start, :end, :location, "scheduled")');
+            (:lead_id, :customer_id, :assigned, :creator, :type, :title, :start, :end, :location, "scheduled")');
         $this->bind(':lead_id', $this->nullableInt($data['lead_id'] ?? null));
+        $this->bind(':customer_id', $this->nullableInt($data['customer_id'] ?? null));
         $this->bind(':assigned', (int) $data['assigned_to_user_id']);
         $this->bind(':creator', $this->nullableInt($data['created_by_user_id'] ?? null));
         $this->bind(':type', $this->valid($data['type'] ?? 'meeting', self::TYPES, 'meeting'));
@@ -150,7 +157,7 @@ class Meeting extends Model {
             }
         }
 
-        foreach (['meeting_id', 'lead_id', 'assigned_to_user_id', 'type', 'status'] as $field) {
+        foreach (['meeting_id', 'lead_id', 'customer_id', 'assigned_to_user_id', 'type', 'status'] as $field) {
             if (isset($filters[$field]) && $filters[$field] !== '') {
                 $where[] = 'm.' . $field . ' = :' . $field;
                 $params[':' . $field] = $filters[$field];

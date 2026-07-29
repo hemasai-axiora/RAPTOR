@@ -1,6 +1,6 @@
 <?php
 /**
- * LeavesController — Handles employee leave applications, history, calendar, and approvals workflow.
+ * LeavesController — Handles employee leave applications, history, calendar, approvals workflow, and admin leave balances.
  */
 class LeavesController extends Controller {
     private $leaveModel;
@@ -22,15 +22,19 @@ class LeavesController extends Controller {
         $this->leaveModel->ensureLeaveBalanceExists($userId);
 
         $balances = $this->leaveModel->getLeaveBalances($userId);
+        $detailedBalances = $this->leaveModel->getDetailedLeaveBalances($userId, 2026);
+        $transactions = $this->leaveModel->getLeaveTransactions($userId, 20);
         $requests = $this->leaveModel->getLeaveRequests($userId);
         $holidays = $this->leaveModel->getHolidays();
 
         $data = [
-            'title'      => 'My Leaves | Raptor CRM',
-            'active_tab' => 'leaves',
-            'balances'   => $balances,
-            'requests'   => $requests,
-            'holidays'   => $holidays
+            'title'             => 'My Leaves | Raptor CRM',
+            'active_tab'        => 'leaves',
+            'balances'          => $balances,
+            'detailed_balances' => $detailedBalances,
+            'transactions'      => $transactions,
+            'requests'          => $requests,
+            'holidays'          => $holidays
         ];
         $this->viewWithLayout('leaves/index', 'main', $data);
     }
@@ -115,6 +119,10 @@ class LeavesController extends Controller {
             ];
 
             if ($this->leaveModel->applyLeave($applyData)) {
+                $db = Database::getInstance()->getConnection();
+                $lastId = (int)$db->lastInsertId();
+                $this->leaveModel->holdPendingLeave($userId, $leaveType, $days, $lastId);
+
                 // Find reporting manager to notify them
                 $profile = $this->hrmsModel->getProfileByUserId($userId);
                 if ($profile && $profile->reporting_manager_id) {
@@ -143,7 +151,11 @@ class LeavesController extends Controller {
         $userId = (int)$_SESSION['user_id'];
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if ($this->leaveModel->cancelLeaveRequest($id, $userId)) {
+            $req = $this->leaveModel->getLeaveRequestById($id);
+            if ($req && $this->leaveModel->cancelLeaveRequest($id, $userId)) {
+                $days = $req->half_day ? 0.5 : (int)round((strtotime($req->to_date) - strtotime($req->from_date)) / 86400) + 1;
+                $this->leaveModel->releasePendingLeaveHold($req->user_id, $req->leave_type, $days, $id);
+
                 $this->audit("Cancelled pending leave request #{$id}", 'leave_requests', $id);
                 $_SESSION['leaves_success'] = 'Leave request has been cancelled.';
             } else {
@@ -198,7 +210,6 @@ class LeavesController extends Controller {
                     $this->leaveModel->updateLeaveRequestStatus($id, 'pending_hr');
                     
                     // Notify HR
-                    // Fetch all HR users to notify them
                     $db = Database::getInstance()->getConnection();
                     $stmt = $db->query("SELECT user_id FROM users u JOIN roles r ON u.role_id = r.role_id WHERE r.role_name = 'hr'");
                     foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $hrId) {
@@ -224,9 +235,10 @@ class LeavesController extends Controller {
                     
                     $this->leaveModel->addLeaveApproval($id, $userId, $stage, 'approved', $comments, $ip);
                     
-                    // Deduct balance
+                    // Deduct balance and approve balance hold -> consumption
                     $days = $req->half_day ? 0.5 : (int)round((strtotime($req->to_date) - strtotime($req->from_date)) / 86400) + 1;
                     $this->leaveModel->deductLeaveBalance($req->user_id, $req->leave_type, $days);
+                    $this->leaveModel->approveLeaveBalanceHold($req->user_id, $req->leave_type, $days, $id, $userId);
                     
                     $this->leaveModel->updateLeaveRequestStatus($id, 'approved');
 
@@ -277,6 +289,10 @@ class LeavesController extends Controller {
             $this->leaveModel->addLeaveApproval($id, $userId, $stage, 'rejected', $comments, $ip);
             $this->leaveModel->updateLeaveRequestStatus($id, 'rejected');
 
+            // Release pending hold
+            $days = $req->half_day ? 0.5 : (int)round((strtotime($req->to_date) - strtotime($req->from_date)) / 86400) + 1;
+            $this->leaveModel->releasePendingLeaveHold($req->user_id, $req->leave_type, $days, $id);
+
             // Notify employee
             $this->notificationModel->addNotification([
                 'user_id' => $req->user_id,
@@ -305,5 +321,134 @@ class LeavesController extends Controller {
             'leaves'     => $leaves
         ];
         $this->viewWithLayout('leaves/calendar', 'main', $data);
+    }
+
+    /** Admin View: Consolidated Leave Balances List (pivoted per employee) */
+    public function balances() {
+        $role = $_SESSION['user_role'];
+        if (!in_array($role, ['admin', 'hr', 'manager'], true)) {
+            $this->redirect('index.php?route=leaves/index');
+            return;
+        }
+
+        $filters = [
+            'search'      => trim($_GET['search'] ?? ''),
+            'department'  => trim($_GET['department'] ?? ''),
+            'leave_type'  => trim($_GET['leave_type'] ?? ''),
+            'leave_year'  => (int)($_GET['leave_year'] ?? 2026),
+            'low_balance' => isset($_GET['low_balance']) ? 1 : 0
+        ];
+
+        $pivotedBalances = $this->leaveModel->getAllDetailedLeaveBalances($filters);
+
+        // Fetch users list for manual adjustment modal
+        $db = Database::getInstance()->getConnection();
+        $stmtUsers = $db->query("SELECT user_id, name, email FROM users WHERE status = 'active' ORDER BY name ASC");
+        $allUsers = $stmtUsers->fetchAll(PDO::FETCH_OBJ);
+
+        // Fetch departments list
+        $stmtDepts = $db->query("SELECT DISTINCT TRIM(department) AS dept FROM employees WHERE department IS NOT NULL AND department != '' ORDER BY dept ASC");
+        $departments = array_values(array_filter($stmtDepts->fetchAll(PDO::FETCH_COLUMN)));
+
+        $data = [
+            'title'            => 'Employee Leave Balances | Raptor CRM',
+            'active_tab'       => 'leave_balances',
+            'pivoted_balances' => $pivotedBalances,
+            'filters'          => $filters,
+            'all_users'        => $allUsers,
+            'departments'      => $departments,
+            'success_msg'      => $_SESSION['leaves_success'] ?? '',
+            'error_msg'        => $_SESSION['leaves_error'] ?? ''
+        ];
+        unset($_SESSION['leaves_success'], $_SESSION['leaves_error']);
+
+        $this->viewWithLayout('leaves/balances', 'main', $data);
+    }
+
+    /** Manual Balance Adjustment (Admin / HR only) */
+    public function adjustBalance() {
+        $role = $_SESSION['user_role'];
+        if (!in_array($role, ['admin', 'hr'], true)) {
+            $_SESSION['leaves_error'] = 'Unauthorized action.';
+            $this->redirect('index.php?route=leaves/balances');
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+                $_SESSION['leaves_error'] = 'Security validation failed (CSRF token mismatch).';
+                $this->redirect('index.php?route=leaves/balances');
+                return;
+            }
+
+            $userId = (int)($_POST['target_user_id'] ?? 0);
+            $leaveType = trim($_POST['leave_type_name'] ?? '');
+            $txType = trim($_POST['transaction_type'] ?? 'Manual Adjustment');
+            $days = (float)($_POST['days'] ?? 0);
+            $remarks = trim($_POST['remarks'] ?? '');
+
+            if ($userId <= 0 || empty($leaveType) || $days == 0 || empty($remarks)) {
+                $_SESSION['leaves_error'] = 'All fields (target user, leave type, days, and mandatory remarks) are required.';
+                $this->redirect('index.php?route=leaves/balances');
+                return;
+            }
+
+            $adminUserId = (int)$_SESSION['user_id'];
+            if ($this->leaveModel->adjustLeaveBalance($userId, $leaveType, $txType, $days, $adminUserId, $remarks)) {
+                $this->audit("Adjusted leave balance for User #{$userId}: {$txType} {$days} days of {$leaveType}", 'employee_leave_balances');
+                $_SESSION['leaves_success'] = 'Leave balance adjusted successfully.';
+            } else {
+                $_SESSION['leaves_error'] = 'Failed to adjust leave balance.';
+            }
+        }
+        $this->redirect('index.php?route=leaves/balances');
+    }
+
+    /** Export Leave Balances CSV */
+    public function exportBalancesCsv() {
+        $role = $_SESSION['user_role'];
+        if (!in_array($role, ['admin', 'hr', 'manager'], true)) {
+            $this->redirect('index.php?route=leaves/index');
+            return;
+        }
+
+        $filters = [
+            'search'      => trim($_GET['search'] ?? ''),
+            'department'  => trim($_GET['department'] ?? ''),
+            'leave_type'  => trim($_GET['leave_type'] ?? ''),
+            'leave_year'  => (int)($_GET['leave_year'] ?? 2026),
+            'low_balance' => isset($_GET['low_balance']) ? 1 : 0
+        ];
+
+        $balances = $this->leaveModel->getAllDetailedLeaveBalances($filters);
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=employee_leave_balances_2026.csv');
+
+        $output = fopen('php://output', 'w');
+        fputcsv($output, ['Employee Code', 'Employee Name', 'Email', 'Department', 'Casual Leave (Avail/Alloc)', 'Sick Leave (Avail/Alloc)', 'Earned Leave (Avail/Alloc)', 'Comp-Off (Avail/Alloc)', 'Total Available Days', 'Leave Year']);
+
+        foreach ($balances as $b) {
+            $cl = $b->balances['Casual Leave'] ?? null;
+            $sl = $b->balances['Sick Leave'] ?? null;
+            $el = $b->balances['Earned Leave'] ?? null;
+            $co = $b->balances['Comp-Off'] ?? null;
+
+            fputcsv($output, [
+                $b->emp_code,
+                $b->employee_name,
+                $b->email,
+                $b->department,
+                $cl ? ($cl->available_days . '/' . $cl->allocated_days) : '0/0',
+                $sl ? ($sl->available_days . '/' . $sl->allocated_days) : '0/0',
+                $el ? ($el->available_days . '/' . $el->allocated_days) : '0/0',
+                $co ? ($co->available_days . '/' . $co->allocated_days) : '0/0',
+                $b->total_available,
+                $b->leave_year
+            ]);
+        }
+
+        fclose($output);
+        exit();
     }
 }

@@ -242,6 +242,61 @@ $earned = number_format((float)($data['balances']->earned_leave ?? 15.00), 1);
                 </div>
             </div>
 
+            <!-- Leave Transactions & Audit Ledger -->
+            <div class="leave-history-card mb-4">
+                <div class="leave-section-header">
+                    <i class="fa-solid fa-list-check"></i>
+                    <h5>Leave Ledger &amp; Balance Transaction History</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table leave-table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Date &amp; Time</th>
+                                <th>Leave Type</th>
+                                <th>Transaction Type</th>
+                                <th>Days</th>
+                                <th>Remarks &amp; References</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($data['transactions'])): ?>
+                                <tr>
+                                    <td colspan="5" class="text-center py-3" style="color: #64748B;">No transactions recorded.</td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($data['transactions'] as $tx): ?>
+                                    <tr>
+                                        <td><?php echo date('M d, Y H:i', strtotime($tx->created_at)); ?></td>
+                                        <td class="fw-bold"><?php echo htmlspecialchars($tx->leave_type_name); ?></td>
+                                        <td>
+                                            <?php 
+                                                $badgeClass = match($tx->transaction_type) {
+                                                    'Consumption'        => 'bg-danger text-white',
+                                                    'Pending Hold'       => 'bg-warning text-dark',
+                                                    'Pending Release'    => 'bg-info text-dark',
+                                                    'Accrual'            => 'bg-success text-white',
+                                                    'Manual Adjustment' => 'bg-primary text-white',
+                                                    default              => 'bg-secondary text-white'
+                                                };
+                                            ?>
+                                            <span class="badge <?php echo $badgeClass; ?>"><?php echo htmlspecialchars($tx->transaction_type); ?></span>
+                                        </td>
+                                        <td class="fw-bold"><?php echo number_format($tx->days, 1); ?>d</td>
+                                        <td class="small text-muted">
+                                            <?php echo htmlspecialchars($tx->remarks ?? ''); ?>
+                                            <?php if ($tx->reference_leave_request_id): ?>
+                                                <span class="badge bg-light text-dark border ms-1">Req #<?php echo $tx->reference_leave_request_id; ?></span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Holiday List -->
             <div class="leave-holiday-card">
                 <div class="leave-section-header">

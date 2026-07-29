@@ -15,7 +15,12 @@ class App {
             
             // Format controller name (e.g. auth -> AuthController)
             if (isset($parts[0])) {
-                $controllerName = ucfirst($parts[0]) . 'Controller';
+                $rawName = $parts[0];
+                $studlyName = str_replace(' ', '', ucwords(str_replace(['_', '-'], ' ', $rawName)));
+                $controllerName = $studlyName . 'Controller';
+                if (!file_exists(APPROOT . '/controllers/' . $controllerName . '.php')) {
+                    $controllerName = ucfirst($rawName) . 'Controller';
+                }
                 if (file_exists(APPROOT . '/controllers/' . $controllerName . '.php')) {
                     $this->currentController = $controllerName;
                     unset($parts[0]);
@@ -29,8 +34,12 @@ class App {
             // Check for method name
             if (isset($parts[1])) {
                 $methodName = $parts[1];
+                $camelMethod = lcfirst(str_replace(' ', '', ucwords(str_replace('-', ' ', $methodName))));
                 if ($methodName !== '' && $methodName[0] !== '_' && is_callable([$this->currentController, $methodName])) {
                     $this->currentMethod = $methodName;
+                    unset($parts[1]);
+                } elseif ($camelMethod !== '' && is_callable([$this->currentController, $camelMethod])) {
+                    $this->currentMethod = $camelMethod;
                     unset($parts[1]);
                 }
             }

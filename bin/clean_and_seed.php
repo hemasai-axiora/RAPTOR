@@ -305,6 +305,14 @@ foreach ($platformsToSeed as [$pName, $pIcon, $profileName, $profileUrl]) {
 }
 echo "Seeded 13 social media platforms.\n";
 
+// Seed sample lead
+$leadCheck = $db->query("SELECT lead_id FROM leads LIMIT 1")->fetchColumn();
+if (!$leadCheck) {
+    $adminUserId = $db->query("SELECT user_id FROM users WHERE email = 'admin@raptor.local' LIMIT 1")->fetchColumn() ?: 1;
+    $db->exec("INSERT INTO leads (client_id, assigned_to_user_id, first_name, last_name, company_name, email, phone, status, lead_quality, priority, probability, lead_value, lead_source)
+               VALUES ($clientId, $adminUserId, 'Acme', 'Corporation', 'Acme Corp', 'info@acme.test', '555-0199', 'new', 'warm', 'medium', 50.00, 10000.00, 'Direct')");
+}
+
 // Enable foreign key checks back
 $db->exec("SET FOREIGN_KEY_CHECKS = 1;");
 echo "Database seeding completed successfully!\n";

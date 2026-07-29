@@ -26,20 +26,39 @@ class Invoice extends Model {
         }
     }
 
-    // Get all invoices with client name
+    public function generateInvoiceNumber(): string {
+        $year = date('Y');
+        $this->query('SELECT MAX(invoice_id) AS max_id FROM invoices');
+        $row = $this->single();
+        $nextId = ($row && $row->max_id) ? ((int) $row->max_id + 1) : 1;
+        return sprintf('INV-%s-%05d', $year, $nextId);
+    }
+
+    // Get all invoices with client & customer traceability
     public function getInvoices() {
-        $this->query('SELECT i.*, c.company_name 
+        $this->query('SELECT i.*, 
+                             COALESCE(cust.company_name, c.company_name, cust.first_name, "Independent Customer") AS company_name,
+                             cust.customer_code,
+                             l.lead_code
                       FROM invoices i 
-                      JOIN clients c ON i.client_id = c.client_id 
+                      LEFT JOIN clients c ON i.client_id = c.client_id 
+                      LEFT JOIN customers cust ON i.customer_id = cust.customer_id
+                      LEFT JOIN leads l ON i.lead_id = l.lead_id
                       ORDER BY i.created_at DESC');
         return $this->resultSet();
     }
 
     // Get invoice by ID
     public function getInvoiceById($id) {
-        $this->query('SELECT i.*, c.company_name, c.email as client_email 
+        $this->query('SELECT i.*, 
+                             COALESCE(cust.company_name, c.company_name, cust.first_name, "Independent Customer") AS company_name,
+                             COALESCE(cust.email, c.email) as client_email,
+                             cust.customer_code,
+                             l.lead_code
                       FROM invoices i 
-                      JOIN clients c ON i.client_id = c.client_id 
+                      LEFT JOIN clients c ON i.client_id = c.client_id 
+                      LEFT JOIN customers cust ON i.customer_id = cust.customer_id
+                      LEFT JOIN leads l ON i.lead_id = l.lead_id
                       WHERE i.invoice_id = :id');
         $this->bind(':id', $id);
         return $this->single();
@@ -47,10 +66,14 @@ class Invoice extends Model {
 
     // Add invoice
     public function addInvoice($data) {
-        $this->query('INSERT INTO invoices (client_id, invoice_number, amount, status, due_date, billing_address, currency, conversion_rate, sender_details) 
-                      VALUES (:client_id, :invoice_number, :amount, :status, :due_date, :billing_address, :currency, :conversion_rate, :sender_details)');
+        $this->query('INSERT INTO invoices (client_id, customer_id, customer_code, lead_id, lead_code, invoice_number, amount, status, due_date, billing_address, currency, conversion_rate, sender_details) 
+                      VALUES (:client_id, :customer_id, :customer_code, :lead_id, :lead_code, :invoice_number, :amount, :status, :due_date, :billing_address, :currency, :conversion_rate, :sender_details)');
         
-        $this->bind(':client_id', $data['client_id']);
+        $this->bind(':client_id', $data['client_id'] ?: null);
+        $this->bind(':customer_id', $data['customer_id'] ?: null);
+        $this->bind(':customer_code', $data['customer_code'] ?? null);
+        $this->bind(':lead_id', $data['lead_id'] ?: null);
+        $this->bind(':lead_code', $data['lead_code'] ?? null);
         $this->bind(':invoice_number', $data['invoice_number']);
         $this->bind(':amount', $data['amount']);
         $this->bind(':status', $data['status']);

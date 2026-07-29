@@ -83,9 +83,23 @@
                     <div class="text-secondary small mb-2"><i class="fa-solid fa-location-dot me-1"></i><?php echo htmlspecialchars($meeting->location ?: 'No location'); ?></div>
                     <div class="text-secondary small mb-3"><i class="fa-regular fa-user me-1"></i><?php echo htmlspecialchars($meeting->assignee_name); ?></div>
                     <?php if ($meeting->lead_id): ?>
-                        <a class="text-white small" href="index.php?route=leads/view/<?php echo $meeting->lead_id; ?>">
-                            <?php echo htmlspecialchars(trim($meeting->first_name . ' ' . ($meeting->last_name ?? ''))); ?>
-                        </a>
+                        <div class="mt-2 mb-2">
+                            <a class="text-white small text-decoration-none" href="index.php?route=leads/view/<?php echo $meeting->lead_id; ?>">
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle me-1">
+                                    <i class="fa-solid fa-bullseye me-1"></i><?php echo htmlspecialchars($meeting->lead_code ?: 'LEAD'); ?>
+                                </span>
+                                <?php echo htmlspecialchars(trim(($meeting->lead_first_name ?? '') . ' ' . ($meeting->lead_last_name ?? '')) ?: $meeting->lead_company_name); ?>
+                            </a>
+                        </div>
+                    <?php elseif (!empty($meeting->customer_id)): ?>
+                        <div class="mt-2 mb-2">
+                            <a class="text-white small text-decoration-none" href="index.php?route=customers/detail/<?php echo $meeting->customer_id; ?>">
+                                <span class="badge bg-success-subtle text-success border border-success-subtle me-1">
+                                    <i class="fa-solid fa-building me-1"></i><?php echo htmlspecialchars($meeting->customer_code ?: 'CUST'); ?>
+                                </span>
+                                <?php echo htmlspecialchars($meeting->customer_company_name ?: $meeting->customer_first_name); ?>
+                            </a>
+                        </div>
                     <?php endif; ?>
 
                     <?php if ((int) $meeting->assigned_to_user_id === (int) $_SESSION['user_id'] && !in_array($meeting->status, ['completed', 'cancelled'], true)): ?>
@@ -141,13 +155,50 @@
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label text-secondary">Lead</label>
-                        <select name="lead_id" class="form-select bg-dark border-secondary text-white">
-                            <option value="">No linked lead</option>
-                            <?php foreach ($leads as $lead): ?>
-                                <option value="<?php echo $lead->lead_id; ?>"><?php echo htmlspecialchars($lead->first_name . ' ' . ($lead->last_name ?? '') . ' - ' . ($lead->lead_company_name ?: $lead->client_company_name ?: 'Individual')); ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <label class="form-label text-secondary font-weight-bold">Link Meeting To *</label>
+                        <div class="btn-group w-100 mb-2" role="group">
+                            <input type="radio" class="btn-check" name="link_type" id="link_type_lead" value="lead" checked onchange="toggleMeetingLinkType('lead')">
+                            <label class="btn btn-outline-primary btn-sm" for="link_type_lead"><i class="fa-solid fa-bullseye me-1"></i> Lead</label>
+
+                            <input type="radio" class="btn-check" name="link_type" id="link_type_customer" value="customer" onchange="toggleMeetingLinkType('customer')">
+                            <label class="btn btn-outline-primary btn-sm" for="link_type_customer"><i class="fa-solid fa-building me-1"></i> Customer</label>
+
+                            <input type="radio" class="btn-check" name="link_type" id="link_type_none" value="none" onchange="toggleMeetingLinkType('none')">
+                            <label class="btn btn-outline-secondary btn-sm" for="link_type_none"><i class="fa-solid fa-ban me-1"></i> None</label>
+                        </div>
+
+                        <!-- Lead Select -->
+                        <div id="lead-select-container">
+                            <select name="lead_id" id="meeting_lead_id" class="form-select bg-dark border-secondary text-white">
+                                <option value="">-- Select Linked Lead --</option>
+                                <?php foreach ($leads as $lead): ?>
+                                    <?php 
+                                        $leadName = trim($lead->first_name . ' ' . ($lead->last_name ?? ''));
+                                        $leadComp = $lead->lead_company_name ?: $lead->client_company_name ?: 'Individual';
+                                    ?>
+                                    <option value="<?php echo $lead->lead_id; ?>">
+                                        <?php echo htmlspecialchars(($lead->lead_code ? $lead->lead_code . ' - ' : '') . $leadName . ' (' . $leadComp . ')'); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- Customer Select -->
+                        <div id="customer-select-container" class="d-none">
+                            <select name="customer_id" id="meeting_customer_id" class="form-select bg-dark border-secondary text-white">
+                                <option value="">-- Select Linked Customer --</option>
+                                <?php if (!empty($customers)): ?>
+                                    <?php foreach ($customers as $cust): ?>
+                                        <?php 
+                                            $custName = $cust->company_name ?: ($cust->first_name . ' ' . ($cust->last_name ?? ''));
+                                        ?>
+                                        <option value="<?php echo $cust->customer_id; ?>">
+                                            <?php echo htmlspecialchars(($cust->customer_code ? $cust->customer_code . ' - ' : '') . $custName); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </select>
+                        </div>
                     </div>
                     <?php if (!Policy::isEmployee()): ?>
                         <div class="mb-3">
@@ -193,6 +244,23 @@
 </div>
 
 <script>
+function toggleMeetingLinkType(type) {
+    if (type === 'lead') {
+        $('#lead-select-container').removeClass('d-none');
+        $('#customer-select-container').addClass('d-none');
+        $('#meeting_customer_id').val('');
+    } else if (type === 'customer') {
+        $('#customer-select-container').removeClass('d-none');
+        $('#lead-select-container').addClass('d-none');
+        $('#meeting_lead_id').val('');
+    } else {
+        $('#lead-select-container').addClass('d-none');
+        $('#customer-select-container').addClass('d-none');
+        $('#meeting_lead_id').val('');
+        $('#meeting_customer_id').val('');
+    }
+}
+
 $(function() {
     $('.meeting-check-form').on('submit', function(e) {
         var form = this;

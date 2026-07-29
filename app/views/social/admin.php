@@ -303,6 +303,7 @@ body.dark-mode .social-nav-pills .nav-link:hover,
                                         </td>
                                         <td>
                                             <button type="button" class="btn btn-sm btn-outline-info view-creds-btn" 
+                                                    data-id="<?php echo $acc->account_id; ?>"
                                                     data-profile="<?php echo $profName; ?>"
                                                     data-platform="<?php echo $platName; ?>"
                                                     data-username="<?php echo $usrName; ?>"
@@ -635,8 +636,8 @@ body.dark-mode .social-nav-pills .nav-link:hover,
                 <div class="mb-3">
                     <label class="form-label text-secondary small">Password / Access Key</label>
                     <div class="input-group">
-                        <input type="text" class="form-control bg-secondary bg-opacity-20 text-white border-secondary" id="cred-modal-pass" readonly>
-                        <button class="btn btn-outline-secondary copy-btn" data-target="cred-modal-pass" type="button"><i class="fa-solid fa-copy"></i></button>
+                        <input type="password" class="form-control bg-secondary bg-opacity-20 text-white border-secondary" id="cred-modal-pass" readonly>
+                        <button class="btn btn-outline-secondary" id="btn-toggle-pass" type="button" title="Show/Hide Password"><i class="fa-solid fa-eye" id="pass-eye-icon"></i></button>
                     </div>
                 </div>
                 <div class="mb-3">
@@ -695,12 +696,42 @@ $(function () {
         $('#cred-modal-platform').text(btn.data('platform'));
         $('#cred-modal-handler').text(btn.data('handler') || 'Unassigned');
         $('#cred-modal-user').val(btn.data('username'));
-        $('#cred-modal-pass').val(btn.data('pass'));
+        
+        // Reset password field to masked by default
+        const passInput = $('#cred-modal-pass');
+        passInput.attr('type', 'password').val(btn.data('pass')).data('account-id', btn.data('id'));
+        $('#pass-eye-icon').removeClass('fa-eye-slash').addClass('fa-eye');
+
         $('#cred-modal-notes').val(btn.data('notes'));
         $('#cred-modal-remarks').text(btn.data('remarks') || 'No manager remarks added yet.');
         
         const modal = new bootstrap.Modal(document.getElementById('credentialsModal'));
         modal.show();
+    });
+
+    // Toggle Password Mask/Reveal & Log Audit Event on Reveal
+    $('#btn-toggle-pass').on('click', function () {
+        const passInput = $('#cred-modal-pass');
+        const eyeIcon = $('#pass-eye-icon');
+        const isMasked = passInput.attr('type') === 'password';
+
+        if (isMasked) {
+            passInput.attr('type', 'text');
+            eyeIcon.removeClass('fa-eye').addClass('fa-eye-slash');
+
+            const accountId = passInput.data('account-id');
+            const profileName = $('#cred-modal-title').text();
+            if (accountId) {
+                $.post('index.php?route=social/logCredentialReveal', {
+                    csrf_token: '<?php echo $_SESSION['csrf_token']; ?>',
+                    account_id: accountId,
+                    profile_name: profileName
+                });
+            }
+        } else {
+            passInput.attr('type', 'password');
+            eyeIcon.removeClass('fa-eye-slash').addClass('fa-eye');
+        }
     });
 
     // Edit Manager Remarks Modal handler
