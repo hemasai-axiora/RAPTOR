@@ -2,9 +2,21 @@
 // Migration 0031: Account Management (Inside Sales) Module
 // Creates account_sales_activities and account_opportunities tables
 
-function up_0031($pdo) {
-    // 1. Create account_sales_activities table
-    $pdo->exec("CREATE TABLE IF NOT EXISTS account_sales_activities (
+echo "Starting Migration 0031: Account Management Module...\n";
+
+$tableExists = function (PDO $db, string $tableName): bool {
+    try {
+        $stmt = $db->prepare("SHOW TABLES LIKE :table");
+        $stmt->execute([':table' => $tableName]);
+        return (bool) $stmt->fetch();
+    } catch (Exception $e) {
+        return false;
+    }
+};
+
+// 1. Create account_sales_activities table
+if (!$tableExists($db, 'account_sales_activities')) {
+    $db->exec("CREATE TABLE account_sales_activities (
         activity_id INT AUTO_INCREMENT PRIMARY KEY,
         activity_code VARCHAR(20) UNIQUE NULL,
         customer_id INT NOT NULL,
@@ -17,9 +29,14 @@ function up_0031($pdo) {
         CONSTRAINT fk_asa_customer FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE,
         CONSTRAINT fk_asa_employee FOREIGN KEY (assigned_rep_employee_id) REFERENCES employees(employee_id) ON DELETE SET NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+    echo "    + Created account_sales_activities table\n";
+} else {
+    echo "    = account_sales_activities table already exists\n";
+}
 
-    // 2. Create account_opportunities table
-    $pdo->exec("CREATE TABLE IF NOT EXISTS account_opportunities (
+// 2. Create account_opportunities table
+if (!$tableExists($db, 'account_opportunities')) {
+    $db->exec("CREATE TABLE account_opportunities (
         opportunity_id INT AUTO_INCREMENT PRIMARY KEY,
         opportunity_code VARCHAR(20) UNIQUE NULL,
         customer_id INT NOT NULL,
@@ -36,12 +53,9 @@ function up_0031($pdo) {
         CONSTRAINT fk_ao_customer FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE,
         CONSTRAINT fk_ao_employee FOREIGN KEY (assigned_rep_employee_id) REFERENCES employees(employee_id) ON DELETE SET NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-
-    echo "Migration 0031 executed successfully.\n";
+    echo "    + Created account_opportunities table\n";
+} else {
+    echo "    = account_opportunities table already exists\n";
 }
 
-function down_0031($pdo) {
-    $pdo->exec("DROP TABLE IF EXISTS account_opportunities;");
-    $pdo->exec("DROP TABLE IF EXISTS account_sales_activities;");
-    echo "Migration 0031 reverted successfully.\n";
-}
+echo "Migration 0031 complete.\n";
