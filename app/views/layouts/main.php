@@ -837,8 +837,8 @@
 </head>
 <body>
     <?php
-        $role = $_SESSION['user_role'] ?? '';
-        $isEmployee = Policy::isEmployee();
+        $role = $_SESSION['user_role'] ?? $_SESSION['role_name'] ?? '';
+        $isEmployee = class_exists('Policy') ? Policy::isEmployee() : ($role === 'employee');
         $salesRoles = ['admin', 'manager', 'team_leader', 'employee', 'sales_person', 'hr', 'finance'];
     ?>
     <div id="wrapper">

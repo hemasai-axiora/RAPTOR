@@ -1,5 +1,9 @@
 <?php
-// Central role and governance helpers.
+// Raptor CRM Core Policy & RBAC Gate Helper
+
+if (defined('APPROOT') && file_exists(APPROOT . '/core/PermissionService.php')) {
+    require_once APPROOT . '/core/PermissionService.php';
+}
 
 class Policy {
     public static function role(): string {

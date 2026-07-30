@@ -362,7 +362,7 @@ foreach ($rolePermMatrix as [$roleName, $module, $action, $scope]) {
     $db->prepare(
         'INSERT INTO role_permissions (role_id, permission_id, scope) VALUES (:r, :p, :s)
          ON DUPLICATE KEY UPDATE scope = VALUES(scope)'
-    )->execute([':r' => $rid, ':p' => $pid, ':s' => $scope]);
+    )->execute([':r' => $rid, ':p' => $pid, ':s' => $scope ?? 'all']);
     $grantedCount++;
 }
 echo "    + {$grantedCount} role-permission assignments seeded\n";

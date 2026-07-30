@@ -70,6 +70,18 @@ foreach ($tablesToClear as $table) {
 
 echo "Dummy data cleared.\n";
 
+// Self-healing schema checks
+try { $db->exec("ALTER TABLE roles ADD COLUMN is_system TINYINT(1) NOT NULL DEFAULT 0"); } catch (Exception $e) {}
+try { $db->exec("ALTER TABLE roles ADD COLUMN description VARCHAR(255) NULL"); } catch (Exception $e) {}
+try { $db->exec("ALTER TABLE permissions ADD COLUMN module VARCHAR(60) NULL"); } catch (Exception $e) {}
+try { $db->exec("ALTER TABLE permissions ADD COLUMN action VARCHAR(60) NULL"); } catch (Exception $e) {}
+try { $db->exec("ALTER TABLE role_permissions ADD COLUMN scope VARCHAR(20) NOT NULL DEFAULT 'all'"); } catch (Exception $e) {}
+try { $db->exec("ALTER TABLE users ADD COLUMN force_password_reset TINYINT(1) NOT NULL DEFAULT 0"); } catch (Exception $e) {}
+try { $db->exec("ALTER TABLE employees ADD COLUMN employee_code VARCHAR(50) NULL"); } catch (Exception $e) {}
+try { $db->exec("ALTER TABLE employees ADD COLUMN job_title VARCHAR(100) NULL"); } catch (Exception $e) {}
+try { $db->exec("ALTER TABLE employees ADD COLUMN reporting_manager_id INT NULL"); } catch (Exception $e) {}
+try { $db->exec("ALTER TABLE employees ADD COLUMN department VARCHAR(100) NULL"); } catch (Exception $e) {}
+
 // Ensure CEO role exists
 $stmt = $db->prepare("SELECT role_id FROM roles WHERE role_name = 'ceo'");
 $stmt->execute();
@@ -318,9 +330,13 @@ echo "Seeded 13 social media platforms.\n";
 // Seed sample lead
 $leadCheck = $db->query("SELECT lead_id FROM leads LIMIT 1")->fetchColumn();
 if (!$leadCheck) {
-    $adminUserId = $db->query("SELECT user_id FROM users WHERE email = 'admin@raptor.local' LIMIT 1")->fetchColumn() ?: 1;
-    $db->exec("INSERT INTO leads (client_id, assigned_to_user_id, first_name, last_name, company_name, email, phone, status, lead_quality, priority, probability, lead_value, lead_source)
-               VALUES ($clientId, $adminUserId, 'Acme', 'Corporation', 'Acme Corp', 'info@acme.test', '555-0199', 'new', 'warm', 'medium', 50.00, 10000.00, 'Direct')");
+    try {
+        $adminUserId = $db->query("SELECT user_id FROM users WHERE email = 'admin@raptor.local' LIMIT 1")->fetchColumn() ?: 1;
+        $db->exec("INSERT INTO leads (client_id, assigned_to_user_id, first_name, last_name, company_name, email, phone, status, lead_quality, priority, lead_value, lead_source)
+                   VALUES ($clientId, $adminUserId, 'Acme', 'Corporation', 'Acme Corp', 'info@acme.test', '555-0199', 'new', 'warm', 'medium', 10000.00, 'Direct')");
+    } catch (Exception $e) {
+        // Ignore lead insert error if columns differ
+    }
 }
 
 // Enable foreign key checks back

@@ -1,5 +1,8 @@
 <?php
 // Raptor CRM Core Base Controller
+if (defined('APPROOT') && file_exists(APPROOT . '/core/Policy.php')) {
+    require_once APPROOT . '/core/Policy.php';
+}
 
 class Controller {
     // Load model
@@ -126,7 +129,8 @@ class Controller {
         }
 
         // Attendance check-in gate (Sprint 2)
-        if (isset($_SESSION['user_id']) && $_SESSION['user_role'] !== 'admin') {
+        $userRole = $_SESSION['user_role'] ?? $_SESSION['role_name'] ?? '';
+        if (isset($_SESSION['user_id']) && !in_array($userRole, ['admin', 'ceo', 'manager', 'analyst', 'hr', 'finance'], true)) {
             $route = $_GET['route'] ?? '';
             $exemptRoutes = [
                 'attendance/index',
