@@ -96,11 +96,21 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     $rolesMap[$row['role_name']] = (int) $row['role_id'];
 }
 
-// Check role mapping
-$requiredRoles = ['admin', 'manager', 'hr', 'finance', 'analyst', 'employee'];
-foreach ($requiredRoles as $role) {
+// Check role mapping and auto-create missing roles
+$requiredRoles = [
+    'admin' => 'Administrator',
+    'manager' => 'Sales Manager',
+    'hr' => 'HR Manager',
+    'finance' => 'Finance Manager',
+    'analyst' => 'Data Analyst',
+    'employee' => 'Sales Associate'
+];
+foreach ($requiredRoles as $role => $desc) {
     if (!isset($rolesMap[$role])) {
-        die("Error: Role '$role' is missing from the database.\n");
+        $db->prepare("INSERT INTO roles (role_name, description, is_system) VALUES (:r, :d, 1)")
+           ->execute([':r' => $role, ':d' => $desc]);
+        $rolesMap[$role] = (int) $db->lastInsertId();
+        echo "Auto-created missing role: $role\n";
     }
 }
 // Ensure Employee, Manager, HR, Finance, Analyst roles have social_media view, create, edit permissions

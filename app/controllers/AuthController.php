@@ -26,12 +26,9 @@ class AuthController extends Controller {
 
         // Process form submission
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Sanitize POST data
-            $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
-
-            $data['email'] = trim($_POST['email']);
-            $data['password'] = trim($_POST['password']);
-            $csrf = isset($_POST['csrf_token']) ? $_POST['csrf_token'] : '';
+            $data['email'] = filter_var(trim($_POST['email'] ?? ''), FILTER_SANITIZE_EMAIL);
+            $data['password'] = (string)($_POST['password'] ?? '');
+            $csrf = (string)($_POST['csrf_token'] ?? '');
             $loginLimit = (int) Security::setting('rate.login_limit', 20);
             $loginWindow = (int) Security::setting('rate.login_window_seconds', 300);
 
