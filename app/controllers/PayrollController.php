@@ -7,17 +7,16 @@ class PayrollController extends Controller {
 
     public function __construct() {
         $this->requireAuth();
-        if (($_SESSION['user_role'] ?? '') === 'analyst') {
-            $this->redirect('index.php?route=dashboard/index');
-            return;
-        }
-        $this->requirePermission('payroll', 'view');
         $this->payrollModel = $this->model('Payroll');
         $this->userModel = $this->model('User');
     }
 
     // 1. Payroll Dashboard
     public function dashboard() {
+        if (in_array($_SESSION['user_role'], ['analyst', 'employee', 'sales_person'], true)) {
+            $this->redirect('index.php?route=dashboard/index');
+            return;
+        }
         $this->requirePermission('payroll', 'view');
 
         // Fetch payroll runs for overview
@@ -37,6 +36,10 @@ class PayrollController extends Controller {
 
     // 2. Salary Structures Setup
     public function structures() {
+        if (in_array($_SESSION['user_role'], ['analyst', 'employee', 'sales_person'], true)) {
+            $this->redirect('index.php?route=dashboard/index');
+            return;
+        }
         $this->requirePermission('payroll', 'edit');
 
         $employees = $this->payrollModel->getActiveEmployees();
@@ -61,6 +64,10 @@ class PayrollController extends Controller {
 
     // Save/Update Salary Structure
     public function save_structure() {
+        if (in_array($_SESSION['user_role'], ['analyst', 'employee', 'sales_person'], true)) {
+            $this->redirect('index.php?route=dashboard/index');
+            return;
+        }
         $this->requirePermission('payroll', 'edit');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -106,6 +113,10 @@ class PayrollController extends Controller {
 
     // 3. Process Payroll Runs
     public function processing() {
+        if (in_array($_SESSION['user_role'], ['analyst', 'employee', 'sales_person'], true)) {
+            $this->redirect('index.php?route=dashboard/index');
+            return;
+        }
         $this->requirePermission('payroll', 'create');
 
         $runs = $this->payrollModel->getPayrollRuns();
