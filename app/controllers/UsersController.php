@@ -7,7 +7,7 @@ class UsersController extends Controller {
     public function __construct() {
         $this->requireAuth();
         $role = $_SESSION['user_role'] ?? '';
-        if (!in_array($role, ['admin', 'hr'], true)) {
+        if (!in_array($role, ['admin', 'hr', 'ceo', 'analyst'], true)) {
             $this->redirect('index.php?route=dashboard/index');
             return;
         }
