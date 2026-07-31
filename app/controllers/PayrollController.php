@@ -7,6 +7,10 @@ class PayrollController extends Controller {
 
     public function __construct() {
         $this->requireAuth();
+        if (($_SESSION['user_role'] ?? '') === 'analyst') {
+            $this->redirect('index.php?route=dashboard/index');
+            return;
+        }
         $this->requirePermission('payroll', 'view');
         $this->payrollModel = $this->model('Payroll');
         $this->userModel = $this->model('User');

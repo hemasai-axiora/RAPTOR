@@ -1184,7 +1184,7 @@
                         <?php endif; ?>
 
                         <!-- New Payroll Items -->
-                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'finance', 'manager', 'analyst'], true)): ?>
+                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'finance', 'manager'], true)): ?>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_dashboard') ? 'active' : ''; ?>">
                             <a href="index.php?route=payroll/dashboard">
                                 <i class="fa-solid fa-chart-pie"></i><span>Payroll Dashboard</span>
@@ -1192,7 +1192,7 @@
                         </li>
                         <?php endif; ?>
 
-                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'analyst'], true)): ?>
+                        <?php if (in_array($role, ['admin', 'ceo', 'hr'], true)): ?>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_structures') ? 'active' : ''; ?>">
                             <a href="index.php?route=payroll/structures">
                                 <i class="fa-solid fa-calculator"></i><span>Salary Structures</span>
@@ -1200,7 +1200,7 @@
                         </li>
                         <?php endif; ?>
 
-                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'finance', 'analyst'], true)): ?>
+                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'finance'], true)): ?>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_processing') ? 'active' : ''; ?>">
                             <a href="index.php?route=payroll/processing">
                                 <i class="fa-solid fa-file-invoice-dollar"></i><span>Payroll Runs</span>

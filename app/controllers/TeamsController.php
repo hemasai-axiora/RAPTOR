@@ -10,7 +10,7 @@ class TeamsController extends Controller {
     public function __construct() {
         $this->requireAuth();
         $role = $_SESSION['user_role'] ?? '';
-        if ($role !== 'admin' && $role !== 'manager') {
+        if (!in_array($role, ['admin', 'manager', 'ceo', 'analyst', 'hr'], true)) {
             $this->redirect('index.php?route=dashboard/index');
             return;
         }
