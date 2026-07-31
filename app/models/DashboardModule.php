@@ -6,31 +6,31 @@ class DashboardModule extends Model {
         'executive' => [
             'label' => 'Executive & Analytics Overview',
             'description' => 'Leadership and analyst KPIs across revenue, pipeline, activity, and risk.',
-            'roles' => ['admin', 'manager', 'employer', 'analyst', 'finance'],
+            'roles' => ['admin', 'manager', 'employer', 'analyst', 'finance', 'ceo'],
             'widgets' => ['revenue', 'pipeline', 'lead_funnel', 'activity_mix', 'risk_alerts', 'top_performers'],
         ],
         'sales_command' => [
             'label' => 'Sales Command Center',
             'description' => 'Live sales team status, today rollup, follow-ups, and blockers.',
-            'roles' => ['admin', 'manager', 'team_leader'],
+            'roles' => ['admin', 'manager', 'team_leader', 'ceo'],
             'widgets' => ['live_board', 'attendance', 'today_targets', 'followups', 'tasks', 'activity_mix'],
         ],
         'field_activity' => [
             'label' => 'Field Activity',
             'description' => 'Routes, distance, meetings, demos, calls, and field productivity.',
-            'roles' => ['admin', 'manager', 'team_leader', 'employee', 'sales_person'],
+            'roles' => ['admin', 'manager', 'team_leader', 'employee', 'sales_person', 'ceo'],
             'widgets' => ['distance', 'meetings', 'communications', 'route_health', 'proofs', 'daily_summary'],
         ],
         'pipeline_revenue' => [
             'label' => 'Pipeline & Revenue',
             'description' => 'Lead pipeline, forecast value, conversions, and revenue movement.',
-            'roles' => ['admin', 'manager', 'team_leader', 'employee', 'sales_person', 'finance'],
+            'roles' => ['admin', 'manager', 'team_leader', 'employee', 'sales_person', 'finance', 'ceo'],
             'widgets' => ['pipeline', 'revenue', 'lead_funnel', 'conversion_rate', 'high_value_leads', 'source_mix'],
         ],
         'performance_targets' => [
             'label' => 'Performance & Targets',
             'description' => 'Targets, scores, rankings, task discipline, and coaching signals.',
-            'roles' => ['admin', 'manager', 'team_leader', 'employee', 'sales_person'],
+            'roles' => ['admin', 'manager', 'team_leader', 'employee', 'sales_person', 'ceo'],
             'widgets' => ['target_completion', 'performance_rank', 'task_completion', 'followup_discipline', 'low_performers', 'review_queue'],
         ],
     ];

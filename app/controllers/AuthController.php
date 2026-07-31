@@ -301,6 +301,7 @@ class AuthController extends Controller {
                 break;
             case 'admin':
             case 'manager':
+            case 'ceo':
                 $this->redirect('index.php?route=dashboard/index');
                 break;
             case 'employer':
