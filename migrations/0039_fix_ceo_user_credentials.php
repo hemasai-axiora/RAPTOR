@@ -1,6 +1,6 @@
 <?php
 /**
- * Migration 0039: Guarantee CEO role & ceo@raptor.local credentials across all environments.
+ * Migration 0039: Guarantee CEO role, permissions & ceo@raptor.local credentials across all environments.
  */
 
 if (!isset($db)) {
@@ -32,6 +32,15 @@ if ($existingUser) {
 } else {
     $stmt = $db->prepare("INSERT INTO users (role_id, name, email, password, status, force_password_reset) VALUES (:rid, 'CEO Executive', 'ceo@raptor.local', :hash, 'active', 0)");
     $stmt->execute([':rid' => $ceoRoleId, ':hash' => $ceoHash]);
+}
+
+// 3. Seed all permissions for CEO role in role_permissions table
+$stmt = $db->query("SELECT permission_id FROM permissions");
+$allPermIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+$grantStmt = $db->prepare("INSERT INTO role_permissions (role_id, permission_id, scope) VALUES (:r, :p, 'all') ON DUPLICATE KEY UPDATE scope = 'all'");
+foreach ($allPermIds as $pid) {
+    $grantStmt->execute([':r' => $ceoRoleId, ':p' => $pid]);
 }
 
 echo " Migration 0039 complete.\n";

@@ -25,23 +25,7 @@ class DashboardController extends Controller {
         $this->viewWithLayout('dashboard/index', 'main', $data);
     }
 
-    public function monitoring() {
-        $rollup = $this->monitoringModel->getRollup();
-        $pipeline = $this->monitoringModel->getPipelineSummary();
-        $team = $this->monitoringModel->getTeamStatus();
-        $followups = $this->monitoringModel->getFollowupSummary();
 
-        $data = [
-            'title' => 'Sales Monitoring Command Center | Raptor CRM',
-            'active_tab' => 'monitoring_dashboard',
-            'rollup' => $rollup,
-            'pipeline' => $pipeline,
-            'team' => $team,
-            'followups' => $followups
-        ];
-
-        $this->viewWithLayout('dashboard/monitoring', 'main', $data);
-    }
 
     public function show($key = 'sales_command') {
         $dashboard = $this->dashboardModuleModel->getDashboard($key, $_SESSION['user_role']);
@@ -187,17 +171,23 @@ class DashboardController extends Controller {
     }
 
     public function monitoring() {
-        if (!in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader'])) {
-            $this->redirect('index.php?route=attendance/index');
+        if (!in_array($_SESSION['user_role'], ['admin', 'ceo', 'hr', 'manager', 'team_leader'], true)) {
+            $this->redirect('index.php?route=dashboard/index');
+            return;
         }
 
-        $scope = $this->visibleUserIds();
+        $rollup = $this->monitoringModel->getRollup();
+        $pipeline = $this->monitoringModel->getPipelineSummary();
+        $team = $this->monitoringModel->getTeamStatus();
+        $followups = $this->monitoringModel->getFollowupSummary();
+
         $data = [
             'title' => 'Sales Monitoring Command Center | Raptor CRM',
             'active_tab' => 'monitoring_dashboard',
-            'live_board' => $this->monitoringModel->liveBoard($scope),
-            'rollup' => $this->monitoringModel->todayRollup($scope),
-            'pipeline' => $this->monitoringModel->pipelineForecast($scope),
+            'rollup' => $rollup,
+            'pipeline' => $pipeline,
+            'team' => $team,
+            'followups' => $followups
         ];
 
         $this->viewWithLayout('dashboard/monitoring', 'main', $data);

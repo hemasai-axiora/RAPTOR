@@ -33,8 +33,8 @@ class PermissionService {
             return false;
         }
 
-        // Admins bypass all checks
-        if ($role === 'admin') {
+        // Admins and CEO bypass all permission checks
+        if (in_array($role, ['admin', 'ceo'], true)) {
             return true;
         }
 
