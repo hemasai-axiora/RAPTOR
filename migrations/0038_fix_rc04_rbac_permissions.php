@@ -65,4 +65,20 @@ $grantPermission($db, 'hr', 'tasks.view', 'all');
 // 4. Manager needs leads.view
 $grantPermission($db, 'manager', 'leads.view', 'all');
 
+// 5. Ensure CEO role exists & set CEO user password hash to 'Raptor@12345'
+$stmt = $db->prepare("INSERT IGNORE INTO roles (role_name, description) VALUES ('ceo', 'Chief Executive Officer')");
+$stmt->execute();
+
+$ceoRoleId = $getRoleId($db, 'ceo');
+$ceoHash = '$2y$10$md383xacx3BKgMuezEM08umH9b7oHty1wk5g3FXd/E1e1npN2I0/e'; // Raptor@12345
+
+$stmt = $db->prepare("UPDATE users SET password = :hash, status = 'active', force_password_reset = 0 WHERE email = 'ceo@raptor.local'");
+$stmt->execute([':hash' => $ceoHash]);
+
+if ($stmt->rowCount() === 0) {
+    // If user doesn't exist yet, insert ceo@raptor.local
+    $stmt = $db->prepare("INSERT INTO users (role_id, name, email, password, status, force_password_reset) VALUES (:rid, 'CEO Executive', 'ceo@raptor.local', :hash, 'active', 0) ON DUPLICATE KEY UPDATE password = :hash2, status = 'active', force_password_reset = 0");
+    $stmt->execute([':rid' => $ceoRoleId, ':hash' => $ceoHash, ':hash2' => $ceoHash]);
+}
+
 echo " Migration 0038 complete.\n";
