@@ -100,18 +100,29 @@ class HrmsController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
 
+            $photoKey = null;
+            if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] === UPLOAD_ERR_OK) {
+                try {
+                    $photoKey = Storage::put($_FILES['profile_photo'], 'profiles');
+                } catch (Exception $e) {
+                    $_SESSION['profile_error'] = 'Photo upload failed: ' . $e->getMessage();
+                }
+            }
+
             $updateData = [
                 'blood_group'       => trim($_POST['blood_group'] ?? ''),
                 'address'           => trim($_POST['address'] ?? ''),
                 'experience_years'  => (float)($_POST['experience_years'] ?? 0.0),
                 'skills'            => trim($_POST['skills'] ?? ''),
                 'phone_number'      => trim($_POST['phone_number'] ?? ''),
-                'emergency_contact' => trim($_POST['emergency_contact'] ?? '')
+                'emergency_contact' => trim($_POST['emergency_contact'] ?? ''),
+                'date_of_birth'     => trim($_POST['date_of_birth'] ?? ''),
+                'profile_photo'     => $photoKey
             ];
 
             if ($this->hrmsModel->updateProfile($id, $updateData)) {
                 $this->audit("Updated employee profile details for user #{$id}", 'employees', $id);
-                $_SESSION['profile_success'] = 'Profile updated successfully.';
+                $_SESSION['profile_success'] = 'Profile details updated successfully.';
             } else {
                 $_SESSION['profile_error'] = 'Failed to update profile.';
             }

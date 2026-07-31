@@ -259,4 +259,40 @@ class ApiController extends Controller {
             'quality' => $quality
         ]);
     }
+
+    // JSON endpoint for searching leads
+    public function search_leads() {
+        $q = trim($_GET['q'] ?? '');
+        $sql = "SELECT lead_id, title, contact_name, company_name, email, phone, status FROM leads";
+        if (!empty($q)) {
+            $sql .= " WHERE title LIKE :q OR contact_name LIKE :q OR company_name LIKE :q OR email LIKE :q";
+        }
+        $sql .= " ORDER BY created_at DESC LIMIT 50";
+        $stmt = $this->db->prepare($sql);
+        if (!empty($q)) {
+            $stmt->bindValue(':q', '%' . $q . '%');
+        }
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_OBJ);
+        echo json_encode(['status' => 'success', 'data' => $results]);
+        exit();
+    }
+
+    // JSON endpoint for searching customers/clients
+    public function search_customers() {
+        $q = trim($_GET['q'] ?? '');
+        $sql = "SELECT client_id, company_name, contact_person, email, phone FROM clients";
+        if (!empty($q)) {
+            $sql .= " WHERE company_name LIKE :q OR contact_person LIKE :q OR email LIKE :q";
+        }
+        $sql .= " ORDER BY created_at DESC LIMIT 50";
+        $stmt = $this->db->prepare($sql);
+        if (!empty($q)) {
+            $stmt->bindValue(':q', '%' . $q . '%');
+        }
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_OBJ);
+        echo json_encode(['status' => 'success', 'data' => $results]);
+        exit();
+    }
 }

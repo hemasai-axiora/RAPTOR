@@ -44,7 +44,7 @@ class CommunicationsController extends Controller {
             'channels' => Communication::CHANNELS,
             'directions' => Communication::DIRECTIONS,
             'users' => $this->getUsers(),
-            'leads' => $this->leadModel->getLeads([], $this->visibleUserIds()),
+            'leads' => $this->leadModel->getAllLeadsForSelect($this->visibleUserIds()),
         ];
 
         $this->viewWithLayout('communications/index', 'main', $data);

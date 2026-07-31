@@ -208,6 +208,124 @@ $personal = $data['personal'] ?? [];
         </div>
 
     <!-- =======================================================================
+         ANALYST DASHBOARD VIEW
+         ======================================================================= -->
+    <?php elseif ($role === 'analyst'): ?>
+        <div class="row mb-4">
+            <div class="col-md-4 mb-3">
+                <div class="card border-0 shadow-sm p-4 text-center" style="background: rgba(13, 110, 253, 0.12); border-radius: 16px; border: 1px solid rgba(13, 110, 253, 0.25) !important;">
+                    <div class="text-primary fs-2 mb-2"><i class="fa-solid fa-chart-pie"></i></div>
+                    <h6 class="text-secondary small fw-bold text-uppercase">Data Analytics Overview</h6>
+                    <h4 class="text-white fw-bold mb-0">Active Insights</h4>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card border-0 shadow-sm p-4 text-center" style="background: rgba(25, 135, 84, 0.12); border-radius: 16px; border: 1px solid rgba(25, 135, 84, 0.25) !important;">
+                    <div class="text-success fs-2 mb-2"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                    <h6 class="text-secondary small fw-bold text-uppercase">Reports Suite</h6>
+                    <h4 class="text-white fw-bold mb-0">Full Access</h4>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card border-0 shadow-sm p-4 text-center" style="background: rgba(255, 193, 7, 0.12); border-radius: 16px; border: 1px solid rgba(255, 193, 7, 0.25) !important;">
+                    <div class="text-warning fs-2 mb-2"><i class="fa-solid fa-bullseye"></i></div>
+                    <h6 class="text-secondary small fw-bold text-uppercase">Performance Tracking</h6>
+                    <h4 class="text-white fw-bold mb-0">Analyst Mode</h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-6 mb-4">
+                <div class="card border-0 shadow-sm p-4" style="background: var(--panel-dark); border: 1px solid var(--border-color) !important; border-radius: 16px;">
+                    <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-chart-line text-primary me-2"></i>Analyst Shortcuts</h5>
+                    <div class="d-flex flex-column gap-2">
+                        <a href="index.php?route=reports/index" class="btn btn-outline-primary p-3 text-start w-100" style="border-radius:10px;">
+                            <i class="fa-solid fa-chart-area me-2"></i>Open Reports & Analytics Suite
+                        </a>
+                        <a href="index.php?route=dashboard/show/executive" class="btn btn-outline-info p-3 text-start w-100 mt-2" style="border-radius:10px;">
+                            <i class="fa-solid fa-gauge-high me-2"></i>Executive Analytics Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 mb-4">
+                <div class="card border-0 shadow-sm p-4" style="background: var(--panel-dark); border: 1px solid var(--border-color) !important; border-radius: 16px;">
+                    <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-umbrella-beach text-warning me-2"></i>Holidays</h5>
+                    <div class="row">
+                        <?php foreach ($data['holidays'] as $h): ?>
+                            <div class="col-md-6 mb-2">
+                                <div class="p-2 rounded d-flex justify-content-between align-items-center" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.03);">
+                                    <span class="text-white small fw-bold"><?php echo htmlspecialchars($h->holiday_name); ?></span>
+                                    <span class="text-secondary small"><?php echo date('M d', strtotime($h->holiday_date)); ?></span>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <!-- =======================================================================
+         FINANCE DASHBOARD VIEW
+         ======================================================================= -->
+    <?php elseif ($role === 'finance'): ?>
+        <div class="row mb-4">
+            <div class="col-md-4 mb-3">
+                <div class="card border-0 shadow-sm p-4 text-center" style="background: rgba(25, 135, 84, 0.12); border-radius: 16px; border: 1px solid rgba(25, 135, 84, 0.25) !important;">
+                    <div class="text-success fs-2 mb-2"><i class="fa-solid fa-money-check-dollar"></i></div>
+                    <h6 class="text-secondary small fw-bold text-uppercase">Payroll Overview</h6>
+                    <h4 class="text-white fw-bold mb-0">Finance Active</h4>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card border-0 shadow-sm p-4 text-center" style="background: rgba(13, 110, 253, 0.12); border-radius: 16px; border: 1px solid rgba(13, 110, 253, 0.25) !important;">
+                    <div class="text-primary fs-2 mb-2"><i class="fa-solid fa-file-invoice"></i></div>
+                    <h6 class="text-secondary small fw-bold text-uppercase">Invoicing & Claims</h6>
+                    <h4 class="text-white fw-bold mb-0">Invoices Hub</h4>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card border-0 shadow-sm p-4 text-center" style="background: rgba(255, 193, 7, 0.12); border-radius: 16px; border: 1px solid rgba(255, 193, 7, 0.25) !important;">
+                    <div class="text-warning fs-2 mb-2"><i class="fa-solid fa-receipt"></i></div>
+                    <h6 class="text-secondary small fw-bold text-uppercase">Reimbursements</h6>
+                    <h4 class="text-white fw-bold mb-0">Pending Approvals</h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-6 mb-4">
+                <div class="card border-0 shadow-sm p-4" style="background: var(--panel-dark); border: 1px solid var(--border-color) !important; border-radius: 16px;">
+                    <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-calculator text-success me-2"></i>Finance Shortcuts</h5>
+                    <div class="d-flex flex-column gap-2">
+                        <a href="index.php?route=payroll/index" class="btn btn-outline-success p-3 text-start w-100" style="border-radius:10px;">
+                            <i class="fa-solid fa-money-bill-wave me-2"></i>Payroll Management
+                        </a>
+                        <a href="index.php?route=invoices/index" class="btn btn-outline-primary p-3 text-start w-100 mt-2" style="border-radius:10px;">
+                            <i class="fa-solid fa-file-invoice-dollar me-2"></i>Invoices Directory
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 mb-4">
+                <div class="card border-0 shadow-sm p-4" style="background: var(--panel-dark); border: 1px solid var(--border-color) !important; border-radius: 16px;">
+                    <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-umbrella-beach text-warning me-2"></i>Holidays</h5>
+                    <div class="row">
+                        <?php foreach ($data['holidays'] as $h): ?>
+                            <div class="col-md-6 mb-2">
+                                <div class="p-2 rounded d-flex justify-content-between align-items-center" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.03);">
+                                    <span class="text-white small fw-bold"><?php echo htmlspecialchars($h->holiday_name); ?></span>
+                                    <span class="text-secondary small"><?php echo date('M d', strtotime($h->holiday_date)); ?></span>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <!-- =======================================================================
          EMPLOYEE DASHBOARD VIEW
          ======================================================================= -->
     <?php else: ?>
@@ -217,7 +335,14 @@ $personal = $data['personal'] ?? [];
                     <div class="text-success fs-2 mb-2"><i class="fa-solid fa-fingerprint"></i></div>
                     <h6 class="text-secondary small fw-bold text-uppercase">Check-in Status Today</h6>
                     <h4 class="text-white fw-bold mb-0">
-                        <?php echo !empty($personal['today']) ? 'Checked In (' . date('h:i A', strtotime($personal['today']->login_at)) . ')' : 'Not Checked In'; ?>
+                        <?php 
+                            if (!empty($personal['today']) && !empty($personal['today']->login_at)) {
+                                $timeStr = date('h:i A', strtotime($personal['today']->login_at));
+                                echo 'Checked In (' . htmlspecialchars($timeStr) . ')';
+                            } else {
+                                echo 'Not Checked In';
+                            }
+                        ?>
                     </h4>
                 </div>
             </div>

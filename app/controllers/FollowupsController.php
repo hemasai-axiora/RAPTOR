@@ -43,6 +43,25 @@ class FollowupsController extends Controller {
         $this->viewWithLayout('followups/index', 'main', $data);
     }
 
+    public function my_leads() {
+        $userId = (int)$_SESSION['user_id'];
+        $leads = $this->leadModel->getLeads(['assigned_to_user_id' => $userId], [$userId]);
+        if (empty($leads)) {
+            $leads = $this->leadModel->getLeads([], $this->visibleUserIds());
+        }
+        $data = [
+            'title' => 'My Follow-up Leads | Raptor CRM',
+            'active_tab' => 'followups',
+            'leads' => $leads ?: [],
+            'filters' => ['assigned_to_user_id' => $userId],
+            'statuses' => Lead::STATUSES,
+            'qualities' => Lead::QUALITIES,
+            'sources' => $this->leadModel->getSources(),
+            'assignees' => $this->getAssignees(),
+        ];
+        $this->viewWithLayout('followups/my_leads', 'main', $data);
+    }
+
     public function schedule() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->redirect('index.php?route=followups/index');

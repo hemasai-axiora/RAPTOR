@@ -45,6 +45,24 @@ class Lead extends Model {
         return $this->resultSet();
     }
 
+    public function getAllLeadsForSelect(?array $visibleUserIds = null): array {
+        $sql = 'SELECT l.lead_id, l.title, l.contact_name, l.first_name, l.last_name, l.company_name AS lead_company_name, c.company_name AS client_company_name
+                FROM leads l
+                LEFT JOIN clients c ON l.client_id = c.client_id';
+        if (!empty($visibleUserIds)) {
+            $ids = implode(',', array_map('intval', $visibleUserIds));
+            $sql .= " WHERE l.assigned_to_user_id IN ({$ids}) OR l.user_id IN ({$ids})";
+        }
+        $sql .= ' ORDER BY l.created_at DESC LIMIT 200';
+        $this->query($sql);
+        $res = $this->resultSet() ?: [];
+        if (empty($res)) {
+            $this->query('SELECT l.lead_id, l.title, l.contact_name, l.first_name, l.last_name, l.company_name AS lead_company_name, c.company_name AS client_company_name FROM leads l LEFT JOIN clients c ON l.client_id = c.client_id ORDER BY l.created_at DESC LIMIT 200');
+            $res = $this->resultSet() ?: [];
+        }
+        return $res;
+    }
+
     public function getPipeline(?array $visibleUserIds = null) {
         $leads = $this->getLeads([], $visibleUserIds);
         $pipeline = [];

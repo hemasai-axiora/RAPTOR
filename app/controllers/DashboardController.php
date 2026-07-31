@@ -25,6 +25,24 @@ class DashboardController extends Controller {
         $this->viewWithLayout('dashboard/index', 'main', $data);
     }
 
+    public function monitoring() {
+        $rollup = $this->monitoringModel->getRollup();
+        $pipeline = $this->monitoringModel->getPipelineSummary();
+        $team = $this->monitoringModel->getTeamStatus();
+        $followups = $this->monitoringModel->getFollowupSummary();
+
+        $data = [
+            'title' => 'Sales Monitoring Command Center | Raptor CRM',
+            'active_tab' => 'monitoring_dashboard',
+            'rollup' => $rollup,
+            'pipeline' => $pipeline,
+            'team' => $team,
+            'followups' => $followups
+        ];
+
+        $this->viewWithLayout('dashboard/monitoring', 'main', $data);
+    }
+
     public function show($key = 'sales_command') {
         $dashboard = $this->dashboardModuleModel->getDashboard($key, $_SESSION['user_role']);
         if (!$dashboard) {

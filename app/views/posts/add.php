@@ -10,7 +10,7 @@
                     <!-- Post ID (Auto-generated) -->
                     <div class="col-md-6">
                         <label for="post_code" class="form-label text-secondary">Post ID</label>
-                        <input type="text" name="post_code" id="post_code" class="form-control bg-dark border-secondary text-secondary font-monospace" value="<?php echo htmlspecialchars($post_code ?? 'Auto-generated (e.g. PST-2026-00001)'); ?>" readonly disabled>
+                        <input type="text" name="post_code" id="post_code" class="form-control bg-dark border-secondary text-light font-monospace fw-bold" value="<?php echo htmlspecialchars($post_code ?? ''); ?>" readonly>
                     </div>
 
                     <!-- Client Company -->

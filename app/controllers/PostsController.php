@@ -52,7 +52,7 @@ class PostsController extends Controller {
             'active_tab' => 'calendar',
             'clients' => $clients,
             'campaigns' => $campaigns,
-            'post_code' => 'Auto-generated (e.g. PST-2026-00001)',
+            'post_code' => $this->postModel->generatePostCode(),
             'client_id' => '',
             'campaign_id' => '',
             'title_input' => '',

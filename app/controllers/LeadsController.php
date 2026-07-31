@@ -86,7 +86,7 @@ class LeadsController extends Controller {
             'title' => 'Capture Lead | Raptor CRM',
             'active_tab' => 'operations',
             'lead_id' => null,
-            'lead_code' => 'Auto-generated (e.g. LD-2026-00001)',
+            'lead_code' => $this->leadModel->generateLeadCode(),
             'client_id' => '',
             'owner_employee_id' => '',
             'assigned_to_user_id' => Policy::isEmployee() ? $_SESSION['user_id'] : '',

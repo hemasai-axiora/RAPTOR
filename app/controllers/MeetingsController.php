@@ -48,8 +48,8 @@ class MeetingsController extends Controller {
             'types' => Meeting::TYPES,
             'statuses' => Meeting::STATUSES,
             'users' => $this->getUsers(),
-            'leads' => $this->leadModel->getLeads([], $this->visibleUserIds()),
-            'customers' => $this->customerModel->getCustomers(),
+            'leads' => $this->leadModel->getAllLeadsForSelect($this->visibleUserIds()),
+            'customers' => $this->customerModel->getAllCustomersForSelect(),
         ];
 
         $this->viewWithLayout('meetings/index', 'main', $data);

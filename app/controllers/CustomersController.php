@@ -47,7 +47,7 @@ class CustomersController extends Controller {
         $data = [
             'title' => 'Capture Customer | Raptor CRM',
             'active_tab' => 'operations',
-            'customer_code' => 'Auto-generated (e.g. CUST-2026-00001)',
+            'customer_code' => $this->customerModel->generateCustomerCode(),
             'converted_from_lead_id' => '',
             'first_name' => '',
             'company_name' => '',

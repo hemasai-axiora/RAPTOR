@@ -26,7 +26,7 @@
                     <!-- Campaign ID (Auto-generated) -->
                     <div class="col-md-6">
                         <label for="campaign_code" class="form-label text-secondary">Campaign ID</label>
-                        <input type="text" name="campaign_code" id="campaign_code" class="form-control bg-dark border-secondary text-secondary font-monospace" value="<?php echo htmlspecialchars($campaign_code ?? 'Auto-generated (e.g. CMP-2026-00001)'); ?>" readonly disabled>
+                        <input type="text" name="campaign_code" id="campaign_code" class="form-control bg-dark border-secondary text-light font-monospace fw-bold" value="<?php echo htmlspecialchars($campaign_code ?? ''); ?>" readonly>
                     </div>
 
                     <!-- Client Company -->

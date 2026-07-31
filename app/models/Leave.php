@@ -292,13 +292,29 @@ class Leave extends Model {
     public function getAllDetailedLeaveBalances(array $filters = []): array {
         $year = (int)($filters['leave_year'] ?? 2026);
         
+        // Ensure all active users have detailed leave balance records initialized
+        try {
+            $this->query("SELECT user_id FROM users WHERE status = 'active'");
+            $activeUsers = $this->resultSet() ?: [];
+            foreach ($activeUsers as $au) {
+                $this->ensureDetailedLeaveBalances((int)$au->user_id, $year);
+            }
+        } catch (Throwable $e) {
+            // Log & continue gracefully
+            error_log("ensureDetailedLeaveBalances error: " . $e->getMessage());
+        }
+
         $sql = "SELECT u.user_id, u.name AS employee_name, u.email, e.department,
                        COALESCE(e.employee_code, CONCAT('EMP-', e.employee_id), CONCAT('EMP-', u.user_id)) AS emp_code,
-                       b.leave_type_name, b.allocated_days, b.carried_forward_days, b.consumed_days, b.pending_days,
-                       (b.allocated_days + b.carried_forward_days - b.consumed_days - b.pending_days) AS available_days
+                       b.leave_type_name, 
+                       COALESCE(b.allocated_days, 0) AS allocated_days, 
+                       COALESCE(b.carried_forward_days, 0) AS carried_forward_days, 
+                       COALESCE(b.consumed_days, 0) AS consumed_days, 
+                       COALESCE(b.pending_days, 0) AS pending_days,
+                       COALESCE(b.allocated_days + b.carried_forward_days - b.consumed_days - b.pending_days, 0) AS available_days
                 FROM users u
                 LEFT JOIN employees e ON u.user_id = e.user_id
-                JOIN employee_leave_balances b ON u.user_id = b.user_id AND b.leave_year = :yr
+                LEFT JOIN employee_leave_balances b ON u.user_id = b.user_id AND b.leave_year = :yr
                 WHERE u.status = 'active'";
         
         $params = [':yr' => $year];

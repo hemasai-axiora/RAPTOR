@@ -82,7 +82,7 @@ class CampaignsController extends Controller {
             'active_tab' => 'operations',
             'clients' => $clients,
             'employees' => $employees,
-            'campaign_code' => 'Auto-generated (e.g. CMP-2026-00001)',
+            'campaign_code' => $this->campaignModel->generateCampaignCode(),
             'client_id' => '',
             'owner_employee_id' => '',
             'name' => '',

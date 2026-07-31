@@ -13,6 +13,11 @@ class Customer extends Model {
         return sprintf('CUST-%s-%05d', $year, $nextId);
     }
 
+    public function getAllCustomersForSelect(): array {
+        $this->query('SELECT customer_id, first_name, company_name, customer_code, email FROM customers ORDER BY created_at DESC LIMIT 200');
+        return $this->resultSet() ?: [];
+    }
+
     public function getCustomers(array $filters = []) {
         $sql = 'SELECT c.*, 
                        u.name AS owner_name, 

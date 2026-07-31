@@ -26,7 +26,7 @@
                 <div class="row g-3 mb-4">
                     <div class="col-md-4">
                         <label for="customer_code" class="form-label text-secondary">Customer ID</label>
-                        <input type="text" id="customer_code" class="form-control bg-dark border-secondary text-secondary font-monospace" value="<?php echo htmlspecialchars($customer_code ?? 'Auto-generated'); ?>" readonly disabled>
+                        <input type="text" name="customer_code" id="customer_code" class="form-control bg-dark border-secondary text-light font-monospace fw-bold" value="<?php echo htmlspecialchars($customer_code ?? ''); ?>" readonly>
                     </div>
                     <div class="col-md-4">
                         <label for="customer_type" class="form-label text-secondary">Customer Type *</label>

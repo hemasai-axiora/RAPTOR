@@ -66,7 +66,11 @@ $initials   = count($words) > 1
     <!-- ── Profile Header ── -->
     <div class="profile-card p-4 mb-4">
         <div class="d-flex align-items-center gap-4 flex-wrap">
-            <div class="profile-avatar"><?php echo $initials; ?></div>
+            <?php if (!empty($p->profile_photo)): ?>
+                <img src="index.php?route=file/show&key=<?php echo urlencode($p->profile_photo); ?>" class="profile-avatar" style="object-fit: cover;" alt="<?php echo htmlspecialchars($p->name); ?>">
+            <?php else: ?>
+                <div class="profile-avatar"><?php echo $initials; ?></div>
+            <?php endif; ?>
             <div class="flex-grow-1">
                 <h3 style="color: #1E293B; font-weight: 700; margin: 0 0 0.25rem;"><?php echo htmlspecialchars($p->name); ?></h3>
                 <p style="color: #64748B; margin: 0 0 0.5rem; font-size: 0.9rem;">
@@ -248,9 +252,21 @@ $initials   = count($words) > 1
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="index.php?route=hrms/editProfile/<?php echo $p->user_id; ?>" method="POST">
+            <form action="index.php?route=hrms/editProfile/<?php echo $p->user_id; ?>" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                 <div class="modal-body" style="padding:1.5rem;">
+                    <div class="mb-3">
+                        <label for="profile_photo" style="display:block; font-size:0.76rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:0.35rem;">
+                            Profile Photo
+                        </label>
+                        <input type="file" class="form-control" id="profile_photo" name="profile_photo" accept="image/*" style="border-color:#CBD5E1; border-radius:8px;">
+                    </div>
+                    <div class="mb-3">
+                        <label for="date_of_birth" style="display:block; font-size:0.76rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:0.35rem;">
+                            Date of Birth
+                        </label>
+                        <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" value="<?php echo htmlspecialchars($p->date_of_birth ?? ''); ?>" style="border-color:#CBD5E1; border-radius:8px;">
+                    </div>
                     <?php
                     $editFields = [
                         ['phone_number',      'tel',    'Phone Number',         $p->phone_number      ?? ''],

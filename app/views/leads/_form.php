@@ -15,7 +15,7 @@
 <div class="row g-3">
     <div class="col-md-6">
         <label for="lead_code" class="form-label text-secondary">Lead ID</label>
-        <input type="text" name="lead_code" id="lead_code" class="form-control bg-dark border-secondary text-secondary" value="<?php echo htmlspecialchars($lead_code ?? 'Auto-generated (e.g. LD-2026-00001)'); ?>" readonly disabled>
+        <input type="text" name="lead_code" id="lead_code" class="form-control bg-dark border-secondary text-light fw-bold" value="<?php echo htmlspecialchars($lead_code ?? ''); ?>" readonly>
     </div>
 
     <div class="col-md-6">
