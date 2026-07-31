@@ -66,9 +66,11 @@ if (APP_ENV === 'production') {
  */
 if (!function_exists('getUserTimezone')) {
     function getUserTimezone(): string {
-        return $_COOKIE['user_timezone'] ?? 'UTC';
+        $tz = $_COOKIE['user_timezone'] ?? env('APP_TIMEZONE', 'Asia/Kolkata');
+        return !empty($tz) ? $tz : 'Asia/Kolkata';
     }
 }
+date_default_timezone_set(getUserTimezone());
 
 if (!function_exists('formatToLocalTime')) {
     function formatToLocalTime($utcDatetime, $format = 'Y-m-d H:i:s'): string {
@@ -76,11 +78,10 @@ if (!function_exists('formatToLocalTime')) {
         try {
             $dt = new DateTime($utcDatetime, new DateTimeZone('UTC'));
             $localTz = getUserTimezone();
-            // Fallback if browser timezone name is not recognized by PHP
             try {
                 $dt->setTimezone(new DateTimeZone($localTz));
             } catch (Exception $ex) {
-                $dt->setTimezone(new DateTimeZone('UTC'));
+                $dt->setTimezone(new DateTimeZone('Asia/Kolkata'));
             }
             return $dt->format($format);
         } catch (Exception $e) {

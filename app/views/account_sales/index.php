@@ -217,7 +217,7 @@
                                         <span class="badge bg-success-subtle text-success border border-success-subtle"><?php echo htmlspecialchars($act->outcome); ?></span>
                                     </td>
                                     <td class="small text-secondary"><?php echo htmlspecialchars($act->rep_name ?: 'Unassigned'); ?></td>
-                                    <td class="small text-secondary"><?php echo date('M d, H:i', strtotime($act->created_at)); ?></td>
+                                    <td class="small text-secondary"><?php echo htmlspecialchars(formatToLocalTime($act->created_at, 'M d, H:i')); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>

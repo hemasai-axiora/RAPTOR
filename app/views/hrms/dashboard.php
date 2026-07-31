@@ -337,7 +337,7 @@ $personal = $data['personal'] ?? [];
                     <h4 class="text-white fw-bold mb-0">
                         <?php 
                             if (!empty($personal['today']) && !empty($personal['today']->login_at)) {
-                                $timeStr = date('h:i A', strtotime($personal['today']->login_at));
+                                $timeStr = formatToLocalTime($personal['today']->login_at, 'h:i A');
                                 echo 'Checked In (' . htmlspecialchars($timeStr) . ')';
                             } else {
                                 echo 'Not Checked In';

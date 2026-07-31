@@ -37,7 +37,7 @@
                             <?php foreach ($data['logs'] as $log): ?>
                                 <tr>
                                     <td class="ps-4 py-3 font-monospace text-muted small">
-                                        <?php echo date('Y-m-d H:i:s', strtotime($log->created_at)); ?>
+                                        <?php echo htmlspecialchars(formatToLocalTime($log->created_at)); ?>
                                     </td>
                                     <td class="py-3">
                                         <div class="d-flex align-items-center">

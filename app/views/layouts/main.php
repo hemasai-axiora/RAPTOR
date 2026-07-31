@@ -1375,7 +1375,7 @@
                                             <a href="<?php echo htmlspecialchars($notif->action_url ?: '#'); ?>" class="text-decoration-none d-block">
                                                 <div class="d-flex justify-content-between">
                                                     <span class="fw-bold small d-block" style="color: var(--text-primary);"><?php echo htmlspecialchars($notif->title); ?></span>
-                                                    <small class="text-secondary" style="font-size: 0.7rem;"><?php echo date('M d', strtotime($notif->created_at)); ?></small>
+                                                    <small class="text-secondary" style="font-size: 0.7rem;"><?php echo htmlspecialchars(formatToLocalTime($notif->created_at, 'M d H:i')); ?></small>
                                                 </div>
                                                 <span class="text-secondary small d-block mt-1" style="font-size: 0.78rem; line-height: 1.3;"><?php echo htmlspecialchars($notif->message); ?></span>
                                             </a>
