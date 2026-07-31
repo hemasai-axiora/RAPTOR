@@ -176,18 +176,19 @@ class DashboardController extends Controller {
             return;
         }
 
-        $rollup = $this->monitoringModel->getRollup();
-        $pipeline = $this->monitoringModel->getPipelineSummary();
-        $team = $this->monitoringModel->getTeamStatus();
-        $followups = $this->monitoringModel->getFollowupSummary();
+        $scope = $this->visibleUserIds();
+        $rollup = $this->monitoringModel->todayRollup($scope);
+        $pipeline = $this->monitoringModel->pipelineForecast($scope);
+        $live_board = $this->monitoringModel->liveBoard($scope);
 
         $data = [
             'title' => 'Sales Monitoring Command Center | Raptor CRM',
             'active_tab' => 'monitoring_dashboard',
             'rollup' => $rollup,
             'pipeline' => $pipeline,
-            'team' => $team,
-            'followups' => $followups
+            'live_board' => $live_board,
+            'team' => $live_board,
+            'followups' => $rollup['followups'] ?? ['pending' => 0, 'missed' => 0]
         ];
 
         $this->viewWithLayout('dashboard/monitoring', 'main', $data);

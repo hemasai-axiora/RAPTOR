@@ -46,7 +46,7 @@ class Lead extends Model {
     }
 
     public function getAllLeadsForSelect(?array $visibleUserIds = null): array {
-        $sql = 'SELECT l.lead_id, l.title, l.contact_name, l.first_name, l.last_name, l.company_name AS lead_company_name, c.company_name AS client_company_name
+        $sql = 'SELECT l.lead_id, l.lead_code, l.title, l.contact_name, l.first_name, l.last_name, l.company_name AS lead_company_name, c.company_name AS client_company_name
                 FROM leads l
                 LEFT JOIN clients c ON l.client_id = c.client_id';
         if (!empty($visibleUserIds)) {
@@ -57,7 +57,7 @@ class Lead extends Model {
         $this->query($sql);
         $res = $this->resultSet() ?: [];
         if (empty($res)) {
-            $this->query('SELECT l.lead_id, l.title, l.contact_name, l.first_name, l.last_name, l.company_name AS lead_company_name, c.company_name AS client_company_name FROM leads l LEFT JOIN clients c ON l.client_id = c.client_id ORDER BY l.created_at DESC LIMIT 200');
+            $this->query('SELECT l.lead_id, l.lead_code, l.title, l.contact_name, l.first_name, l.last_name, l.company_name AS lead_company_name, c.company_name AS client_company_name FROM leads l LEFT JOIN clients c ON l.client_id = c.client_id ORDER BY l.created_at DESC LIMIT 200');
             $res = $this->resultSet() ?: [];
         }
         return $res;
