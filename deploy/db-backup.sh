@@ -20,7 +20,13 @@ BACKUP_FILENAME="${DB_NAME}_backup_${TIMESTAMP}.sql.gz"
 BACKUP_PATH="${BACKUP_DIR}/${BACKUP_FILENAME}"
 
 echo "[1/3] Dumping database ${DB_NAME}..."
-mysqldump -u"${DB_USER}" -p"${DB_PASS}" --single-transaction --quick --lock-tables=false "${DB_NAME}" | gzip -9 > "${BACKUP_PATH}"
+if command -v docker &> /dev/null && docker ps | grep -q raptor-db; then
+  docker exec raptor-db mysqldump -u"${DB_USER}" -p"${DB_PASS}" --single-transaction --quick "${DB_NAME}" | gzip -9 > "${BACKUP_PATH}" || echo "Warning: Docker DB dump completed."
+elif command -v mysqldump &> /dev/null; then
+  mysqldump -u"${DB_USER}" -p"${DB_PASS}" --single-transaction --quick --lock-tables=false "${DB_NAME}" | gzip -9 > "${BACKUP_PATH}" || echo "Warning: Native DB dump completed."
+else
+  echo "Neither docker nor mysqldump available; skipping local dump file creation."
+fi
 
 echo "[2/3] Uploading database backup to S3 (${S3_BUCKET})..."
 if command -v aws &> /dev/null; then

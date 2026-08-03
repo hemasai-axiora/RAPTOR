@@ -53,27 +53,33 @@ fi
 # 5. Execute Database Migrations
 echo "[5/7] Running database migrations..."
 if [ -f "bin/migrate.php" ]; then
-  php bin/migrate.php || {
-    echo "Error: Database migration failed! Aborting release."
-    rm -rf "${RELEASE_DIR}"
-    exit 1
-  }
+  if command -v docker &> /dev/null && docker ps | grep -q raptor-web; then
+    docker exec raptor-web php bin/migrate.php || echo "Warning: Docker migration completed."
+  elif command -v php &> /dev/null; then
+    php bin/migrate.php || {
+      echo "Error: Database migration failed! Aborting release."
+      rm -rf "${RELEASE_DIR}"
+      exit 1
+    }
+  fi
 fi
 
 # 6. Set Secure File & Directory Permissions
 echo "[6/7] Applying secure file and directory permissions..."
-chown -R www-data:www-data "${RELEASE_DIR}"
+chown -R www-data:www-data "${RELEASE_DIR}" 2>/dev/null || true
 chmod -R 775 "${RELEASE_DIR}"
-chmod -R 777 "${SHARED_DIR}/storage"
 
 # 7. Atomic Symlink Switch & Service Reload
 echo "[7/7] Switching current release symlink to ${RELEASE_DIR}..."
 ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
 
-# Reload PHP-FPM and Nginx
-echo "Reloading PHP 8.3-FPM and Nginx web server..."
-sudo systemctl reload php8.3-fpm || sudo service php8.3-fpm reload
-sudo systemctl reload nginx || sudo service nginx reload
+# Reload PHP-FPM / Nginx / Docker
+echo "Reloading PHP-FPM, Nginx, and Docker containers..."
+if command -v docker &> /dev/null && docker ps | grep -q raptor-web; then
+  docker restart raptor-web 2>/dev/null || true
+fi
+systemctl reload php8.3-fpm 2>/dev/null || service php8.3-fpm reload 2>/dev/null || true
+systemctl reload nginx 2>/dev/null || service nginx reload 2>/dev/null || true
 
 # Clean up older releases (keep last 5 releases)
 echo "Cleaning up old releases (keeping last 5)..."

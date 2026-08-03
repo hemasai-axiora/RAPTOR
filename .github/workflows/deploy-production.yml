@@ -74,7 +74,7 @@ jobs:
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
-            --parameters 'commands=["sudo -u www-data /var/www/raptor/deploy.sh"]' \
+            --parameters 'commands=["sudo /var/www/raptor/deploy.sh"]' \
             --comment "Automated CI/CD deployment from GitHub Actions (Commit: ${{ github.sha }})" \
             --output text \
             --query "Command.CommandId")
