@@ -64,10 +64,15 @@ jobs:
 
       - name: Execute Deployment via AWS SSM Run Command
         run: |
-          echo "Initiating SSM deployment on instance ${{ secrets.AWS_EC2_INSTANCE_ID }}..."
+          INSTANCE_ID=$(echo "${{ secrets.AWS_EC2_INSTANCE_ID }}" | tr -d '[:space:]"')
+          if [ -z "$INSTANCE_ID" ]; then
+            INSTANCE_ID="i-0b61a2d9c74586655"
+          fi
+          
+          echo "Initiating SSM deployment on instance $INSTANCE_ID..."
           
           COMMAND_ID=$(aws ssm send-command \
-            --instance-ids "${{ secrets.AWS_EC2_INSTANCE_ID }}" \
+            --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=["sudo -u www-data /var/www/raptor/deploy.sh"]' \
             --comment "Automated CI/CD deployment from GitHub Actions (Commit: ${{ github.sha }})" \
@@ -80,7 +85,7 @@ jobs:
           echo "Waiting for deployment command to complete..."
           aws ssm wait command-executed \
             --command-id "$COMMAND_ID" \
-            --instance-id "${{ secrets.AWS_EC2_INSTANCE_ID }}"
+            --instance-id "$INSTANCE_ID"
           
           STATUS=$(aws ssm list-command-invocations \
             --command-id "$COMMAND_ID" \
@@ -101,6 +106,11 @@ jobs:
 
       - name: Perform Post-Deployment Health Check
         run: |
+          INSTANCE_ID=$(echo "${{ secrets.AWS_EC2_INSTANCE_ID }}" | tr -d '[:space:]"')
+          if [ -z "$INSTANCE_ID" ]; then
+            INSTANCE_ID="i-0b61a2d9c74586655"
+          fi
+          
           echo "Running post-deployment HTTP health check..."
           
           HEALTH_URL="http://98.94.227.211/public/index.php?route=auth/login"
@@ -111,14 +121,14 @@ jobs:
             echo "Health check failed with status $STATUS_CODE. Triggering rollback..."
             
             ROLLBACK_CMD_ID=$(aws ssm send-command \
-              --instance-ids "${{ secrets.AWS_EC2_INSTANCE_ID }}" \
+              --instance-ids "$INSTANCE_ID" \
               --document-name "AWS-RunShellScript" \
               --parameters 'commands=["sudo -u www-data /var/www/raptor/rollback.sh"]' \
               --comment "Automated Rollback triggered by health check failure" \
               --output text \
               --query "Command.CommandId")
             
-            aws ssm wait command-executed --command-id "$ROLLBACK_CMD_ID" --instance-id "${{ secrets.AWS_EC2_INSTANCE_ID }}"
+            aws ssm wait command-executed --command-id "$ROLLBACK_CMD_ID" --instance-id "$INSTANCE_ID"
             exit 1
           fi
           
