@@ -66,7 +66,7 @@ jobs:
         run: |
           INSTANCE_ID=$(echo "${{ secrets.AWS_EC2_INSTANCE_ID }}" | tr -d '[:space:]"')
           if [ -z "$INSTANCE_ID" ]; then
-            INSTANCE_ID="i-0b61a2d9c74586655"
+            INSTANCE_ID="i-0b68a2d9c74586653"
           fi
           
           echo "Initiating SSM deployment on instance $INSTANCE_ID..."
@@ -108,7 +108,7 @@ jobs:
         run: |
           INSTANCE_ID=$(echo "${{ secrets.AWS_EC2_INSTANCE_ID }}" | tr -d '[:space:]"')
           if [ -z "$INSTANCE_ID" ]; then
-            INSTANCE_ID="i-0b61a2d9c74586655"
+            INSTANCE_ID="i-0b68a2d9c74586653"
           fi
           
           echo "Running post-deployment HTTP health check..."
