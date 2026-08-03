@@ -11,8 +11,8 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR="/var/www/raptor/backups"
 DB_NAME="${DB_NAME:-raptor_crm_db}"
 DB_USER="${DB_USER:-root}"
-DB_PASS="${DB_PASS:-rootpassword}"
-S3_BUCKET="s3://app-frontend-hosting-dev-847013096108/database-backups"
+DB_PASS="${DB_PASS:-RaptorRoot@2026!}"
+S3_BUCKET="s3://raptor-crm-backups-847013096108/database-backups"
 
 mkdir -p "${BACKUP_DIR}"
 
