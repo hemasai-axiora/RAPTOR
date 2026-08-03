@@ -9,6 +9,24 @@
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label for="customer_id" class="form-label text-secondary font-weight-bold">Client / Customer *</label>
+                        
+                        <!-- Search Box for Customer by ID or Name -->
+                        <div class="input-group input-group-sm mb-2">
+                            <span class="input-group-text bg-dark border-secondary text-primary" style="border-color: rgba(255,255,255,0.2) !important;">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </span>
+                            <input type="text" 
+                                   id="customer_search_input" 
+                                   class="form-control text-white border-secondary" 
+                                   placeholder="Search customer by ID or Name..." 
+                                   onkeyup="filterCustomerDropdown(this.value)"
+                                   style="background-color: rgba(0,0,0,0.4) !important; border-color: rgba(255,255,255,0.2) !important;"
+                                   autocomplete="off">
+                            <button type="button" class="btn btn-outline-secondary" onclick="clearCustomerSearch()" title="Clear Search" style="border-color: rgba(255,255,255,0.2) !important;">
+                                <i class="fa-solid fa-xmark text-secondary"></i>
+                            </button>
+                        </div>
+
                         <select name="customer_id" id="customer_id" onchange="updateCustomerDetails()" class="form-select <?php echo (!empty($client_err)) ? 'is-invalid' : ''; ?>" style="background-color: rgba(0,0,0,0.2); border-color: var(--border-color); color: white;" required>
                             <option value="">-- Select Customer --</option>
                             <?php if (!empty($customers)): ?>
@@ -31,6 +49,7 @@
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </select>
+                        <div id="search_results_count" class="form-text text-info small mt-1 d-none"></div>
                         <div class="invalid-feedback"><?php echo $client_err; ?></div>
                     </div>
 
@@ -407,11 +426,70 @@ $(document).ready(function() {
         $('#hidden_email_participants').val($('#modal_email_participants').val());
     });
 
-    // Initialize Select2 search option inside the select element
-    $('#customer_id').select2({
-        placeholder: "-- Select Customer --",
-        allowClear: true
-    });
+function filterCustomerDropdown(query) {
+    const q = (query || '').toLowerCase().trim();
+    const select = document.getElementById('customer_id');
+    if (!select) return;
+
+    const options = select.options;
+    let matchCount = 0;
+    let firstMatch = null;
+
+    for (let i = 0; i < options.length; i++) {
+        if (!options[i].value) continue; // Skip prompt option
+
+        const text = (options[i].text || '').toLowerCase();
+        const code = (options[i].getAttribute('data-customer-code') || '').toLowerCase();
+        const name = (options[i].getAttribute('data-company-name') || '').toLowerCase();
+        const email = (options[i].getAttribute('data-email') || '').toLowerCase();
+        const custId = (options[i].getAttribute('data-customer-id') || '').toLowerCase();
+
+        const matches = q === '' || text.includes(q) || code.includes(q) || name.includes(q) || email.includes(q) || custId === q;
+
+        if (matches) {
+            options[i].disabled = false;
+            options[i].hidden = false;
+            options[i].style.display = '';
+            matchCount++;
+            if (!firstMatch) firstMatch = options[i];
+        } else {
+            options[i].disabled = true;
+            options[i].hidden = true;
+            options[i].style.display = 'none';
+        }
+    }
+
+    const countElem = document.getElementById('search_results_count');
+    if (countElem) {
+        if (q !== '') {
+            countElem.textContent = `Found ${matchCount} matching customer(s).`;
+            countElem.classList.remove('d-none');
+            if (matchCount === 1 && firstMatch) {
+                select.value = firstMatch.value;
+                updateCustomerDetails();
+            }
+        } else {
+            countElem.classList.add('d-none');
+        }
+    }
+}
+
+function clearCustomerSearch() {
+    const searchInput = document.getElementById('customer_search_input');
+    if (searchInput) {
+        searchInput.value = '';
+        filterCustomerDropdown('');
+        searchInput.focus();
+    }
+}
+
+$(document).ready(function() {
+    if ($.fn.select2) {
+        $('#customer_id').select2({
+            placeholder: "-- Select Customer --",
+            allowClear: true
+        });
+    }
 
     $('#customer_id').on('change select2:select', function() {
         updateCustomerDetails();
