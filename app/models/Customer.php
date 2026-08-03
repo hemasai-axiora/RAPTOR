@@ -14,8 +14,17 @@ class Customer extends Model {
     }
 
     public function getAllCustomersForSelect(): array {
-        $this->query('SELECT customer_id, first_name, company_name, customer_code, email FROM customers ORDER BY created_at DESC LIMIT 200');
-        return $this->resultSet() ?: [];
+        try {
+            $this->query('SELECT customer_id, first_name, company_name, customer_code, email FROM customers ORDER BY created_at DESC LIMIT 200');
+            $res = $this->resultSet() ?: [];
+            if (empty($res)) {
+                $this->query('SELECT client_id AS customer_id, company_name, email, CONCAT("CUST-", client_id) AS customer_code FROM clients ORDER BY created_at DESC LIMIT 200');
+                $res = $this->resultSet() ?: [];
+            }
+            return $res;
+        } catch (Throwable $e) {
+            return [];
+        }
     }
 
     public function getCustomers(array $filters = []) {

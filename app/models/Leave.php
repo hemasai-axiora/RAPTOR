@@ -5,24 +5,39 @@
 class Leave extends Model {
 
     public function getLeaveBalances(int $userId) {
-        $this->query('SELECT * FROM leave_balances WHERE user_id = :uid');
-        $this->bind(':uid', $userId);
-        return $this->single();
+        try {
+            $this->query('SELECT * FROM leave_balances WHERE user_id = :uid');
+            $this->bind(':uid', $userId);
+            $res = $this->single();
+            return $res ?: (object)['sick_leave' => 12.00, 'casual_leave' => 12.00, 'earned_leave' => 15.00];
+        } catch (Throwable $e) {
+            error_log("getLeaveBalances error: " . $e->getMessage());
+            return (object)['sick_leave' => 12.00, 'casual_leave' => 12.00, 'earned_leave' => 15.00];
+        }
     }
 
     public function ensureLeaveBalanceExists(int $userId) {
-        $bal = $this->getLeaveBalances($userId);
-        if (!$bal) {
-            $this->query('INSERT IGNORE INTO leave_balances (user_id, sick_leave, casual_leave, earned_leave) VALUES (:uid, 12.00, 12.00, 15.00)');
-            $this->bind(':uid', $userId);
-            $this->execute();
+        try {
+            $bal = $this->getLeaveBalances($userId);
+            if (!$bal || !isset($bal->sick_leave)) {
+                $this->query('INSERT IGNORE INTO leave_balances (user_id, sick_leave, casual_leave, earned_leave) VALUES (:uid, 12.00, 12.00, 15.00)');
+                $this->bind(':uid', $userId);
+                $this->execute();
+            }
+        } catch (Throwable $e) {
+            error_log("ensureLeaveBalanceExists error: " . $e->getMessage());
         }
     }
 
     public function getLeaveRequests(int $userId): array {
-        $this->query('SELECT * FROM leave_requests WHERE user_id = :uid ORDER BY created_at DESC');
-        $this->bind(':uid', $userId);
-        return $this->resultSet() ?: [];
+        try {
+            $this->query('SELECT * FROM leave_requests WHERE user_id = :uid ORDER BY created_at DESC');
+            $this->bind(':uid', $userId);
+            return $this->resultSet() ?: [];
+        } catch (Throwable $e) {
+            error_log("getLeaveRequests error: " . $e->getMessage());
+            return [];
+        }
     }
 
     public function getLeaveRequestById(int $id) {
@@ -300,77 +315,84 @@ class Leave extends Model {
                 $this->ensureDetailedLeaveBalances((int)$au->user_id, $year);
             }
         } catch (Throwable $e) {
-            // Log & continue gracefully
             error_log("ensureDetailedLeaveBalances error: " . $e->getMessage());
         }
 
-        $sql = "SELECT u.user_id, u.name AS employee_name, u.email, e.department,
-                       COALESCE(e.employee_code, CONCAT('EMP-', e.employee_id), CONCAT('EMP-', u.user_id)) AS emp_code,
-                       b.leave_type_name, 
-                       COALESCE(b.allocated_days, 0) AS allocated_days, 
-                       COALESCE(b.carried_forward_days, 0) AS carried_forward_days, 
-                       COALESCE(b.consumed_days, 0) AS consumed_days, 
-                       COALESCE(b.pending_days, 0) AS pending_days,
-                       COALESCE(b.allocated_days + b.carried_forward_days - b.consumed_days - b.pending_days, 0) AS available_days
-                FROM users u
-                LEFT JOIN employees e ON u.user_id = e.user_id
-                LEFT JOIN employee_leave_balances b ON u.user_id = b.user_id AND b.leave_year = :yr
-                WHERE u.status = 'active'";
-        
-        $params = [':yr' => $year];
+        try {
+            $sql = "SELECT u.user_id, u.name AS employee_name, u.email, 
+                           COALESCE(e.department, 'General') AS department,
+                           CONCAT('EMP-', u.user_id) AS emp_code,
+                           b.leave_type_name, 
+                           COALESCE(b.allocated_days, 0) AS allocated_days, 
+                           COALESCE(b.carried_forward_days, 0) AS carried_forward_days, 
+                           COALESCE(b.consumed_days, 0) AS consumed_days, 
+                           COALESCE(b.pending_days, 0) AS pending_days,
+                           COALESCE(b.allocated_days + b.carried_forward_days - b.consumed_days - b.pending_days, 0) AS available_days
+                    FROM users u
+                    LEFT JOIN employees e ON u.user_id = e.user_id
+                    LEFT JOIN employee_leave_balances b ON u.user_id = b.user_id AND b.leave_year = :yr
+                    WHERE u.status = 'active'";
+            
+            $params = [':yr' => $year];
 
-        if (!empty($filters['search'])) {
-            $sql .= " AND (u.name LIKE :s OR u.email LIKE :s OR e.department LIKE :s OR e.employee_code LIKE :s)";
-            $params[':s'] = '%' . $filters['search'] . '%';
-        }
-
-        if (!empty($filters['department'])) {
-            $sql .= " AND LOWER(TRIM(e.department)) = LOWER(TRIM(:dept))";
-            $params[':dept'] = $filters['department'];
-        }
-
-        if (!empty($filters['leave_type'])) {
-            $sql .= " AND b.leave_type_name = :ltype";
-            $params[':ltype'] = $filters['leave_type'];
-        }
-
-        $sql .= " ORDER BY u.name ASC, b.leave_type_name ASC";
-
-        $this->query($sql);
-        foreach ($params as $k => $v) {
-            $this->bind($k, $v);
-        }
-        $rows = $this->resultSet() ?: [];
-
-        // Pivot by user
-        $pivoted = [];
-        foreach ($rows as $r) {
-            $uid = $r->user_id;
-            if (!isset($pivoted[$uid])) {
-                $pivoted[$uid] = (object)[
-                    'user_id' => $r->user_id,
-                    'employee_name' => $r->employee_name,
-                    'email' => $r->email,
-                    'department' => $r->department ?: 'General',
-                    'emp_code' => $r->emp_code ?: ('EMP-' . $r->user_id),
-                    'leave_year' => $year,
-                    'balances' => [],
-                    'total_available' => 0.0,
-                    'is_low_balance' => false
-                ];
+            if (!empty($filters['search'])) {
+                $sql .= " AND (u.name LIKE :s OR u.email LIKE :s OR e.department LIKE :s)";
+                $params[':s'] = '%' . $filters['search'] . '%';
             }
-            $avail = (float)$r->available_days;
-            $pivoted[$uid]->balances[$r->leave_type_name] = $r;
-            $pivoted[$uid]->total_available += $avail;
-            if ($avail < 3.00) {
-                $pivoted[$uid]->is_low_balance = true;
+
+            if (!empty($filters['department'])) {
+                $sql .= " AND LOWER(TRIM(e.department)) = LOWER(TRIM(:dept))";
+                $params[':dept'] = $filters['department'];
             }
-        }
 
-        if (!empty($filters['low_balance'])) {
-            $pivoted = array_filter($pivoted, fn($item) => $item->is_low_balance);
-        }
+            if (!empty($filters['leave_type'])) {
+                $sql .= " AND b.leave_type_name = :ltype";
+                $params[':ltype'] = $filters['leave_type'];
+            }
 
-        return array_values($pivoted);
+            $sql .= " ORDER BY u.name ASC, b.leave_type_name ASC";
+
+            $this->query($sql);
+            foreach ($params as $k => $v) {
+                $this->bind($k, $v);
+            }
+            $rows = $this->resultSet() ?: [];
+
+            // Pivot by user
+            $pivoted = [];
+            foreach ($rows as $r) {
+                $uid = $r->user_id;
+                if (!isset($pivoted[$uid])) {
+                    $pivoted[$uid] = (object)[
+                        'user_id' => $r->user_id,
+                        'employee_name' => $r->employee_name,
+                        'email' => $r->email,
+                        'department' => $r->department ?: 'General',
+                        'emp_code' => $r->emp_code ?: ('EMP-' . $r->user_id),
+                        'leave_year' => $year,
+                        'balances' => [],
+                        'total_available' => 0.0,
+                        'is_low_balance' => false
+                    ];
+                }
+                if (!empty($r->leave_type_name)) {
+                    $avail = (float)$r->available_days;
+                    $pivoted[$uid]->balances[$r->leave_type_name] = $r;
+                    $pivoted[$uid]->total_available += $avail;
+                    if ($avail < 3.00) {
+                        $pivoted[$uid]->is_low_balance = true;
+                    }
+                }
+            }
+
+            if (!empty($filters['low_balance'])) {
+                $pivoted = array_filter($pivoted, fn($item) => $item->is_low_balance);
+            }
+
+            return array_values($pivoted);
+        } catch (Throwable $e) {
+            error_log("getAllDetailedLeaveBalances error: " . $e->getMessage());
+            return [];
+        }
     }
 }

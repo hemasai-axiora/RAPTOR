@@ -295,4 +295,49 @@ class ApiController extends Controller {
         echo json_encode(['status' => 'success', 'data' => $results]);
         exit();
     }
+
+    // JSON endpoint for searching both leads and customers (RC-06, RC-08, RC-09)
+    public function search_customers_leads() {
+        $q = trim($_GET['q'] ?? '');
+        $type = trim($_GET['type'] ?? 'all'); // 'lead', 'customer', or 'all'
+
+        $leads = [];
+        $customers = [];
+
+        if (in_array($type, ['all', 'lead'], true)) {
+            $sql = "SELECT lead_id AS id, CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) AS name, email, phone, status, 'lead' AS entity_type FROM leads";
+            if (!empty($q)) {
+                $sql .= " WHERE first_name LIKE :q OR last_name LIKE :q OR email LIKE :q OR phone LIKE :q";
+            }
+            $sql .= " ORDER BY created_at DESC LIMIT 30";
+            $stmt = $this->db->prepare($sql);
+            if (!empty($q)) {
+                $stmt->bindValue(':q', '%' . $q . '%');
+            }
+            $stmt->execute();
+            $leads = $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
+        }
+
+        if (in_array($type, ['all', 'customer'], true)) {
+            $sql = "SELECT client_id AS id, company_name AS name, email, phone, 'active' AS status, 'customer' AS entity_type FROM clients";
+            if (!empty($q)) {
+                $sql .= " WHERE company_name LIKE :q OR email LIKE :q OR phone LIKE :q";
+            }
+            $sql .= " ORDER BY created_at DESC LIMIT 30";
+            $stmt = $this->db->prepare($sql);
+            if (!empty($q)) {
+                $stmt->bindValue(':q', '%' . $q . '%');
+            }
+            $stmt->execute();
+            $customers = $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
+        }
+
+        echo json_encode([
+            'status' => 'success',
+            'leads' => $leads,
+            'customers' => $customers,
+            'all' => array_merge($leads, $customers)
+        ]);
+        exit();
+    }
 }
