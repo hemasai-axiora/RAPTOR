@@ -36,7 +36,7 @@ class InvoicesController extends Controller {
         // Get single source of truth conversion rate from settings table
         $db = Database::getInstance()->getConnection();
         $stmt = $db->query("SELECT setting_value FROM settings WHERE setting_key = 'billing.conversion_rate_usd_to_inr'");
-        $conversionRate = (float)($stmt->fetchColumn() ?: 83.50);
+        $conversionRate = (float)($stmt->fetchColumn() ?: 95.31);
 
         $selectedCustomerId = trim($_GET['customer_id'] ?? $_POST['customer_id'] ?? '');
 

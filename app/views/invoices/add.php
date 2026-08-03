@@ -9,24 +9,6 @@
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label for="customer_id" class="form-label text-secondary font-weight-bold">Client / Customer *</label>
-                        
-                        <!-- Search Box for Customer by ID or Name -->
-                        <div class="input-group input-group-sm mb-2">
-                            <span class="input-group-text bg-dark border-secondary text-primary" style="border-color: rgba(255,255,255,0.2) !important;">
-                                <i class="fa-solid fa-magnifying-glass"></i>
-                            </span>
-                            <input type="text" 
-                                   id="customer_search_input" 
-                                   class="form-control text-white border-secondary" 
-                                   placeholder="Search customer by ID or Name..." 
-                                   onkeyup="filterCustomerDropdown(this.value)"
-                                   style="background-color: rgba(0,0,0,0.4) !important; border-color: rgba(255,255,255,0.2) !important;"
-                                   autocomplete="off">
-                            <button type="button" class="btn btn-outline-secondary" onclick="clearCustomerSearch()" title="Clear Search" style="border-color: rgba(255,255,255,0.2) !important;">
-                                <i class="fa-solid fa-xmark text-secondary"></i>
-                            </button>
-                        </div>
-
                         <select name="customer_id" id="customer_id" onchange="updateCustomerDetails()" class="form-select <?php echo (!empty($client_err)) ? 'is-invalid' : ''; ?>" style="background-color: rgba(0,0,0,0.2); border-color: var(--border-color); color: white;" required>
                             <option value="">-- Select Customer --</option>
                             <?php if (!empty($customers)): ?>
@@ -89,15 +71,18 @@
                         <input type="text" name="invoice_number" id="invoice_number" class="form-control" value="<?php echo htmlspecialchars($invoice_number); ?>" required>
                     </div>
 
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label for="currency" class="form-label text-secondary font-weight-bold">Billing Currency *</label>
                         <select name="currency" id="currency" class="form-select" style="background-color: rgba(0,0,0,0.2); border-color: var(--border-color); color: white;">
                             <option value="USD" <?php echo $currency === 'USD' ? 'selected' : ''; ?>>USD ($)</option>
                             <option value="INR" <?php echo $currency === 'INR' ? 'selected' : ''; ?>>INR (₹)</option>
+                            <option value="EUR" <?php echo $currency === 'EUR' ? 'selected' : ''; ?>>EUR (€)</option>
+                            <option value="GBP" <?php echo $currency === 'GBP' ? 'selected' : ''; ?>>GBP (£)</option>
+                            <option value="AED" <?php echo $currency === 'AED' ? 'selected' : ''; ?>>AED (د.إ)</option>
                         </select>
                     </div>
 
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label for="amount" class="form-label text-secondary font-weight-bold">Amount *</label>
                         <input type="number" step="0.01" name="amount" id="amount" 
                                class="form-control <?php echo (!empty($amount_err)) ? 'is-invalid' : ''; ?>" 
@@ -105,7 +90,15 @@
                         <div class="invalid-feedback"><?php echo $amount_err; ?></div>
                     </div>
 
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <label for="conversion_rate_input" class="form-label text-secondary font-weight-bold">USD/INR Rate</label>
+                        <input type="number" step="0.01" name="conversion_rate" id="conversion_rate_input" 
+                               class="form-control text-white" 
+                               value="<?php echo htmlspecialchars($conversion_rate ?? 95.31); ?>" 
+                               style="background-color: rgba(0,0,0,0.2); border-color: var(--border-color); color: white;">
+                    </div>
+
+                    <div class="col-md-3">
                         <label for="due_date" class="form-label text-secondary font-weight-bold">Due Date *</label>
                         <input type="date" name="due_date" id="due_date" class="form-control <?php echo (!empty($due_date_err)) ? 'is-invalid' : ''; ?>" value="<?php echo htmlspecialchars($due_date); ?>" min="<?php echo date('Y-m-d'); ?>" required>
                         <div class="invalid-feedback"><?php echo $due_date_err ?? ''; ?></div>
@@ -119,11 +112,11 @@
                         </select>
                     </div>
 
-                    <!-- Conversion rate info -->
+                    <!-- Live Real-Time Currency Converter Banner -->
                     <div class="col-md-6 d-flex align-items-end">
-                        <div id="conversion-info" class="w-100 p-2 rounded bg-opacity-10 bg-info border border-info border-opacity-25 text-info small d-none">
-                            <i class="fa-solid fa-calculator me-1"></i> Conversion rate: <strong>1 USD = <?php echo number_format($conversion_rate, 2); ?> INR</strong>.<br>
-                            Equivalent: <span id="converted-amt-txt">0.00</span>
+                        <div id="conversion-info" class="w-100 p-2.5 rounded bg-opacity-10 bg-info border border-info border-opacity-25 text-info small">
+                            <i class="fa-solid fa-calculator me-1"></i> Live Currency Converter:<br>
+                            <span id="converted-amt-txt">Enter an amount above to see live equivalent value.</span>
                         </div>
                     </div>
 
@@ -533,26 +526,39 @@ $(document).ready(function() {
         });
     });
 
-    // Handle currency calculations live
+    // Handle currency calculations live in real-time
     function updateCurrencyCalcs() {
-        const currency = $('#currency').val();
+        const currency = $('#currency').val() || 'USD';
         const amount = parseFloat($('#amount').val()) || 0;
+        const rate = parseFloat($('#conversion_rate_input').val()) || 95.31;
 
+        let convertedTxt = '';
         if (currency === 'INR') {
-            const converted = amount / conversionRate;
-            $('#converted-amt-txt').text('$' + converted.toFixed(2) + ' USD equivalent');
-            $('#conversion-info').removeClass('d-none');
+            const usdVal = amount / rate;
+            convertedTxt = '$' + usdVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD equivalent (Exchange Rate: 1 USD = ' + rate + ' INR)';
+        } else if (currency === 'USD') {
+            const inrVal = amount * rate;
+            convertedTxt = '₹' + inrVal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' INR equivalent (Exchange Rate: 1 USD = ' + rate + ' INR)';
+        } else if (currency === 'EUR') {
+            const inrVal = amount * 90.50;
+            convertedTxt = '₹' + inrVal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' INR equivalent (Rate: 1 EUR = 90.50 INR)';
+        } else if (currency === 'GBP') {
+            const inrVal = amount * 105.20;
+            convertedTxt = '₹' + inrVal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' INR equivalent (Rate: 1 GBP = 105.20 INR)';
+        } else if (currency === 'AED') {
+            const inrVal = amount * 22.70;
+            convertedTxt = '₹' + inrVal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' INR equivalent (Rate: 1 AED = 22.70 INR)';
+        }
+
+        if (amount > 0) {
+            $('#converted-amt-txt').html('<strong>' + convertedTxt + '</strong>');
         } else {
-            const converted = amount * conversionRate;
-            $('#converted-amt-txt').text('₹' + converted.toFixed(2) + ' INR equivalent');
-            $('#conversion-info').removeClass('d-none');
+            $('#converted-amt-txt').text('Enter an amount above to see live equivalent value.');
         }
     }
 
-    $('#currency, #amount').on('input change', updateCurrencyCalcs);
-    if ($('#amount').val()) {
-        updateCurrencyCalcs();
-    }
+    $('#currency, #amount, #conversion_rate_input').on('input keyup change paste blur', updateCurrencyCalcs);
+    updateCurrencyCalcs();
 
     // Modal Preview rendering
     $('#btn-preview-invoice').on('click', function() {
