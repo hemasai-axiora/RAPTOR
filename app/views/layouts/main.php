@@ -1291,9 +1291,6 @@
                         <i class="fa-solid fa-right-from-bracket"></i>
                     </a>
                 </div>
-                <div class="sidebar-footer-text text-center text-secondary small mt-3" style="font-size: 0.68rem; line-height: 1.4;">
-                    &copy; 2026 RAPTOR<br>Powered by RAPTOR
-                </div>
             </div>
         </nav>
 
@@ -1398,14 +1395,6 @@
             <main class="main-content flex-grow-1">
                 <?php echo $content; ?>
             </main>
-
-            <!-- Sticky branded page footer -->
-            <footer class="footer py-3 border-top" style="border-color: var(--border-color) !important; background-color: var(--panel-dark);">
-                <div class="container-fluid d-flex justify-content-between align-items-center px-4" style="font-size: 0.8rem; color: var(--text-secondary);">
-                    <span>&copy; 2026 <strong>RAPTOR</strong></span>
-                    <span>Powered by <strong>RAPTOR</strong></span>
-                </div>
-            </footer>
         </div>
     </div>
 
