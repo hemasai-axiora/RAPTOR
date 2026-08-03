@@ -35,6 +35,23 @@ $grantPermission = function (PDO $db, string $roleName, string $permissionName, 
 
 echo "Running Migration 0038 (RC-04 Permissions Fix)...";
 
+$stmtCol = $db->query("SHOW COLUMNS FROM permissions LIKE 'module'");
+if (!$stmtCol || !$stmtCol->fetch()) {
+    $db->exec("ALTER TABLE permissions ADD COLUMN module VARCHAR(60) NULL AFTER permission_id");
+}
+$stmtCol = $db->query("SHOW COLUMNS FROM permissions LIKE 'action'");
+if (!$stmtCol || !$stmtCol->fetch()) {
+    $db->exec("ALTER TABLE permissions ADD COLUMN action VARCHAR(60) NULL AFTER module");
+}
+$stmtCol = $db->query("SHOW COLUMNS FROM role_permissions LIKE 'scope'");
+if (!$stmtCol || !$stmtCol->fetch()) {
+    $db->exec("ALTER TABLE role_permissions ADD COLUMN scope VARCHAR(20) NOT NULL DEFAULT 'all'");
+}
+$stmtCol = $db->query("SHOW COLUMNS FROM users LIKE 'force_password_reset'");
+if (!$stmtCol || !$stmtCol->fetch()) {
+    $db->exec("ALTER TABLE users ADD COLUMN force_password_reset TINYINT(1) NOT NULL DEFAULT 0");
+}
+
 // Ensure permissions exist in permissions table
 $permsToEnsure = [
     ['leads.create', 'leads', 'create'],
