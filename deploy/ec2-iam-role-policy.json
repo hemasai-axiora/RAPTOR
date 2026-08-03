@@ -1,0 +1,41 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowS3DatabaseBackupAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::app-frontend-hosting-dev-847013096108",
+        "arn:aws:s3:::app-frontend-hosting-dev-847013096108/*"
+      ]
+    },
+    {
+      "Sid": "AllowSSMParameterStoreAccess",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:GetParametersByPath"
+      ],
+      "Resource": [
+        "arn:aws:ssm:us-east-1:847013096108:parameter/raptor/*"
+      ]
+    },
+    {
+      "Sid": "AllowCloudWatchLogsPut",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogStreams"
+      ],
+      "Resource": "arn:aws:logs:us-east-1:847013096108:log-group:/aws/ec2/raptor-crm:*"
+    }
+  ]
+}
