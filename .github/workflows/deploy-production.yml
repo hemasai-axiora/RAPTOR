@@ -61,7 +61,6 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
           aws-region: us-east-1
-          audience: sts.amazonaws.com
 
       - name: Execute Deployment via AWS SSM Run Command
         run: |
