@@ -583,13 +583,13 @@ class UsersController extends Controller {
                     'last_name' => ['required' => true, 'type' => 'text'],
                     'email' => ['required' => true, 'type' => 'email', 'unique_in_file' => true],
                     'phone_number' => ['required' => false, 'type' => 'text'],
-                    'department' => ['required' => true, 'type' => 'text'],
-                    'job_title' => ['required' => true, 'type' => 'text'],
+                    'department' => ['required' => false, 'type' => 'text'],
+                    'job_title' => ['required' => false, 'type' => 'text'],
                     'reporting_manager_email' => ['required' => false, 'type' => 'email'],
-                    'date_of_joining' => ['required' => true, 'type' => 'date'],
-                    'employment_type' => ['required' => false, 'type' => 'enum', 'allowed_values' => ['Full-time', 'Part-time', 'Contract', 'Intern']],
-                    'status' => ['required' => false, 'type' => 'enum', 'allowed_values' => ['active', 'inactive', 'suspended']],
-                    'work_location' => ['required' => false, 'type' => 'enum', 'allowed_values' => ['Office', 'Remote']],
+                    'date_of_joining' => ['required' => false, 'type' => 'date'],
+                    'employment_type' => ['required' => false, 'type' => 'text'],
+                    'status' => ['required' => false, 'type' => 'text'],
+                    'work_location' => ['required' => false, 'type' => 'text'],
                     'date_of_birth' => ['required' => false, 'type' => 'date'],
                     'bio' => ['required' => false, 'type' => 'text'],
                     'emergency_contact' => ['required' => false, 'type' => 'text'],
@@ -598,34 +598,24 @@ class UsersController extends Controller {
                     'account_number' => ['required' => false, 'type' => 'text'],
                     'ifsc_code' => ['required' => false, 'type' => 'text'],
                     'branch_name' => ['required' => false, 'type' => 'text'],
-                    'account_type' => ['required' => false, 'type' => 'enum', 'allowed_values' => ['Savings', 'Current']],
+                    'account_type' => ['required' => false, 'type' => 'text'],
                     'pan_number' => ['required' => false, 'type' => 'text'],
                     'aadhaar_number' => ['required' => false, 'type' => 'text'],
                     'uan' => ['required' => false, 'type' => 'text'],
                     'esic_number' => ['required' => false, 'type' => 'text'],
                     'salary' => ['required' => false, 'type' => 'number'],
                     'pay_grade' => ['required' => false, 'type' => 'text'],
-                    'pf_applicable' => ['required' => false, 'type' => 'enum', 'allowed_values' => ['0', '1']],
-                    'role_in_system' => ['required' => true, 'type' => 'enum', 'allowed_values' => ['admin', 'manager', 'analyst', 'employer']],
+                    'pf_applicable' => ['required' => false, 'type' => 'text'],
+                    'role_in_system' => ['required' => false, 'type' => 'text'],
                     'temp_password' => ['required' => false, 'type' => 'text']
                 ]
             ];
 
             // Setup lookups
             $db = Database::getInstance()->getConnection();
-            
-            // Get valid department list
-            $stmt = $db->query("SELECT DISTINCT department FROM employees WHERE department IS NOT NULL AND department != ''");
-            $existingDepts = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
-            $defaultDepts = ['Sales', 'Marketing', 'Engineering', 'HR', 'Finance', 'Operations', 'Executive', 'General', 'IT', 'Product', 'Data Analyst'];
-            $existingDepts = array_values(array_unique(array_merge($defaultDepts, $existingDepts)));
 
             $callbacks = [
                 'validate_field_department' => function($val) {
-                    if (empty(trim($val))) return null;
-                    if (strlen(trim($val)) < 2) {
-                        return "Please enter a valid department name.";
-                    }
                     return null;
                 },
                 'validate_field_date_of_joining' => function($val) {
@@ -637,13 +627,7 @@ class UsersController extends Controller {
                     }
                     return null;
                 },
-                'validate_field_reporting_manager_email' => function($val) use ($db) {
-                    if (empty(trim($val))) return null;
-                    $stmt = $db->prepare("SELECT user_id FROM users WHERE email = :email");
-                    $stmt->execute([':email' => trim($val)]);
-                    if (!$stmt->fetch()) {
-                        return "No employee matches this reporting manager email.";
-                    }
+                'validate_field_reporting_manager_email' => function($val) {
                     return null;
                 },
                 'db_duplicate_check' => function($mappedRow) use ($db) {
@@ -720,9 +704,14 @@ class UsersController extends Controller {
         // Custom import callback specifically mapping multi-table models
         $importCallback = function($row, $action, $duplicateStrategy) use ($db) {
             // 1. Resolve role_id
-            $roleName = strtolower($row['role_in_system'] ?: 'employer');
-            $stmt = $db->prepare("SELECT role_id FROM roles WHERE LOWER(role_name) = :name");
-            $stmt->execute([':name' => $roleName]);
+            $rawRole = strtolower(trim($row['role_in_system'] ?? ''));
+            if (in_array($rawRole, ['sales', 'sales person', 'sales_person', 'employee'], true)) {
+                $roleName = 'sales_person';
+            } else {
+                $roleName = $rawRole ?: 'employer';
+            }
+            $stmt = $db->prepare("SELECT role_id FROM roles WHERE LOWER(role_name) = :name OR LOWER(role_name) = LOWER(REPLACE(:name2, ' ', '_'))");
+            $stmt->execute([':name' => $roleName, ':name2' => $roleName]);
             $role = $stmt->fetch(PDO::FETCH_ASSOC);
             $role_id = $role ? (int)$role['role_id'] : 4; // fallback to employer
 
