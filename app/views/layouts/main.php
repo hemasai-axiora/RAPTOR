@@ -640,10 +640,60 @@
             color: var(--text-primary) !important;
             border-color: var(--border-color) !important;
         }
+        /* ── Comprehensive Modal & Dynamic UI Theme Synchronization ── */
         .dropdown-menu, .modal-content {
-            background-color: var(--panel-dark);
-            color: var(--text-primary);
-            border-color: var(--border-color);
+            background-color: var(--panel-dark) !important;
+            color: var(--text-primary) !important;
+            border-color: var(--border-color) !important;
+        }
+        .modal-content .modal-header,
+        .modal-content .modal-footer {
+            border-color: var(--border-color) !important;
+        }
+        .modal-content .modal-title {
+            color: var(--text-primary) !important;
+        }
+        .modal-content p,
+        .modal-content .text-secondary,
+        .modal-content .text-muted,
+        .modal-content .form-label,
+        .modal-content span.text-secondary {
+            color: var(--text-secondary) !important;
+        }
+        .modal-content h1, .modal-content h2, .modal-content h3,
+        .modal-content h4, .modal-content h5, .modal-content h6,
+        .modal-content .fw-bold, .modal-content .text-white {
+            color: var(--text-primary) !important;
+        }
+        .modal-content .form-control,
+        .modal-content .form-select {
+            background-color: var(--surface-soft) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-primary) !important;
+        }
+        .modal-content .bg-dark,
+        .modal-content .card.bg-dark,
+        .modal-content .card-body.bg-dark {
+            background-color: var(--surface-soft) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-primary) !important;
+        }
+        .modal-content .border-secondary {
+            border-color: var(--border-color) !important;
+        }
+        html[data-theme="light"] .modal-content .btn-close-white {
+            filter: invert(1) grayscale(100%) brightness(200%);
+        }
+        html[data-theme="light"] .modal-content div[style*="background: rgba"],
+        html[data-theme="light"] .modal-content div[style*="background:rgba"] {
+            background: var(--surface-soft) !important;
+            border-color: var(--border-color) !important;
+        }
+        html[data-theme="light"] .modal-content code.text-info {
+            color: #0284C7 !important;
+            background-color: #E0F2FE;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
         }
         .theme-toggle {
             border: 1px solid var(--border-color);

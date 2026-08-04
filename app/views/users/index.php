@@ -804,7 +804,7 @@ $(document).ready(function() {
 <!-- Bulk Upload Modal -->
 <div class="modal fade" id="bulkUploadModal" tabindex="-1" aria-labelledby="bulkUploadModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content bg-dark text-white border-secondary" style="border-radius: 12px; backdrop-filter: blur(15px); background: rgba(15, 23, 42, 0.95) !important;">
+        <div class="modal-content border-secondary shadow-lg" style="border-radius: 12px;">
             <div class="modal-header border-secondary">
                 <h5 class="modal-title" id="bulkUploadModalLabel"><i class="fa-solid fa-cloud-arrow-up text-primary me-2"></i>Bulk Upload Employees</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -815,7 +815,7 @@ $(document).ready(function() {
                     <p class="text-secondary small mb-4">
                         Upload a CSV file containing employee details to import them in bulk. Please ensure your CSV headers match the required fields.
                     </p>
-                    <div class="mb-4 d-flex justify-content-between align-items-center p-3 rounded border border-secondary" style="background: rgba(255,255,255,0.02) !important;">
+                    <div class="mb-4 d-flex justify-content-between align-items-center p-3 rounded border border-secondary" style="background: var(--surface-soft) !important;">
                         <div>
                             <h6 class="mb-1 fw-bold">Need a template?</h6>
                             <span class="text-secondary small">Download our pre-formatted template with example rows.</span>
@@ -825,12 +825,12 @@ $(document).ready(function() {
                         </a>
                     </div>
                     <div class="mb-4">
-                        <button class="btn btn-outline-secondary btn-sm w-100 text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#systemOptionsCollapse" aria-expanded="false" aria-controls="systemOptionsCollapse" style="border-color: rgba(255,255,255,0.1); border-radius: 8px;">
+                        <button class="btn btn-outline-secondary btn-sm w-100 text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#systemOptionsCollapse" aria-expanded="false" aria-controls="systemOptionsCollapse" style="border-color: var(--border-color); border-radius: 8px;">
                             <span><i class="fa-solid fa-circle-info me-2 text-info"></i>View Valid System Options (Departments, Job Titles, Managers)</span>
                             <i class="fa-solid fa-chevron-down"></i>
                         </button>
                         <div class="collapse mt-2" id="systemOptionsCollapse">
-                            <div class="card card-body bg-dark border-secondary text-white p-3 small" style="background: rgba(255,255,255,0.01) !important; border-radius: 8px;">
+                            <div class="card card-body border-secondary p-3 small" style="background: var(--surface-soft) !important; border-radius: 8px;">
                                 <div class="row">
                                     <div class="col-md-4 mb-2">
                                         <span class="fw-bold text-primary d-block mb-2" style="font-size:0.8rem;">Departments</span>
