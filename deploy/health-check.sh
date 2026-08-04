@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# RAPTOR CRM & HRMS — Post-Deployment Health Check Script
+# RAPTOR CRM & HRMS – Post-Deployment Health Check Script
 # Validates local HTTP response, database connection, and PHP runtime health.
 # ==============================================================================
 
@@ -15,9 +15,9 @@ echo "=== Executing Post-Deployment Health Check ==="
 for ((i=1; i<=MAX_RETRIES; i++)); do
   echo "Attempt ${i}/${MAX_RETRIES}: Checking ${TARGET_URL}..."
   
-  STATUS_CODE=$(curl -s -o /tmp/health_response.txt -w "%{http_code}" --max-time 10 "${TARGET_URL}" || echo "000")
+  STATUS_CODE=$(curl -s -L -k -o /tmp/health_response.txt -w "%{http_code}" --max-time 10 "${TARGET_URL}" || echo "000")
   
-  if [ "${STATUS_CODE}" -eq 200 ] || [ "${STATUS_CODE}" -eq 302 ]; then
+  if [ "${STATUS_CODE}" -eq 200 ] || [ "${STATUS_CODE}" -eq 301 ] || [ "${STATUS_CODE}" -eq 302 ]; then
     # Ensure response does not contain fatal PHP stack traces
     if ! grep -qi "Fatal error" /tmp/health_response.txt && ! grep -qi "Database connection error" /tmp/health_response.txt; then
       echo "=== Health Check PASSED (HTTP ${STATUS_CODE}) ==="

@@ -22,6 +22,10 @@ echo "=== Starting Production Release Deployment: ${TIMESTAMP} ==="
 # Copy root configuration files to deployment root
 cp "${RELEASE_DIR}/docker-compose.prod.yml" "${BASE_DIR}/docker-compose.prod.yml"
 cp "${RELEASE_DIR}/nginx.conf" "${BASE_DIR}/nginx.conf"
+if [ -f "${RELEASE_DIR}/deploy/health-check.sh" ]; then
+  cp "${RELEASE_DIR}/deploy/health-check.sh" "${BASE_DIR}/health-check.sh"
+  chmod +x "${BASE_DIR}/health-check.sh"
+fi
 
 # 1. Pre-deployment Database Backup
 echo "[1/7] Creating pre-deployment database backup..."
