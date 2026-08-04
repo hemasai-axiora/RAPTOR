@@ -621,24 +621,24 @@ class UsersController extends Controller {
             $existingDepts = array_values(array_unique(array_merge($defaultDepts, $existingDepts)));
 
             $callbacks = [
-                'validate_field_department' => function($val) use ($existingDepts) {
-                    if (empty($val)) return null;
-                    $allowed = array_map('strtolower', $existingDepts);
-                    if (!in_array(strtolower(trim($val)), $allowed, true)) {
-                        return "Department does not exist. Choose from: " . implode(', ', $existingDepts);
+                'validate_field_department' => function($val) {
+                    if (empty(trim($val))) return null;
+                    if (strlen(trim($val)) < 2) {
+                        return "Please enter a valid department name.";
                     }
                     return null;
                 },
                 'validate_field_date_of_joining' => function($val) {
-                    if (empty($val)) return null;
-                    $doj = DateTime::createFromFormat('Y-m-d', trim($val));
-                    if (!$doj) {
-                        return "Date of joining must be a valid date in YYYY-MM-DD format.";
+                    if (empty(trim($val))) return null;
+                    $clean = str_replace('/', '-', trim($val));
+                    $ts = strtotime($clean);
+                    if (!$ts) {
+                        return "Date of joining must be a valid date.";
                     }
                     return null;
                 },
                 'validate_field_reporting_manager_email' => function($val) use ($db) {
-                    if (empty($val)) return null;
+                    if (empty(trim($val))) return null;
                     $stmt = $db->prepare("SELECT user_id FROM users WHERE email = :email");
                     $stmt->execute([':email' => trim($val)]);
                     if (!$stmt->fetch()) {
