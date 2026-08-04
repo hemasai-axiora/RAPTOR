@@ -192,6 +192,9 @@ class Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $csrf = $_POST['csrf_token'] ?? $_GET['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
             if (!$this->validateCsrfToken($csrf)) {
+                if ($this->isAjax()) {
+                    $this->jsonError('Security Error: CSRF token validation failed.', 403);
+                }
                 http_response_code(403);
                 die('Security Error: CSRF token validation failed.');
             }
@@ -201,10 +204,19 @@ class Controller {
                 && strpos($route, 'editrequests/') !== 0
                 && preg_match('#(^|/)edit(/|$)#', $route)
             ) {
+                if ($this->isAjax()) {
+                    $this->jsonError('Governance policy: managers must submit a data edit request with a comment for admin approval.', 403);
+                }
                 http_response_code(403);
                 die('Governance policy: managers must submit a data edit request with a comment for admin approval.');
             }
         }
+    }
+
+    protected function isAjax(): bool {
+        return (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+            || (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false)
+            || (isset($_GET['route']) && strpos($_GET['route'], 'bulk') !== false);
     }
 
     // Check RBAC permissions for current user
@@ -243,6 +255,9 @@ class Controller {
         }
 
         if (!$permitted) {
+            if ($this->isAjax()) {
+                $this->jsonError('You do not have permission to perform this action.', 403);
+            }
             // Render 403 Access Denied
             $this->viewWithLayout('errors/403', 'main', [
                 'title' => 'Access Denied',

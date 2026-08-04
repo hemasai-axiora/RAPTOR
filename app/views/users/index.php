@@ -736,7 +736,13 @@ $(document).ready(function() {
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     msg = xhr.responseJSON.message;
                 } else if (xhr.responseText) {
-                    msg = xhr.responseText;
+                    try {
+                        let parsed = JSON.parse(xhr.responseText);
+                        if (parsed && parsed.message) msg = parsed.message;
+                        else msg = xhr.responseText;
+                    } catch(e) {
+                        msg = xhr.responseText.replace(/<[^>]*>/g, '').trim() || 'Upload failed.';
+                    }
                 }
                 alert(msg);
             }

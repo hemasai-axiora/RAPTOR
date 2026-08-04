@@ -551,7 +551,10 @@ class UsersController extends Controller {
      * Parse and validate uploaded CSV.
      */
     public function bulkUpload() {
-        $this->requirePermission('employees', 'create');
+        $role = $_SESSION['user_role'] ?? '';
+        if (!in_array($role, ['admin', 'manager', 'hr', 'ceo'], true) && !$this->hasPermission('employees')) {
+            $this->requirePermission('employees', 'create');
+        }
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->jsonError('Invalid request method.', 405);
         }
