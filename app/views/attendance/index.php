@@ -201,8 +201,8 @@ $(function () {
             $('#geo-status').text('Geolocation not supported by this browser.');
         }
 
-        // Camera (front) - forced fallback to mock camera for automated tests
-        if (false && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        // Camera (front)
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
                 .then(function (s) {
                     stream = s;
@@ -213,7 +213,7 @@ $(function () {
                     msg('Camera permission denied or unavailable. A selfie is required.', false);
                     $('#btn-start').removeClass('d-none');
                     $('#capture-area').addClass('d-none');
-                    $('#att-msg').html('<div class="alert alert-danger py-2 mt-3 text-center"><i class="fa-solid fa-video-slash me-2"></i>Camera access is blocked. Please check browser settings and allow camera access. <a href="#" onclick="location.reload(); return false;" class="alert-link text-decoration-underline ms-2">Reload &amp; Retry</a></div>');
+                    $('#att-msg').html('<div class="alert alert-danger py-2 mt-3 text-center"><i class="fa-solid fa-video-slash me-2"></i>Camera access is blocked or unavailable on non-HTTPS origins. <a href="https://' + location.host + location.pathname + location.search + '" class="alert-link text-decoration-underline ms-2">Switch to Secure HTTPS</a></div>');
                 });
         } else {
             // Non-secure origin / HTTP context fallback: Enable mock mode
