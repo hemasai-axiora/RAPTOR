@@ -92,6 +92,10 @@ ls -t | tail -n +6 | xargs -I {} rm -rf "{}"
 
 # Run Health Check
 echo "Executing health check verification..."
+if [ -f "${RELEASE_DIR}/deploy/health-check.sh" ]; then
+  cp "${RELEASE_DIR}/deploy/health-check.sh" "/var/www/raptor/health-check.sh"
+  chmod +x "/var/www/raptor/health-check.sh"
+fi
 /var/www/raptor/health-check.sh || {
   echo "Error: Health check failed! Triggering rollback..."
   /var/www/raptor/rollback.sh
