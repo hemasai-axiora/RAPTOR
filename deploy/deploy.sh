@@ -19,6 +19,10 @@ REPO_URL="https://github.com/hemasai-axiora/RAPTOR.git"
 
 echo "=== Starting Production Release Deployment: ${TIMESTAMP} ==="
 
+# Copy root configuration files to deployment root
+cp "${RELEASE_DIR}/docker-compose.prod.yml" "${BASE_DIR}/docker-compose.prod.yml"
+cp "${RELEASE_DIR}/nginx.conf" "${BASE_DIR}/nginx.conf"
+
 # 1. Pre-deployment Database Backup
 echo "[1/7] Creating pre-deployment database backup..."
 /var/www/raptor/db-backup.sh || echo "Warning: Pre-deployment DB backup completed with non-zero code."
