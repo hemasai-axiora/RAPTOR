@@ -583,7 +583,7 @@ class UsersController extends Controller {
                 'fields' => [
                     'employee_code' => ['required' => false, 'type' => 'text', 'unique_in_file' => true],
                     'first_name' => ['required' => true, 'type' => 'text'],
-                    'last_name' => ['required' => true, 'type' => 'text'],
+                    'last_name' => ['required' => false, 'type' => 'text'],
                     'email' => ['required' => true, 'type' => 'email', 'unique_in_file' => true],
                     'phone_number' => ['required' => false, 'type' => 'text'],
                     'department' => ['required' => false, 'type' => 'text'],

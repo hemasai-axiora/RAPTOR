@@ -725,6 +725,21 @@ $(document).ready(function() {
                 $('#summary-valid').text(res.valid_count);
                 $('#summary-errors').text(res.error_count);
 
+                let dupCount = 0;
+                res.rows.forEach(function(row) {
+                    if (row.action === 'duplicate') dupCount++;
+                });
+
+                if (dupCount > 0) {
+                    $('#duplicate-warning-notice').removeClass('d-none').html(
+                        '<i class="fa-solid fa-triangle-exclamation me-1"></i> ' +
+                        '<strong>' + dupCount + ' duplicate record(s) detected in CSV.</strong> ' +
+                        'If you want to update them in the database, set Duplicate Resolution Strategy to <em>"Overwrite/Update existing database records"</em>.'
+                    );
+                } else {
+                    $('#duplicate-warning-notice').addClass('d-none');
+                }
+
                 let html = '';
                 res.rows.forEach(function(row) {
                     let statusBadge = '';
@@ -961,6 +976,8 @@ $(document).ready(function() {
                             <span id="summary-errors" class="text-danger fw-bold">0</span> errors.
                         </div>
                     </div>
+
+                    <div id="duplicate-warning-notice" class="alert alert-warning py-2 px-3 small border-warning mb-3 d-none" style="background: rgba(255, 193, 7, 0.1); color: #ffc107;"></div>
 
                     <div class="mb-3">
                         <label for="duplicate_strategy" class="form-label text-secondary small">Duplicate Resolution Strategy:</label>
