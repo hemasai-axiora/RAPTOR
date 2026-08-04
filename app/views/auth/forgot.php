@@ -180,18 +180,18 @@
         <div class="logo-area d-flex flex-column align-items-center mb-4">
             <img src="<?php echo URLROOT; ?>/logo.png" alt="Raptor Logo" style="height: 70px; width: auto; object-fit: contain; margin-bottom: 0.75rem;">
             <div class="logo-text text-white fw-bold">RESET PASSWORD</div>
-            <div class="logo-sub text-secondary small">Enter your email to request an OTP.</div>
+            <div class="logo-sub text-secondary small">Enter your Employee ID or email address to request an OTP.</div>
         </div>
 
         <form action="index.php?route=auth/forgot" method="POST">
             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
 
             <div class="mb-4">
-                <label for="email" class="form-label">Email Address</label>
-                <input type="email" name="email" id="email" 
+                <label for="email" class="form-label">Employee ID or Email</label>
+                <input type="text" name="email" id="email" 
                        class="form-control <?php echo (!empty($email_err)) ? 'is-invalid' : ''; ?>" 
                        value="<?php echo htmlspecialchars($email ?? ''); ?>" 
-                       placeholder="name@company.com" required autocomplete="email">
+                       placeholder="Employee ID or Email (e.g. EMP-2026-00001 or name@company.com)" required autocomplete="username">
                 <div class="invalid-feedback"><?php echo $email_err ?? ''; ?></div>
             </div>
 

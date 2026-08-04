@@ -101,6 +101,24 @@ class Controller {
             return false;
         }
 
+        // Hard fail-safe check: session_expiry + 5 min (300s) grace period for unhandled popup
+        if (isset($_SESSION['session_expiry'])) {
+            $expiryTs = strtotime($_SESSION['session_expiry']);
+            if (time() > ($expiryTs + 300)) {
+                try {
+                    $sid = session_id();
+                    $db = Database::getInstance()->getConnection();
+                    $stmt = $db->prepare('DELETE FROM sessions WHERE session_id = :sid OR user_id = :uid');
+                    $stmt->execute([':sid' => $sid, ':uid' => (int) $_SESSION['user_id']]);
+                } catch (Exception $e) {
+                    // Fallback on transient error
+                }
+                session_unset();
+                session_destroy();
+                return false;
+            }
+        }
+
         // Check session inactivity timeout
         if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > SESSION_TIMEOUT)) {
             // Session expired

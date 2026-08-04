@@ -1761,5 +1761,211 @@
         }
     })();
     </script>
+
+    <!-- Session Activity Confirmation Modal -->
+    <div class="modal fade" id="sessionActivityModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="sessionActivityModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0" style="border-radius: 16px;">
+                <div class="modal-body text-center p-4">
+                    <div class="mb-3">
+                        <span style="font-size: 3rem; color: #F59E0B;"><i class="fa-solid fa-clock-rotate-left"></i></span>
+                    </div>
+                    <h4 class="fw-bold mb-2">Are you still working?</h4>
+                    <p class="text-secondary small mb-3">
+                        Your 10-hour working session checkpoint has been reached. Please confirm if you wish to extend your working session by 2 hours.
+                    </p>
+                    <div class="alert alert-warning py-2 mb-4 fs-6 fw-bold" style="border-radius: 8px;">
+                        Auto-logout in <span id="session-countdown-timer">05:00</span>
+                    </div>
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button type="button" id="btn-session-extend" class="btn btn-primary px-4 fw-semibold" style="background: var(--primary); border: none; border-radius: 8px;">
+                            <i class="fa-solid fa-check me-2"></i>Yes, Extend Session
+                        </button>
+                        <button type="button" id="btn-session-logout" class="btn btn-outline-secondary px-4 fw-semibold" style="border-radius: 8px;">
+                            <i class="fa-solid fa-right-from-bracket me-2"></i>No, Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        if (typeof jQuery === 'undefined') return;
+
+        let mainTimer = null;
+        let countdownInterval = null;
+        let graceSecondsRemaining = 300;
+        let modalShown = false;
+        const csrfToken = <?php echo json_encode($_SESSION['csrf_token'] ?? ''); ?>;
+
+        function getApiUrl(endpoint) {
+            return 'index.php?route=api/' + endpoint;
+        }
+
+        function checkSessionStatus() {
+            fetch(getApiUrl('session_status'))
+                .then(r => r.json())
+                .then(d => {
+                    if (!d.success || d.is_expired) {
+                        handleLogout('session_timeout');
+                        return;
+                    }
+
+                    if (d.show_popup || d.remaining_seconds <= 0) {
+                        triggerPopup(d.remaining_seconds);
+                    } else {
+                        scheduleMainTimer(d.remaining_seconds);
+                    }
+                })
+                .catch(err => {
+                    // Fallback using direct file if route alias fails
+                    fetch('api/session-status.php')
+                        .then(r => r.json())
+                        .then(d => {
+                            if (!d.success || d.is_expired) {
+                                handleLogout('session_timeout');
+                                return;
+                            }
+                            if (d.show_popup || d.remaining_seconds <= 0) {
+                                triggerPopup(d.remaining_seconds);
+                            } else {
+                                scheduleMainTimer(d.remaining_seconds);
+                            }
+                        })
+                        .catch(() => {});
+                });
+        }
+
+        function scheduleMainTimer(seconds) {
+            if (mainTimer) clearTimeout(mainTimer);
+            const delayMs = Math.max(1000, seconds * 1000);
+            mainTimer = setTimeout(function () {
+                checkSessionStatus();
+            }, delayMs);
+        }
+
+        function triggerPopup(overdueSeconds) {
+            if (modalShown) return;
+            modalShown = true;
+
+            if (mainTimer) clearTimeout(mainTimer);
+
+            let initialGrace = 300;
+            if (typeof overdueSeconds === 'number' && overdueSeconds < 0) {
+                initialGrace = Math.max(0, 300 + overdueSeconds);
+            }
+
+            if (initialGrace <= 0) {
+                handleLogout('session_timeout');
+                return;
+            }
+
+            graceSecondsRemaining = Math.floor(initialGrace);
+            updateCountdownDisplay();
+
+            const modalEl = document.getElementById('sessionActivityModal');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const bsModal = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
+                bsModal.show();
+            }
+
+            if (countdownInterval) clearInterval(countdownInterval);
+            countdownInterval = setInterval(function () {
+                graceSecondsRemaining--;
+                updateCountdownDisplay();
+                if (graceSecondsRemaining <= 0) {
+                    clearInterval(countdownInterval);
+                    handleLogout('session_timeout');
+                }
+            }, 1000);
+        }
+
+        function updateCountdownDisplay() {
+            const m = Math.floor(graceSecondsRemaining / 60);
+            const s = graceSecondsRemaining % 60;
+            const formatted = (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
+            $('#session-countdown-timer').text(formatted);
+        }
+
+        function handleExtend() {
+            $('#btn-session-extend').prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-2"></i>Extending...');
+            
+            const doExtend = function(url) {
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken
+                    }
+                })
+                .then(r => r.json())
+                .then(d => {
+                    $('#btn-session-extend').prop('disabled', false).html('<i class="fa-solid fa-check me-2"></i>Yes, Extend Session');
+                    if (d.success) {
+                        if (countdownInterval) clearInterval(countdownInterval);
+                        modalShown = false;
+                        const modalEl = document.getElementById('sessionActivityModal');
+                        if (modalEl && typeof bootstrap !== 'undefined') {
+                            const bsModal = bootstrap.Modal.getInstance(modalEl);
+                            if (bsModal) bsModal.hide();
+                        }
+                        scheduleMainTimer(d.remaining_seconds || 7200);
+                    } else {
+                        handleLogout('session_timeout');
+                    }
+                })
+                .catch(() => {
+                    if (url !== 'api/session-extend.php') {
+                        doExtend('api/session-extend.php');
+                    } else {
+                        $('#btn-session-extend').prop('disabled', false).html('<i class="fa-solid fa-check me-2"></i>Yes, Extend Session');
+                        handleLogout('session_timeout');
+                    }
+                });
+            };
+
+            doExtend(getApiUrl('session_extend'));
+        }
+
+        function handleLogout(trigger) {
+            if (countdownInterval) clearInterval(countdownInterval);
+            const bodyData = 'trigger=' + encodeURIComponent(trigger || 'user_logout') + '&csrf_token=' + encodeURIComponent(csrfToken);
+            
+            fetch(getApiUrl('session_logout'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: bodyData
+            })
+            .then(r => r.json())
+            .then(d => {
+                window.location.href = d.redirect || ('index.php?route=auth/login&reason=' + (trigger || 'user_logout'));
+            })
+            .catch(() => {
+                window.location.href = 'index.php?route=auth/login&reason=' + (trigger || 'user_logout');
+            });
+        }
+
+        $(function () {
+            $('#btn-session-extend').on('click', handleExtend);
+            $('#btn-session-logout').on('click', function () {
+                handleLogout('user_logout');
+            });
+
+            // Reschedule/trigger on tab focus (visibilitychange)
+            document.addEventListener('visibilitychange', function () {
+                if (!document.hidden) {
+                    checkSessionStatus();
+                }
+            });
+
+            // Initial check
+            checkSessionStatus();
+        });
+    })();
+    </script>
 </body>
 </html>

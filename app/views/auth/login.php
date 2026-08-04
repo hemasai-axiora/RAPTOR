@@ -215,6 +215,16 @@
             <div class="logo-sub text-secondary small" style="font-size: 0.8rem; margin-top: 0.15rem;">Digital Marketing Hub</div>
         </div>
 
+        <?php if (!empty($_GET['reason']) && $_GET['reason'] === 'session_timeout'): ?>
+            <div class="alert alert-warning py-2 px-3 small mb-4" style="background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.25); color: var(--text-primary);">
+                <i class="fa-solid fa-clock-rotate-left me-2 text-warning"></i>Your session expired due to inactivity. Please log in again.
+            </div>
+        <?php elseif (!empty($_GET['reason']) && $_GET['reason'] === 'user_logout'): ?>
+            <div class="alert alert-info py-2 px-3 small mb-4" style="background: rgba(13, 202, 240, 0.12); border-color: rgba(13, 202, 240, 0.25); color: var(--text-primary);">
+                <i class="fa-solid fa-circle-check me-2 text-info"></i>You have been logged out successfully.
+            </div>
+        <?php endif; ?>
+
         <?php if (!empty($_SESSION['login_success'])): ?>
             <div class="alert alert-success py-2 px-3 small mb-4" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); color: var(--text-primary);">
                 <i class="fa-solid fa-circle-check me-2"></i><?php echo $_SESSION['login_success']; unset($_SESSION['login_success']); ?>
@@ -225,13 +235,13 @@
             <!-- CSRF Token -->
             <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
 
-            <!-- Email Input -->
+            <!-- Employee ID / Email Input -->
             <div class="mb-4">
-                <label for="email" class="form-label">Email Address</label>
-                <input type="email" name="email" id="email" 
+                <label for="email" class="form-label">Employee ID or Email</label>
+                <input type="text" name="email" id="email" 
                        class="form-control <?php echo (!empty($email_err)) ? 'is-invalid' : ''; ?>" 
                        value="<?php echo htmlspecialchars($email); ?>" 
-                       placeholder="name@company.com" required autocomplete="email">
+                       placeholder="Employee ID or Email (e.g. EMP-2026-00001 or name@company.com)" required autocomplete="username">
                 <div class="invalid-feedback"><?php echo $email_err; ?></div>
             </div>
 

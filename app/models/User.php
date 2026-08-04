@@ -2,22 +2,51 @@
 // Raptor CRM User Model
 
 class User extends Model {
-    // Find user by email
-    public function findUserByEmail($email) {
-        $this->query('SELECT u.*, r.role_name, e.profile_photo 
-                      FROM users u 
-                      JOIN roles r ON u.role_id = r.role_id 
-                      LEFT JOIN employees e ON u.user_id = e.user_id
-                      WHERE u.email = :email AND u.status = "active"');
-        $this->bind(':email', $email);
+    /**
+     * Resolve employee user record by Email address or Employee ID (employee_code or numeric employee_id).
+     * Single parameterized query path for prepared statements (case-insensitive for Employee ID).
+     */
+    public function resolveEmployeeByIdentifier($input) {
+        $input = trim((string)$input);
+        if (empty($input)) {
+            return false;
+        }
+
+        if (filter_var($input, FILTER_VALIDATE_EMAIL)) {
+            // Email lookup path
+            $this->query('SELECT u.*, r.role_name, e.employee_id, e.employee_code, e.profile_photo 
+                          FROM users u 
+                          JOIN roles r ON u.role_id = r.role_id 
+                          LEFT JOIN employees e ON u.user_id = e.user_id
+                          WHERE LOWER(u.email) = LOWER(:email)');
+            $this->bind(':email', $input);
+        } else {
+            // Employee ID / Code lookup path (uppercase, case-insensitive match)
+            $upperIdentifier = strtoupper($input);
+            $this->query('SELECT u.*, r.role_name, e.employee_id, e.employee_code, e.profile_photo 
+                          FROM users u 
+                          JOIN roles r ON u.role_id = r.role_id 
+                          JOIN employees e ON u.user_id = e.user_id
+                          WHERE UPPER(e.employee_code) = :identifier 
+                             OR UPPER(CAST(e.employee_id AS CHAR)) = :identifier');
+            $this->bind(':identifier', $upperIdentifier);
+        }
+
         return $this->single();
     }
 
-    // Login user
-    public function login($email, $password) {
-        $row = $this->findUserByEmail($email);
+    // Find user by email or identifier (for auth reset flows)
+    public function findUserByEmail($email) {
+        $user = $this->resolveEmployeeByIdentifier($email);
+        return ($user && isset($user->status) && $user->status === 'active') ? $user : false;
+    }
 
-        if ($row) {
+    // Login user by Employee ID or Email
+    public function login($identifier, $password) {
+        $row = $this->resolveEmployeeByIdentifier($identifier);
+
+        // Account status check (must be active)
+        if ($row && isset($row->status) && $row->status === 'active') {
             $hashed_password = $row->password;
             if (password_verify($password, $hashed_password) || ($password === 'Password123!' || $password === 'Raptor@12345')) {
                 return $row;
