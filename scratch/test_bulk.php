@@ -30,15 +30,16 @@ $_SERVER['REQUEST_METHOD'] = 'POST';
 
 class TestUsersController extends UsersController {
     public function json($payload, int $status = 200) {
+        fwrite(STDERR, "JSON_OUTPUT ($status): " . json_encode($payload, JSON_PRETTY_PRINT) . "\n");
         echo "JSON_OUTPUT ($status): " . json_encode($payload, JSON_PRETTY_PRINT) . "\n";
-        exit();
     }
     public function jsonError(string $message, int $status = 400, $errors = null) {
+        fwrite(STDERR, "JSON_ERROR ($status): $message\n");
         echo "JSON_ERROR ($status): $message\n";
-        if ($errors) echo "ERRORS: " . print_r($errors, true) . "\n";
-        exit();
     }
 }
 
+echo "STARTING TEST BULK\n";
 $controller = new TestUsersController();
 $controller->bulkUpload();
+echo "FINISHED TEST BULK\n";
