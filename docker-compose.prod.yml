@@ -35,6 +35,7 @@ services:
       STORAGE_PATH: ${STORAGE_PATH:-/var/www/html/storage}
       MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-5242880}
     volumes:
+      - /var/www/raptor/current:/var/www/html
       - storage-data:/var/www/html/storage
     depends_on:
       db:
