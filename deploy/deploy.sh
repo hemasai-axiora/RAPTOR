@@ -76,7 +76,7 @@ ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
 # Reload PHP-FPM / Nginx / Docker
 echo "Reloading PHP-FPM, Nginx, and Docker containers..."
 if command -v docker &> /dev/null && docker ps | grep -q raptor-web; then
-  docker restart raptor-web 2>/dev/null || true
+  docker restart raptor-web raptor-nginx 2>/dev/null || true
 fi
 systemctl reload php8.3-fpm 2>/dev/null || service php8.3-fpm reload 2>/dev/null || true
 systemctl reload nginx 2>/dev/null || service nginx reload 2>/dev/null || true
