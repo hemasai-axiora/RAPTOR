@@ -29,10 +29,7 @@ git clone --depth 1 --branch main "${REPO_URL}" "${RELEASE_DIR}"
 
 # 3. Symlink Persistent Shared Files (.env & storage)
 echo "[3/7] Symlinking shared persistent environment variables and storage..."
-if [ ! -f "${SHARED_DIR}/.env" ]; then
-  echo "Creating default production .env in shared directory..."
-  cp "${RELEASE_DIR}/app/config/config.php" "${SHARED_DIR}/.env"
-fi
+cp "${RELEASE_DIR}/app/config/config.php" "${SHARED_DIR}/.env"
 
 rm -f "${RELEASE_DIR}/.env"
 ln -s "${SHARED_DIR}/.env" "${RELEASE_DIR}/.env"
