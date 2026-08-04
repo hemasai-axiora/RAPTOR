@@ -52,7 +52,20 @@ class Controller {
 
     // Redirect helper
     public function redirect($url) {
-        header('Location: ' . URLROOT . '/' . ltrim($url, '/'));
+        $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? null;
+        if (!empty($host)) {
+            if (strpos($host, ',') !== false) {
+                $host = trim(explode(',', $host)[0]);
+            }
+            $script_name = $_SERVER['SCRIPT_NAME'] ?? '';
+            $dir = dirname($script_name);
+            $dir = ($dir === '\\' || $dir === '/') ? '' : $dir;
+            $base = $scheme . '://' . $host . $dir;
+            header('Location: ' . $base . '/' . ltrim($url, '/'));
+        } else {
+            header('Location: ' . URLROOT . '/' . ltrim($url, '/'));
+        }
         exit();
     }
 
