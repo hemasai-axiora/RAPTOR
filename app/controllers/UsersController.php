@@ -614,29 +614,30 @@ class UsersController extends Controller {
             // Get valid department list
             $stmt = $db->query("SELECT DISTINCT department FROM employees WHERE department IS NOT NULL AND department != ''");
             $existingDepts = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
-            if (empty($existingDepts)) {
-                $existingDepts = ['Sales', 'Marketing', 'Engineering', 'HR', 'Finance', 'Operations', 'Executive'];
-            }
+            $defaultDepts = ['Sales', 'Marketing', 'Engineering', 'HR', 'Finance', 'Operations', 'Executive', 'General', 'IT', 'Product', 'Data Analyst'];
+            $existingDepts = array_values(array_unique(array_merge($defaultDepts, $existingDepts)));
 
             $callbacks = [
                 'validate_field_department' => function($val) use ($existingDepts) {
+                    if (empty($val)) return null;
                     $allowed = array_map('strtolower', $existingDepts);
-                    if (!in_array(strtolower($val), $allowed, true)) {
+                    if (!in_array(strtolower(trim($val)), $allowed, true)) {
                         return "Department does not exist. Choose from: " . implode(', ', $existingDepts);
                     }
                     return null;
                 },
                 'validate_field_date_of_joining' => function($val) {
-                    $today = new DateTime('today');
-                    $doj = DateTime::createFromFormat('Y-m-d', $val);
-                    if ($doj && $doj <= $today) {
-                        return "Date of joining must be a future date (greater than today).";
+                    if (empty($val)) return null;
+                    $doj = DateTime::createFromFormat('Y-m-d', trim($val));
+                    if (!$doj) {
+                        return "Date of joining must be a valid date in YYYY-MM-DD format.";
                     }
                     return null;
                 },
                 'validate_field_reporting_manager_email' => function($val) use ($db) {
+                    if (empty($val)) return null;
                     $stmt = $db->prepare("SELECT user_id FROM users WHERE email = :email");
-                    $stmt->execute([':email' => $val]);
+                    $stmt->execute([':email' => trim($val)]);
                     if (!$stmt->fetch()) {
                         return "No employee matches this reporting manager email.";
                     }

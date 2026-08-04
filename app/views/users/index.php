@@ -663,8 +663,11 @@ $(document).ready(function() {
         $('#btn-upload-preview').html('<span class="spinner-border spinner-border-sm me-2"></span>Validating...').prop('disabled', true);
 
         $.ajax({
-            url: 'index.php?route=users/bulkUpload',
+            url: 'index.php?route=users/bulkUpload&csrf_token=<?php echo $_SESSION['csrf_token']; ?>',
             type: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '<?php echo $_SESSION['csrf_token']; ?>'
+            },
             data: formData,
             contentType: false,
             processData: false,
@@ -732,6 +735,8 @@ $(document).ready(function() {
                 let msg = 'Upload failed.';
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     msg = xhr.responseJSON.message;
+                } else if (xhr.responseText) {
+                    msg = xhr.responseText;
                 }
                 alert(msg);
             }
