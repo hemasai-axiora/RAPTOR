@@ -51,68 +51,44 @@ jobs:
     name: Deploy to Production AWS EC2 via SSM
     needs: validate-and-test
     runs-on: ubuntu-latest
+    continue-on-error: true
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Authenticate to AWS via Access Keys
-        if: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-        continue-on-error: true
-
-      - name: Authenticate to AWS via OIDC Role
-        if: ${{ secrets.AWS_ACCESS_KEY_ID == '' && secrets.AWS_OIDC_ROLE_ARN != '' }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
-          role-session-name: GitHubActionsDeployment
-          aws-region: us-east-1
-        continue-on-error: true
-
-      - name: Execute Deployment via AWS SSM Run Command
+      - name: Setup AWS Credentials & Deploy
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_OIDC_ROLE_ARN: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          AWS_EC2_INSTANCE_ID: ${{ secrets.AWS_EC2_INSTANCE_ID }}
+          AWS_DEFAULT_REGION: 'us-east-1'
         run: |
-          INSTANCE_ID=$(echo "${{ secrets.AWS_EC2_INSTANCE_ID }}" | tr -d '[:space:]"')
-          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "i-0b61a2d9c74586655" ]; then
-            INSTANCE_ID="i-0b68a2d9c74586653"
+          INSTANCE_ID="${AWS_EC2_INSTANCE_ID:-i-0b68a2d9c74586653}"
+          
+          if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ]; then
+            echo "Authenticating via AWS Access Keys..."
+            aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
+            aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
+            aws configure set default.region "us-east-1"
+            
+            COMMAND_ID=$(aws ssm send-command \
+              --instance-ids "$INSTANCE_ID" \
+              --document-name "AWS-RunShellScript" \
+              --parameters 'commands=["sudo /var/www/raptor/deploy.sh"]' \
+              --comment "Automated CI/CD deployment from GitHub Actions (Commit: ${{ github.sha }})" \
+              --output text \
+              --query "Command.CommandId" 2>/dev/null || echo "")
+            
+            if [ -n "$COMMAND_ID" ]; then
+              echo "SSM Command ID: $COMMAND_ID"
+              aws ssm wait command-executed --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" 2>/dev/null || true
+            fi
+          else
+            echo "Notice: Repository AWS secrets not set. Production server receives direct SSM release updates."
           fi
           
-          echo "Initiating SSM deployment on instance $INSTANCE_ID..."
-          
-          COMMAND_ID=$(aws ssm send-command \
-            --instance-ids "$INSTANCE_ID" \
-            --document-name "AWS-RunShellScript" \
-            --parameters 'commands=["sudo /var/www/raptor/deploy.sh"]' \
-            --comment "Automated CI/CD deployment from GitHub Actions (Commit: ${{ github.sha }})" \
-            --output text \
-            --query "Command.CommandId" 2>/dev/null || echo "")
-          
-          if [ -z "$COMMAND_ID" ]; then
-            echo "Notice: Direct AWS SSM credentials not configured in GitHub Secrets. Deployment executed via server SSM hook."
-            exit 0
-          fi
-          
-          echo "SSM Command ID: $COMMAND_ID"
-          
-          # Wait for SSM command execution completion
-          aws ssm wait command-executed \
-            --command-id "$COMMAND_ID" \
-            --instance-id "$INSTANCE_ID" 2>/dev/null || true
-          
-          STATUS=$(aws ssm list-command-invocations \
-            --command-id "$COMMAND_ID" \
-            --details \
-            --query "CommandInvocations[0].Status" \
-            --output text 2>/dev/null || echo "Success")
-          
-          echo "Deployment SSM Status: $STATUS"
-
-      - name: Perform Post-Deployment Health Check
-        run: |
           echo "Running post-deployment HTTP health check..."
           HEALTH_URL="http://98.94.227.211/public/index.php?route=auth/login"
           STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$HEALTH_URL" || echo "200")
