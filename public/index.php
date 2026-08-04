@@ -2,7 +2,6 @@
 // Raptor CRM Front Controller
 
 // Require config before session setup so environment constants are available.
-echo "HOST=" . ($_SERVER['HTTP_HOST'] ?? 'none') . " X_FWD=" . ($_SERVER['HTTP_X_FORWARDED_HOST'] ?? 'none'); exit;
 require_once dirname(dirname(__FILE__)) . '/app/config/config.php';
 
 // Configure Error Reporting & Logging based on environment
