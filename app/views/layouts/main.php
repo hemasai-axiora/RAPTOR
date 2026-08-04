@@ -1808,7 +1808,8 @@
             fetch(getApiUrl('session_status'))
                 .then(r => r.json())
                 .then(d => {
-                    if (!d.success || d.is_expired) {
+                    if (!d || !d.success) return;
+                    if (d.is_expired) {
                         handleLogout('session_timeout');
                         return;
                     }
@@ -1824,7 +1825,8 @@
                     fetch('api/session-status.php')
                         .then(r => r.json())
                         .then(d => {
-                            if (!d.success || d.is_expired) {
+                            if (!d || !d.success) return;
+                            if (d.is_expired) {
                                 handleLogout('session_timeout');
                                 return;
                             }

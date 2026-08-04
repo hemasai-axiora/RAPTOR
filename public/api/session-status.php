@@ -6,14 +6,19 @@ session_start();
 
 header('Content-Type: application/json');
 
-if (!isset($_SESSION['user_id']) || empty($_SESSION['session_expiry'])) {
+if (!isset($_SESSION['user_id'])) {
     echo json_encode([
         'success' => false,
-        'is_expired' => true,
+        'is_expired' => false,
         'show_popup' => false,
         'remaining_seconds' => 0
     ]);
     exit();
+}
+
+if (empty($_SESSION['session_expiry'])) {
+    $_SESSION['login_time'] = date('Y-m-d H:i:s');
+    $_SESSION['session_expiry'] = date('Y-m-d H:i:s', time() + (10 * 3600));
 }
 
 $nowTs = time();
