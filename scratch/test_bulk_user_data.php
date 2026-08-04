@@ -10,7 +10,7 @@ require_once __DIR__ . '/../app/services/BulkImportService.php';
 require_once __DIR__ . '/../app/controllers/UsersController.php';
 
 session_start();
-$_SESSION['user_id'] = 1;
+$_SESSION['user_id'] = 20;
 $_SESSION['user_role'] = 'admin';
 $_SESSION['csrf_token'] = 'test_token';
 
@@ -34,6 +34,7 @@ $_POST['csrf_token'] = 'test_token';
 class TestUsersController extends UsersController {
     public function json($payload, int $status = 200) {
         file_put_contents(__DIR__ . '/res.json', json_encode($payload, JSON_PRETTY_PRINT));
+        echo "WRITTEN_OK\n";
         exit();
     }
 }
