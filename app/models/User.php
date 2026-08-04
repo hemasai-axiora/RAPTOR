@@ -4,9 +4,10 @@
 class User extends Model {
     // Find user by email
     public function findUserByEmail($email) {
-        $this->query('SELECT u.*, r.role_name 
+        $this->query('SELECT u.*, r.role_name, e.profile_photo 
                       FROM users u 
                       JOIN roles r ON u.role_id = r.role_id 
+                      LEFT JOIN employees e ON u.user_id = e.user_id
                       WHERE u.email = :email AND u.status = "active"');
         $this->bind(':email', $email);
         return $this->single();

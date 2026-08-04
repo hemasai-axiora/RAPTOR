@@ -104,6 +104,9 @@ class HrmsController extends Controller {
             if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] === UPLOAD_ERR_OK) {
                 try {
                     $photoKey = Storage::put($_FILES['profile_photo'], 'profiles');
+                    if ($id === $userId) {
+                        $_SESSION['user_photo'] = $photoKey;
+                    }
                 } catch (Exception $e) {
                     $_SESSION['profile_error'] = 'Photo upload failed: ' . $e->getMessage();
                 }

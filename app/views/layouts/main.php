@@ -1280,9 +1280,27 @@
 
             <div class="sidebar-footer">
                 <div class="user-widget">
-                    <div class="user-avatar">
-                        <?php echo strtoupper(substr($_SESSION['user_name'], 0, 2)); ?>
-                    </div>
+                    <?php
+                    $userPhoto = $_SESSION['user_photo'] ?? null;
+                    if (empty($userPhoto) && isset($_SESSION['user_id'])) {
+                        try {
+                            $dbConn = Database::getInstance()->getConnection();
+                            $stmtPhoto = $dbConn->prepare("SELECT profile_photo FROM employees WHERE user_id = :uid LIMIT 1");
+                            $stmtPhoto->execute([':uid' => $_SESSION['user_id']]);
+                            $userPhoto = $stmtPhoto->fetchColumn() ?: null;
+                            $_SESSION['user_photo'] = $userPhoto;
+                        } catch (Throwable $e) {
+                            $userPhoto = null;
+                        }
+                    }
+                    ?>
+                    <?php if (!empty($userPhoto)): ?>
+                        <img src="index.php?route=file/show&key=<?php echo urlencode($userPhoto); ?>" class="user-avatar" style="object-fit: cover; width: 38px; height: 38px; border-radius: 50%;" alt="<?php echo htmlspecialchars($_SESSION['user_name']); ?>">
+                    <?php else: ?>
+                        <div class="user-avatar">
+                            <?php echo strtoupper(substr($_SESSION['user_name'], 0, 2)); ?>
+                        </div>
+                    <?php endif; ?>
                     <div class="flex-grow-1 overflow-hidden" style="margin-right: 0.5rem;">
                         <div class="user-name"><?php echo htmlspecialchars($_SESSION['user_name']); ?></div>
                         <div class="user-role"><?php echo htmlspecialchars(Policy::roleLabel()); ?></div>

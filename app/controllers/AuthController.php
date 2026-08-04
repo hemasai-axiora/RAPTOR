@@ -271,6 +271,7 @@ class AuthController extends Controller {
         $_SESSION['user_name']            = $user->name;
         $_SESSION['user_role']            = $user->role_name;
         $_SESSION['user_status']          = $user->status ?? 'active';
+        $_SESSION['user_photo']           = $user->profile_photo ?? null;
         $_SESSION['force_password_reset'] = (int) ($user->force_password_reset ?? 0);
 
         // Legacy flat permissions list (backward compat with hasPermission())
