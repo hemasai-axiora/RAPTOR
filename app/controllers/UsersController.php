@@ -7,7 +7,10 @@ class UsersController extends Controller {
     public function __construct() {
         $this->requireAuth();
         $role = $_SESSION['user_role'] ?? '';
-        if (!in_array($role, ['admin', 'hr', 'ceo', 'analyst'], true)) {
+        if (!in_array($role, ['admin', 'manager', 'hr', 'ceo', 'analyst'], true)) {
+            if ($this->isAjax()) {
+                $this->jsonError('Access Denied: You do not have permission to access employee management.', 403);
+            }
             $this->redirect('index.php?route=dashboard/index');
             return;
         }
