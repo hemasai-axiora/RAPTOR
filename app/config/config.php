@@ -80,19 +80,24 @@ if (!function_exists('getUserTimezone')) {
 date_default_timezone_set(getUserTimezone());
 
 if (!function_exists('formatToLocalTime')) {
-    function formatToLocalTime($utcDatetime, $format = 'Y-m-d H:i:s'): string {
-        if (empty($utcDatetime)) return '';
+    function formatToLocalTime($datetime, $format = 'Y-m-d H:i:s'): string {
+        if (empty($datetime)) return '';
         try {
-            $dt = new DateTime($utcDatetime, new DateTimeZone('UTC'));
-            $localTz = getUserTimezone();
-            try {
-                $dt->setTimezone(new DateTimeZone($localTz));
-            } catch (Exception $ex) {
-                $dt->setTimezone(new DateTimeZone('Asia/Kolkata'));
+            $userTzStr = getUserTimezone();
+            $targetTz  = new DateTimeZone($userTzStr);
+            
+            // Check if string contains explicit UTC marker (e.g., 'Z' or '+00:00')
+            if (strpos($datetime, 'Z') !== false || preg_match('/[+-]00:?00$/', $datetime)) {
+                $dt = new DateTime($datetime, new DateTimeZone('UTC'));
+            } else {
+                // Datetime string stored in database local timezone
+                $dt = new DateTime($datetime, $targetTz);
             }
+            
+            $dt->setTimezone($targetTz);
             return $dt->format($format);
         } catch (Exception $e) {
-            return $utcDatetime;
+            return $datetime;
         }
     }
 }

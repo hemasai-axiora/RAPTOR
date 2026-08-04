@@ -59,13 +59,12 @@ class Attendance extends Model {
             return ['ok' => false, 'message' => 'You have already checked in today.'];
         }
 
-        $cfg      = $this->getShiftConfig();
-        $date     = date('Y-m-d');
-        $now      = date('Y-m-d H:i:s');
-        $localNow = formatToLocalTime($now, 'Y-m-d H:i:s');
-        $localTime = date('H:i:s', strtotime($localNow));
-        $latestOk = date('H:i:s', strtotime($cfg['shift_start']) + $cfg['grace_minutes'] * 60);
-        $isLate   = $localTime > $latestOk;
+        $cfg       = $this->getShiftConfig();
+        $date      = date('Y-m-d');
+        $now       = date('Y-m-d H:i:s');
+        $localTime = date('H:i:s');
+        $latestOk  = date('H:i:s', strtotime($cfg['shift_start']) + $cfg['grace_minutes'] * 60);
+        $isLate    = $localTime > $latestOk;
 
         // Geofence: null = not evaluated, 1 = inside a fence, 0 = outside all fences.
         $geoOk = $this->evalGeofence($d['lat'], $d['lng']);
