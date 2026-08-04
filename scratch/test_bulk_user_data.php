@@ -33,7 +33,7 @@ $_POST['csrf_token'] = 'test_token';
 
 class TestUsersController extends UsersController {
     public function json($payload, int $status = 200) {
-        echo "JSON_OUTPUT ($status):\n" . json_encode($payload, JSON_PRETTY_PRINT) . "\n";
+        file_put_contents(__DIR__ . '/res.json', json_encode($payload, JSON_PRETTY_PRINT));
         exit();
     }
 }
