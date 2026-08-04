@@ -23,7 +23,11 @@ define('DB_NAME', env('DB_NAME', 'raptor_crm_db'));
 // App Paths & URLs
 define('APPROOT', dirname(dirname(__FILE__)));
 
-if (isset($_SERVER['HTTP_HOST'])) {
+$host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? null;
+if ($host) {
+    if (strpos($host, ',') !== false) {
+        $host = trim(explode(',', $host)[0]);
+    }
     $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
     if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
         $protocol = 'https';
@@ -31,7 +35,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $script_name = $_SERVER['SCRIPT_NAME'] ?? '';
     $dir = dirname($script_name);
     $dir = ($dir === '\\' || $dir === '/') ? '' : $dir;
-    $detected_urlroot = $protocol . '://' . $_SERVER['HTTP_HOST'] . $dir;
+    $detected_urlroot = $protocol . '://' . $host . $dir;
     define('URLROOT', $detected_urlroot);
 } else {
     define('URLROOT', env('URLROOT', 'http://localhost:8080/public'));
