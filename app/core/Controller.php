@@ -7,6 +7,9 @@ if (defined('APPROOT') && file_exists(APPROOT . '/core/Policy.php')) {
 class Controller {
     // Load model
     public function model($model) {
+        if (!class_exists('Model') && file_exists(APPROOT . '/core/Model.php')) {
+            require_once APPROOT . '/core/Model.php';
+        }
         require_once APPROOT . '/models/' . $model . '.php';
         return new $model();
     }

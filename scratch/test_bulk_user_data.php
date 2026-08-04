@@ -4,6 +4,7 @@ ini_set('display_errors', 1);
 
 require_once __DIR__ . '/../app/config/config.php';
 require_once __DIR__ . '/../app/core/Database.php';
+require_once __DIR__ . '/../app/core/Model.php';
 require_once __DIR__ . '/../app/core/Controller.php';
 require_once __DIR__ . '/../app/core/PermissionService.php';
 require_once __DIR__ . '/../app/services/BulkImportService.php';
