@@ -25,11 +25,12 @@ $_FILES['csv_file'] = [
 $_SERVER['REQUEST_METHOD'] = 'POST';
 
 class TestUsersController extends UsersController {
-    public function jsonError($msg, $code = 400) {
-        echo "JSON_ERROR ($code): $msg\n";
+    public function jsonError(string $message, int $status = 400, $errors = null) {
+        echo "JSON_ERROR ($status): $message\n";
+        if ($errors) echo "ERRORS: " . print_r($errors, true) . "\n";
         exit();
     }
-    public function jsonSuccess($data = []) {
+    public function jsonSuccess($data = [], $message = null) {
         echo "JSON_SUCCESS: " . json_encode($data, JSON_PRETTY_PRINT) . "\n";
         exit();
     }
