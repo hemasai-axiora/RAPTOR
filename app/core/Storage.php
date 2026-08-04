@@ -53,9 +53,7 @@ class Storage {
         $sub  = $category . '/' . date('Y') . '/' . date('m');
         $dir  = rtrim(STORAGE_PATH, '/\\') . '/' . $sub;
 
-        if (!is_dir($dir) && !mkdir($dir, 0750, true) && !is_dir($dir)) {
-            throw new RuntimeException('Could not create storage directory.');
-        }
+        self::ensureDirectoryExists($dir);
 
         $name = bin2hex(random_bytes(16)) . '.' . $ext;
         $dest = $dir . '/' . $name;
@@ -82,6 +80,31 @@ class Storage {
     }
 
     /**
+     * Helper method to ensure parent and target storage directories exist with safe permissions.
+     */
+    private static function ensureDirectoryExists(string $dir): void {
+        $base = rtrim(STORAGE_PATH, '/\\');
+
+        if (!file_exists($base) || !is_dir($base)) {
+            @mkdir($base, 0777, true);
+        }
+        if (file_exists($base) && !is_writable($base)) {
+            @chmod($base, 0777);
+        }
+
+        if (!is_dir($dir)) {
+            if (!@mkdir($dir, 0777, true) && !is_dir($dir)) {
+                if (!@mkdir($dir, 0755, true) && !is_dir($dir)) {
+                    @chmod($base, 0777);
+                    if (!@mkdir($dir, 0777, true) && !is_dir($dir)) {
+                        throw new RuntimeException('Could not create storage directory.');
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Store a raw base64 data URL (used when the browser captures a selfie via
      * canvas/getUserMedia and posts a data: string instead of a file).
      */
@@ -98,9 +121,9 @@ class Storage {
         $category = preg_replace('/[^a-z0-9_-]/', '', strtolower($category)) ?: 'misc';
         $sub  = $category . '/' . date('Y') . '/' . date('m');
         $dir  = rtrim(STORAGE_PATH, '/\\') . '/' . $sub;
-        if (!is_dir($dir) && !mkdir($dir, 0750, true) && !is_dir($dir)) {
-            throw new RuntimeException('Could not create storage directory.');
-        }
+
+        self::ensureDirectoryExists($dir);
+
         $name = bin2hex(random_bytes(16)) . '.' . $ext;
         $dest = $dir . '/' . $name;
         if (file_put_contents($dest, $data) === false) {
@@ -155,8 +178,12 @@ class Storage {
     /** Absolute filesystem path for a stored key, or null if it escapes STORAGE_PATH / is missing. */
     public static function path(string $key): ?string {
         $base = rtrim(STORAGE_PATH, '/\\');
-        $full = realpath($base . '/' . $key);
-        if ($full === false || strpos($full, realpath($base)) !== 0) {
+        $realBase = realpath($base);
+        if ($realBase === false) {
+            return null;
+        }
+        $full = realpath($realBase . '/' . $key);
+        if ($full === false || strpos($full, $realBase) !== 0) {
             return null; // path traversal guard
         }
         return is_file($full) ? $full : null;

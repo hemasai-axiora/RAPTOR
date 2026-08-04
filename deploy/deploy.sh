@@ -68,6 +68,9 @@ fi
 echo "[6/7] Applying secure file and directory permissions..."
 chown -R www-data:www-data "${RELEASE_DIR}" 2>/dev/null || true
 chmod -R 775 "${RELEASE_DIR}"
+mkdir -p "${SHARED_DIR}/storage" 2>/dev/null || true
+chown -R www-data:www-data "${SHARED_DIR}/storage" 2>/dev/null || true
+chmod -R 777 "${SHARED_DIR}/storage" 2>/dev/null || true
 
 # 7. Atomic Symlink Switch & Service Reload
 echo "[7/7] Switching current release symlink to ${RELEASE_DIR}..."

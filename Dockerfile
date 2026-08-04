@@ -27,7 +27,9 @@ RUN echo '<Directory /var/www/html>\n\
 </Directory>' > /etc/apache2/conf-available/custom.conf && \
     a2enconf custom
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html
+# Set permissions & create storage folder
+RUN mkdir -p /var/www/html/storage && \
+    chown -R www-data:www-data /var/www/html && \
+    chmod -R 777 /var/www/html/storage
 
 EXPOSE 8000

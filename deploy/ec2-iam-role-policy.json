@@ -29,15 +29,16 @@
       ]
     },
     {
-      "Sid": "AllowCloudWatchLogsPut",
+      "Sid": "AllowCloudWatchLogsAndMetrics",
       "Effect": "Allow",
       "Action": [
         "logs:CreateLogGroup",
         "logs:CreateLogStream",
         "logs:PutLogEvents",
-        "logs:DescribeLogStreams"
+        "logs:DescribeLogStreams",
+        "cloudwatch:PutMetricData"
       ],
-      "Resource": "arn:aws:logs:us-east-1:847013096108:log-group:/aws/ec2/raptor-crm:*"
+      "Resource": "*"
     }
   ]
 }
