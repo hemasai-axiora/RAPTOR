@@ -648,16 +648,58 @@ $(document).ready(function() {
         }
     });
 
+    function displayUploadError(title, message, errorsList) {
+        $('#upload-error-title').text(title || 'Upload Failed');
+        $('#upload-error-message').text(message || 'The CSV file could not be parsed.');
+        
+        let errorRowsHtml = '';
+        if (errorsList && errorsList.length > 0) {
+            errorsList.forEach(function(err) {
+                let rowNum = (err.row && err.row > 0) ? 'Row ' + err.row : 'Header/File';
+                let fieldName = err.field || 'General';
+                let msg = err.message || 'Validation error';
+                errorRowsHtml += '<tr>';
+                errorRowsHtml += '<td><span class="badge bg-danger">' + rowNum + '</span></td>';
+                errorRowsHtml += '<td class="fw-bold text-warning">' + fieldName + '</td>';
+                errorRowsHtml += '<td>' + msg + '</td>';
+                errorRowsHtml += '</tr>';
+            });
+            $('#upload-error-table-body').html(errorRowsHtml);
+            $('#upload-error-table-wrapper').removeClass('d-none');
+        } else {
+            $('#upload-error-table-wrapper').addClass('d-none');
+        }
+        $('#upload-error-container').removeClass('d-none');
+    }
+
+    function clearUploadError() {
+        $('#upload-error-container').addClass('d-none');
+        $('#upload-error-table-body').html('');
+    }
+
     // Bulk Upload Modal Scripting
     $('#btn-upload-preview').on('click', function() {
+        clearUploadError();
         const fileInput = document.getElementById('csv_file');
         if (!fileInput.files || fileInput.files.length === 0) {
-            alert('Please select a CSV file first.');
+            displayUploadError('File Required', 'Please select a CSV file to upload.');
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext !== 'csv') {
+            displayUploadError('Invalid File Format', 'Only .csv files are supported. Please select a valid CSV file.');
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            displayUploadError('File Too Large', 'File size exceeds the 5MB maximum limit.');
             return;
         }
 
         const formData = new FormData();
-        formData.append('csv_file', fileInput.files[0]);
+        formData.append('csv_file', file);
         formData.append('csrf_token', '<?php echo $_SESSION['csrf_token']; ?>');
 
         $('#btn-upload-preview').html('<span class="spinner-border spinner-border-sm me-2"></span>Validating...').prop('disabled', true);
@@ -674,7 +716,8 @@ $(document).ready(function() {
             success: function(res) {
                 $('#btn-upload-preview').html('Upload & Preview').prop('disabled', false);
                 if (res.success === false) {
-                    alert(res.message);
+                    let errs = res.errors || res.structured_errors || [];
+                    displayUploadError('Validation Failure', res.message || 'File validation failed.', errs);
                     return;
                 }
 
@@ -733,23 +776,26 @@ $(document).ready(function() {
             error: function(xhr) {
                 $('#btn-upload-preview').html('Upload & Preview').prop('disabled', false);
                 let msg = 'Upload failed.';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    msg = xhr.responseJSON.message;
+                let errs = [];
+                if (xhr.responseJSON) {
+                    msg = xhr.responseJSON.message || msg;
+                    errs = xhr.responseJSON.errors || xhr.responseJSON.structured_errors || [];
                 } else if (xhr.responseText) {
                     try {
                         let parsed = JSON.parse(xhr.responseText);
-                        if (parsed && parsed.message) msg = parsed.message;
-                        else msg = xhr.responseText;
+                        msg = parsed.message || xhr.responseText;
+                        errs = parsed.errors || parsed.structured_errors || [];
                     } catch(e) {
                         msg = xhr.responseText.replace(/<[^>]*>/g, '').trim() || 'Upload failed.';
                     }
                 }
-                alert(msg);
+                displayUploadError('Upload Failed', msg, errs);
             }
         });
     });
 
     $('#btn-back-upload').on('click', function() {
+        clearUploadError();
         $('#preview-step').addClass('d-none');
         $('#upload-step').removeClass('d-none');
         document.getElementById('csv_file').value = '';
@@ -873,6 +919,27 @@ $(document).ready(function() {
                             </div>
                         </div>
                     </div>
+                    <!-- Upload Error Results Panel -->
+                    <div id="upload-error-container" class="d-none alert alert-danger border-danger p-3 mb-4 rounded" style="background: rgba(220, 53, 69, 0.1); color: #ea868f;">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fa-solid fa-triangle-exclamation me-2 fs-5"></i>
+                            <strong class="fs-6" id="upload-error-title">CSV Validation Errors Detected</strong>
+                        </div>
+                        <p class="small mb-2" id="upload-error-message"></p>
+                        <div id="upload-error-table-wrapper" class="table-responsive rounded border border-danger-subtle d-none" style="max-height: 200px; overflow-y: auto;">
+                            <table class="table table-dark table-hover table-sm small align-middle mb-0" style="font-size: 0.78rem;">
+                                <thead class="sticky-top bg-dark" style="z-index: 1;">
+                                    <tr class="text-danger">
+                                        <th style="width: 15%;">Row</th>
+                                        <th style="width: 25%;">Field</th>
+                                        <th style="width: 60%;">Error Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="upload-error-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <div class="mb-4">
                         <label for="csv_file" class="form-label text-secondary small">Select CSV File (Max 5MB / 5,000 rows)</label>
                         <input type="file" id="csv_file" class="form-control bg-dark border-secondary text-white" accept=".csv" required>

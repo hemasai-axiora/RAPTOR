@@ -658,6 +658,25 @@ class UsersController extends Controller {
             // Run validator
             $results = $importer->validate($rows, $employeeConfig, $callbacks);
 
+            // Format structured errors array
+            $structuredErrors = [];
+            foreach ($results['rows'] as $r) {
+                if ($r['status'] === 'error') {
+                    foreach ($r['errors'] as $field => $errMsg) {
+                        $structuredErrors[] = [
+                            'row' => $r['index'],
+                            'field' => $field,
+                            'message' => $errMsg
+                        ];
+                    }
+                }
+            }
+            $results['structured_errors'] = $structuredErrors;
+
+            if (!empty($structuredErrors)) {
+                error_log("Bulk Upload Validation Errors (" . count($structuredErrors) . ") for file '" . ($file['name'] ?? 'csv') . "': " . json_encode($structuredErrors));
+            }
+
             // Store in session for the confirmation step
             $_SESSION['bulk_import_rows'] = $results['rows'];
             $_SESSION['bulk_import_metadata'] = [
@@ -667,7 +686,14 @@ class UsersController extends Controller {
 
             $this->json($results);
         } catch (Exception $e) {
-            $this->jsonError($e->getMessage());
+            error_log("[Bulk Upload Exception] " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine());
+            $this->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors' => [
+                    ['row' => 0, 'field' => 'file', 'message' => $e->getMessage()]
+                ]
+            ], 400);
         }
     }
 
