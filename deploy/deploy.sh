@@ -19,21 +19,17 @@ REPO_URL="https://github.com/hemasai-axiora/RAPTOR.git"
 
 echo "=== Starting Production Release Deployment: ${TIMESTAMP} ==="
 
-# Copy root configuration files to deployment root
-cp "${RELEASE_DIR}/docker-compose.prod.yml" "${BASE_DIR}/docker-compose.prod.yml"
-cp "${RELEASE_DIR}/nginx.conf" "${BASE_DIR}/nginx.conf"
+# 2. Clone Latest Release
+echo "[2/7] Cloning latest application release into ${RELEASE_DIR}..."
+git clone --depth 1 --branch main "${REPO_URL}" "${RELEASE_DIR}"
+
+# Copy root configuration files & health check script to base deployment root
+cp "${RELEASE_DIR}/docker-compose.prod.yml" "${BASE_DIR}/docker-compose.prod.yml" 2>/dev/null || true
+cp "${RELEASE_DIR}/nginx.conf" "${BASE_DIR}/nginx.conf" 2>/dev/null || true
 if [ -f "${RELEASE_DIR}/deploy/health-check.sh" ]; then
   cp "${RELEASE_DIR}/deploy/health-check.sh" "${BASE_DIR}/health-check.sh"
   chmod +x "${BASE_DIR}/health-check.sh"
 fi
-
-# 1. Pre-deployment Database Backup
-echo "[1/7] Creating pre-deployment database backup..."
-/var/www/raptor/db-backup.sh || echo "Warning: Pre-deployment DB backup completed with non-zero code."
-
-# 2. Clone Latest Release
-echo "[2/7] Cloning latest application release into ${RELEASE_DIR}..."
-git clone --depth 1 --branch main "${REPO_URL}" "${RELEASE_DIR}"
 
 # 3. Symlink Persistent Shared Files (.env & storage)
 echo "[3/7] Symlinking shared persistent environment variables and storage..."
