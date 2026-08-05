@@ -47,7 +47,7 @@ class Controller {
 
         // Load layout and pass content and data
         if (file_exists(APPROOT . '/views/layouts/' . $layout . '.php')) {
-            require_once APPROOT . '/views/layouts/' . $layout . '.php';
+            require APPROOT . '/views/layouts/' . $layout . '.php';
         } else {
             die("Layout does not exist: " . $layout);
         }

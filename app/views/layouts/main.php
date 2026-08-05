@@ -1213,7 +1213,7 @@
                         <?php endif; ?>
                         
                         <?php if (in_array($role, ['admin', 'ceo', 'manager', 'analyst'], true)): ?>
-                        <li class="menu-item <?php echo ($data['title'] === 'Organization | Raptor CRM') ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo (($title ?? '') === 'Organization | Raptor CRM' || (isset($active_tab) && $active_tab === 'teams')) ? 'active' : ''; ?>">
                             <a href="index.php?route=teams/index">
                                 <i class="fa-solid fa-sitemap"></i><span>Organization</span>
                             </a>
