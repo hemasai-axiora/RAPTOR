@@ -11,7 +11,7 @@ class Meeting extends Model {
                              l.first_name AS lead_first_name, l.last_name AS lead_last_name, l.lead_code, l.company_name AS lead_company_name,
                              c.company_name AS customer_company_name, c.customer_code, c.first_name AS customer_first_name
                       FROM meetings m
-                      JOIN users u ON m.assigned_to_user_id = u.user_id
+                      LEFT JOIN users u ON m.assigned_to_user_id = u.user_id
                       LEFT JOIN users cu ON m.created_by_user_id = cu.user_id
                       LEFT JOIN leads l ON m.lead_id = l.lead_id
                       LEFT JOIN customers c ON m.customer_id = c.customer_id

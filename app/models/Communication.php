@@ -9,7 +9,7 @@ class Communication extends Model {
         [$where, $params] = $this->buildWhere($filters, $visibleUserIds);
         $this->query('SELECT c.*, u.name AS user_name, l.first_name, l.last_name, l.company_name AS lead_company_name
                       FROM communications c
-                      JOIN users u ON c.user_id = u.user_id
+                      LEFT JOIN users u ON c.user_id = u.user_id
                       LEFT JOIN leads l ON c.lead_id = l.lead_id
                       ' . $where . '
                       ORDER BY c.happened_at DESC, c.communication_id DESC');

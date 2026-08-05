@@ -11,11 +11,18 @@ class Model {
 
     // Prepare statement with query
     public function query($sql) {
-        $this->stmt = $this->db->prepare($sql);
+        try {
+            $this->stmt = $this->db->prepare($sql);
+        } catch (Throwable $e) {
+            $this->stmt = null;
+        }
     }
 
     // Bind values
     public function bind($param, $value, $type = null) {
+        if (!$this->stmt) {
+            return;
+        }
         if (is_null($type)) {
             switch (true) {
                 case is_int($value):
@@ -31,7 +38,11 @@ class Model {
                     $type = PDO::PARAM_STR;
             }
         }
-        $this->stmt->bindValue($param, $value, $type);
+        try {
+            $this->stmt->bindValue($param, $value, $type);
+        } catch (Throwable $e) {
+            // Safe fallback
+        }
     }
 
     // Execute the prepared statement

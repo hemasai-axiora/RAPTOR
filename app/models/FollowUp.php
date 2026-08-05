@@ -11,8 +11,8 @@ class FollowUp extends Model {
                              l.email AS lead_email, l.phone AS lead_phone, l.status AS lead_status,
                              u.name AS assignee_name, c.name AS creator_name
                       FROM follow_ups f
-                      JOIN leads l ON f.lead_id = l.lead_id
-                      JOIN users u ON f.assigned_to_user_id = u.user_id
+                      LEFT JOIN leads l ON f.lead_id = l.lead_id
+                      LEFT JOIN users u ON f.assigned_to_user_id = u.user_id
                       LEFT JOIN users c ON f.created_by_user_id = c.user_id
                       ' . $where . '
                       ORDER BY f.due_at ASC, f.follow_up_id ASC');
