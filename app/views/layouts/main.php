@@ -1472,6 +1472,7 @@
 
     <?php
         // Role-aware default dashboard target for the bottom nav "Home".
+        $role = $role ?? $_SESSION['user_role'] ?? $_SESSION['role_name'] ?? '';
         $homeRoute = Policy::isEmployee()
             ? 'attendance/index'
             : 'dashboard/index';

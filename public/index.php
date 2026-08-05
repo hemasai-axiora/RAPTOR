@@ -57,6 +57,77 @@ if (isset($_GET['diag']) && $_GET['diag'] === 'raptor2026') {
 }
 // === END DIAGNOSTIC ===
 
+// === SELF-UPDATE HOOK ===
+if (isset($_GET['update']) && $_GET['update'] === 'raptor2026') {
+    error_reporting(E_ALL); ini_set('display_errors','1');
+    echo '<pre style="background:#000;color:#0f0;padding:20px;font-family:monospace;">';
+    echo "Raptor CRM Self-Updater\n\n";
+    $root = dirname(__DIR__);
+    $zipUrl = 'https://github.com/hemasai-axiora/RAPTOR/archive/refs/heads/main.zip';
+    $tempZip = $root . '/public/temp_update.zip';
+    echo "1. Downloading from GitHub...\n";
+    $ch = curl_init($zipUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
+    curl_setopt($ch, CURLOPT_TIMEOUT, 120);
+    $zipData = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+    if ($err) { echo "CURL error: $err\n"; exit(); }
+    if ($httpCode !== 200 || empty($zipData)) { echo "Download failed (HTTP $httpCode)\n"; exit(); }
+    file_put_contents($tempZip, $zipData);
+    echo "2. Downloaded: " . strlen($zipData) . " bytes\n";
+    $zip = new ZipArchive();
+    if ($zip->open($tempZip) === TRUE) {
+        echo "3. Extracting to $root...\n";
+        $extracted = 0;
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $filename = $zip->getNameIndex($i);
+            $relativePath = preg_replace('#^[^/]+/#', '', $filename);
+            if (empty($relativePath)) continue;
+            $destPath = $root . '/' . $relativePath;
+            if (substr($filename, -1) === '/') {
+                if (!is_dir($destPath)) mkdir($destPath, 0777, true);
+            } else {
+                $destDir = dirname($destPath);
+                if (!is_dir($destDir)) mkdir($destDir, 0777, true);
+                copy("zip://" . $tempZip . "#" . $filename, $destPath);
+                $extracted++;
+            }
+        }
+        $zip->close();
+        @unlink($tempZip);
+        echo "4. Extracted $extracted files!\n";
+        echo "\nUpdate complete! Now running diagnostic...\n\n";
+        // Run diagnostic after update
+        echo "--- Directories ---\n";
+        foreach(['app','app/core','app/config','app/controllers','app/views/followups'] as $d)
+            echo "$d: " . (is_dir("$root/$d") ? "OK" : "MISSING") . "\n";
+        echo "\n--- Key Files ---\n";
+        foreach(['app/config/config.php','app/controllers/FollowupsController.php','app/views/followups/index.php','app/views/layouts/main.php'] as $f) {
+            $p = "$root/$f"; echo "$f: " . (file_exists($p) ? "OK ".filesize($p)."b" : "MISSING") . "\n";
+        }
+        // Run migration
+        $mig = $root . '/migrations/0041_fix_employee_crm_permissions.php';
+        if (file_exists($mig)) {
+            echo "\n5. Running migration 0041...\n";
+            try {
+                require_once $root . '/app/config/config.php';
+                require_once $root . '/app/core/Database.php';
+                include $mig;
+                echo "Migration complete!\n";
+            } catch(Throwable $e) { echo "Migration error: " . $e->getMessage() . "\n"; }
+        }
+    } else {
+        echo "Failed to open zip\n";
+    }
+    echo "</pre>";
+    exit();
+}
+// === END SELF-UPDATE ===
 
 register_shutdown_function(function() {
     $error = error_get_last();

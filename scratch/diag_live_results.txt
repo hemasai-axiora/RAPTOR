@@ -1,0 +1,20 @@
+﻿HTTP 200
+Content length: 607200
+Still showing landing/home page - diagnostic not yet active
+First 300: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raptor � Transform Business Data Into Intelligent Decisions</title>
+<meta name="description" content="Raptor unifies Sales, Billing, Operations, and Executive 
+
+
+=== Testing self-update endpoint ===
+HTTP 200
+First 200: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raptor � Transform Business Data Into Intelligent Decisions
