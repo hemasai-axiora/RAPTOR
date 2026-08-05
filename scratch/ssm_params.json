@@ -1,8 +1,0 @@
-{
-  "commands": [
-    "uptime",
-    "free -h",
-    "df -h /",
-    "sudo docker ps"
-  ]
-}

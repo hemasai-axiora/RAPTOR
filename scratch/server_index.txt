@@ -1,5 +1,0 @@
-﻿Session established
-=== Reading current server index.php ===
-Success: False
-Content length: 0
-First 500 chars: 
