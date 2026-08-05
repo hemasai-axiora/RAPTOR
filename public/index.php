@@ -37,7 +37,7 @@ if (isset($_GET['diag']) && $_GET['diag'] === 'raptor2026') {
     echo "\n--- FollowupsController Load Test ---\n";
     try {
         if (!defined('APPROOT')) define('APPROOT', "$root/app");
-        if (!defined('URLROOT')) define('URLROOT', 'https://ags.raptor.unaux.com');
+        if (!defined('URLROOT')) define('URLROOT', 'http://98.94.227.211/public');
         if (!defined('APP_ENV')) define('APP_ENV', 'production');
         require_once APPROOT.'/core/Database.php';
         require_once APPROOT.'/core/Model.php';
