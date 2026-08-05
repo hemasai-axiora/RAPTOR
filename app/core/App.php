@@ -56,32 +56,11 @@ class App {
         try {
             call_user_func_array([$this->currentController, $this->currentMethod], $this->params);
         } catch (Throwable $e) {
-            // Handle error (render 404 or 500)
-            if (defined('APP_ENV') && APP_ENV === 'production') {
-                http_response_code(500);
-                if (file_exists(APPROOT . '/views/errors/500.php')) {
-                    // Start buffer or render layout
-                    $data = [
-                        'title' => 'Internal Server Error | Raptor CRM',
-                        'message' => 'An unexpected server error occurred. Please try again later.'
-                    ];
-                    if (file_exists(APPROOT . '/views/layouts/main.php') && isset($_SESSION['user_id'])) {
-                        // Render inside layout
-                        extract($data);
-                        ob_start();
-                        require APPROOT . '/views/errors/500.php';
-                        $content = ob_get_clean();
-                        require APPROOT . '/views/layouts/main.php';
-                    } else {
-                        // Render standalone
-                        require APPROOT . '/views/errors/500.php';
-                    }
-                } else {
-                    echo "Internal Server Error";
-                }
-            } else {
-                echo "Routing Error: " . htmlspecialchars($e->getMessage());
-            }
+            echo "<h1>Application Exception</h1>";
+            echo "<p><strong>Message:</strong> " . htmlspecialchars($e->getMessage()) . "</p>";
+            echo "<p><strong>File:</strong> " . htmlspecialchars($e->getFile()) . ":" . $e->getLine() . "</p>";
+            echo "<pre>" . htmlspecialchars($e->getTraceAsString()) . "</pre>";
+            exit();
         }
     }
 
