@@ -1416,7 +1416,7 @@
                             $stmtNotif = $dbConnection->prepare("SELECT * FROM notifications WHERE user_id = :uid AND is_read = 0 ORDER BY created_at DESC LIMIT 5");
                             $stmtNotif->execute([':uid' => $notifUser]);
                             $unreadNotifs = $stmtNotif->fetchAll(PDO::FETCH_OBJ) ?: [];
-                        } catch (Exception $e) { 
+                        } catch (Throwable $e) { 
                             $unreadNotifs = []; 
                             $totalUnreadCount = 0;
                         }
@@ -1475,6 +1475,7 @@
             ? 'attendance/index'
             : 'dashboard/index';
         $isOps = $role !== 'employer';
+        $salesRoles = ['admin', 'ceo', 'manager', 'team_leader', 'sales_person', 'employee', 'analyst'];
         $canLeads = in_array($role, $salesRoles, true);
         $salesSide = in_array($role, $salesRoles, true);
     ?>
