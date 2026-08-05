@@ -31,12 +31,12 @@ class LeadsController extends Controller {
         $data = [
             'title' => 'Leads Manager | Raptor CRM',
             'active_tab' => 'operations',
-            'leads' => $this->leadModel->getLeads($filters, $this->visibleUserIds()),
+            'leads' => $this->leadModel->getLeads($filters, $this->visibleUserIds()) ?: [],
             'filters' => $filters,
             'statuses' => Lead::STATUSES,
             'qualities' => Lead::QUALITIES,
-            'sources' => $this->leadModel->getSources(),
-            'assignees' => $this->getAssignees(),
+            'sources' => $this->leadModel->getSources() ?: [],
+            'assignees' => $this->getAssignees() ?: [],
         ];
 
         $this->viewWithLayout('leads/index', 'main', $data);

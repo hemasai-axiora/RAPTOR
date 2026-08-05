@@ -386,44 +386,48 @@ class Controller {
             return [];
         }
 
-        $role = $_SESSION['user_role'];
-        $uid  = (int) $_SESSION['user_id'];
+        try {
+            $role = $_SESSION['user_role'] ?? '';
+            $uid  = (int) ($_SESSION['user_id'] ?? 0);
 
-        if (in_array($role, ['admin', 'ceo', 'analyst'], true)) {
-            return null; // unrestricted
-        }
+            if (in_array($role, ['admin', 'ceo', 'analyst'], true)) {
+                return null; // unrestricted
+            }
 
-        if ($role === 'hr') {
-            // HR can see Managers, Team Leaders, Finance, and Analysts
+            if ($role === 'hr') {
+                // HR can see Managers, Team Leaders, Finance, and Analysts
+                $db = Database::getInstance()->getConnection();
+                $stmt = $db->query("SELECT u.user_id FROM users u 
+                                    JOIN roles r ON u.role_id = r.role_id 
+                                    WHERE r.role_name IN ('manager', 'team_leader', 'finance', 'analyst')");
+                $ids = $stmt ? array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)) : [];
+                $ids[] = $uid; // Include self
+                return array_values(array_unique($ids));
+            }
+
+            if (Policy::isEmployee() || $role === 'employer' || $role === 'sales_person' || $role === 'employee') {
+                return [$uid]; // self only
+            }
+
+            // manager / team_leader: self + everyone in teams they own/lead,
+            // plus direct reports via employees.reporting_manager_id.
             $db = Database::getInstance()->getConnection();
-            $stmt = $db->query("SELECT u.user_id FROM users u 
-                                JOIN roles r ON u.role_id = r.role_id 
-                                WHERE r.role_name IN ('manager', 'team_leader', 'finance', 'analyst')");
-            $ids = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)) ?: [];
-            $ids[] = $uid; // Include self
+            $sql = "SELECT DISTINCT e.user_id
+                    FROM employees e
+                    LEFT JOIN teams t ON e.team_id = t.team_id
+                    WHERE e.reporting_manager_id = :uid
+                       OR t.team_leader_user_id = :uid2
+                       OR t.manager_user_id = :uid3";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([':uid' => $uid, ':uid2' => $uid, ':uid3' => $uid]);
+
+            $ids = [$uid];
+            foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) {
+                $ids[] = (int) $id;
+            }
             return array_values(array_unique($ids));
+        } catch (Throwable $e) {
+            return [(int) ($_SESSION['user_id'] ?? 0)];
         }
-
-        if (Policy::isEmployee() || $role === 'employer') {
-            return [$uid]; // self only
-        }
-
-        // manager / team_leader: self + everyone in teams they own/lead,
-        // plus direct reports via employees.reporting_manager_id.
-        $db = Database::getInstance()->getConnection();
-        $sql = "SELECT DISTINCT e.user_id
-                FROM employees e
-                LEFT JOIN teams t ON e.team_id = t.team_id
-                WHERE e.reporting_manager_id = :uid
-                   OR t.team_leader_user_id = :uid2
-                   OR t.manager_user_id = :uid3";
-        $stmt = $db->prepare($sql);
-        $stmt->execute([':uid' => $uid, ':uid2' => $uid, ':uid3' => $uid]);
-
-        $ids = [$uid];
-        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) {
-            $ids[] = (int) $id;
-        }
-        return array_values(array_unique($ids));
     }
 }

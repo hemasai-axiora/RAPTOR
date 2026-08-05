@@ -26,8 +26,8 @@ class CustomersController extends Controller {
             'search' => $_GET['search'] ?? '',
         ];
 
-        $customers = $this->customerModel->getCustomers($filters);
-        $employees = $this->getEmployees();
+        $customers = $this->customerModel->getCustomers($filters) ?: [];
+        $employees = $this->getEmployees() ?: [];
 
         $data = [
             'title' => 'Customer Registry | Raptor CRM',
