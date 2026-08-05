@@ -1,0 +1,27 @@
+﻿Action values: [('"', 'newfolder'), ('"', 'newfile'), ('"', 'upload'), ('"', 'edit'), ('"', 'download'), ('"', 'rename'), ('"', 'copy'), ('"', 'move'), ('"', 'delete')]
+FormData: []
+XHR open: []
+
+Upload regions (first 5):
+ton class="nav-item" role="menuitem" onclick="showUploadModal(); closeSidebarOnMobile();" aria-label="Upload files">                         <span aria-hidden="true">Γ¼å∩╕Å</span> Upload Files            
+---
+loadModal(); closeSidebarOnMobile();" aria-label="Upload files">                         <span aria-hidden="true">Γ¼å∩╕Å</span> Upload Files                     </button>                     <button class
+---
+<span aria-hidden="true">Γ¼å∩╕Å</span> Upload Files                     </button>                     <button class="nav-item" role="menuitem" onclick="showUploadUnzipModal(); closeSidebarOnMobile();" ari
+---
+ton class="nav-item" role="menuitem" onclick="showUploadUnzipModal(); closeSidebarOnMobile();" aria-label="Upload and extract zip file">                         <i class="fas fa-upload" aria-hidden="t
+---
+nzipModal(); closeSidebarOnMobile();" aria-label="Upload and extract zip file">                         <i class="fas fa-upload" aria-hidden="true"></i> Upload & Unzip                     </button>   
+---
+
+Found "newFile" at 9119:
+> Upload                     </button>                     <button class="btn btn-light toolbar-btn-newfile" onclick="showCreateFileModal()" aria-label="Create new file (Shift+N)" aria-keyshortcuts="Shift+N">                         <i class="fas fa-file-medical" aria-hidden="true"></i> New File                     </button>                     <button class="btn btn-light toolbar-btn-newfolder" o
+
+Found "createFile" at 4331:
+                </button>                     <button class="nav-item" role="menuitem" onclick="showCreateFileModal(); closeSidebarOnMobile();" aria-label="Create new file">                         <i class="fas fa-file-medical" aria-hidden="true"></i> New File                     </button>                 </div>                  <div class="nav-section" role="group" aria-labelledby="nav-actions">
+
+Found "savefile" at 33917:
+ncel editing (Escape)">Cancel</button>                     <button class="btn btn-primary" onclick="saveFile(false)" aria-label="Save file (Ctrl+S)" aria-keyshortcuts="Control+S"><i class="fas fa-save" aria-hidden="true"></i> Save</button>                     <button class="btn btn-success" onclick="saveFile(true)" aria-label="Save file and close editor"><i class="fas fa-save" aria-hidden="true"><
+
+Found "editfile" at 31245:
+x-shrink: 0;">                 <div id="editorModalTitle">                     Edit File: <span id="editFileName"></span>                     <span id="fileType" style="color: var(--text-muted); margin-left: 10px;" aria-label="File type"></span>                 </div>                 <div style="display: flex; gap: 10px;" role="group" aria-label="Editor options">                     <button class=

@@ -1,0 +1,40 @@
+﻿Session: HTTP 200
+Path displays: []
+Breadcrumbs: ['htdocs']
+
+=== Checking .htaccess in htdocs ===
+htdocs/.htaccess: {"success":false,"error":"Could not read file"}
+
+=== Checking public/.htaccess ===
+public/.htaccess: {"success":true,"content":"# Custom 404 Not Found Error Page\r\nErrorDocument 404 https:\/\/profreehost.com\/404\/index.php","encoded":false}
+
+=== Finding the real public/index.php ===
+FAILED: /htdocs/public/index.php -> {"success":false,"error":"Could not read file"}
+FAILED: /htdocs/index.php -> {"success":false,"error":"Could not read file"}
+FAILED: /htdocs/RAPTOR-main/public/index.php -> {"success":false,"error":"Could not read file"}
+FAILED: /www/htdocs/public/index.php -> {"success":false,"error":"Could not read file"}
+FAILED: /var/www/html/public/index.php -> {"success":false,"error":"Could not read file"}
+
+=== Trying download endpoint ===
+Download /htdocs/public/index.php: HTTP 200, <!DOCTYPE html>
+<html lang="en" data-theme="dark" style="background: #151521">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta na
+Download /htdocs/index.php: HTTP 200, <!DOCTYPE html>
+<html lang="en" data-theme="dark" style="background: #151521">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta na
+
+=== Test: save a simple file ===
+Save to /htdocs/public/test123.php: {"success":true}
+SUCCESS! File saved to /htdocs/public/test123.php
+Error at https://ags.raptor.unaux.com/test123.php: HTTP Error 404: Not Found
+Error at https://ags.raptor.unaux.com/public/test123.php: 'charmap' codec can't encode character '\u2717' in position 0: character maps to <undefined>
+Save to /htdocs/test123.php: {"success":true}
+SUCCESS! File saved to /htdocs/test123.php
+Error at https://ags.raptor.unaux.com/test123.php: HTTP Error 404: Not Found
+Error at https://ags.raptor.unaux.com/public/test123.php: 'charmap' codec can't encode character '\u2717' in position 0: character maps to <undefined>
