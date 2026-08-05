@@ -5,22 +5,22 @@ require_once dirname(dirname(__FILE__)) . '/app/core/Database.php';
 
 header('Content-Type: text/plain; charset=utf-8');
 
-// Web-based Auto-Updater Hook to pull latest GitHub code
-if (isset($_GET['update']) || (php_sapi_name() !== 'cli' && !isset($_GET['noupdate']))) {
-    $root = dirname(__DIR__);
-    $zipUrl = 'https://github.com/hemasai-axiora/RAPTOR/archive/refs/heads/main.zip';
-    $tempZip = $root . '/public/temp_update.zip';
-    $ch = curl_init($zipUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
-    curl_setopt($ch, CURLOPT_TIMEOUT, 120);
-    $zipData = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    if ($httpCode === 200 && !empty($zipData)) {
-        file_put_contents($tempZip, $zipData);
+// Always auto-update codebase from GitHub main branch
+$root = dirname(__DIR__);
+$zipUrl = 'https://github.com/hemasai-axiora/RAPTOR/archive/refs/heads/main.zip';
+$tempZip = $root . '/public/temp_update.zip';
+$ch = curl_init($zipUrl);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
+curl_setopt($ch, CURLOPT_TIMEOUT, 120);
+$zipData = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+if ($httpCode === 200 && !empty($zipData)) {
+    file_put_contents($tempZip, $zipData);
+    if (class_exists('ZipArchive')) {
         $zip = new ZipArchive();
         if ($zip->open($tempZip) === TRUE) {
             for ($i = 0; $i < $zip->numFiles; $i++) {
