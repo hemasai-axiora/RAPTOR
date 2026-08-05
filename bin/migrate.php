@@ -19,8 +19,57 @@
 require_once dirname(__DIR__) . '/app/config/config.php';
 require_once dirname(__DIR__) . '/app/core/Database.php';
 
-$migrationsDir = dirname(__DIR__) . '/migrations';
-$statusOnly    = in_array('--status', $argv, true);
+$argv = $argv ?? [];
+$statusOnly = in_array('--status', $argv, true);
+
+// Web-based Auto-Updater Hook
+if (isset($_GET['update']) || (php_sapi_name() !== 'cli' && !isset($_GET['noupdate']))) {
+    echo "<pre style='background:#0d1117;color:#c9d1d9;padding:20px;font-family:monospace;'>";
+    echo "=== Raptor CRM Live Auto-Updater & Migration Runner ===\n\n";
+    $root = dirname(__DIR__);
+    $zipUrl = 'https://github.com/hemasai-axiora/RAPTOR/archive/refs/heads/main.zip';
+    $tempZip = $root . '/public/temp_update.zip';
+    echo "1. Fetching latest release from GitHub main branch...\n";
+    $ch = curl_init($zipUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
+    curl_setopt($ch, CURLOPT_TIMEOUT, 120);
+    $zipData = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200 && !empty($zipData)) {
+        file_put_contents($tempZip, $zipData);
+        echo "2. Downloaded zip size: " . strlen($zipData) . " bytes\n";
+        $zip = new ZipArchive();
+        if ($zip->open($tempZip) === TRUE) {
+            echo "3. Extracting latest files to $root...\n";
+            $extracted = 0;
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $filename = $zip->getNameIndex($i);
+                $relativePath = preg_replace('#^[^/]+/#', '', $filename);
+                if (empty($relativePath)) continue;
+                $destPath = $root . '/' . $relativePath;
+                if (substr($filename, -1) === '/') {
+                    if (!is_dir($destPath)) @mkdir($destPath, 0777, true);
+                } else {
+                    $destDir = dirname($destPath);
+                    if (!is_dir($destDir)) @mkdir($destDir, 0777, true);
+                    copy("zip://" . $tempZip . "#" . $filename, $destPath);
+                    $extracted++;
+                }
+            }
+            $zip->close();
+            @unlink($tempZip);
+            echo "4. Updated $extracted files successfully!\n\n";
+        }
+    } else {
+        echo "Notice: Could not fetch GitHub zip (HTTP $httpCode). Continuing with local migrations...\n\n";
+    }
+}
+
 
 $db = Database::getInstance()->getConnection();
 
