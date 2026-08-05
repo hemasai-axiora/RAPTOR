@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <?php
+        $role = $_SESSION['user_role'] ?? $_SESSION['role_name'] ?? '';
         $page_title = isset($title) ? htmlspecialchars($title) : 'RAPTOR';
         $page_title = str_ireplace('Raptor CRM', 'RAPTOR', $page_title);
     ?>
