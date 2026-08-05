@@ -10,7 +10,7 @@ class MeetingsController extends Controller {
     public function __construct() {
         $this->requireAuth();
 
-        if ($_SESSION['user_role'] === 'employer') {
+        if (($_SESSION['user_role'] ?? '') === 'employer') {
             $this->redirect('index.php?route=dashboard/executive');
         }
 
