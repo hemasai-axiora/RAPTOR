@@ -5,6 +5,44 @@ require_once dirname(dirname(__FILE__)) . '/app/core/Database.php';
 
 header('Content-Type: text/plain; charset=utf-8');
 
+// Web-based Auto-Updater Hook to pull latest GitHub code
+if (isset($_GET['update']) || (php_sapi_name() !== 'cli' && !isset($_GET['noupdate']))) {
+    $root = dirname(__DIR__);
+    $zipUrl = 'https://github.com/hemasai-axiora/RAPTOR/archive/refs/heads/main.zip';
+    $tempZip = $root . '/public/temp_update.zip';
+    $ch = curl_init($zipUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
+    curl_setopt($ch, CURLOPT_TIMEOUT, 120);
+    $zipData = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($httpCode === 200 && !empty($zipData)) {
+        file_put_contents($tempZip, $zipData);
+        $zip = new ZipArchive();
+        if ($zip->open($tempZip) === TRUE) {
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $filename = $zip->getNameIndex($i);
+                $relativePath = preg_replace('#^[^/]+/#', '', $filename);
+                if (empty($relativePath)) continue;
+                $destPath = $root . '/' . $relativePath;
+                if (substr($filename, -1) === '/') {
+                    if (!is_dir($destPath)) @mkdir($destPath, 0777, true);
+                } else {
+                    $destDir = dirname($destPath);
+                    if (!is_dir($destDir)) @mkdir($destDir, 0777, true);
+                    copy("zip://" . $tempZip . "#" . $filename, $destPath);
+                }
+            }
+            $zip->close();
+            @unlink($tempZip);
+            echo "Auto-updated codebase from GitHub main branch.\n";
+        }
+    }
+}
+
 try {
     $db = Database::getInstance()->getConnection();
     echo "=== RAPTOR CRM LIVE DB DIAGNOSTIC & PERMISSION SEED ===\n\n";

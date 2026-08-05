@@ -19,6 +19,7 @@
 require_once dirname(__DIR__) . '/app/config/config.php';
 require_once dirname(__DIR__) . '/app/core/Database.php';
 
+$migrationsDir = dirname(__DIR__) . '/migrations';
 $argv = $argv ?? [];
 $statusOnly = in_array('--status', $argv, true);
 
