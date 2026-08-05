@@ -1,0 +1,14 @@
+{
+  "Rules": [
+    {
+      "ID": "ExpireOldBackups",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": ""
+      },
+      "Expiration": {
+        "Days": 30
+      }
+    }
+  ]
+}

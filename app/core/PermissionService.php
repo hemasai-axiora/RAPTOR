@@ -43,9 +43,27 @@ class PermissionService {
 
         $permKey = $module . '.' . $action;
 
-        // Check if the user has this permission at all
+        // Check if the user has this permission or an alias module permission
         if (!array_key_exists($permKey, $perms)) {
-            return false;
+            $aliases = [
+                'crm_leads' => ['leads', 'crm_leads'],
+                'leads'     => ['crm_leads', 'leads'],
+                'customers' => ['customers', 'crm_leads', 'leads'],
+            ];
+            $found = false;
+            if (isset($aliases[$module])) {
+                foreach ($aliases[$module] as $altMod) {
+                    $altKey = $altMod . '.' . $action;
+                    if (array_key_exists($altKey, $perms)) {
+                        $permKey = $altKey;
+                        $found = true;
+                        break;
+                    }
+                }
+            }
+            if (!$found) {
+                return false;
+            }
         }
 
         $scope = $perms[$permKey]; // 'own', 'team', 'all', or null
@@ -159,8 +177,35 @@ class PermissionService {
                 }
             }
 
+            // 3. Ensure employee and sales_person roles have default CRM module access
+            $stmtRole = $db->prepare('SELECT role_name FROM roles WHERE role_id = :rid LIMIT 1');
+            $stmtRole->execute([':rid' => $roleId]);
+            $rName = strtolower($stmtRole->fetchColumn() ?: '');
+
+            if (in_array($rName, ['employee', 'sales_person'], true)) {
+                $defaults = [
+                    'crm_leads.view' => 'own',
+                    'crm_leads.create' => 'own',
+                    'crm_leads.edit' => 'own',
+                    'leads.view' => 'own',
+                    'leads.create' => 'own',
+                    'leads.edit' => 'own',
+                    'customers.view' => 'all',
+                    'customers.create' => 'own',
+                    'communications.view' => 'own',
+                    'meetings.view' => 'own',
+                    'followups.view' => 'own',
+                    'tasks.view' => 'own',
+                ];
+                foreach ($defaults as $dk => $ds) {
+                    if (!isset($perms[$dk])) {
+                        $perms[$dk] = $ds;
+                    }
+                }
+            }
+
             return $perms;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             return [];
         }
     }
@@ -188,7 +233,7 @@ class PermissionService {
             $ids[] = $managerId; // include self
             $cache[$managerId] = array_values(array_unique($ids));
             return $cache[$managerId];
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             return [$managerId];
         }
     }
@@ -238,7 +283,7 @@ class PermissionService {
 
             ksort($merged);
             return array_values($merged);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             return [];
         }
     }

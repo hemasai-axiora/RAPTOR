@@ -166,15 +166,14 @@ class Controller {
         $userRole = $_SESSION['user_role'] ?? $_SESSION['role_name'] ?? '';
         if (isset($_SESSION['user_id']) && !in_array($userRole, ['admin', 'ceo', 'manager', 'analyst', 'hr', 'finance'], true)) {
             $route = $_GET['route'] ?? '';
-            $exemptRoutes = [
-                'attendance/index',
-                'attendance/checkin',
-                'attendance/consent',
-                'auth/logout',
-                'file/show'
+            $routePrefix = explode('/', trim($route, '/'))[0] ?? '';
+            $allowedModules = [
+                '', 'home', 'dashboard', 'attendance', 'auth', 'file', 'followups', 'leads',
+                'customers', 'communications', 'meetings', 'tasks',
+                'targets', 'performance', 'location', 'api'
             ];
             
-            if (!in_array($route, $exemptRoutes, true) && strpos($route, 'api/') !== 0) {
+            if (!in_array($routePrefix, $allowedModules, true)) {
                 try {
                     $db = Database::getInstance()->getConnection();
                     $todayStr = date('Y-m-d');
@@ -183,9 +182,10 @@ class Controller {
                     $hasClockedIn = (int)$stmt->fetchColumn() > 0;
                     
                     if (!$hasClockedIn) {
+                        $_SESSION['attendance_notice'] = 'Please remember to Clock In for attendance today.';
                         $this->redirect('index.php?route=attendance/index');
                     }
-                } catch (Exception $e) {
+                } catch (Throwable $e) {
                     // Safe fallback
                 }
             }

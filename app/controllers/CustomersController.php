@@ -8,7 +8,9 @@ class CustomersController extends Controller {
 
     public function __construct() {
         $this->requireAuth();
-        $this->requirePermission('crm_leads', 'view');
+        if (!PermissionService::can('customers', 'view') && !PermissionService::can('crm_leads', 'view')) {
+            $this->requirePermission('customers', 'view');
+        }
 
         $this->customerModel = $this->model('Customer');
         $this->leadModel = $this->model('Lead');
