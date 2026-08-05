@@ -75,38 +75,49 @@
 
                 <?php foreach ($followups as $item): ?>
                     <?php
+                        $st = is_object($item) ? ($item->status ?? '') : (is_array($item) ? ($item['status'] ?? '') : '');
                         $statusTone = [
                             'scheduled' => 'primary',
                             'completed' => 'success',
                             'missed' => 'danger',
                             'cancelled' => 'secondary',
-                        ][$item->status] ?? 'secondary';
+                        ][$st] ?? 'secondary';
+                        $leadId = is_object($item) ? ($item->lead_id ?? 0) : ($item['lead_id'] ?? 0);
+                        $firstName = is_object($item) ? ($item->first_name ?? '') : ($item['first_name'] ?? '');
+                        $lastName = is_object($item) ? ($item->last_name ?? '') : ($item['last_name'] ?? '');
+                        $compName = is_object($item) ? ($item->lead_company_name ?? $item->lead_email ?? $item->lead_phone ?? 'No contact') : ($item['lead_company_name'] ?? $item['lead_email'] ?? $item['lead_phone'] ?? 'No contact');
+                        $dueAt = is_object($item) ? ($item->due_at ?? '') : ($item['due_at'] ?? '');
+                        $channel = is_object($item) ? ($item->channel ?? '') : ($item['channel'] ?? '');
+                        $assigneeName = is_object($item) ? ($item->assignee_name ?? '') : ($item['assignee_name'] ?? '');
+                        $note = is_object($item) ? ($item->note ?? $item->outcome ?? '-') : ($item['note'] ?? $item['outcome'] ?? '-');
+                        $followUpId = is_object($item) ? ($item->follow_up_id ?? 0) : ($item['follow_up_id'] ?? 0);
+                        $outcome = is_object($item) ? ($item->outcome ?? '') : ($item['outcome'] ?? '');
                     ?>
                     <tr>
                         <td data-label="Lead">
-                            <a class="text-white fw-semibold text-decoration-none" href="index.php?route=leads/view/<?php echo $item->lead_id; ?>">
-                                <?php echo htmlspecialchars($item->first_name . ' ' . ($item->last_name ?? '')); ?>
+                            <a class="text-white fw-semibold text-decoration-none" href="index.php?route=leads/view/<?php echo $leadId; ?>">
+                                <?php echo htmlspecialchars($firstName . ' ' . $lastName); ?>
                             </a>
-                            <div class="text-secondary small"><?php echo htmlspecialchars($item->lead_company_name ?: $item->lead_email ?: $item->lead_phone ?: 'No contact'); ?></div>
+                            <div class="text-secondary small"><?php echo htmlspecialchars($compName); ?></div>
                         </td>
-                        <td data-label="Due"><?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($item->due_at))); ?></td>
-                        <td data-label="Channel"><span class="badge bg-info-subtle text-info border border-info-subtle"><?php echo strtoupper($item->channel); ?></span></td>
-                        <td data-label="Owner" class="text-secondary"><?php echo htmlspecialchars($item->assignee_name); ?></td>
-                        <td data-label="Status"><span class="badge bg-<?php echo $statusTone; ?>-subtle text-<?php echo $statusTone; ?> border border-<?php echo $statusTone; ?>-subtle"><?php echo strtoupper($item->status); ?></span></td>
-                        <td data-label="Note" class="text-secondary" style="max-width:260px;"><?php echo htmlspecialchars($item->note ?: $item->outcome ?: '-'); ?></td>
+                        <td data-label="Due"><?php echo htmlspecialchars($dueAt ? date('M d, Y h:i A', strtotime($dueAt)) : '-'); ?></td>
+                        <td data-label="Channel"><span class="badge bg-info-subtle text-info border border-info-subtle"><?php echo strtoupper($channel); ?></span></td>
+                        <td data-label="Owner" class="text-secondary"><?php echo htmlspecialchars($assigneeName); ?></td>
+                        <td data-label="Status"><span class="badge bg-<?php echo $statusTone; ?>-subtle text-<?php echo $statusTone; ?> border border-<?php echo $statusTone; ?>-subtle"><?php echo strtoupper($st); ?></span></td>
+                        <td data-label="Note" class="text-secondary" style="max-width:260px;"><?php echo htmlspecialchars($note); ?></td>
                         <td data-label="Actions" class="text-end">
-                            <?php if ($item->status === 'scheduled'): ?>
-                                <form class="d-inline-flex gap-2 flex-wrap justify-content-end" action="index.php?route=followups/complete/<?php echo $item->follow_up_id; ?>" method="POST">
+                            <?php if ($st === 'scheduled'): ?>
+                                <form class="d-inline-flex gap-2 flex-wrap justify-content-end" action="index.php?route=followups/complete/<?php echo $followUpId; ?>" method="POST">
                                     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                                     <input type="text" name="outcome" class="form-control form-control-sm bg-dark border-secondary text-white" placeholder="Outcome" style="width: 150px;">
                                     <button class="btn btn-outline-success btn-sm" title="Complete"><i class="fa-solid fa-check"></i></button>
                                 </form>
-                                <form class="d-inline" action="index.php?route=followups/cancel/<?php echo $item->follow_up_id; ?>" method="POST" onsubmit="return confirm('Cancel this follow-up?');">
+                                <form class="d-inline" action="index.php?route=followups/cancel/<?php echo $followUpId; ?>" method="POST" onsubmit="return confirm('Cancel this follow-up?');">
                                     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                                     <button class="btn btn-outline-secondary btn-sm" title="Cancel"><i class="fa-solid fa-ban"></i></button>
                                 </form>
                             <?php else: ?>
-                                <span class="text-secondary small"><?php echo htmlspecialchars($item->outcome ?: 'Closed'); ?></span>
+                                <span class="text-secondary small"><?php echo htmlspecialchars($outcome ?: 'Closed'); ?></span>
                             <?php endif; ?>
                         </td>
                     </tr>
