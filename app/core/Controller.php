@@ -223,39 +223,25 @@ class Controller {
     }
 
     // Check RBAC permissions for current user
-    protected function hasPermission($permissionName) {
+    protected function hasPermission($permissionName, $action = 'view') {
         if (!$this->isLoggedIn()) {
             return false;
         }
-
-        // If user is Admin, they have all permissions
-        if ($_SESSION['user_role'] === 'admin') {
-            return true;
-        }
-
-        // Check permission list stored in session
-        if (isset($_SESSION['permissions']) && in_array($permissionName, $_SESSION['permissions'])) {
-            return true;
-        }
-
-        return false;
+        return PermissionService::can($permissionName, $action);
     }
 
     // Enforce role permission boundary
     protected function requirePermission($module, $action = null, $record = null) {
         $this->requireAuth();
         
-        $permitted = false;
-        if ($action === null) {
-            if (strpos($module, '.') !== false) {
-                list($mod, $act) = explode('.', $module, 2);
-                $permitted = PermissionService::can($mod, $act, $record);
-            } else {
-                $permitted = $this->hasPermission($module);
-            }
-        } else {
-            $permitted = PermissionService::can($module, $action, $record);
+        $act = $action ?? 'view';
+        $mod = $module;
+
+        if (strpos($module, '.') !== false) {
+            list($mod, $act) = explode('.', $module, 2);
         }
+
+        $permitted = PermissionService::can($mod, $act, $record);
 
         if (!$permitted) {
             if ($this->isAjax()) {

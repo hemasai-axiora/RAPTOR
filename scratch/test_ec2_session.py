@@ -20,7 +20,6 @@ html = resp.read().decode('utf-8')
 
 m = re.search(r'name="csrf_token" value="([^"]+)"', html)
 token = m.group(1) if m else ""
-print("CSRF Token:", token)
 
 data = urllib.parse.urlencode({
     "email": "employee@raptor.local",
@@ -45,10 +44,17 @@ for route in routes:
     try:
         r = opener.open(u)
         body = r.read().decode('utf-8', errors='ignore')
-        print(f"--- SUCCESS: {route} (HTTP {r.status}) ---")
-        print("Body snippet:", body[:200].strip())
+        print(f"=== SUCCESS: {route} (HTTP {r.status}) ===")
+        print("Body snippet:", body[:300].strip())
     except urllib.error.HTTPError as e:
-        err_body = e.read().decode('utf-8', errors='ignore')
-        print(f"--- FAILED: {route} (HTTP {e.code}) ---")
-        print("Error snippet:", err_body[:300].strip())
-    print("-" * 50)
+        print(f"=== HTTP ERROR: {route} (HTTP {e.code}) ===")
+        print("Headers:", dict(e.headers))
+        try:
+            err_body = e.read().decode('utf-8', errors='ignore')
+            print("FULL ERROR BODY:")
+            print(err_body)
+        except Exception as ex:
+            print("Could not read error body:", ex)
+    except Exception as e:
+        print(f"=== OTHER ERROR: {route} ===", e)
+    print("=" * 60)
