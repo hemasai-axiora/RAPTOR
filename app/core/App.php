@@ -56,10 +56,13 @@ class App {
         try {
             call_user_func_array([$this->currentController, $this->currentMethod], $this->params);
         } catch (Throwable $e) {
+            http_response_code(200);
+            echo "<div style='padding:20px;background:#fff;color:#000;'>";
             echo "<h1>Application Exception</h1>";
             echo "<p><strong>Message:</strong> " . htmlspecialchars($e->getMessage()) . "</p>";
             echo "<p><strong>File:</strong> " . htmlspecialchars($e->getFile()) . ":" . $e->getLine() . "</p>";
             echo "<pre>" . htmlspecialchars($e->getTraceAsString()) . "</pre>";
+            echo "</div>";
             exit();
         }
     }
