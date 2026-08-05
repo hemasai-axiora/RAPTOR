@@ -43,13 +43,13 @@ class MeetingsController extends Controller {
         $data = [
             'title' => 'Meetings & Demos | Raptor CRM',
             'active_tab' => 'meetings',
-            'meetings' => $this->meetingModel->getMeetings($filters, $this->visibleUserIds()),
+            'meetings' => $this->meetingModel->getMeetings($filters, $this->visibleUserIds()) ?: [],
             'filters' => $filters,
             'types' => Meeting::TYPES,
             'statuses' => Meeting::STATUSES,
-            'users' => $this->getUsers(),
-            'leads' => $this->leadModel->getAllLeadsForSelect($this->visibleUserIds()),
-            'customers' => $this->customerModel->getAllCustomersForSelect(),
+            'users' => $this->getUsers() ?: [],
+            'leads' => $this->leadModel->getAllLeadsForSelect($this->visibleUserIds()) ?: [],
+            'customers' => $this->customerModel->getAllCustomersForSelect() ?: [],
         ];
 
         $this->viewWithLayout('meetings/index', 'main', $data);

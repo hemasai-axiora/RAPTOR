@@ -29,15 +29,17 @@ class FollowupsController extends Controller {
             $filters['assigned_to_user_id'] = $_SESSION['user_id'];
         }
 
+        $todayList = $this->followUpModel->getTodayForUser((int) $_SESSION['user_id']);
+
         $data = [
             'title' => 'My Follow-ups | Raptor CRM',
             'active_tab' => 'followups',
-            'followups' => $this->followUpModel->getFollowUps($filters, $this->visibleUserIds()),
+            'followups' => $this->followUpModel->getFollowUps($filters, $this->visibleUserIds()) ?: [],
             'filters' => $filters,
             'channels' => FollowUp::CHANNELS,
             'statuses' => FollowUp::STATUSES,
-            'assignees' => $this->getAssignees(),
-            'today_count' => count($this->followUpModel->getTodayForUser((int) $_SESSION['user_id'])),
+            'assignees' => $this->getAssignees() ?: [],
+            'today_count' => is_array($todayList) ? count($todayList) : 0,
         ];
 
         $this->viewWithLayout('followups/index', 'main', $data);

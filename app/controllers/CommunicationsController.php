@@ -39,12 +39,12 @@ class CommunicationsController extends Controller {
         $data = [
             'title' => 'Communications Log | Raptor CRM',
             'active_tab' => 'communications',
-            'communications' => $this->communicationModel->getCommunications($filters, $this->visibleUserIds()),
+            'communications' => $this->communicationModel->getCommunications($filters, $this->visibleUserIds()) ?: [],
             'filters' => $filters,
             'channels' => Communication::CHANNELS,
             'directions' => Communication::DIRECTIONS,
-            'users' => $this->getUsers(),
-            'leads' => $this->leadModel->getAllLeadsForSelect($this->visibleUserIds()),
+            'users' => $this->getUsers() ?: [],
+            'leads' => $this->leadModel->getAllLeadsForSelect($this->visibleUserIds()) ?: [],
         ];
 
         $this->viewWithLayout('communications/index', 'main', $data);
