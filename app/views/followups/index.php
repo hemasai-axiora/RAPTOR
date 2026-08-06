@@ -100,7 +100,7 @@
                             </a>
                             <div class="text-secondary small"><?php echo htmlspecialchars($compName); ?></div>
                         </td>
-                        <td data-label="Due"><?php echo htmlspecialchars($dueAt ? date('M d, Y h:i A', strtotime($dueAt)) : '-'); ?></td>
+                        <td data-label="Due"><?php echo htmlspecialchars($dueAt ? formatToLocalTime($dueAt, 'M d, Y h:i A') : '-'); ?></td>
                         <td data-label="Channel"><span class="badge bg-info-subtle text-info border border-info-subtle"><?php echo strtoupper($channel); ?></span></td>
                         <td data-label="Owner" class="text-secondary"><?php echo htmlspecialchars($assigneeName); ?></td>
                         <td data-label="Status"><span class="badge bg-<?php echo $statusTone; ?>-subtle text-<?php echo $statusTone; ?> border border-<?php echo $statusTone; ?>-subtle"><?php echo strtoupper($st); ?></span></td>

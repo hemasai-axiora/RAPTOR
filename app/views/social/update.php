@@ -212,7 +212,7 @@ if (!empty($assignedAccounts) && isset($platforms) && isset($groupedAccounts)) {
                             <?php else: ?>
                                 <?php foreach ($history as $h): ?>
                                     <tr>
-                                        <td class="small text-secondary text-nowrap"><?php echo date('Y-m-d H:i', strtotime($h->created_at)); ?></td>
+                                        <td class="small text-secondary text-nowrap"><?php echo formatToLocalTime($h->created_at, 'Y-m-d H:i'); ?></td>
                                         <td><span class="badge bg-secondary bg-opacity-20 text-white"><?php echo htmlspecialchars($h->platform_name); ?></span></td>
                                         <td class="fw-bold" style="color: var(--text-color, #0f172a);"><?php echo htmlspecialchars($h->profile_name); ?></td>
                                         <td class="small text-secondary"><?php echo $h->post_content ? htmlspecialchars(substr($h->post_content, 0, 30)) . '...' : 'Account-level Update'; ?></td>

@@ -267,7 +267,7 @@ $earned = number_format((float)($data['balances']->earned_leave ?? 15.00), 1);
                             <?php else: ?>
                                 <?php foreach ($data['transactions'] as $tx): ?>
                                     <tr>
-                                        <td><?php echo date('M d, Y H:i', strtotime($tx->created_at)); ?></td>
+                                        <td><?php echo formatToLocalTime($tx->created_at, 'M d, Y H:i'); ?></td>
                                         <td class="fw-bold"><?php echo htmlspecialchars($tx->leave_type_name); ?></td>
                                         <td>
                                             <?php 

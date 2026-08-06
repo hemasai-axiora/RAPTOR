@@ -77,8 +77,8 @@
                     </div>
                     <h5 class="text-white mb-1" style="font-size:1rem;"><?php echo htmlspecialchars($meeting->title); ?></h5>
                     <div class="text-secondary small mb-2">
-                        <?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($meeting->scheduled_start))); ?>
-                        <?php if ($meeting->scheduled_end): ?> - <?php echo htmlspecialchars(date('h:i A', strtotime($meeting->scheduled_end))); ?><?php endif; ?>
+                        <?php echo htmlspecialchars(formatToLocalTime($meeting->scheduled_start, 'M d, Y h:i A')); ?>
+<?php if ($meeting->scheduled_end): ?> - <?php echo htmlspecialchars(formatToLocalTime($meeting->scheduled_end, 'h:i A')); ?><?php endif; ?>
                     </div>
                     <div class="text-secondary small mb-2"><i class="fa-solid fa-location-dot me-1"></i><?php echo htmlspecialchars($meeting->location ?: 'No location'); ?></div>
                     <div class="text-secondary small mb-3"><i class="fa-regular fa-user me-1"></i><?php echo htmlspecialchars($meeting->assignee_name); ?></div>

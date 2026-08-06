@@ -101,7 +101,7 @@
                                 <?php echo strtoupper($request->status); ?>
                             </span>
                         </td>
-                        <td><?php echo htmlspecialchars(date('Y-m-d H:i', strtotime($request->requested_at))); ?></td>
+                        <td><?php echo htmlspecialchars(formatToLocalTime($request->requested_at, 'Y-m-d H:i')); ?></td>
                         <?php if (Policy::canApproveDataEdit()): ?>
                         <td class="text-end">
                             <?php if ($request->status === 'pending'): ?>

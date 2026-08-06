@@ -47,7 +47,7 @@
                 <?php else: ?>
                     <?php foreach ($bonuses as $b): ?>
                         <tr>
-                            <td><?php echo date('Y-m-d', strtotime($b->created_at)); ?></td>
+                            <td><?php echo formatToLocalTime($b->created_at, 'Y-m-d'); ?></td>
                             <?php if (in_array($role, ['admin', 'hr', 'finance'], true)): ?>
                                 <td>
                                     <strong><?php echo htmlspecialchars($b->employee_name); ?></strong><br>

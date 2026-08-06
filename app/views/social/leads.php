@@ -208,7 +208,7 @@
                                         data-quality="<?php echo htmlspecialchars(strtolower($ld->lead_quality ?? 'warm')); ?>">
                                         
                                         <td class="small text-secondary">#<?php echo $ld->lead_id; ?></td>
-                                        <td class="small text-secondary text-nowrap"><?php echo date('Y-m-d H:i', strtotime($ld->created_at)); ?></td>
+                                        <td class="small text-secondary text-nowrap"><?php echo formatToLocalTime($ld->created_at, 'Y-m-d H:i'); ?></td>
                                         <td class="fw-bold" style="color: var(--text-color, #0f172a);"><?php echo htmlspecialchars(trim(($ld->first_name ?? '') . ' ' . ($ld->last_name ?? ''))); ?></td>
                                         <td><code class="px-2 py-1 rounded" style="background: rgba(37, 99, 235, 0.1); color: #2563eb !important; font-weight: 600;"><?php echo htmlspecialchars($ld->email ?? 'N/A'); ?></code></td>
                                         <td class="fw-semibold" style="color: var(--text-color, #334155);"><?php echo htmlspecialchars($ld->phone ?? 'N/A'); ?></td>
@@ -312,7 +312,7 @@
                             <?php else: ?>
                                 <?php foreach ($clickLogs as $cl): ?>
                                     <tr>
-                                        <td class="small text-secondary text-nowrap"><?php echo date('Y-m-d H:i:s', strtotime($cl->clicked_at)); ?></td>
+                                        <td class="small text-secondary text-nowrap"><?php echo formatToLocalTime($cl->clicked_at, 'Y-m-d H:i:s'); ?></td>
                                         <td class="fw-semibold text-info text-truncate" style="max-width: 150px;"><?php echo htmlspecialchars($cl->target_url); ?></td>
                                         <td><code class="px-2 py-1 bg-dark text-warning rounded small"><?php echo htmlspecialchars($cl->ip_address ?? '0.0.0.0'); ?></code></td>
                                         <td class="small text-secondary text-truncate" style="max-width: 180px;" title="<?php echo htmlspecialchars($cl->user_agent ?? ''); ?>"><?php echo htmlspecialchars($cl->user_agent ?? 'Unknown'); ?></td>

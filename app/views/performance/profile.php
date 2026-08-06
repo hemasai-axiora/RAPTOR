@@ -94,7 +94,7 @@ $tone = [
             <?php foreach ($reviews as $review): ?>
                 <div class="border-bottom border-secondary border-opacity-10 pb-3 mb-3">
                     <div class="text-white"><?php echo htmlspecialchars($review->reviewer_name); ?> <?php echo $review->rating ? '- ' . (int) $review->rating . '/5' : ''; ?></div>
-                    <div class="text-secondary small"><?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($review->created_at))); ?></div>
+                    <div class="text-secondary small"><?php echo htmlspecialchars(formatToLocalTime($review->created_at, 'M d, Y h:i A')); ?></div>
                     <div class="text-secondary small mt-1"><?php echo htmlspecialchars($review->remarks ?: 'No remarks'); ?></div>
                 </div>
             <?php endforeach; ?>

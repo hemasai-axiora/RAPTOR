@@ -95,7 +95,7 @@ $colCount         = $isPrivileged ? 8 : 7;
                     };
                     ?>
                     <tr>
-                        <td class="text-secondary small"><?php echo date('d M Y', strtotime($c->created_at)); ?></td>
+                        <td class="text-secondary small"><?php echo formatToLocalTime($c->created_at, 'd M Y'); ?></td>
                         <?php if ($isPrivileged): ?>
                             <td>
                                 <span class="text-white fw-semibold"><?php echo htmlspecialchars($c->employee_name ?? '—'); ?></span><br>

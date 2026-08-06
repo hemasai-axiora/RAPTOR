@@ -95,7 +95,7 @@
                             <div class="text-white"><?php echo htmlspecialchars($item->outcome ?: '-'); ?></div>
                             <div class="text-secondary small"><?php echo htmlspecialchars($item->note ?: ''); ?></div>
                         </td>
-                        <td data-label="When"><?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($item->happened_at))); ?></td>
+                        <td data-label="When"><?php echo htmlspecialchars(formatToLocalTime($item->happened_at, 'M d, Y h:i A')); ?></td>
                         <td data-label="Proof" class="text-end">
                             <?php if ($item->proof_url): ?>
                                 <a class="btn btn-outline-info btn-sm" target="_blank" href="index.php?route=file/show&key=<?php echo urlencode($item->proof_url); ?>"><i class="fa-solid fa-paperclip"></i></a>

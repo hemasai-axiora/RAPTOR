@@ -406,7 +406,7 @@
                                         <td><span class="badge bg-info-subtle text-info border border-info-subtle"><?php echo htmlspecialchars($act->activity_type); ?></span></td>
                                         <td><span class="badge bg-success-subtle text-success border border-success-subtle"><?php echo htmlspecialchars($act->outcome); ?></span></td>
                                         <td class="small text-secondary"><?php echo htmlspecialchars($act->rep_name ?: 'Unassigned'); ?></td>
-                                        <td class="small text-secondary"><?php echo date('M d, Y H:i', strtotime($act->created_at)); ?></td>
+                                        <td class="small text-secondary"><?php echo formatToLocalTime($act->created_at, 'M d, Y H:i'); ?></td>
                                         <td class="small text-secondary text-truncate" style="max-width: 200px;"><?php echo htmlspecialchars($act->notes ?? '—'); ?></td>
                                     </tr>
                                 <?php endforeach; ?>

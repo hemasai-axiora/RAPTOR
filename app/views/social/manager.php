@@ -129,7 +129,7 @@
                                             </div>
                                         </td>
                                         <td class="text-secondary small">
-                                            <?php echo $p->last_update_time ? date('Y-m-d h:i:s A', strtotime($p->last_update_time)) : '<span class="text-muted">Never</span>'; ?>
+                                            <?php echo $p->last_update_time ? formatToLocalTime($p->last_update_time, 'Y-m-d h:i:s A') : '<span class="text-muted">Never</span>'; ?>
                                         </td>
                                         <td class="text-end">
                                             <a href="index.php?route=social/history" class="btn btn-sm btn-outline-light">
@@ -174,7 +174,7 @@
                             <?php else: ?>
                                 <?php foreach (array_slice($history, 0, 10) as $h): ?>
                                     <tr class="border-bottom border-secondary border-opacity-10" style="font-size: 0.9rem;">
-                                        <td class="text-secondary small"><?php echo date('h:i:s A', strtotime($h->created_at)); ?></td>
+                                        <td class="text-secondary small"><?php echo formatToLocalTime($h->created_at, 'h:i:s A'); ?></td>
                                         <td>
                                             <span class="small">
                                                 <i class="<?php echo $h->platform_icon; ?> me-1 text-primary"></i><?php echo htmlspecialchars($h->platform_name); ?>

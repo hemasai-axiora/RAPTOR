@@ -105,7 +105,7 @@
                 <div class="p-3 bg-dark border border-secondary border-opacity-50 rounded-3 mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="fw-semibold text-white">Viewer Type Split</div>
-                        <div class="text-secondary small">Recorded at <?php echo date('M d, Y H:i', strtotime($demographics->captured_at)); ?></div>
+                        <div class="text-secondary small">Recorded at <?php echo formatToLocalTime($demographics->captured_at, 'M d, Y H:i'); ?></div>
                     </div>
                     <div class="progress" style="height: 16px; border-radius: 8px; background: #2a2e3d;">
                         <div class="progress-bar bg-info" style="width: <?php echo $fPct; ?>%" title="Followers: <?php echo $fPct; ?>%"></div>
@@ -239,7 +239,7 @@
                         <?php else: ?>
                             <?php foreach ($history as $h): ?>
                                 <tr style="border-bottom: 1px solid var(--border-color);">
-                                    <td class="text-white font-monospace"><?php echo date('Y-m-d H:i', strtotime($h->captured_at)); ?></td>
+                                    <td class="text-white font-monospace"><?php echo formatToLocalTime($h->captured_at, 'Y-m-d H:i'); ?></td>
                                     <td class="text-end text-danger fw-bold"><?php echo number_format((int)$h->likes); ?></td>
                                     <td class="text-end text-info"><?php echo number_format((int)$h->comments); ?></td>
                                     <td class="text-end text-success"><?php echo number_format((int)$h->shares); ?></td>

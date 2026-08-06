@@ -82,11 +82,11 @@ $statusTone = [
                 </div>
                 <div class="col-sm-6 col-xl-4">
                     <div class="text-secondary small">Next Follow-up</div>
-                    <div class="text-white"><?php echo $lead->next_follow_up_at ? htmlspecialchars(date('M d, Y h:i A', strtotime($lead->next_follow_up_at))) : 'Not scheduled'; ?></div>
+                    <div class="text-white"><?php echo $lead->next_follow_up_at ? htmlspecialchars(formatToLocalTime($lead->next_follow_up_at, 'M d, Y h:i A')) : 'Not scheduled'; ?></div>
                 </div>
                 <div class="col-sm-6 col-xl-4">
                     <div class="text-secondary small">Date Taken</div>
-                    <div class="text-white"><?php echo $lead->next_follow_up_created_at ? htmlspecialchars(date('M d, Y h:i A', strtotime($lead->next_follow_up_created_at))) : 'N/A'; ?></div>
+                    <div class="text-white"><?php echo $lead->next_follow_up_created_at ? htmlspecialchars(formatToLocalTime($lead->next_follow_up_created_at, 'M d, Y h:i A')) : 'N/A'; ?></div>
                 </div>
                 <div class="col-12">
                     <div class="text-secondary small">Location / Lost Reason</div>
@@ -239,14 +239,14 @@ $statusTone = [
             <?php foreach ($communications as $item): ?>
                 <div class="border-bottom border-secondary border-opacity-10 pb-3 mb-3">
                     <div class="text-white"><i class="fa-solid fa-comments text-info me-2"></i><?php echo strtoupper($item->channel); ?> - <?php echo htmlspecialchars($item->outcome ?: $item->direction); ?></div>
-                    <div class="text-secondary small"><?php echo htmlspecialchars($item->user_name); ?> - <?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($item->happened_at))); ?></div>
+                    <div class="text-secondary small"><?php echo htmlspecialchars($item->user_name); ?> - <?php echo htmlspecialchars(formatToLocalTime($item->happened_at, 'M d, Y h:i A')); ?></div>
                     <?php if ($item->note): ?><div class="text-secondary small"><?php echo htmlspecialchars($item->note); ?></div><?php endif; ?>
                 </div>
             <?php endforeach; ?>
             <?php foreach ($meetings as $item): ?>
                 <div class="border-bottom border-secondary border-opacity-10 pb-3 mb-3">
                     <div class="text-white"><i class="fa-solid fa-handshake text-warning me-2"></i><?php echo strtoupper($item->type); ?> - <?php echo htmlspecialchars($item->title); ?></div>
-                    <div class="text-secondary small"><?php echo htmlspecialchars($item->assignee_name); ?> - <?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($item->scheduled_start))); ?></div>
+                    <div class="text-secondary small"><?php echo htmlspecialchars($item->assignee_name); ?> - <?php echo htmlspecialchars(formatToLocalTime($item->scheduled_start, 'M d, Y h:i A')); ?></div>
                     <?php if ($item->outcome): ?><div class="text-secondary small"><?php echo htmlspecialchars($item->outcome); ?></div><?php endif; ?>
                 </div>
             <?php endforeach; ?>
@@ -267,7 +267,7 @@ $statusTone = [
                     <div class="text-secondary small mb-1">
                         <i class="fa-solid fa-user me-1 text-info"></i><?php echo htmlspecialchars($item->changed_by_name ?? 'System'); ?>
                         <span class="mx-1">•</span>
-                        <i class="fa-solid fa-clock me-1"></i><?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($item->changed_at))); ?>
+                        <i class="fa-solid fa-clock me-1"></i><?php echo htmlspecialchars(formatToLocalTime($item->changed_at, 'M d, Y h:i A')); ?>
                     </div>
                     <?php if (!empty($item->note)): ?>
                         <div class="bg-dark bg-opacity-50 p-2 rounded text-white small border border-secondary border-opacity-25 mt-1">
@@ -288,7 +288,7 @@ $statusTone = [
                     <div class="text-white">
                         <?php echo htmlspecialchars(($item->from_user_name ?? 'Unassigned') . ' -> ' . ($item->to_user_name ?? 'Unassigned')); ?>
                     </div>
-                    <div class="text-secondary small"><?php echo htmlspecialchars($item->assigned_by_name ?? 'System'); ?> - <?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($item->assigned_at))); ?></div>
+                    <div class="text-secondary small"><?php echo htmlspecialchars($item->assigned_by_name ?? 'System'); ?> - <?php echo htmlspecialchars(formatToLocalTime($item->assigned_at, 'M d, Y h:i A')); ?></div>
                     <?php if ($item->note): ?><div class="text-secondary small"><?php echo htmlspecialchars($item->note); ?></div><?php endif; ?>
                 </div>
             <?php endforeach; ?>

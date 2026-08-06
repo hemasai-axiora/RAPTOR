@@ -79,7 +79,7 @@
                         <?php foreach ($history as $h): ?>
                             <tr class="align-middle border-bottom border-secondary border-opacity-10" style="transition: background 0.15s ease;">
                                 <td class="px-3 py-3 small text-secondary text-nowrap">
-                                    <?php echo date('Y-m-d h:i:s A', strtotime($h->created_at)); ?>
+                                    <?php echo formatToLocalTime($h->created_at, 'Y-m-d h:i:s A'); ?>
                                 </td>
                                 <td>
                                     <span class="badge bg-secondary bg-opacity-10 text-white px-2 py-1">
