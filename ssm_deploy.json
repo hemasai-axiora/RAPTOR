@@ -1,0 +1,10 @@
+{
+    "commands": [
+        "mkdir -p /etc/letsencrypt/live/raptor",
+        "openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout /etc/letsencrypt/live/raptor/privkey.pem -out /etc/letsencrypt/live/raptor/fullchain.pem -subj '/C=IN/ST=Telangana/L=Hyderabad/O=Raptor CRM/OU=IT/CN=98.94.227.211'",
+        "chmod 600 /etc/letsencrypt/live/raptor/privkey.pem",
+        "chmod 644 /etc/letsencrypt/live/raptor/fullchain.pem",
+        "docker restart raptor-nginx raptor-web",
+        "docker ps"
+    ]
+}
