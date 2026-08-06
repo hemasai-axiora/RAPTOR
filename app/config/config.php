@@ -66,29 +66,27 @@ ini_set('display_errors', '1');
 /**
  * Timezone Helpers
  */
+// Define canonical app timezone — India Standard Time (IST, UTC+5:30)
+define('APP_TIMEZONE', env('APP_TIMEZONE', 'Asia/Kolkata'));
+
 if (!function_exists('getUserTimezone')) {
     function getUserTimezone(): string {
-        $tz = $_COOKIE['user_timezone'] ?? env('APP_TIMEZONE', 'Asia/Kolkata');
-        return !empty($tz) ? $tz : 'Asia/Kolkata';
+        // Always use IST as the application timezone
+        return APP_TIMEZONE;
     }
 }
-date_default_timezone_set(getUserTimezone());
+date_default_timezone_set(APP_TIMEZONE);
+
 
 if (!function_exists('formatToLocalTime')) {
     function formatToLocalTime($datetime, $format = 'Y-m-d H:i:s'): string {
         if (empty($datetime)) return '';
         try {
-            $userTzStr = getUserTimezone();
-            $targetTz  = new DateTimeZone($userTzStr);
-            
-            // Check if string contains explicit UTC marker (e.g., 'Z' or '+00:00')
-            if (strpos($datetime, 'Z') !== false || preg_match('/[+-]00:?00$/', $datetime)) {
-                $dt = new DateTime($datetime, new DateTimeZone('UTC'));
-            } else {
-                // Datetime string stored in database local timezone
-                $dt = new DateTime($datetime, $targetTz);
-            }
-            
+            $targetTz = new DateTimeZone(APP_TIMEZONE); // Asia/Kolkata (IST)
+            $utcTz    = new DateTimeZone('UTC');
+
+            // All datetimes stored in DB are UTC — always parse as UTC then convert to IST
+            $dt = new DateTime($datetime, $utcTz);
             $dt->setTimezone($targetTz);
             return $dt->format($format);
         } catch (Exception $e) {
@@ -110,4 +108,3 @@ if (!function_exists('parseLocalToUtc')) {
         }
     }
 }
-
