@@ -2,7 +2,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
             <h4 class="text-white mb-1">My Follow-ups Today</h4>
-            <div class="text-secondary" style="font-size:0.9rem;"><?php echo (int) $today_count; ?> scheduled item(s) due today.</div>
+            <div class="text-secondary" style="font-size:0.9rem;"><?php echo (int) ($today_count ?? (isset($today_list) && is_array($today_list) ? count($today_list) : 0)); ?> scheduled item(s) due today.</div>
         </div>
         <a href="index.php?route=followups/my_leads" class="btn btn-outline-light btn-sm">
             <i class="fa-solid fa-address-book me-2"></i>Lead List
