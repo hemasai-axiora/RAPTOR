@@ -59,4 +59,9 @@ sudo ufw allow 443/tcp comment 'HTTPS Web'
 sudo ufw deny 3306/tcp comment 'MySQL Internal Only'
 echo "y" | sudo ufw enable
 
+echo "[9/9] Generating Self-Signed SSL Certificate for 98.94.227.211..."
+if [ -f "$(dirname "$0")/generate-self-signed-ssl.sh" ]; then
+    bash "$(dirname "$0")/generate-self-signed-ssl.sh"
+fi
+
 echo "=== EC2 Server Setup Completed Successfully ==="
