@@ -1,9 +1,10 @@
 {
     "commands": [
-        "cp /etc/letsencrypt/live/raptor-0001/fullchain.pem /etc/letsencrypt/live/raptor/fullchain.pem",
-        "cp /etc/letsencrypt/live/raptor-0001/privkey.pem /etc/letsencrypt/live/raptor/privkey.pem",
-        "chmod 644 /etc/letsencrypt/live/raptor/fullchain.pem",
-        "chmod 600 /etc/letsencrypt/live/raptor/privkey.pem",
-        "docker restart raptor-nginx"
+        "git config --system --add safe.directory '*'",
+        "cd /var/www/raptor/current",
+        "git fetch origin main",
+        "git reset --hard origin/main",
+        "docker exec raptor-db mysql -u root -prootpassword raptor_crm_db -e \"INSERT INTO posts (post_code, title, content, platform, content_type, status, published_at, current_likes, current_comments, current_shares, current_reach, current_engagement_rate) SELECT 'PST-2026-00001', 'aaaa', 'Sample test post', 'Instagram', 'Image Post', 'published', NOW(), 10, 5, 2, 500, 3.4 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM posts WHERE post_code='PST-2026-00001');\"",
+        "docker restart raptor-web raptor-nginx"
     ]
 }
