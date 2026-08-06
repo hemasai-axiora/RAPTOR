@@ -1,9 +1,8 @@
 {
     "commands": [
-        "git config --system --add safe.directory '*'",
-        "cd /var/www/raptor/current",
-        "git fetch origin main",
-        "git reset --hard origin/main",
-        "docker restart raptor-web raptor-nginx"
+        "mkdir -p /var/www/raptor/shared/acme",
+        "chmod 777 /var/www/raptor/shared/acme",
+        "certbot certonly --standalone --pre-hook 'docker stop raptor-nginx' --post-hook 'docker start raptor-nginx' -d axiora.raptor.unaux.com -d raptor.unaux.com --non-interactive --agree-tos --register-unsafely-without-email --cert-name raptor --force-renewal || certbot certonly --webroot -w /var/www/raptor/shared/acme -d axiora.raptor.unaux.com -d raptor.unaux.com --non-interactive --agree-tos --register-unsafely-without-email --cert-name raptor --force-renewal",
+        "docker restart raptor-nginx"
     ]
 }
