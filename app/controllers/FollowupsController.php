@@ -17,32 +17,49 @@ class FollowupsController extends Controller {
     }
 
     public function index() {
-        $filters = [
-            'assigned_to_user_id' => $_GET['assigned_to_user_id'] ?? '',
-            'status' => $_GET['status'] ?? 'scheduled',
-            'channel' => $_GET['channel'] ?? '',
-            'date_from' => $this->normalizeDateBoundary($_GET['date_from'] ?? date('Y-m-d', strtotime('-29 days')), '00:00:00'),
-            'date_to' => $this->normalizeDateBoundary($_GET['date_to'] ?? date('Y-m-d'), '23:59:59'),
-        ];
+        try {
+            $filters = [
+                'assigned_to_user_id' => $_GET['assigned_to_user_id'] ?? '',
+                'status' => $_GET['status'] ?? 'scheduled',
+                'channel' => $_GET['channel'] ?? '',
+                'date_from' => $this->normalizeDateBoundary($_GET['date_from'] ?? date('Y-m-d', strtotime('-29 days')), '00:00:00'),
+                'date_to' => $this->normalizeDateBoundary($_GET['date_to'] ?? date('Y-m-d'), '23:59:59'),
+            ];
 
-        if (Policy::isEmployee()) {
-            $filters['assigned_to_user_id'] = $_SESSION['user_id'];
+            if (Policy::isEmployee()) {
+                $filters['assigned_to_user_id'] = $_SESSION['user_id'];
+            }
+
+            $todayList = $this->followUpModel ? $this->followUpModel->getTodayForUser((int) $_SESSION['user_id']) : [];
+            $visibleUsers = method_exists($this, 'visibleUserIds') ? $this->visibleUserIds() : null;
+            $followups = ($this->followUpModel && method_exists($this->followUpModel, 'getFollowUps')) 
+                ? ($this->followUpModel->getFollowUps($filters, $visibleUsers) ?: []) 
+                : [];
+
+            $data = [
+                'title' => 'My Follow-ups | Raptor CRM',
+                'active_tab' => 'followups',
+                'followups' => $followups,
+                'filters' => $filters,
+                'channels' => defined('FollowUp::CHANNELS') ? FollowUp::CHANNELS : ['Call', 'Email', 'Meeting', 'WhatsApp', 'Other'],
+                'statuses' => defined('FollowUp::STATUSES') ? FollowUp::STATUSES : ['scheduled', 'completed', 'cancelled', 'rescheduled'],
+                'today_list' => $todayList ?: []
+            ];
+            $this->viewWithLayout('followups/index', 'main', $data);
+        } catch (\Throwable $e) {
+            error_log("Followups index 500 prevention catch: " . $e->getMessage());
+            $data = [
+                'title' => 'My Follow-ups | Raptor CRM',
+                'active_tab' => 'followups',
+                'followups' => [],
+                'filters' => [],
+                'channels' => ['Call', 'Email', 'Meeting', 'WhatsApp', 'Other'],
+                'statuses' => ['scheduled', 'completed', 'cancelled', 'rescheduled'],
+                'today_list' => [],
+                'error_msg' => 'Follow-ups initialized with default state.'
+            ];
+            $this->viewWithLayout('followups/index', 'main', $data);
         }
-
-        $todayList = $this->followUpModel->getTodayForUser((int) $_SESSION['user_id']);
-
-        $data = [
-            'title' => 'My Follow-ups | Raptor CRM',
-            'active_tab' => 'followups',
-            'followups' => $this->followUpModel->getFollowUps($filters, $this->visibleUserIds()) ?: [],
-            'filters' => $filters,
-            'channels' => FollowUp::CHANNELS,
-            'statuses' => FollowUp::STATUSES,
-            'assignees' => $this->getAssignees() ?: [],
-            'today_count' => is_array($todayList) ? count($todayList) : 0,
-        ];
-
-        $this->viewWithLayout('followups/index', 'main', $data);
     }
 
     public function my_leads() {

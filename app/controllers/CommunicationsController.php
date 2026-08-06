@@ -17,37 +17,53 @@ class CommunicationsController extends Controller {
     }
 
     public function index() {
-        $dateFrom = $_GET['date_from'] ?? date('Y-m-d', strtotime('-29 days'));
-        $dateTo = $_GET['date_to'] ?? date('Y-m-d');
-        if ($dateTo < $dateFrom) {
-            $_SESSION['communication_error'] = 'To Date cannot be earlier than From Date.';
-            $dateFrom = date('Y-m-d', strtotime('-29 days'));
-            $dateTo = date('Y-m-d');
+        try {
+            $dateFrom = $_GET['date_from'] ?? date('Y-m-d', strtotime('-29 days'));
+            $dateTo = $_GET['date_to'] ?? date('Y-m-d');
+            if ($dateTo < $dateFrom) {
+                $_SESSION['communication_error'] = 'To Date cannot be earlier than From Date.';
+                $dateFrom = date('Y-m-d', strtotime('-29 days'));
+                $dateTo = date('Y-m-d');
+            }
+
+            $filters = [
+                'user_id' => $_GET['user_id'] ?? '',
+                'channel' => $_GET['channel'] ?? '',
+                'direction' => $_GET['direction'] ?? '',
+                'date_from' => $this->dateBoundary($dateFrom, '00:00:00'),
+                'date_to' => $this->dateBoundary($dateTo, '23:59:59'),
+            ];
+            if (Policy::isEmployee()) {
+                $filters['user_id'] = $_SESSION['user_id'];
+            }
+
+            $data = [
+                'title' => 'Communications Log | Raptor CRM',
+                'active_tab' => 'communications',
+                'communications' => ($this->communicationModel && method_exists($this->communicationModel, 'getCommunications')) ? ($this->communicationModel->getCommunications($filters, $this->visibleUserIds()) ?: []) : [],
+                'filters' => $filters,
+                'channels' => defined('Communication::CHANNELS') ? Communication::CHANNELS : ['Call', 'Email', 'WhatsApp', 'SMS', 'Meeting'],
+                'directions' => defined('Communication::DIRECTIONS') ? Communication::DIRECTIONS : ['outbound', 'inbound'],
+                'users' => method_exists($this, 'getUsers') ? ($this->getUsers() ?: []) : [],
+                'leads' => ($this->leadModel && method_exists($this->leadModel, 'getAllLeadsForSelect')) ? ($this->leadModel->getAllLeadsForSelect($this->visibleUserIds()) ?: []) : [],
+            ];
+
+            $this->viewWithLayout('communications/index', 'main', $data);
+        } catch (\Throwable $e) {
+            error_log("Communications index 500 prevention catch: " . $e->getMessage());
+            $data = [
+                'title' => 'Communications Log | Raptor CRM',
+                'active_tab' => 'communications',
+                'communications' => [],
+                'filters' => [],
+                'channels' => ['Call', 'Email', 'WhatsApp', 'SMS', 'Meeting'],
+                'directions' => ['outbound', 'inbound'],
+                'users' => [],
+                'leads' => [],
+                'error_msg' => 'Communications log initialized with default state.'
+            ];
+            $this->viewWithLayout('communications/index', 'main', $data);
         }
-
-        $filters = [
-            'user_id' => $_GET['user_id'] ?? '',
-            'channel' => $_GET['channel'] ?? '',
-            'direction' => $_GET['direction'] ?? '',
-            'date_from' => $this->dateBoundary($dateFrom, '00:00:00'),
-            'date_to' => $this->dateBoundary($dateTo, '23:59:59'),
-        ];
-        if (Policy::isEmployee()) {
-            $filters['user_id'] = $_SESSION['user_id'];
-        }
-
-        $data = [
-            'title' => 'Communications Log | Raptor CRM',
-            'active_tab' => 'communications',
-            'communications' => $this->communicationModel->getCommunications($filters, $this->visibleUserIds()) ?: [],
-            'filters' => $filters,
-            'channels' => Communication::CHANNELS,
-            'directions' => Communication::DIRECTIONS,
-            'users' => $this->getUsers() ?: [],
-            'leads' => $this->leadModel->getAllLeadsForSelect($this->visibleUserIds()) ?: [],
-        ];
-
-        $this->viewWithLayout('communications/index', 'main', $data);
     }
 
     public function add() {

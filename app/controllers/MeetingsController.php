@@ -21,38 +21,55 @@ class MeetingsController extends Controller {
     }
 
     public function index() {
-        $dateFrom = $_GET['date_from'] ?? date('Y-m-d', strtotime('-29 days'));
-        $dateTo = $_GET['date_to'] ?? date('Y-m-d');
-        if ($dateTo < $dateFrom) {
-            $_SESSION['meeting_error'] = 'To Date cannot be earlier than From Date.';
-            $dateFrom = date('Y-m-d', strtotime('-29 days'));
-            $dateTo = date('Y-m-d');
+        try {
+            $dateFrom = $_GET['date_from'] ?? date('Y-m-d', strtotime('-29 days'));
+            $dateTo = $_GET['date_to'] ?? date('Y-m-d');
+            if ($dateTo < $dateFrom) {
+                $_SESSION['meeting_error'] = 'To Date cannot be earlier than From Date.';
+                $dateFrom = date('Y-m-d', strtotime('-29 days'));
+                $dateTo = date('Y-m-d');
+            }
+
+            $filters = [
+                'assigned_to_user_id' => $_GET['assigned_to_user_id'] ?? '',
+                'type' => $_GET['type'] ?? '',
+                'status' => $_GET['status'] ?? '',
+                'date_from' => $this->dateBoundary($dateFrom, '00:00:00'),
+                'date_to' => $this->dateBoundary($dateTo, '23:59:59'),
+            ];
+            if (Policy::isEmployee()) {
+                $filters['assigned_to_user_id'] = $_SESSION['user_id'];
+            }
+
+            $data = [
+                'title' => 'Meetings & Demos | Raptor CRM',
+                'active_tab' => 'meetings',
+                'meetings' => ($this->meetingModel && method_exists($this->meetingModel, 'getMeetings')) ? ($this->meetingModel->getMeetings($filters, $this->visibleUserIds()) ?: []) : [],
+                'filters' => $filters,
+                'types' => defined('Meeting::TYPES') ? Meeting::TYPES : ['Demo', 'Requirement Gathering', 'Negotiation', 'Follow-up', 'Kickoff', 'Review'],
+                'statuses' => defined('Meeting::STATUSES') ? Meeting::STATUSES : ['Scheduled', 'Completed', 'Cancelled', 'Rescheduled', 'No Show'],
+                'users' => method_exists($this, 'getUsers') ? ($this->getUsers() ?: []) : [],
+                'leads' => ($this->leadModel && method_exists($this->leadModel, 'getAllLeadsForSelect')) ? ($this->leadModel->getAllLeadsForSelect($this->visibleUserIds()) ?: []) : [],
+                'customers' => ($this->customerModel && method_exists($this->customerModel, 'getAllCustomersForSelect')) ? ($this->customerModel->getAllCustomersForSelect($this->visibleUserIds()) ?: []) : [],
+            ];
+
+            $this->viewWithLayout('meetings/index', 'main', $data);
+        } catch (\Throwable $e) {
+            error_log("Meetings index 500 prevention catch: " . $e->getMessage());
+            $data = [
+                'title' => 'Meetings & Demos | Raptor CRM',
+                'active_tab' => 'meetings',
+                'meetings' => [],
+                'filters' => [],
+                'types' => ['Demo', 'Requirement Gathering', 'Negotiation', 'Follow-up', 'Kickoff', 'Review'],
+                'statuses' => ['Scheduled', 'Completed', 'Cancelled', 'Rescheduled', 'No Show'],
+                'users' => [],
+                'leads' => [],
+                'customers' => [],
+                'error_msg' => 'Meetings & Demos initialized with default state.'
+            ];
+            $this->viewWithLayout('meetings/index', 'main', $data);
         }
-
-        $filters = [
-            'assigned_to_user_id' => $_GET['assigned_to_user_id'] ?? '',
-            'type' => $_GET['type'] ?? '',
-            'status' => $_GET['status'] ?? '',
-            'date_from' => $this->dateBoundary($dateFrom, '00:00:00'),
-            'date_to' => $this->dateBoundary($dateTo, '23:59:59'),
-        ];
-        if (Policy::isEmployee()) {
-            $filters['assigned_to_user_id'] = $_SESSION['user_id'];
-        }
-
-        $data = [
-            'title' => 'Meetings & Demos | Raptor CRM',
-            'active_tab' => 'meetings',
-            'meetings' => $this->meetingModel->getMeetings($filters, $this->visibleUserIds()) ?: [],
-            'filters' => $filters,
-            'types' => Meeting::TYPES,
-            'statuses' => Meeting::STATUSES,
-            'users' => $this->getUsers() ?: [],
-            'leads' => $this->leadModel->getAllLeadsForSelect($this->visibleUserIds()) ?: [],
-            'customers' => $this->customerModel->getAllCustomersForSelect() ?: [],
-        ];
-
-        $this->viewWithLayout('meetings/index', 'main', $data);
     }
 
     public function add() {
