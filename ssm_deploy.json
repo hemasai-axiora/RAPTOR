@@ -1,8 +1,9 @@
 {
     "commands": [
-        "mkdir -p /var/www/raptor/shared/acme",
-        "chmod 777 /var/www/raptor/shared/acme",
-        "certbot certonly --standalone --pre-hook 'docker stop raptor-nginx' --post-hook 'docker start raptor-nginx' -d axiora.raptor.unaux.com -d raptor.unaux.com --non-interactive --agree-tos --register-unsafely-without-email --cert-name raptor --force-renewal || certbot certonly --webroot -w /var/www/raptor/shared/acme -d axiora.raptor.unaux.com -d raptor.unaux.com --non-interactive --agree-tos --register-unsafely-without-email --cert-name raptor --force-renewal",
+        "cp /etc/letsencrypt/live/raptor-0001/fullchain.pem /etc/letsencrypt/live/raptor/fullchain.pem",
+        "cp /etc/letsencrypt/live/raptor-0001/privkey.pem /etc/letsencrypt/live/raptor/privkey.pem",
+        "chmod 644 /etc/letsencrypt/live/raptor/fullchain.pem",
+        "chmod 600 /etc/letsencrypt/live/raptor/privkey.pem",
         "docker restart raptor-nginx"
     ]
 }

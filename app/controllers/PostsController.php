@@ -35,7 +35,7 @@ class PostsController extends Controller {
             'clients' => $clients,
             'filters' => $filters,
             'aggregated_demographics' => $aggregatedDemographics,
-            'can_edit' => in_array($_SESSION['user_role'], ['admin', 'manager'])
+            'can_edit' => in_array($_SESSION['user_role'] ?? '', ['admin', 'ceo', 'manager', 'employee', 'sales_person', 'analyst', 'hr'])
         ];
 
         $this->viewWithLayout('posts/index', 'main', $data);
