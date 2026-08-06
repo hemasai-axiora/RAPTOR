@@ -28,6 +28,27 @@ class PermissionService {
         $uid  = $userId ?? (int) $_SESSION['user_id'];
         $role = $_SESSION['user_role'] ?? '';
 
+        // Fetch latest role and status for real-time access updates
+        try {
+            $db = Database::getInstance()->getConnection();
+            $stmtUser = $db->prepare('SELECT u.status, r.role_name, u.role_id FROM users u JOIN roles r ON u.role_id = r.role_id WHERE u.user_id = :uid LIMIT 1');
+            $stmtUser->execute([':uid' => $uid]);
+            $uRow = $stmtUser->fetch(PDO::FETCH_OBJ);
+            if ($uRow) {
+                if ($uRow->status === 'suspended') {
+                    return false;
+                }
+                $role = strtolower($uRow->role_name);
+                if (isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === $uid) {
+                    $_SESSION['user_role'] = $role;
+                    $_SESSION['role_name'] = $role;
+                    $_SESSION['role_id'] = (int)$uRow->role_id;
+                }
+            }
+        } catch (Throwable $e) {
+            // Fallback to session values
+        }
+
         // Suspended users have no access
         if (($_SESSION['user_status'] ?? 'active') === 'suspended') {
             return false;
@@ -38,20 +59,46 @@ class PermissionService {
             return true;
         }
 
-        // For employee and sales_person roles, ensure essential operational permissions always default to granted
-        if (in_array($role, ['employee', 'sales_person'], true)) {
-            $empModules = ['crm_leads', 'leads', 'customers', 'communications', 'meetings', 'followups', 'tasks'];
-            if (in_array($module, $empModules, true)) {
+        // Check user-level explicit overrides first (real-time Admin settings changes)
+        try {
+            $stmtOv = $db->prepare(
+                'SELECT upo.scope, upo.type
+                 FROM user_permission_overrides upo
+                 JOIN permissions p ON upo.permission_id = p.permission_id
+                 WHERE upo.user_id = :uid AND p.module = :mod AND (p.action = :act OR p.permission_name = :pname)
+                 LIMIT 1'
+            );
+            $stmtOv->execute([':uid' => $uid, ':mod' => $module, ':act' => $action, ':pname' => $module . '.' . $action]);
+            $ov = $stmtOv->fetch(PDO::FETCH_OBJ);
+            if ($ov) {
+                if ($ov->type === 'revoke') {
+                    return false;
+                }
+                if ($ov->type === 'grant') {
+                    return true;
+                }
+            }
+        } catch (Throwable $e) {
+            // Ignore DB error and proceed to role defaults
+        }
+
+        // Operational roles default modules check
+        if (in_array($role, ['employee', 'sales_person', 'manager', 'team_leader', 'hr', 'finance', 'analyst'], true)) {
+            $opModules = [
+                'dashboard', 'attendance', 'leaves', 'leave', 'calendar', 'targets', 
+                'performance', 'crm_leads', 'leads', 'customers', 'communications', 
+                'meetings', 'followups', 'tasks', 'campaigns', 'social_media', 
+                'payroll', 'reports', 'notifications', 'hrms', 'location', 'clients', 'invoices', 'editrequests'
+            ];
+            if (in_array($module, $opModules, true)) {
                 return true;
             }
         }
 
-        // Load permissions from session cache (set at login by AuthController::createUserSession)
-        if (empty($_SESSION['rbac_permissions'])) {
-            $roleId = (int) ($_SESSION['role_id'] ?? 0);
-            $_SESSION['rbac_permissions'] = self::loadForUser($uid, $roleId);
-        }
-        $perms = $_SESSION['rbac_permissions'] ?? [];
+        // Load permissions from database for active role
+        $roleId = (int) ($_SESSION['role_id'] ?? 0);
+        $perms = self::loadForUser($uid, $roleId);
+        $_SESSION['rbac_permissions'] = $perms;
 
         $permKey = $module . '.' . $action;
 
@@ -198,6 +245,16 @@ class PermissionService {
 
             if (in_array($rName, ['employee', 'sales_person'], true)) {
                 $defaults = [
+                    'dashboard.view' => 'all',
+                    'attendance.view' => 'own',
+                    'attendance.create' => 'own',
+                    'leaves.view' => 'own',
+                    'leaves.create' => 'own',
+                    'leave.view' => 'own',
+                    'leave.create' => 'own',
+                    'calendar.view' => 'all',
+                    'targets.view' => 'own',
+                    'performance.view' => 'own',
                     'crm_leads.view' => 'own',
                     'crm_leads.create' => 'own',
                     'crm_leads.edit' => 'own',
@@ -207,9 +264,19 @@ class PermissionService {
                     'customers.view' => 'all',
                     'customers.create' => 'own',
                     'communications.view' => 'own',
+                    'communications.create' => 'own',
                     'meetings.view' => 'own',
+                    'meetings.create' => 'own',
                     'followups.view' => 'own',
+                    'followups.create' => 'own',
                     'tasks.view' => 'own',
+                    'tasks.edit' => 'own',
+                    'social_media.view' => 'own',
+                    'social_media.create' => 'own',
+                    'payroll.view' => 'own',
+                    'reports.view' => 'own',
+                    'notifications.view' => 'own',
+                    'hrms.view' => 'own',
                 ];
                 foreach ($defaults as $dk => $ds) {
                     if (!isset($perms[$dk])) {

@@ -10,6 +10,7 @@ class DataEditRequest extends Model {
         'invoice' => ['table' => 'invoices', 'pk' => 'invoice_id', 'fields' => ['status', 'amount', 'due_date']],
         'team' => ['table' => 'teams', 'pk' => 'team_id', 'fields' => ['name', 'manager_user_id', 'team_leader_user_id', 'status']],
         'employee' => ['table' => 'users', 'pk' => 'user_id', 'fields' => ['name', 'email', 'status']],
+        'customer' => ['table' => 'customers', 'pk' => 'customer_id', 'fields' => ['name', 'email', 'phone', 'company_name', 'status']],
     ];
 
     public function entityTypes(): array {
@@ -22,8 +23,8 @@ class DataEditRequest extends Model {
             return false;
         }
 
-        $changes = $this->sanitizeChanges($entityType, $data['proposed_changes'] ?? []);
-        $action = ($data['requested_action'] ?? 'update') === 'archive' ? 'archive' : 'update';
+        $changes = $data['proposed_changes'] ?? [];
+        $action = in_array(($data['requested_action'] ?? 'update'), ['archive', 'delete'], true) ? $data['requested_action'] : 'update';
 
         $this->query('INSERT INTO data_edit_requests
                 (entity_type, entity_id, requested_action, proposed_changes, manager_comment, requested_by_user_id)
@@ -31,7 +32,7 @@ class DataEditRequest extends Model {
         $this->bind(':entity_type', $entityType);
         $this->bind(':entity_id', (int) $data['entity_id']);
         $this->bind(':action', $action);
-        $this->bind(':changes', json_encode($changes));
+        $this->bind(':changes', is_string($changes) ? $changes : json_encode($changes));
         $this->bind(':comment', trim($data['manager_comment'] ?? ''));
         $this->bind(':requested_by', (int) $data['requested_by_user_id']);
         return $this->execute();
@@ -76,6 +77,45 @@ class DataEditRequest extends Model {
 
         $this->db->beginTransaction();
         try {
+            if ($request->requested_action === 'delete') {
+                $this->deleteEntity($request);
+            } elseif ($request->requested_action === 'archive') {
+                $this->archiveEntity($request, $adminId);
+            } else {
+                $this->applyUpdate($request);
+            }
+
+            $this->query('UPDATE data_edit_requests
+                SET status = "approved", reviewed_by_user_id = :admin_id, reviewed_comment = :comment, reviewed_at = NOW()
+                WHERE request_id = :id');
+            $this->bind(':admin_id', $adminId);
+            $this->bind(':comment', trim($comment));
+            $this->bind(':id', $id);
+            $ok = $this->execute();
+            $this->db->commit();
+            return $ok;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            return false;
+        }
+    }
+
+    public function updateAndApprove(int $id, int $adminId, string $newChangesJson = '', string $comment = ''): bool {
+        $request = $this->getById($id);
+        if (!$request) {
+            return false;
+        }
+
+        if (!empty($newChangesJson)) {
+            $this->query('UPDATE data_edit_requests SET proposed_changes = :changes WHERE request_id = :id');
+            $this->bind(':changes', $newChangesJson);
+            $this->bind(':id', $id);
+            $this->execute();
+            $request->proposed_changes = $newChangesJson;
+        }
+
+        $this->db->beginTransaction();
+        try {
             if ($request->requested_action === 'archive') {
                 $this->archiveEntity($request, $adminId);
             } else {
@@ -107,14 +147,39 @@ class DataEditRequest extends Model {
         return $this->execute();
     }
 
+    public function deleteRequestRecord(int $reqId): bool {
+        $this->query('DELETE FROM data_edit_requests WHERE request_id = :id');
+        $this->bind(':id', $reqId);
+        return $this->execute();
+    }
+
+    public function deleteEntity($request): void {
+        $meta = self::ENTITIES[$request->entity_type] ?? null;
+        if (!$meta) {
+            throw new RuntimeException('Unsupported entity type.');
+        }
+
+        $table = $meta['table'];
+        $pk = $meta['pk'];
+
+        try {
+            $this->query('SET FOREIGN_KEY_CHECKS = 0');
+            $this->execute();
+        } catch (Exception $e) {}
+
+        $this->query("DELETE FROM `$table` WHERE `$pk` = :id");
+        $this->bind(':id', (int) $request->entity_id);
+        $this->execute();
+
+        try {
+            $this->query('SET FOREIGN_KEY_CHECKS = 1');
+            $this->execute();
+        } catch (Exception $e) {}
+    }
+
     public function parseChangesText(string $text): array {
         $decoded = json_decode($text, true);
         return is_array($decoded) ? $decoded : [];
-    }
-
-    private function sanitizeChanges(string $entityType, array $changes): array {
-        $allowed = self::ENTITIES[$entityType]['fields'] ?? [];
-        return array_intersect_key($changes, array_flip($allowed));
     }
 
     private function applyUpdate($request): void {
@@ -123,19 +188,26 @@ class DataEditRequest extends Model {
             throw new RuntimeException('Unsupported entity type.');
         }
 
-        $changes = $this->sanitizeChanges($request->entity_type, json_decode($request->proposed_changes ?: '{}', true) ?: []);
-        if (!$changes) {
+        $raw = json_decode($request->proposed_changes ?: '{}', true) ?: [];
+        if (!$raw) {
             return;
         }
 
         $sets = [];
-        foreach ($changes as $field => $value) {
-            $sets[] = "`$field` = :$field";
+        $binds = [];
+        foreach ($raw as $field => $value) {
+            $cleanField = preg_replace('/[^a-zA-Z0-9_]/', '', $field);
+            if ($cleanField) {
+                $sets[] = "`$cleanField` = :$cleanField";
+                $binds[':' . $cleanField] = $value;
+            }
         }
+        if (!$sets) return;
+
         $sql = 'UPDATE `' . $meta['table'] . '` SET ' . implode(', ', $sets) . ' WHERE `' . $meta['pk'] . '` = :id';
         $this->query($sql);
-        foreach ($changes as $field => $value) {
-            $this->bind(':' . $field, $value);
+        foreach ($binds as $param => $val) {
+            $this->bind($param, $val);
         }
         $this->bind(':id', (int) $request->entity_id);
         $this->execute();
@@ -147,10 +219,25 @@ class DataEditRequest extends Model {
             throw new RuntimeException('Unsupported entity type.');
         }
 
-        $this->query('UPDATE `' . $meta['table'] . '` SET is_archived = 1, archived_at = NOW(), archived_by_user_id = :admin_id, archive_reason = :reason WHERE `' . $meta['pk'] . '` = :id');
-        $this->bind(':admin_id', $adminId);
-        $this->bind(':reason', $request->manager_comment);
-        $this->bind(':id', (int) $request->entity_id);
-        $this->execute();
+        $table = $meta['table'];
+        $pk = $meta['pk'];
+
+        try {
+            $this->query("ALTER TABLE `$table` ADD COLUMN is_archived TINYINT(1) DEFAULT 0, ADD COLUMN archived_at DATETIME NULL, ADD COLUMN archived_by_user_id INT NULL, ADD COLUMN archive_reason TEXT NULL");
+            $this->execute();
+        } catch (Exception $e) {}
+
+        try {
+            $this->query("UPDATE `$table` SET is_archived = 1 WHERE `$pk` = :id");
+            $this->bind(':id', (int) $request->entity_id);
+            $this->execute();
+        } catch (Exception $e) {
+            // Fallback status update
+            try {
+                $this->query("UPDATE `$table` SET status = 'archived' WHERE `$pk` = :id");
+                $this->bind(':id', (int) $request->entity_id);
+                $this->execute();
+            } catch (Exception $e2) {}
+        }
     }
 }

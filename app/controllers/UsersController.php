@@ -996,4 +996,55 @@ class UsersController extends Controller {
         fclose($output);
         exit();
     }
+
+    public function importCsv() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['csv_file']['tmp_name'])) {
+            $handle = fopen($_FILES['csv_file']['tmp_name'], 'r');
+            if ($handle) {
+                $headers = fgetcsv($handle);
+                $imported = 0;
+                $db = Database::getInstance()->getConnection();
+
+                while (($row = fgetcsv($handle)) !== false) {
+                    if (empty($row[0]) && empty($row[1]) && empty($row[3])) continue;
+
+                    $email = trim($row[3] ?? $row[2] ?? '');
+                    if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        $email = 'emp_' . rand(10000, 99999) . '@raptor.local';
+                    }
+
+                    $name = trim(($row[1] ?? '') . ' ' . ($row[2] ?? ''));
+                    if (empty($name)) {
+                        $name = trim($row[0] ?? 'Imported Employee');
+                    }
+                    $empCode = trim($row[0] ?? ('EMP' . rand(1000, 9999)));
+
+                    // Check if email exists
+                    $stmt = $db->prepare("SELECT user_id FROM users WHERE email = :email");
+                    $stmt->execute([':email' => $email]);
+                    if ($stmt->fetch()) continue;
+
+                    $roleStmt = $db->query("SELECT role_id FROM roles WHERE role_name = 'employee' LIMIT 1");
+                    $roleId = (int)($roleStmt->fetchColumn() ?: 10);
+
+                    $hash = password_hash('Raptor@2026', PASSWORD_BCRYPT);
+                    $ins = $db->prepare("INSERT INTO users (role_id, name, email, password, status) VALUES (:r, :n, :e, :p, 'active')");
+                    if ($ins->execute([':r' => $roleId, ':n' => $name, ':e' => $email, ':p' => $hash])) {
+                        $uid = $db->lastInsertId();
+                        $dept = !empty($row[5]) ? trim($row[5]) : 'Sales';
+                        $job = !empty($row[6]) ? trim($row[6]) : 'Staff Member';
+
+                        $empIns = $db->prepare("INSERT INTO employees (user_id, employee_code, department, job_title, hire_date) VALUES (:u, :c, :d, :j, CURDATE())");
+                        $empIns->execute([':u' => $uid, ':c' => $empCode, ':d' => $dept, ':j' => $job]);
+                        $imported++;
+                    }
+                }
+                fclose($handle);
+                $_SESSION['user_success'] = "Bulk Upload Successful: $imported employee(s) imported into the system.";
+            } else {
+                $_SESSION['user_error'] = "Failed to parse uploaded CSV file.";
+            }
+        }
+        $this->redirect('index.php?route=users/index');
+    }
 }

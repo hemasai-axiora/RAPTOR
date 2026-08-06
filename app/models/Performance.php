@@ -145,6 +145,9 @@ class Performance extends Model {
         if ($start && $end) {
             return [$start, $end];
         }
+        if ($period === 'daily') {
+            return [date('Y-m-d'), date('Y-m-d')];
+        }
         if ($period === 'monthly') {
             return [date('Y-m-01'), date('Y-m-t')];
         }
@@ -155,7 +158,7 @@ class Performance extends Model {
         $this->query('SELECT u.user_id
                       FROM users u
                       JOIN roles r ON u.role_id = r.role_id
-                      WHERE u.status = "active" AND r.role_name IN ("employee","sales_person","team_leader")');
+                      WHERE u.status = "active" AND r.role_name IN ("employee","sales_person","team_leader","manager")');
         return $this->resultSet();
     }
 
@@ -175,15 +178,15 @@ class Performance extends Model {
 
     private function punctualityScore(int $uid, string $start, string $end): float {
         $present = $this->scalar('SELECT COUNT(*) FROM attendance WHERE user_id = :uid AND work_date BETWEEN :start AND :end AND status IN ("present","half_day")', $uid, $start, $end);
-        if ($present <= 0) { return 0.0; }
+        if ($present <= 0) { return 100.0; }
         $late = $this->scalar('SELECT COUNT(*) FROM attendance WHERE user_id = :uid AND work_date BETWEEN :start AND :end AND is_late = 1', $uid, $start, $end);
         return max(0, round((1 - ($late / $present)) * 100, 2));
     }
 
     private function activityScore(int $uid, string $start, string $end): float {
         $comms = $this->scalarDateTime('SELECT COUNT(*) FROM communications WHERE user_id = :uid AND happened_at BETWEEN :start AND :end', $uid, $start, $end);
-        $tasks = $this->scalarDateTime('SELECT COUNT(*) FROM tasks WHERE assigned_to_user_id = :uid AND review_status = "approved" AND COALESCE(reviewed_at, completed_at, updated_at) BETWEEN :start AND :end', $uid, $start, $end);
-        return min(100, round((($comms / 30) * 70) + (($tasks / 10) * 30), 2));
+        $tasks = $this->scalarDateTime('SELECT COUNT(*) FROM tasks WHERE assigned_to_user_id = :uid AND (status = "completed" OR review_status = "approved") AND COALESCE(reviewed_at, completed_at, updated_at, start_date) BETWEEN :start AND :end', $uid, $start, $end);
+        return min(100, round((($comms / 15) * 50) + (($tasks / 5) * 50), 2));
     }
 
     private function targetScore(int $uid, string $start, string $end): float {
@@ -191,13 +194,14 @@ class Performance extends Model {
                       FROM targets t
                       JOIN target_items ti ON t.target_id = ti.target_id
                       JOIN target_progress tp ON ti.target_item_id = tp.target_item_id
-                      WHERE t.owner_type = "employee" AND t.owner_user_id = :uid
-                        AND t.status = "approved" AND t.start_date <= :end AND t.end_date >= :start');
+                      WHERE (t.owner_type = "employee" AND t.owner_user_id = :uid)
+                        AND t.status IN ("approved", "completed") AND t.start_date <= :end AND t.end_date >= :start');
         $this->bind(':uid', $uid);
         $this->bind(':start', $start);
         $this->bind(':end', $end);
         $this->execute();
-        return min(100, (float) ($this->stmt->fetchColumn() ?: 0));
+        $avg = (float) ($this->stmt->fetchColumn() ?: 0);
+        return min(100, round($avg, 2));
     }
 
     private function leadScore(int $uid, string $start, string $end): float {

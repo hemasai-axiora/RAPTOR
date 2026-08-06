@@ -8,15 +8,32 @@ class Task extends Model {
 
     public function __construct() {
         parent::__construct();
-        $this->ensureTeamColumn();
+        $this->ensureSchema();
     }
 
-    private function ensureTeamColumn() {
-        try {
-            $this->query("ALTER TABLE tasks ADD COLUMN team_id INT NULL AFTER assigned_to_user_id");
-            $this->execute();
-        } catch (Exception $e) {
-            // Column exists
+    private function ensureSchema() {
+        $cols = [
+            "ADD COLUMN team_id INT NULL AFTER assigned_to_user_id",
+            "ADD COLUMN progress_percent INT DEFAULT 0 AFTER status",
+            "ADD COLUMN estimated_hours DECIMAL(5,2) DEFAULT 0.00 AFTER progress_percent",
+            "ADD COLUMN actual_hours DECIMAL(5,2) DEFAULT 0.00 AFTER estimated_hours",
+            "ADD COLUMN proof_url VARCHAR(255) NULL AFTER actual_hours",
+            "ADD COLUMN remarks TEXT NULL AFTER proof_url",
+            "ADD COLUMN is_carry_forward TINYINT(1) DEFAULT 0 AFTER remarks",
+            "ADD COLUMN source_task_id INT NULL AFTER is_carry_forward",
+            "ADD COLUMN completed_at DATETIME NULL AFTER source_task_id",
+            "ADD COLUMN review_status ENUM('not_submitted','pending_review','approved','rejected') DEFAULT 'not_submitted' AFTER completed_at",
+            "ADD COLUMN reviewed_by INT NULL AFTER review_status",
+            "ADD COLUMN reviewed_at DATETIME NULL AFTER reviewed_by",
+            "ADD COLUMN review_remark TEXT NULL AFTER reviewed_at"
+        ];
+        foreach ($cols as $sql) {
+            try {
+                $this->query("ALTER TABLE tasks " . $sql);
+                $this->execute();
+            } catch (Exception $e) {
+                // Column exists
+            }
         }
     }
 
@@ -83,7 +100,9 @@ class Task extends Model {
         $this->bind(':status3', $status);
         $this->bind(':status4', $status);
         $this->bind(':id', (int) $id);
-        return $this->execute();
+        $ok = $this->execute();
+        if ($ok) { $this->triggerIntegrationSync(); }
+        return $ok;
     }
 
     public function updateProgress(int $id, array $data, ?array $visibleUserIds = null) {
@@ -108,7 +127,9 @@ class Task extends Model {
         $this->bind(':status2', $status);
         $this->bind(':status3', $status);
         $this->bind(':id', $id);
-        return $this->execute();
+        $ok = $this->execute();
+        if ($ok) { $this->triggerIntegrationSync(); }
+        return $ok;
     }
 
     public function completeWithProof(int $id, ?string $proofKey, string $remarks, float $actualHours, ?array $visibleUserIds = null) {
@@ -125,7 +146,9 @@ class Task extends Model {
         $this->bind(':remarks', $remarks);
         $this->bind(':actual_hours', $this->decimal($actualHours));
         $this->bind(':id', $id);
-        return $this->execute();
+        $ok = $this->execute();
+        if ($ok) { $this->triggerIntegrationSync(); }
+        return $ok;
     }
 
     public function review(int $id, string $decision, int $reviewerId, string $remark = '', ?array $visibleUserIds = null) {
@@ -147,7 +170,31 @@ class Task extends Model {
         $this->bind(':reviewer', $reviewerId);
         $this->bind(':remark', $remark);
         $this->bind(':id', $id);
-        return $this->execute();
+        $ok = $this->execute();
+        if ($ok) {
+            $this->triggerIntegrationSync();
+        }
+        return $ok;
+    }
+
+    private function triggerIntegrationSync() {
+        try {
+            if (!class_exists('Target')) {
+                require_once APPROOT . '/models/Target.php';
+            }
+            if (!class_exists('Performance')) {
+                require_once APPROOT . '/models/Performance.php';
+            }
+            $tModel = new Target();
+            $tModel->recomputeAll();
+
+            $pModel = new Performance();
+            $pModel->recompute('daily');
+            $pModel->recompute('weekly');
+            $pModel->recompute('monthly');
+        } catch (Throwable $e) {
+            // Ignore error in async trigger
+        }
     }
 
     public function carryForwardIncomplete(?string $date = null): int {

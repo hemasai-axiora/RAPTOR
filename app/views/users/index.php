@@ -638,15 +638,19 @@ $(document).ready(function() {
         }
     });
 
-    $('#users-table').DataTable({
-        "pageLength": 10,
-        "lengthChange": false,
-        "info": false,
-        "searching": true,
-        "language": {
-            "search": "Filter Employees:"
-        }
-    });
+    if ($('#users-table tbody tr').length > 0 && !$('#users-table tbody tr td').hasClass('text-center')) {
+        $('#users-table').DataTable({
+            "pageLength": 10,
+            "lengthChange": false,
+            "info": false,
+            "searching": true,
+            "stateSave": false,
+            "language": {
+                "search": "Filter Employees:",
+                "emptyTable": "No employees found in directory"
+            }
+        });
+    }
 
     function displayUploadError(title, message, errorsList) {
         $('#upload-error-title').text(title || 'Upload Failed');
@@ -875,180 +879,38 @@ $(document).ready(function() {
 
 <!-- Bulk Upload Modal -->
 <div class="modal fade" id="bulkUploadModal" tabindex="-1" aria-labelledby="bulkUploadModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-secondary shadow-lg" style="border-radius: 12px;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-secondary shadow-lg" style="border-radius: 16px; background: var(--panel-dark);">
             <div class="modal-header border-secondary">
-                <h5 class="modal-title" id="bulkUploadModalLabel"><i class="fa-solid fa-cloud-arrow-up text-primary me-2"></i>Bulk Upload Employees</h5>
+                <h5 class="modal-title text-white" id="bulkUploadModalLabel"><i class="fa-solid fa-cloud-arrow-up text-primary me-2"></i>Bulk Upload Employees</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <!-- STEP 1: Upload Form -->
-                <div id="upload-step">
-                    <p class="text-secondary small mb-4">
-                        Upload a CSV file containing employee details to import them in bulk. Please ensure your CSV headers match the required fields.
+                <form action="index.php?route=users/importCsv" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                    <p class="text-secondary small mb-3">
+                        Upload a CSV file containing employee details to import them into the system.
                     </p>
-                    <div class="mb-4 d-flex justify-content-between align-items-center p-3 rounded border border-secondary" style="background: var(--surface-soft) !important;">
-                        <div>
-                            <h6 class="mb-1 fw-bold">Need a template?</h6>
-                            <span class="text-secondary small">Download our pre-formatted template with example rows.</span>
-                        </div>
-                        <a href="index.php?route=users/downloadTemplate" class="btn btn-outline-info btn-sm px-3">
-                            <i class="fa-solid fa-download me-2"></i>Download CSV Template
-                        </a>
-                    </div>
-                    <div class="mb-4">
-                        <button class="btn btn-outline-secondary btn-sm w-100 text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#systemOptionsCollapse" aria-expanded="false" aria-controls="systemOptionsCollapse" style="border-color: var(--border-color); border-radius: 8px;">
-                            <span><i class="fa-solid fa-circle-info me-2 text-info"></i>View Valid System Options (Departments, Job Titles, Managers)</span>
-                            <i class="fa-solid fa-chevron-down"></i>
-                        </button>
-                        <div class="collapse mt-2" id="systemOptionsCollapse">
-                            <div class="card card-body border-secondary p-3 small" style="background: var(--surface-soft) !important; border-radius: 8px;">
-                                <div class="row">
-                                    <div class="col-md-4 mb-2">
-                                        <span class="fw-bold text-primary d-block mb-2" style="font-size:0.8rem;">Departments</span>
-                                        <ul class="list-unstyled text-secondary ps-0 mb-0" style="max-height: 150px; overflow-y: auto; font-size:0.75rem;">
-                                            <?php foreach ($departments as $dept): ?>
-                                                <li><code class="text-info"><?php echo htmlspecialchars($dept); ?></code></li>
-                                            <?php endforeach; ?>
-                                        </ul>
-                                    </div>
-                                    <div class="col-md-4 mb-2">
-                                        <span class="fw-bold text-primary d-block mb-2" style="font-size:0.8rem;">Job Titles</span>
-                                        <ul class="list-unstyled text-secondary ps-0 mb-0" style="max-height: 150px; overflow-y: auto; font-size:0.75rem;">
-                                            <?php foreach ($job_titles as $title): ?>
-                                                <li><code class="text-info"><?php echo htmlspecialchars($title); ?></code></li>
-                                            <?php endforeach; ?>
-                                        </ul>
-                                    </div>
-                                    <div class="col-md-4 mb-2">
-                                        <span class="fw-bold text-primary d-block mb-2" style="font-size:0.8rem;">Reporting Managers (Emails)</span>
-                                        <ul class="list-unstyled text-secondary ps-0 mb-0" style="max-height: 150px; overflow-y: auto; font-size:0.75rem;">
-                                            <?php if (empty($managers)): ?>
-                                                <li class="text-muted italic">None active</li>
-                                            <?php else: foreach ($managers as $mgr): ?>
-                                                <li><span class="text-secondary" title="<?php echo htmlspecialchars($mgr->name); ?>"><?php echo htmlspecialchars($mgr->email); ?></span></li>
-                                            <?php endforeach; endif; ?>
-                                        </ul>
-                                    </div>
-                                </div>
+                    <div class="mb-3 p-3 rounded border border-secondary" style="background: var(--surface-soft) !important;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1 fw-bold text-white">Need a template?</h6>
+                                <span class="text-secondary small">Download our sample CSV template with standard employee fields.</span>
                             </div>
+                            <a href="index.php?route=users/downloadTemplate" class="btn btn-outline-info btn-sm px-3">
+                                <i class="fa-solid fa-download me-1"></i>Download Template
+                            </a>
                         </div>
                     </div>
-                    <!-- Upload Error Results Panel -->
-                    <div id="upload-error-container" class="d-none alert alert-danger border-danger p-3 mb-4 rounded" style="background: rgba(220, 53, 69, 0.1); color: #ea868f;">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="fa-solid fa-triangle-exclamation me-2 fs-5"></i>
-                            <strong class="fs-6" id="upload-error-title">CSV Validation Errors Detected</strong>
-                        </div>
-                        <p class="small mb-2" id="upload-error-message"></p>
-                        <div id="upload-error-table-wrapper" class="table-responsive rounded border border-danger-subtle d-none" style="max-height: 200px; overflow-y: auto;">
-                            <table class="table table-dark table-hover table-sm small align-middle mb-0" style="font-size: 0.78rem;">
-                                <thead class="sticky-top bg-dark" style="z-index: 1;">
-                                    <tr class="text-danger">
-                                        <th style="width: 15%;">Row</th>
-                                        <th style="width: 25%;">Field</th>
-                                        <th style="width: 60%;">Error Reason</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="upload-error-table-body"></tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label for="csv_file" class="form-label text-secondary small">Select CSV File (Max 5MB / 5,000 rows)</label>
-                        <input type="file" id="csv_file" class="form-control bg-dark border-secondary text-white" accept=".csv" required>
-                    </div>
-                    <div class="d-flex justify-content-end gap-2">
-                        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" id="btn-upload-preview" class="btn btn-primary px-4" style="background: var(--primary); border: none;">Upload & Preview</button>
-                    </div>
-                </div>
-
-                <!-- STEP 2: Preview & Validation -->
-                <div id="preview-step" class="d-none">
-                    <div class="alert alert-info py-2 px-3 small border-info mb-3 d-flex align-items-center justify-content-between" style="background: rgba(13, 202, 240, 0.1); color: #0dcaf0;">
-                        <div>
-                            <i class="fa-solid fa-circle-info me-2"></i>
-                            <strong>Validation Summary:</strong> 
-                            <span id="summary-total">0</span> total rows, 
-                            <span id="summary-valid" class="text-success fw-bold">0</span> valid, 
-                            <span id="summary-errors" class="text-danger fw-bold">0</span> errors.
-                        </div>
-                    </div>
-
-                    <div id="duplicate-warning-notice" class="alert alert-warning py-2 px-3 small border-warning mb-3 d-none" style="background: rgba(255, 193, 7, 0.1); color: #ffc107;"></div>
-
                     <div class="mb-3">
-                        <label for="duplicate_strategy" class="form-label text-secondary small">Duplicate Resolution Strategy:</label>
-                        <select id="duplicate_strategy" class="form-select bg-dark border-secondary text-white">
-                            <option value="skip">Skip duplicate records (Default)</option>
-                            <option value="update">Overwrite/Update existing database records</option>
-                            <option value="create">Import anyway (Create duplicate records)</option>
-                        </select>
-                        <div class="text-secondary small mt-1" style="font-size: 0.75rem;">
-                            Note: Duplicate detection matches unique keys (Email, Employee Code).
-                        </div>
+                        <label for="csv_file" class="form-label text-secondary small fw-semibold">Select CSV File</label>
+                        <input type="file" name="csv_file" id="csv_file" class="form-control" accept=".csv" required>
                     </div>
-
-                    <div class="table-responsive rounded border border-secondary mb-4" style="max-height: 300px; overflow-y: auto;">
-                        <table class="table table-dark table-hover table-sm small align-middle mb-0" style="font-size: 0.8rem;">
-                            <thead class="sticky-top bg-dark" style="z-index: 1;">
-                                <tr class="text-secondary">
-                                    <th>Row</th>
-                                    <th>Status</th>
-                                    <th>Employee ID</th>
-                                    <th>First Name</th>
-                                    <th>Last Name</th>
-                                    <th>Email</th>
-                                    <th>Department</th>
-                                    <th>Job Title</th>
-                                    <th>Errors / Warnings</th>
-                                </tr>
-                            </thead>
-                            <tbody id="preview-table-body">
-                                <!-- Dynamic rows via JS -->
-                            </tbody>
-                        </table>
+                    <div class="modal-footer border-0 px-0 pb-0">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-file-import me-1"></i>Upload & Import</button>
                     </div>
-
-                    <div class="d-flex justify-content-end gap-2">
-                        <button type="button" id="btn-back-upload" class="btn btn-secondary px-4">Back</button>
-                        <button type="button" id="btn-confirm-import" class="btn btn-primary px-4" style="background: var(--primary); border: none;">Confirm & Import</button>
-                    </div>
-                </div>
-
-                <!-- STEP 3: Results Summary -->
-                <div id="results-step" class="d-none text-center py-4">
-                    <div class="mb-3">
-                        <i class="fa-solid fa-circle-check text-success" style="font-size: 3.5rem;"></i>
-                    </div>
-                    <h4 class="fw-bold mb-3">Import Process Completed</h4>
-                    <div class="row justify-content-center mb-4">
-                        <div class="col-8">
-                            <div class="bg-dark rounded p-3 border border-secondary" style="background: rgba(255,255,255,0.02) !important;">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-secondary">Successfully Imported:</span>
-                                    <span class="fw-bold text-success" id="result-imported">0</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-secondary">Skipped (Duplicates):</span>
-                                    <span class="fw-bold text-warning" id="result-skipped">0</span>
-                                </div>
-                                <div class="d-flex justify-content-between">
-                                    <span class="text-secondary">Failed (Database Errors):</span>
-                                    <span class="fw-bold text-danger" id="result-failed">0</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="d-flex justify-content-center gap-3">
-                        <a id="btn-download-errors" href="index.php?route=users/downloadErrors" class="btn btn-outline-danger px-4 d-none">
-                            <i class="fa-solid fa-file-excel me-2"></i>Download Error Report
-                        </a>
-                        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Close</button>
-                    </div>
-                </div>
+                </form>
             </div>
         </div>
     </div>

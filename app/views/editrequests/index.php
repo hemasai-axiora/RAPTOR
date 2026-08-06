@@ -59,7 +59,7 @@
             <small class="text-secondary">For archive requests, changes can be left empty.</small>
         </div>
         <div class="col-12 text-end">
-            <button type="submit" class="btn btn-primary">Submit Request</button>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane me-1"></i> Submit Request</button>
         </div>
     </form>
     <?php endif; ?>
@@ -89,7 +89,11 @@
                                 <pre class="small mt-2 mb-0 p-2 rounded" style="background: var(--surface-soft);"><?php echo htmlspecialchars($request->proposed_changes); ?></pre>
                             <?php endif; ?>
                         </td>
-                        <td><?php echo htmlspecialchars(ucfirst($request->requested_action)); ?></td>
+                        <td>
+                            <span class="badge bg-<?php echo $request->requested_action === 'archive' ? 'warning' : 'info'; ?>-subtle text-<?php echo $request->requested_action === 'archive' ? 'warning' : 'info'; ?>">
+                                <?php echo htmlspecialchars(strtoupper($request->requested_action)); ?>
+                            </span>
+                        </td>
                         <td><?php echo htmlspecialchars($request->requester_name); ?></td>
                         <td><?php echo htmlspecialchars($request->manager_comment); ?></td>
                         <td>
@@ -101,18 +105,18 @@
                         <?php if (Policy::canApproveDataEdit()): ?>
                         <td class="text-end">
                             <?php if ($request->status === 'pending'): ?>
-                                <form action="index.php?route=editrequests/approve/<?php echo (int) $request->request_id; ?>" method="POST" class="d-inline-flex gap-2 mb-1">
+                                <form action="index.php?route=editrequests/approve/<?php echo (int) $request->request_id; ?>" method="POST" class="d-inline-flex gap-1 mb-1">
                                     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                                    <input type="text" name="reviewed_comment" class="form-control form-control-sm" placeholder="Admin note">
-                                    <button class="btn btn-success btn-sm" type="submit">Approve</button>
+                                    <input type="text" name="reviewed_comment" class="form-control form-control-sm" style="width: 110px;" placeholder="Admin note">
+                                    <button class="btn btn-success btn-sm" type="submit" title="Approve Request"><i class="fa-solid fa-check me-1"></i>Approve</button>
                                 </form>
-                                <form action="index.php?route=editrequests/reject/<?php echo (int) $request->request_id; ?>" method="POST" class="d-inline-flex gap-2">
+                                <form action="index.php?route=editrequests/reject/<?php echo (int) $request->request_id; ?>" method="POST" class="d-inline-flex gap-1">
                                     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                                    <input type="text" name="reviewed_comment" class="form-control form-control-sm" placeholder="Reason">
-                                    <button class="btn btn-outline-danger btn-sm" type="submit">Reject</button>
+                                    <input type="text" name="reviewed_comment" class="form-control form-control-sm" style="width: 110px;" placeholder="Reason">
+                                    <button class="btn btn-outline-danger btn-sm" type="submit" title="Reject Request"><i class="fa-solid fa-xmark me-1"></i>Reject</button>
                                 </form>
                             <?php else: ?>
-                                <span class="text-secondary"><?php echo htmlspecialchars($request->reviewer_name ?? 'Reviewed'); ?></span>
+                                <span class="text-secondary small"><?php echo htmlspecialchars($request->reviewer_name ?? 'Reviewed'); ?></span>
                             <?php endif; ?>
                         </td>
                         <?php endif; ?>

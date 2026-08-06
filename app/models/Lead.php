@@ -142,16 +142,6 @@ class Lead extends Model {
         return $this->resultSet();
     }
 
-    public function generateLeadCode(): string {
-        try {
-            $this->query("SELECT MAX(lead_id) AS max_id FROM leads");
-            $row = $this->single();
-            $nextId = ($row && $row->max_id) ? ((int)$row->max_id + 1) : 1;
-            return 'LD-' . date('Y') . '-' . sprintf('%05d', $nextId);
-        } catch (Throwable $e) {
-            return 'LD-' . date('Y') . '-' . sprintf('%05d', rand(1000, 99999));
-        }
-    }
 
     public function addLead($data) {
         if (empty($data['lead_code'])) {

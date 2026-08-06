@@ -55,7 +55,7 @@ class CalendarController extends Controller {
                 $tWhere .= ' AND assigned_to_user_id IN (' . implode(',', array_map('intval', $visible)) . ')';
             }
         }
-        $tStmt = $db->prepare("SELECT task_id, title, start_date, deadline, priority, status FROM tasks WHERE $tWhere");
+        $tStmt = $db->prepare("SELECT task_id, title, IFNULL(start_date, created_at) AS start_date, deadline, priority, status FROM tasks WHERE $tWhere");
         $tStmt->execute();
         $tasks = $tStmt->fetchAll(PDO::FETCH_OBJ);
 

@@ -63,23 +63,23 @@
                 </div>
 
                 <div class="card border-0 shadow-sm bg-dark text-white p-4">
-                    <h6 class="fw-bold text-uppercase text-muted-custom mb-3">Understanding Scopes</h6>
+                    <h6 class="fw-bold text-uppercase text-secondary mb-3">Understanding Scopes</h6>
                     <ul class="list-unstyled mb-0 small">
                         <li class="mb-3">
                             <strong class="text-danger"><i class="fa-solid fa-ban me-1"></i> None:</strong> 
-                            <span class="text-light-50">No access whatsoever to the action.</span>
+                            <span class="text-secondary ms-1">No access whatsoever to the action.</span>
                         </li>
                         <li class="mb-3">
                             <strong class="text-warning"><i class="fa-solid fa-user me-1"></i> Own:</strong> 
-                            <span class="text-light-50">Can act only on records belonging to or created by self.</span>
+                            <span class="text-secondary ms-1">Can act only on records belonging to or created by self.</span>
                         </li>
                         <li class="mb-3">
                             <strong class="text-info"><i class="fa-solid fa-users me-1"></i> Team:</strong> 
-                            <span class="text-light-50">Can act on records belonging to their entire organizational team hierarchy.</span>
+                            <span class="text-secondary ms-1">Can act on records belonging to their entire organizational team hierarchy.</span>
                         </li>
                         <li class="mb-0">
                             <strong class="text-success"><i class="fa-solid fa-globe me-1"></i> All:</strong> 
-                            <span class="text-light-50">Unrestricted organizational visibility across all branches and users.</span>
+                            <span class="text-secondary ms-1">Unrestricted organizational visibility across all branches and users.</span>
                         </li>
                     </ul>
                 </div>

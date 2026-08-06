@@ -8,21 +8,21 @@ class Invoice extends Model {
         try {
             $this->db->query("SELECT sender_details FROM invoices LIMIT 1");
         } catch (Exception $e) {
-            $this->db->exec("ALTER TABLE invoices ADD COLUMN sender_details TEXT NULL AFTER conversion_rate");
+            $this->db->exec("ALTER TABLE invoices ADD COLUMN sender_details TEXT NULL");
         }
 
         // Self-healing check: Ensure utr_number column exists
         try {
             $this->db->query("SELECT utr_number FROM invoices LIMIT 1");
         } catch (Exception $e) {
-            $this->db->exec("ALTER TABLE invoices ADD COLUMN utr_number VARCHAR(100) NULL AFTER sender_details");
+            $this->db->exec("ALTER TABLE invoices ADD COLUMN utr_number VARCHAR(100) NULL");
         }
 
         // Self-healing check: Ensure cancel_reason column exists
         try {
             $this->db->query("SELECT cancel_reason FROM invoices LIMIT 1");
         } catch (Exception $e) {
-            $this->db->exec("ALTER TABLE invoices ADD COLUMN cancel_reason TEXT NULL AFTER utr_number");
+            $this->db->exec("ALTER TABLE invoices ADD COLUMN cancel_reason TEXT NULL");
         }
     }
 

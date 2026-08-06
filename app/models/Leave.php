@@ -321,7 +321,7 @@ class Leave extends Model {
         try {
             $sql = "SELECT u.user_id, u.name AS employee_name, u.email, 
                            COALESCE(e.department, 'General') AS department,
-                           CONCAT('EMP-', u.user_id) AS emp_code,
+                           COALESCE(NULLIF(e.employee_code, ''), CONCAT('EMP-', u.user_id)) AS emp_code,
                            b.leave_type_name, 
                            COALESCE(b.allocated_days, 0) AS allocated_days, 
                            COALESCE(b.carried_forward_days, 0) AS carried_forward_days, 
@@ -336,7 +336,7 @@ class Leave extends Model {
             $params = [':yr' => $year];
 
             if (!empty($filters['search'])) {
-                $sql .= " AND (u.name LIKE :s OR u.email LIKE :s OR e.department LIKE :s)";
+                $sql .= " AND (u.name LIKE :s OR u.email LIKE :s OR e.department LIKE :s OR e.employee_code LIKE :s)";
                 $params[':s'] = '%' . $filters['search'] . '%';
             }
 

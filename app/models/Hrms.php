@@ -91,12 +91,12 @@ class Hrms extends Model {
             $stats['birthdays'] = $this->resultSet() ?: [];
 
             // Work anniversaries (next 30 days)
-            $this->query("SELECT u.name, e.date_of_joining, e.job_title, e.profile_photo, YEAR(NOW()) - YEAR(e.date_of_joining) AS years
+            $this->query("SELECT u.name, e.hire_date AS date_of_joining, e.job_title, e.profile_photo, YEAR(NOW()) - YEAR(e.hire_date) AS years
                           FROM employees e 
                           JOIN users u ON e.user_id = u.user_id
-                          WHERE DATE_FORMAT(e.date_of_joining, '%m-%d') BETWEEN DATE_FORMAT(NOW(), '%m-%d') AND DATE_FORMAT(DATE_ADD(NOW(), INTERVAL 30 DAY), '%m-%d')
-                            AND YEAR(e.date_of_joining) < YEAR(NOW())
-                          ORDER BY DATE_FORMAT(e.date_of_joining, '%m-%d') ASC");
+                          WHERE DATE_FORMAT(e.hire_date, '%m-%d') BETWEEN DATE_FORMAT(NOW(), '%m-%d') AND DATE_FORMAT(DATE_ADD(NOW(), INTERVAL 30 DAY), '%m-%d')
+                            AND YEAR(e.hire_date) < YEAR(NOW())
+                          ORDER BY DATE_FORMAT(e.hire_date, '%m-%d') ASC");
             $stats['anniversaries'] = $this->resultSet() ?: [];
 
             // Payroll runs

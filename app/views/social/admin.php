@@ -29,7 +29,6 @@ $handlingTeamCount = count($uniqueTeam);
 $platformsCount = count($platforms);
 ?>
 <style>
-<style>
 /* Theme-Adaptive Navigation Pills */
 .social-nav-pills .nav-link {
     color: #334155 !important;

@@ -15,9 +15,15 @@ class PerformanceController extends Controller {
     }
     public function index() {
         $period = $_GET['period'] ?? 'weekly';
-        if (!in_array($period, ['weekly', 'monthly'], true)) {
+        if (!in_array($period, ['daily', 'weekly', 'monthly'], true)) {
             $period = 'weekly';
         }
+
+        // Auto-recompute all periods so performance scores calculate themselves in real time
+        $this->performanceModel->recompute('daily');
+        $this->performanceModel->recompute('weekly');
+        $this->performanceModel->recompute('monthly');
+
         [$start, $end] = $this->performanceModel->periodRange($period, $_GET['start'] ?? null, $_GET['end'] ?? null);
 
         $data = [

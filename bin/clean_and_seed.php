@@ -157,18 +157,26 @@ foreach ($customerRoles as $rId) {
 }
 echo "Ensured Manager & Analyst roles have customers view/create/edit permissions.\n";
 
-// Ensure Analyst role has full view & management permissions for HR, Payroll, Employees, and Reports
-$analystRoleId = $rolesMap['analyst'];
-$analystModules = ['employees', 'attendance', 'leave', 'payroll', 'hrms', 'social_media', 'reports', 'analytics', 'customers'];
-foreach ($analystModules as $mod) {
-    $stmt = $db->prepare("SELECT permission_id FROM permissions WHERE module = :mod");
-    $stmt->execute([':mod' => $mod]);
-    foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $pId) {
-        $db->prepare("INSERT IGNORE INTO role_permissions (role_id, permission_id, scope) VALUES (:rid, :pid, 'all')")
-           ->execute([':rid' => $analystRoleId, ':pid' => $pId]);
+// Ensure all roles have proper module permissions
+$allModules = ['dashboard', 'attendance', 'leaves', 'calendar', 'targets', 'performance', 'crm_leads', 'leads', 'customers', 'communications', 'meetings', 'followups', 'tasks', 'social_media', 'payroll', 'reports', 'notifications', 'hrms', 'campaigns'];
+foreach ($allModules as $modName) {
+    // Add permission if not exists
+    $pCheck = $db->prepare("SELECT permission_id FROM permissions WHERE module = :mod AND permission_name = :pname");
+    $pCheck->execute([':mod' => $modName, ':pname' => $modName . '.view']);
+    $pId = $pCheck->fetchColumn();
+    if (!$pId) {
+        $db->prepare("INSERT INTO permissions (module, permission_name, description) VALUES (:mod, :pname, :desc)")
+           ->execute([':mod' => $modName, ':pname' => $modName . '.view', ':desc' => 'View ' . $modName]);
+        $pId = $db->lastInsertId();
+    }
+    
+    // Grant to employee, manager, analyst, hr, finance
+    foreach ([$rolesMap['employee'], $rolesMap['manager'], $rolesMap['analyst'], $rolesMap['hr'], $rolesMap['finance']] as $rId) {
+        $db->prepare("INSERT IGNORE INTO role_permissions (role_id, permission_id, scope) VALUES (:rid, :pid, 'own')")
+           ->execute([':rid' => $rId, ':pid' => $pId]);
     }
 }
-echo "Granted HR & Payroll, Employees, and Reports permissions to Analyst role.\n";
+echo "Ensured all operational permissions are granted for all roles.\n";
 // Seed New Users
 // Password is 'Raptor@12345'
 $hash = password_hash('Raptor@12345', PASSWORD_BCRYPT, ['cost' => 10]);
@@ -324,8 +332,32 @@ foreach ($platformsToSeed as [$pName, $pIcon, $profileName, $profileUrl]) {
     // Insert platform
     $pStmt = $db->prepare("INSERT INTO platforms (name, icon) VALUES (:n, :i) ON DUPLICATE KEY UPDATE icon = VALUES(icon)");
     $pStmt->execute([':n' => $pName, ':i' => $pIcon]);
+    
+    // Fetch platform_id
+    $pId = $db->query("SELECT platform_id FROM platforms WHERE name = '$pName'")->fetchColumn();
+    
+    if ($pId && $clientId) {
+        $username = strtolower(str_replace([' ', '/', '@'], ['_', '', ''], $profileName));
+        $accStmt = $db->prepare("INSERT INTO social_accounts (client_id, platform_id, platform, profile_name, profile_url, username, account_password, status, account_notes, manager_remarks) 
+                                 VALUES (:cid, :pid, :pname, :pname_str, :purl, :uname, :pass, 'active', 'Official company handle for marketing.', 'Approved by management.')");
+        $accStmt->execute([
+            ':cid' => $clientId,
+            ':pid' => $pId,
+            ':pname' => $pName,
+            ':pname_str' => $profileName,
+            ':purl' => $profileUrl,
+            ':uname' => $username,
+            ':pass' => 'RaptorPass@2026'
+        ]);
+        $accId = (int)$db->lastInsertId();
+        
+        // Assign to Employee (Hema Sai / user_id)
+        if ($accId && !empty($insertedUserIds['employee'])) {
+            $db->exec("INSERT INTO assignments (user_id, account_id, is_shared) VALUES ({$insertedUserIds['employee']}, {$accId}, 1)");
+        }
+    }
 }
-echo "Seeded 13 social media platforms.\n";
+echo "Seeded 13 social media platforms with default accounts & employee assignments.\n";
 
 // Seed sample lead
 $leadCheck = $db->query("SELECT lead_id FROM leads LIMIT 1")->fetchColumn();

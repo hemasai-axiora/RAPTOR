@@ -302,4 +302,35 @@ class InvoicesController extends Controller {
         }
         $this->redirect('index.php?route=invoices/index');
     }
+
+    // Admin direct status edit / reversal
+    public function updateAdminStatus() {
+        if (!Policy::isAdmin() && !Policy::isFinance()) {
+            $_SESSION['invoice_error'] = "Only Administrators can directly alter invoice payment status.";
+            $this->redirect('index.php?route=invoices/index');
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $invoiceId = (int)($_POST['invoice_id'] ?? 0);
+            $newStatus = trim($_POST['status'] ?? 'unpaid');
+            $reason = trim($_POST['reason'] ?? '');
+
+            if ($invoiceId > 0 && in_array($newStatus, ['unpaid', 'pending', 'paid', 'cancelled'], true)) {
+                $db = Database::getInstance()->getConnection();
+                if ($newStatus === 'unpaid' || $newStatus === 'pending') {
+                    $stmt = $db->prepare("UPDATE invoices SET status = :st, utr_number = NULL, cancel_reason = :rs WHERE invoice_id = :id");
+                    $stmt->execute([':st' => $newStatus, ':rs' => $reason ? "Status reverted: $reason" : null, ':id' => $invoiceId]);
+                } else {
+                    $stmt = $db->prepare("UPDATE invoices SET status = :st WHERE invoice_id = :id");
+                    $stmt->execute([':st' => $newStatus, ':id' => $invoiceId]);
+                }
+                $this->audit("Admin updated invoice #$invoiceId status to $newStatus", "invoices", $invoiceId);
+                $_SESSION['invoice_success'] = "Invoice status successfully updated to " . strtoupper($newStatus) . ".";
+            } else {
+                $_SESSION['invoice_error'] = "Invalid invoice status parameters.";
+            }
+        }
+        $this->redirect('index.php?route=invoices/index');
+    }
 }

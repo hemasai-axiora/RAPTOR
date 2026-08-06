@@ -16,8 +16,8 @@ if (!function_exists('env')) {
 
 // Database Settings
 define('DB_HOST', env('DB_HOST', 'db'));
-define('DB_USER', env('DB_USER') && env('DB_USER') !== 'root' ? env('DB_USER') : 'raptor_user');
-define('DB_PASS', env('DB_PASS') && env('DB_PASS') !== 'rootpassword' ? env('DB_PASS') : 'RaptorProd@2026!');
+define('DB_USER', env('DB_USER', 'raptor_user'));
+define('DB_PASS', env('DB_PASS', 'RaptorProd@2026!'));
 define('DB_NAME', env('DB_NAME', 'raptor_crm_db'));
 
 // App Paths & URLs

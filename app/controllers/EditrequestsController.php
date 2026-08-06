@@ -82,12 +82,95 @@ class EditrequestsController extends Controller {
         $this->redirect('index.php?route=editrequests/index');
     }
 
-    public function approve($id = 0) {
-        $this->review((int) $id, true);
+    public function adminEditRequest() {
+        if (!Policy::canApproveDataEdit()) {
+            $_SESSION['edit_request_error'] = 'Only Admins can edit and process requests.';
+            $this->redirect('index.php?route=editrequests/index');
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $reqId = (int) ($_POST['request_id'] ?? 0);
+            $newChanges = htmlspecialchars_decode($_POST['proposed_changes'] ?? '', ENT_QUOTES);
+            $comment = trim($_POST['reviewed_comment'] ?? 'Admin Edited and Approved');
+
+            if ($reqId <= 0) {
+                $_SESSION['edit_request_error'] = 'Please enter a valid Request ID.';
+                $this->redirect('index.php?route=editrequests/index');
+                return;
+            }
+
+            $request = $this->requestModel->getById($reqId);
+            if (!$request) {
+                $_SESSION['edit_request_error'] = "Request #$reqId not found in system.";
+                $this->redirect('index.php?route=editrequests/index');
+                return;
+            }
+
+            if (!empty($newChanges) && !Validation::validateJson($newChanges)) {
+                $_SESSION['edit_request_error'] = 'Proposed changes must be valid JSON format.';
+                $this->redirect('index.php?route=editrequests/index');
+                return;
+            }
+
+            $ok = $this->requestModel->updateAndApprove($reqId, (int) $_SESSION['user_id'], $newChanges, $comment);
+            if ($ok) {
+                $this->audit('Admin edited and approved data edit request', 'data_edit_requests', $reqId);
+                $_SESSION['edit_request_success'] = "Successfully updated and applied changes for Request #$reqId (Target: {$request->entity_type} #{$request->entity_id}).";
+            } else {
+                $_SESSION['edit_request_error'] = "Failed to apply changes for Request #$reqId.";
+            }
+        }
+
+        $this->redirect('index.php?route=editrequests/index');
     }
 
     public function reject($id = 0) {
         $this->review((int) $id, false);
+    }
+
+    public function deleteRequest($id = 0) {
+        if (!Policy::canApproveDataEdit()) {
+            $_SESSION['edit_request_error'] = 'Only Admins can execute request actions.';
+            $this->redirect('index.php?route=editrequests/index');
+            return;
+        }
+
+        $reqId = (int) ($id > 0 ? $id : ($_POST['request_id'] ?? 0));
+        $action = $_POST['admin_action'] ?? 'delete_record';
+
+        if ($reqId <= 0) {
+            $_SESSION['edit_request_error'] = 'Please specify a valid Request ID.';
+            $this->redirect('index.php?route=editrequests/index');
+            return;
+        }
+
+        $request = $this->requestModel->getById($reqId);
+        if (!$request) {
+            $_SESSION['edit_request_error'] = "Request #$reqId not found.";
+            $this->redirect('index.php?route=editrequests/index');
+            return;
+        }
+
+        $comment = trim($_POST['reviewed_comment'] ?? 'Admin Execution');
+
+        if ($action === 'delete_record') {
+            $this->requestModel->deleteEntity($request);
+            $this->requestModel->approve($reqId, (int) $_SESSION['user_id'], $comment ?: 'Approved and deleted target record by Admin.');
+            $_SESSION['edit_request_success'] = "Successfully deleted target {$request->entity_type} #{$request->entity_id} and marked Request #$reqId as Approved.";
+        } elseif ($action === 'approve') {
+            $ok = $this->requestModel->approve($reqId, (int) $_SESSION['user_id'], $comment);
+            if ($ok) {
+                $_SESSION['edit_request_success'] = "Successfully approved and executed operation for Request #$reqId.";
+            } else {
+                $_SESSION['edit_request_error'] = "Failed to execute request #$reqId operation.";
+            }
+        } elseif ($action === 'delete_request') {
+            $this->requestModel->deleteRequestRecord($reqId);
+            $_SESSION['edit_request_success'] = "Request record #$reqId has been purged.";
+        }
+
+        $this->redirect('index.php?route=editrequests/index');
     }
 
     private function review(int $id, bool $approve): void {
@@ -108,6 +191,9 @@ class EditrequestsController extends Controller {
 
             if ($ok) {
                 $this->audit(($approve ? 'Approved' : 'Rejected') . ' data edit request', 'data_edit_requests', $id);
+                $_SESSION['edit_request_success'] = ($approve ? 'Approved' : 'Rejected') . " request #$id successfully.";
+            } else {
+                $_SESSION['edit_request_error'] = "Operation failed for request #$id.";
             }
         }
 

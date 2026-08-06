@@ -555,7 +555,7 @@
            overrides make the whole frontend follow the white/blue theme while
            still supporting dark mode from one toggle. */
         .text-white { color: var(--text-primary) !important; }
-        .text-secondary, .text-secondary-emphasis, .text-muted { color: var(--text-secondary) !important; }
+        .text-secondary, .text-secondary-emphasis, .text-muted, .text-light-50, .text-white-50, .text-muted-custom { color: var(--text-secondary) !important; }
         .bg-dark { background-color: var(--surface-muted) !important; }
         .bg-opacity-25, .bg-opacity-35, .bg-opacity-50 { --bs-bg-opacity: 1; }
         .border-secondary, .border-secondary-subtle { border-color: var(--border-color) !important; }
@@ -1213,7 +1213,7 @@
                         </li>
                         <?php endif; ?>
                         
-                        <?php if (in_array($role, ['admin', 'ceo', 'manager', 'analyst'], true)): ?>
+                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'manager', 'analyst', 'employee', 'sales_person'], true)): ?>
                         <li class="menu-item <?php echo (($title ?? '') === 'Organization | Raptor CRM' || (isset($active_tab) && $active_tab === 'teams')) ? 'active' : ''; ?>">
                             <a href="index.php?route=teams/index">
                                 <i class="fa-solid fa-sitemap"></i><span>Organization</span>

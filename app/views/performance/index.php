@@ -20,6 +20,7 @@
         <div class="col-md-3">
             <label class="form-label text-secondary">Period</label>
             <select name="period" class="form-select bg-dark border-secondary text-white">
+                <option value="daily" <?php echo $period === 'daily' ? 'selected' : ''; ?>>Daily</option>
                 <option value="weekly" <?php echo $period === 'weekly' ? 'selected' : ''; ?>>Weekly</option>
                 <option value="monthly" <?php echo $period === 'monthly' ? 'selected' : ''; ?>>Monthly</option>
             </select>
