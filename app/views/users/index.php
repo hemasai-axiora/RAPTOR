@@ -12,15 +12,53 @@
 <?php endif; ?>
 
 <div class="pulse-card">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h4 class="text-white mb-0">Employee Management</h4>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="index.php?route=users/export" class="btn btn-outline-success btn-sm px-3 py-2" style="border-radius: 8px;" title="Download all employee details as CSV">
+                <i class="fa-solid fa-file-csv me-2"></i>Download Details
+            </a>
             <button class="btn btn-outline-light btn-sm px-3 py-2" data-bs-toggle="modal" data-bs-target="#bulkUploadModal" style="border-radius: 8px; border-color: rgba(255,255,255,0.15);">
                 <i class="fa-solid fa-cloud-arrow-up me-2"></i>Bulk Upload
             </button>
             <button class="btn btn-primary btn-sm px-3 py-2" data-bs-toggle="modal" data-bs-target="#addUserModal" style="background: var(--primary); border: none; border-radius: 8px;">
                 <i class="fa-solid fa-user-plus me-2"></i>Add Employee
             </button>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="row g-2 mb-3 p-3 rounded-3" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1);">
+        <div class="col-md-4">
+            <div class="input-group">
+                <span class="input-group-text bg-dark border-secondary text-secondary"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <input type="text" id="emp-search-input" class="form-control bg-dark border-secondary text-white" placeholder="Search Emp ID, Name, Email, Job Title...">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select id="emp-status-filter" class="form-select bg-dark border-secondary text-white">
+                <option value="">Filter by Status: All</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select id="emp-location-filter" class="form-select bg-dark border-secondary text-white">
+                <option value="">Filter by Location: All</option>
+                <option value="Office">Office</option>
+                <option value="Remote">Remote</option>
+                <option value="Hybrid">Hybrid</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select id="emp-dept-filter" class="form-select bg-dark border-secondary text-white">
+                <option value="">Dept: All</option>
+                <?php if (!empty($departments)): ?>
+                    <?php foreach ($departments as $dept): ?>
+                        <option value="<?php echo htmlspecialchars($dept); ?>"><?php echo htmlspecialchars($dept); ?></option>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </select>
         </div>
     </div>
 
@@ -33,13 +71,17 @@
                     <th>Email Address</th>
                     <th>Job Title</th>
                     <th>Location</th>
+                    <th>Status</th>
                     <th>Joining Date</th>
                     <th class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($users as $user): ?>
-                    <tr style="border-bottom: 1px solid var(--border-color);">
+                    <tr style="border-bottom: 1px solid var(--border-color);"
+                        data-status="<?php echo (($user->status ?? 'active') === 'active') ? 'Active' : 'Inactive'; ?>"
+                        data-location="<?php echo htmlspecialchars($user->work_location ?? 'Office'); ?>"
+                        data-department="<?php echo htmlspecialchars($user->department ?? 'Sales'); ?>">
                         <td class="text-white font-monospace"><?php echo htmlspecialchars($user->employee_code ?? 'SYS-ADMIN'); ?></td>
                         <td class="font-weight-bold">
                             <a href="index.php?route=hrms/profile/<?php echo $user->user_id; ?>" 
@@ -55,6 +97,13 @@
                             </span>
                         </td>
                         <td><?php echo htmlspecialchars($user->work_location ?? 'Office'); ?></td>
+                        <td>
+                            <?php if (($user->status ?? 'active') === 'active'): ?>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-circle me-1" style="font-size: 8px;"></i>Active</span>
+                            <?php else: ?>
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="fa-solid fa-circle me-1" style="font-size: 8px;"></i>Inactive</span>
+                            <?php endif; ?>
+                        </td>
                         <td><?php echo !empty($user->date_of_joining) ? date('Y-m-d', strtotime($user->date_of_joining)) : date('Y-m-d', strtotime($user->created_at)); ?></td>
                         <td class="text-end">
                             <div class="d-inline-flex gap-2">
@@ -639,16 +688,49 @@ $(document).ready(function() {
     });
 
     if ($('#users-table tbody tr').length > 0 && !$('#users-table tbody tr td').hasClass('text-center')) {
-        $('#users-table').DataTable({
+        const table = $('#users-table').DataTable({
             "pageLength": 10,
             "lengthChange": false,
             "info": false,
             "searching": true,
             "stateSave": false,
+            "dom": "rtip",
             "language": {
-                "search": "Filter Employees:",
                 "emptyTable": "No employees found in directory"
             }
+        });
+
+        // Custom Text Search
+        $('#emp-search-input').on('keyup change', function() {
+            table.search(this.value).draw();
+        });
+
+        // Custom Filters for Status, Location, Department
+        $.fn.dataTable.ext.search.push(
+            function(settings, data, dataIndex) {
+                if (settings.nTable.id !== 'users-table') return true;
+
+                const selectedStatus = $('#emp-status-filter').val();
+                const selectedLocation = $('#emp-location-filter').val();
+                const selectedDept = $('#emp-dept-filter').val();
+
+                const row = table.row(dataIndex).node();
+                if (!row) return true;
+
+                const rowStatus = $(row).attr('data-status') || '';
+                const rowLocation = $(row).attr('data-location') || '';
+                const rowDept = $(row).attr('data-department') || '';
+
+                if (selectedStatus && rowStatus !== selectedStatus) return false;
+                if (selectedLocation && rowLocation !== selectedLocation) return false;
+                if (selectedDept && rowDept.toLowerCase() !== selectedDept.toLowerCase()) return false;
+
+                return true;
+            }
+        );
+
+        $('#emp-status-filter, #emp-location-filter, #emp-dept-filter').on('change', function() {
+            table.draw();
         });
     }
 

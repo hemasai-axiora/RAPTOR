@@ -435,6 +435,88 @@ class UsersController extends Controller {
     }
 
     /**
+     * Download / Export full employee details report (CSV).
+     */
+    public function export() {
+        $this->requirePermission('employees', 'view');
+        $users = $this->userModel->getUsers();
+
+        $filename = 'employee_details_' . date('Y-m-d_His') . '.csv';
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+        $output = fopen('php://output', 'w');
+
+        // Write CSV headers
+        fputcsv($output, [
+            'Emp_ID',
+            'Name',
+            'Email',
+            'Role',
+            'Job_Title',
+            'Department',
+            'Work_Location',
+            'Joining_Date',
+            'Status',
+            'Phone_Number',
+            'Salary',
+            'Employment_Type',
+            'Date_of_Birth',
+            'Emergency_Contact',
+            'Account_Holder_Name',
+            'Bank_Name',
+            'Account_Number',
+            'IFSC_Code',
+            'Branch_Name',
+            'Account_Type',
+            'PAN_Number',
+            'Aadhaar_Number',
+            'UAN',
+            'PF_Applicable',
+            'ESIC_Number',
+            'Pay_Grade'
+        ]);
+
+        $canViewSensitive = in_array($_SESSION['user_role'] ?? '', ['admin', 'hr', 'finance', 'ceo'], true);
+
+        foreach ($users as $user) {
+            $joiningDate = !empty($user->date_of_joining) ? date('Y-m-d', strtotime($user->date_of_joining)) : (!empty($user->created_at) ? date('Y-m-d', strtotime($user->created_at)) : '');
+            
+            fputcsv($output, [
+                $user->employee_code ?? 'N/A',
+                $user->name ?? '',
+                $user->email ?? '',
+                strtoupper($user->role_name ?? ''),
+                $user->job_title ?? '',
+                $user->department ?? 'Sales',
+                $user->work_location ?? 'Office',
+                $joiningDate,
+                ucfirst($user->status ?? 'active'),
+                $user->phone_number ?? '',
+                $canViewSensitive ? ($user->salary ?? '') : 'RESTRICTED',
+                $user->employment_type ?? 'Full-time',
+                $user->date_of_birth ?? '',
+                $user->emergency_contact ?? '',
+                $user->account_holder_name ?? '',
+                $user->bank_name ?? '',
+                $canViewSensitive ? ($user->account_number ?? '') : 'RESTRICTED',
+                $user->ifsc_code ?? '',
+                $user->branch_name ?? '',
+                $user->account_type ?? 'Savings',
+                $canViewSensitive ? ($user->pan_number ?? '') : 'RESTRICTED',
+                $canViewSensitive ? ($user->aadhaar_number ?? '') : 'RESTRICTED',
+                $user->uan ?? '',
+                ($user->pf_applicable ?? 0) == 1 ? 'Yes' : 'No',
+                $user->esic_number ?? '',
+                $user->pay_grade ?? ''
+            ]);
+        }
+
+        fclose($output);
+        exit;
+    }
+
+    /**
      * Download sample CSV template.
      */
     public function downloadTemplate() {
