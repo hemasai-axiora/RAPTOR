@@ -1,6 +1,11 @@
 {
+  "InstanceIds": ["i-0b68a2d9c74586653"],
+  "DocumentName": "AWS-RunShellScript",
+  "Parameters": {
     "commands": [
-        "date",
-        "docker exec raptor-web php -r \"echo date_default_timezone_get() . '\\n'; echo date('Y-m-d H:i:s') . '\\n';\""
+      "cd /var/www/raptor/current && git fetch origin main && git reset --hard origin/main",
+      "docker exec raptor-web php -r \"require '/var/www/html/app/config/config.php'; echo 'PHP OK';\" 2>&1",
+      "echo DEPLOYMENT_SUCCESSFUL"
     ]
+  }
 }
