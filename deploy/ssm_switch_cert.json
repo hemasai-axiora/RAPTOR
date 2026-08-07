@@ -1,0 +1,18 @@
+{
+  "InstanceIds": ["i-0b68a2d9c74586653"],
+  "DocumentName": "AWS-RunShellScript",
+  "Parameters": {
+    "commands": [
+      "cp /var/www/raptor/current/nginx.conf /var/www/raptor/current/nginx.conf.bak2",
+      "sed -i 's|ssl_certificate /etc/letsencrypt/live/ags.raptor.unaux.com/fullchain.pem;|ssl_certificate /etc/letsencrypt/live/axiora-raptor/fullchain.pem;|g' /var/www/raptor/current/nginx.conf",
+      "sed -i 's|ssl_certificate_key /etc/letsencrypt/live/ags.raptor.unaux.com/privkey.pem;|ssl_certificate_key /etc/letsencrypt/live/axiora-raptor/privkey.pem;|g' /var/www/raptor/current/nginx.conf",
+      "grep ssl_certificate /var/www/raptor/current/nginx.conf",
+      "docker exec raptor-nginx nginx -t",
+      "docker restart raptor-nginx",
+      "sleep 3",
+      "docker ps | grep raptor-nginx",
+      "openssl s_client -connect 98.94.227.211:443 -servername axiora.raptor.unaux.com </dev/null 2>/dev/null | openssl x509 -noout -subject -dates 2>/dev/null",
+      "echo NGINX_UPDATED_WITH_AXIORA_CERT"
+    ]
+  }
+}

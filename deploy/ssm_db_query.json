@@ -1,0 +1,9 @@
+{
+  "InstanceIds": ["i-0b68a2d9c74586653"],
+  "DocumentName": "AWS-RunShellScript",
+  "Parameters": {
+    "commands": [
+      "docker exec f38fa4c242b3_raptor-db mysql -uraptor_user -pRaptorProd@2026! raptor_crm_db -e \"DELETE FROM teams WHERE team_id BETWEEN 11 AND 20; SELECT team_id, name, branch_id FROM teams;\" 2>&1"
+    ]
+  }
+}

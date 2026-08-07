@@ -1,0 +1,13 @@
+{
+  "InstanceIds": ["i-0b68a2d9c74586653"],
+  "DocumentName": "AWS-RunShellScript",
+  "Parameters": {
+    "commands": [
+      "mkdir -p /var/www/raptor/shared/acme",
+      "certbot certonly --webroot -w /var/www/raptor/shared/acme -d axiora.raptor.unaux.com --non-interactive --agree-tos --email axiora.operations@gmail.com --cert-name axiora-raptor 2>&1",
+      "ls /etc/letsencrypt/live/",
+      "openssl x509 -in /etc/letsencrypt/live/axiora-raptor/fullchain.pem -noout -subject -dates 2>/dev/null",
+      "echo CERTBOT_DONE"
+    ]
+  }
+}
