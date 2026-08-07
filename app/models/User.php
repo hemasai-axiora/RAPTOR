@@ -76,6 +76,9 @@ class User extends Model {
         $this->query('SELECT u.*, r.role_name, 
                              e.employee_id, e.employee_code, e.department, e.job_title, e.hire_date, e.reporting_manager_id,
                              e.hire_date AS date_of_joining, e.profile_photo,
+                             e.phone_number, e.salary, e.date_of_birth, e.employment_type, e.work_location,
+                             e.bio, e.emergency_contact, e.pan_number, e.aadhaar_number, e.uan,
+                             e.pf_applicable, e.esic_number, e.pay_grade,
                              m.name as manager_name,
                              b.account_holder_name, b.bank_name, b.account_number, b.ifsc_code, b.branch_name, b.account_type
                       FROM users u 
