@@ -436,13 +436,29 @@ class AuthController extends Controller {
 
     // Helper to redirect based on user role
     private function redirectByRole($role) {
+        $uid = (int) ($_SESSION['user_id'] ?? 0);
+        if (!in_array($role, ['admin', 'ceo'], true)) {
+            try {
+                $db = Database::getInstance()->getConnection();
+                $todayStr = date('Y-m-d');
+                $stmt = $db->prepare("SELECT COUNT(*) FROM attendance WHERE user_id = :uid AND work_date = :d AND login_at IS NOT NULL");
+                $stmt->execute([':uid' => $uid, ':d' => $todayStr]);
+                $hasClockedIn = (int)$stmt->fetchColumn() > 0;
+                if (!$hasClockedIn) {
+                    $this->redirect('index.php?route=attendance/index');
+                    return;
+                }
+            } catch (Throwable $e) {
+                // fallback
+            }
+        }
+
         switch ($role) {
             case 'analyst':
                 $this->redirect('index.php?route=dashboard/show/executive');
                 break;
             case 'employee':
             case 'sales_person':
-                // Employees start their day at Attendance (check-in gateway).
                 $this->redirect('index.php?route=attendance/index');
                 break;
             case 'hr':

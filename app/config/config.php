@@ -83,11 +83,12 @@ if (!function_exists('formatToLocalTime')) {
         if (empty($datetime)) return '';
         try {
             $targetTz = new DateTimeZone(APP_TIMEZONE); // Asia/Kolkata (IST)
-            $utcTz    = new DateTimeZone('UTC');
-
-            // All datetimes stored in DB are UTC — always parse as UTC then convert to IST
-            $dt = new DateTime($datetime, $utcTz);
-            $dt->setTimezone($targetTz);
+            if (is_string($datetime) && (strpos($datetime, 'Z') !== false || strpos($datetime, '+00:00') !== false)) {
+                $dt = new DateTime($datetime);
+                $dt->setTimezone($targetTz);
+            } else {
+                $dt = new DateTime($datetime, $targetTz);
+            }
             return $dt->format($format);
         } catch (Exception $e) {
             return $datetime;

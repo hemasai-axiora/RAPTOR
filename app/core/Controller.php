@@ -162,31 +162,30 @@ class Controller {
             }
         }
 
-        // Attendance check-in gate (Sprint 2)
-        $userRole = $_SESSION['user_role'] ?? $_SESSION['role_name'] ?? '';
-        if (isset($_SESSION['user_id']) && !in_array($userRole, ['admin', 'ceo', 'manager', 'analyst', 'hr', 'finance'], true)) {
-            $route = $_GET['route'] ?? '';
-            $routePrefix = explode('/', trim($route, '/'))[0] ?? '';
-            $allowedModules = [
-                '', 'home', 'dashboard', 'attendance', 'auth', 'file', 'followups', 'leads',
-                'customers', 'communications', 'meetings', 'tasks',
-                'targets', 'performance', 'location', 'api'
-            ];
-            
-            if (!in_array($routePrefix, $allowedModules, true)) {
-                try {
-                    $db = Database::getInstance()->getConnection();
-                    $todayStr = date('Y-m-d');
-                    $stmt = $db->prepare("SELECT COUNT(*) FROM attendance WHERE user_id = :uid AND work_date = :d AND login_at IS NOT NULL");
-                    $stmt->execute([':uid' => (int)$_SESSION['user_id'], ':d' => $todayStr]);
-                    $hasClockedIn = (int)$stmt->fetchColumn() > 0;
-                    
-                    if (!$hasClockedIn) {
-                        $_SESSION['attendance_notice'] = 'Please remember to Clock In for attendance today.';
-                        $this->redirect('index.php?route=attendance/index');
+        // Attendance check-in gate: Users must check in before accessing other portal features
+        if (isset($_SESSION['user_id'])) {
+            $userRole = $_SESSION['user_role'] ?? $_SESSION['role_name'] ?? '';
+            if (!in_array($userRole, ['admin', 'ceo'], true)) {
+                $route = $_GET['route'] ?? '';
+                $routePrefix = explode('/', trim($route, '/'))[0] ?? '';
+                $allowedBeforeCheckIn = ['attendance', 'auth', 'file', 'api'];
+
+                if (!in_array($routePrefix, $allowedBeforeCheckIn, true)) {
+                    try {
+                        $db = Database::getInstance()->getConnection();
+                        $todayStr = date('Y-m-d');
+                        $stmt = $db->prepare("SELECT COUNT(*) FROM attendance WHERE user_id = :uid AND work_date = :d AND login_at IS NOT NULL");
+                        $stmt->execute([':uid' => (int)$_SESSION['user_id'], ':d' => $todayStr]);
+                        $hasClockedIn = (int)$stmt->fetchColumn() > 0;
+
+                        if (!$hasClockedIn) {
+                            $_SESSION['attendance_notice'] = 'Please check in first to unlock portal features.';
+                            $this->redirect('index.php?route=attendance/index');
+                            return;
+                        }
+                    } catch (Throwable $e) {
+                        // Safe fallback
                     }
-                } catch (Throwable $e) {
-                    // Safe fallback
                 }
             }
         }
