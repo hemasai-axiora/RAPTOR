@@ -171,7 +171,7 @@ class DashboardController extends Controller {
     }
 
     public function monitoring() {
-        if (!in_array($_SESSION['user_role'], ['admin', 'ceo', 'hr', 'manager', 'team_leader'], true)) {
+        if (!in_array($_SESSION['user_role'], ['admin', 'ceo', 'employer', 'hr', 'manager', 'team_leader'], true)) {
             $this->redirect('index.php?route=dashboard/index');
             return;
         }
@@ -195,7 +195,7 @@ class DashboardController extends Controller {
     }
 
     public function day($userId = 0) {
-        if (!in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader'])) {
+        if (!in_array($_SESSION['user_role'], ['admin', 'ceo', 'employer', 'hr', 'manager', 'team_leader'], true)) {
             $this->redirect('index.php?route=attendance/index');
         }
         $userId = (int) $userId;

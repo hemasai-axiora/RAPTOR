@@ -33,7 +33,7 @@ class LocationController extends Controller {
 
     /** Oversight: view a team member's route (scoped). */
     public function member($userId = 0) {
-        if (!in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader'])) {
+        if (!in_array($_SESSION['user_role'], ['admin', 'ceo', 'employer', 'hr', 'manager', 'team_leader'], true)) {
             $this->redirect('index.php?route=location/myday');
         }
         $userId = (int) $userId;

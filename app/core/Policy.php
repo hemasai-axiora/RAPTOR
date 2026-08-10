@@ -35,15 +35,15 @@ class Policy {
     }
 
     public static function isSeniorStaff(): bool {
-        return in_array(self::role(), ['admin', 'hr', 'manager', 'team_leader'], true);
+        return in_array(self::role(), ['admin', 'ceo', 'employer', 'hr', 'manager', 'team_leader'], true);
     }
 
     public static function canViewLeaveApprovals(): bool {
-        return in_array(self::role(), ['admin', 'hr', 'manager', 'team_leader'], true);
+        return in_array(self::role(), ['admin', 'ceo', 'employer', 'hr', 'manager', 'team_leader'], true);
     }
 
     public static function canViewAttendanceApprovals(): bool {
-        return in_array(self::role(), ['admin', 'hr', 'manager', 'team_leader'], true);
+        return in_array(self::role(), ['admin', 'ceo', 'employer', 'hr', 'manager', 'team_leader'], true);
     }
 
     public static function canManageEmployees(): bool {

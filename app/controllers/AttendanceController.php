@@ -177,9 +177,8 @@ class AttendanceController extends Controller {
             return in_array($owner->role_name, ['manager', 'team_leader', 'finance', 'analyst'], true);
         }
 
-        if ($role === 'admin') {
-            // Admin can only approve HR attendance
-            return $owner->role_name === 'hr';
+        if (in_array($role, ['admin', 'ceo', 'employer'], true)) {
+            return true;
         }
 
         return false;

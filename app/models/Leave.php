@@ -52,7 +52,7 @@ class Leave extends Model {
     }
 
     public function getLeaveRequestsForApprover(int $userId, string $role): array {
-        if ($role === 'admin') {
+        if (in_array($role, ['admin', 'ceo', 'employer'], true)) {
             $this->query('SELECT lr.*, u.name AS employee_name, e.department, e.job_title
                           FROM leave_requests lr
                           JOIN users u ON lr.user_id = u.user_id

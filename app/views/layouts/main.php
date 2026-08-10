@@ -989,7 +989,7 @@
                 <?php endif; ?>
 
                 <!-- 3. Monitoring Accordion Group -->
-                <?php if (in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader', 'hr'], true)): ?>
+                <?php if (in_array($_SESSION['user_role'], ['admin', 'ceo', 'employer', 'manager', 'team_leader', 'hr'], true)): ?>
                 <li class="menu-section" data-section="monitoring">
                     <div class="menu-section-header">
                         <i class="fa-solid fa-desktop section-icon"></i>

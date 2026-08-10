@@ -185,7 +185,7 @@ class LeavesController extends Controller {
         $userId = (int)$_SESSION['user_id'];
         $role = $_SESSION['user_role'];
 
-        if (!in_array($role, ['admin', 'hr', 'manager', 'team_leader'], true)) {
+        if (!in_array($role, ['admin', 'ceo', 'employer', 'hr', 'manager', 'team_leader'], true)) {
             $this->redirect('index.php?route=leaves/index');
             return;
         }
@@ -243,9 +243,9 @@ class LeavesController extends Controller {
                 } else {
                     $_SESSION['leaves_error'] = 'Invalid request stage for manager approval.';
                 }
-            } elseif ($role === 'hr' || $role === 'admin') {
-                // HR/Admin final approval
-                if ($req->status === 'pending_hr' || ($role === 'admin' && $req->status === 'pending_manager')) {
+            } elseif (in_array($role, ['hr', 'admin', 'ceo', 'employer'], true)) {
+                // HR/Admin/CEO final approval
+                if ($req->status === 'pending_hr' || (in_array($role, ['admin', 'ceo', 'employer'], true) && $req->status === 'pending_manager')) {
                     $stage = ($req->status === 'pending_manager') ? 'manager' : 'hr';
                     
                     $this->leaveModel->addLeaveApproval($id, $userId, $stage, 'approved', $comments, $ip);
@@ -299,7 +299,7 @@ class LeavesController extends Controller {
             }
 
             $ip = $_SERVER['REMOTE_ADDR'] ?? null;
-            $stage = in_array($role, ['hr', 'admin'], true) ? 'hr' : 'manager';
+            $stage = in_array($role, ['hr', 'admin', 'ceo', 'employer'], true) ? 'hr' : 'manager';
 
             $this->leaveModel->addLeaveApproval($id, $userId, $stage, 'rejected', $comments, $ip);
             $this->leaveModel->updateLeaveRequestStatus($id, 'rejected');
