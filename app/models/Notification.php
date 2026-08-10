@@ -69,7 +69,21 @@ class Notification extends Model {
         return $this->execute();
     }
 
-    public function addNotification(int $userId, string $title, string $message, string $type = 'system', ?string $actionUrl = null, string $severity = 'info', ?string $category = null, ?string $dedupeKey = null): bool {
+    public function addNotification($userId, string $title = '', string $message = '', string $type = 'system', ?string $actionUrl = null, string $severity = 'info', ?string $category = null, ?string $dedupeKey = null): bool {
+        if (is_array($userId)) {
+            $data = $userId;
+            $userId = (int) ($data['user_id'] ?? 0);
+            $title = (string) ($data['title'] ?? '');
+            $message = (string) ($data['message'] ?? '');
+            $type = (string) ($data['type'] ?? 'system');
+            $actionUrl = isset($data['action_url']) ? (string) $data['action_url'] : null;
+            $severity = (string) ($data['severity'] ?? 'info');
+            $category = isset($data['category']) ? (string) $data['category'] : null;
+            $dedupeKey = isset($data['dedupe_key']) ? (string) $data['dedupe_key'] : null;
+        } else {
+            $userId = (int) $userId;
+        }
+
         $this->query('INSERT INTO notifications 
                         (user_id, title, message, type, action_url, severity, category, dedupe_key) 
                       VALUES (:uid, :title, :message, :type, :action_url, :severity, :category, :dedupe_key)');

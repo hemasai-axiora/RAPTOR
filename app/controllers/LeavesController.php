@@ -141,14 +141,14 @@ class LeavesController extends Controller {
                 // Find reporting manager to notify them
                 $profile = $this->hrmsModel->getProfileByUserId($userId);
                 if ($profile && $profile->reporting_manager_id) {
-                    $this->notificationModel->addNotification([
-                        'user_id' => $profile->reporting_manager_id,
-                        'title' => 'New Leave Request',
-                        'message' => "{$_SESSION['user_name']} has applied for {$days} days of {$leaveType}.",
-                        'type' => 'leave',
-                        'action_url' => 'index.php?route=leaves/approvals',
-                        'severity' => 'info'
-                    ]);
+                    $this->notificationModel->addNotification(
+                        (int) $profile->reporting_manager_id,
+                        'New Leave Request',
+                        "{$_SESSION['user_name']} has applied for {$days} days of {$leaveType}.",
+                        'leave',
+                        'index.php?route=leaves/approvals',
+                        'info'
+                    );
                 }
                 
                 $this->audit("Applied for {$leaveType} (From: {$fromDate} To: {$toDate})", 'leave_requests');
@@ -228,14 +228,14 @@ class LeavesController extends Controller {
                     $db = Database::getInstance()->getConnection();
                     $stmt = $db->query("SELECT user_id FROM users u JOIN roles r ON u.role_id = r.role_id WHERE r.role_name = 'hr'");
                     foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $hrId) {
-                        $this->notificationModel->addNotification([
-                            'user_id' => $hrId,
-                            'title' => 'Leave Request Approved by Manager',
-                            'message' => "{$req->employee_name}'s request for {$req->leave_type} approved by Manager. Needs HR approval.",
-                            'type' => 'leave',
-                            'action_url' => 'index.php?route=leaves/approvals',
-                            'severity' => 'info'
-                        ]);
+                        $this->notificationModel->addNotification(
+                            (int) $hrId,
+                            'Leave Request Approved by Manager',
+                            "{$req->employee_name}'s request for {$req->leave_type} approved by Manager. Needs HR approval.",
+                            'leave',
+                            'index.php?route=leaves/approvals',
+                            'info'
+                        );
                     }
                     
                     $this->audit("Manager approved leave request #{$id}", 'leave_requests', $id);
@@ -258,14 +258,14 @@ class LeavesController extends Controller {
                     $this->leaveModel->updateLeaveRequestStatus($id, 'approved');
 
                     // Notify employee
-                    $this->notificationModel->addNotification([
-                        'user_id' => $req->user_id,
-                        'title' => 'Leave Request Approved',
-                        'message' => "Your leave request for {$req->leave_type} (From: {$req->from_date} To: {$req->to_date}) has been approved.",
-                        'type' => 'leave',
-                        'action_url' => 'index.php?route=leaves/index',
-                        'severity' => 'info'
-                    ]);
+                    $this->notificationModel->addNotification(
+                        (int) $req->user_id,
+                        'Leave Request Approved',
+                        "Your leave request for {$req->leave_type} (From: {$req->from_date} To: {$req->to_date}) has been approved.",
+                        'leave',
+                        'index.php?route=leaves/index',
+                        'info'
+                    );
 
                     $this->audit("Final approved leave request #{$id}", 'leave_requests', $id);
                     $_SESSION['leaves_success'] = 'Leave request has been final approved.';
@@ -309,14 +309,14 @@ class LeavesController extends Controller {
             $this->leaveModel->releasePendingLeaveHold($req->user_id, $req->leave_type, $days, $id);
 
             // Notify employee
-            $this->notificationModel->addNotification([
-                'user_id' => $req->user_id,
-                'title' => 'Leave Request Rejected',
-                'message' => "Your leave request for {$req->leave_type} has been rejected: {$comments}",
-                'type' => 'leave',
-                'action_url' => 'index.php?route=leaves/index',
-                'severity' => 'warning'
-            ]);
+            $this->notificationModel->addNotification(
+                (int) $req->user_id,
+                'Leave Request Rejected',
+                "Your leave request for {$req->leave_type} has been rejected: {$comments}",
+                'leave',
+                'index.php?route=leaves/index',
+                'warning'
+            );
 
             $this->audit("Rejected leave request #{$id}", 'leave_requests', $id);
             $_SESSION['leaves_success'] = 'Leave request has been rejected.';
