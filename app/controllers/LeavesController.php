@@ -245,7 +245,7 @@ class LeavesController extends Controller {
                 }
             } elseif (in_array($role, ['hr', 'admin', 'ceo', 'employer'], true)) {
                 // HR/Admin/CEO final approval
-                if ($req->status === 'pending_hr' || (in_array($role, ['admin', 'ceo', 'employer'], true) && $req->status === 'pending_manager')) {
+                if (in_array($req->status, ['pending_hr', 'pending_manager'], true)) {
                     $stage = ($req->status === 'pending_manager') ? 'manager' : 'hr';
                     
                     $this->leaveModel->addLeaveApproval($id, $userId, $stage, 'approved', $comments, $ip);

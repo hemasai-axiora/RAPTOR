@@ -52,22 +52,12 @@ class Leave extends Model {
     }
 
     public function getLeaveRequestsForApprover(int $userId, string $role): array {
-        if (in_array($role, ['admin', 'ceo', 'employer'], true)) {
+        if (in_array($role, ['admin', 'ceo', 'employer', 'hr'], true)) {
             $this->query('SELECT lr.*, u.name AS employee_name, e.department, e.job_title
                           FROM leave_requests lr
                           JOIN users u ON lr.user_id = u.user_id
                           LEFT JOIN employees e ON u.user_id = e.user_id
                           WHERE lr.status IN (\'pending_manager\', \'pending_hr\')
-                          ORDER BY lr.created_at DESC');
-            return $this->resultSet() ?: [];
-        }
-
-        if ($role === 'hr') {
-            $this->query('SELECT lr.*, u.name AS employee_name, e.department, e.job_title
-                          FROM leave_requests lr
-                          JOIN users u ON lr.user_id = u.user_id
-                          LEFT JOIN employees e ON u.user_id = e.user_id
-                          WHERE lr.status = \'pending_hr\'
                           ORDER BY lr.created_at DESC');
             return $this->resultSet() ?: [];
         }
@@ -85,8 +75,30 @@ class Leave extends Model {
     }
 
     public function applyLeave(array $data): bool {
+        $userId = (int) ($data['user_id'] ?? 0);
+        $status = 'pending_manager';
+
+        try {
+            $db = Database::getInstance()->getConnection();
+            $stmt = $db->prepare("SELECT r.role_name, e.reporting_manager_id 
+                                  FROM users u 
+                                  JOIN roles r ON u.role_id = r.role_id 
+                                  LEFT JOIN employees e ON u.user_id = e.user_id 
+                                  WHERE u.user_id = :uid LIMIT 1");
+            $stmt->execute([':uid' => $userId]);
+            $row = $stmt->fetch(PDO::FETCH_OBJ);
+
+            if ($row) {
+                if (in_array($row->role_name, ['manager', 'team_leader', 'hr', 'finance', 'analyst', 'ceo', 'admin'], true) || empty($row->reporting_manager_id)) {
+                    $status = 'pending_hr';
+                }
+            }
+        } catch (Throwable $e) {
+            // fallback
+        }
+
         $this->query('INSERT INTO leave_requests (user_id, leave_type, from_date, to_date, half_day, reason, supporting_document, status)
-                      VALUES (:uid, :type, :from, :to, :hd, :reason, :doc, \'pending_manager\')');
+                      VALUES (:uid, :type, :from, :to, :hd, :reason, :doc, :status)');
         $this->bind(':uid', $data['user_id']);
         $this->bind(':type', $data['leave_type']);
         $this->bind(':from', $data['from_date']);
@@ -94,6 +106,7 @@ class Leave extends Model {
         $this->bind(':hd', $data['half_day']);
         $this->bind(':reason', $data['reason']);
         $this->bind(':doc', $data['supporting_document'] ?: null);
+        $this->bind(':status', $status);
         return $this->execute();
     }
 
