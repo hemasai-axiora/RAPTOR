@@ -63,15 +63,17 @@ class PostsController extends Controller {
             'status' => 'published',
             'scheduled_at' => '',
             'published_at' => date('Y-m-d\TH:i'),
-            'title_err' => ''
+            'title_err' => '',
+            'post_code_err' => ''
         ];
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
 
-            $data['post_code'] = null;
+            $data['post_code'] = trim($_POST['post_code'] ?? '');
             $data['client_id'] = trim($_POST['client_id'] ?? '');
             $data['campaign_id'] = trim($_POST['campaign_id'] ?? '');
+            $data['title_input'] = trim($_POST['title'] ?? '');
             $data['title'] = trim($_POST['title'] ?? '');
             $data['content'] = trim($_POST['content'] ?? '');
             $data['media_url'] = trim($_POST['media_url'] ?? '');
@@ -81,11 +83,19 @@ class PostsController extends Controller {
             $data['scheduled_at'] = !empty($_POST['scheduled_at']) ? str_replace('T', ' ', $_POST['scheduled_at']) : null;
             $data['published_at'] = !empty($_POST['published_at']) ? str_replace('T', ' ', $_POST['published_at']) : date('Y-m-d H:i:s');
 
+            if (empty($data['post_code'])) {
+                $data['post_code'] = $this->postModel->generatePostCode();
+            } else {
+                if (!$this->postModel->isPostCodeUnique($data['post_code'])) {
+                    $data['post_code_err'] = 'This Post ID already exists. Please enter a unique Post ID.';
+                }
+            }
+
             if (empty($data['title'])) {
                 $data['title_err'] = 'Please enter a post title';
             }
 
-            if (empty($data['title_err'])) {
+            if (empty($data['title_err']) && empty($data['post_code_err'])) {
                 if ($this->postModel->addPost($data)) {
                     $this->redirect('index.php?route=posts/index');
                 } else {
@@ -125,14 +135,17 @@ class PostsController extends Controller {
             'status' => $post->status ?? 'published',
             'scheduled_at' => $post->scheduled_at ? date('Y-m-d\TH:i', strtotime($post->scheduled_at)) : '',
             'published_at' => $post->published_at ? date('Y-m-d\TH:i', strtotime($post->published_at)) : '',
-            'title_err' => ''
+            'title_err' => '',
+            'post_code_err' => ''
         ];
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
 
+            $data['post_code'] = trim($_POST['post_code'] ?? '');
             $data['client_id'] = trim($_POST['client_id'] ?? '');
             $data['campaign_id'] = trim($_POST['campaign_id'] ?? '');
+            $data['title_input'] = trim($_POST['title'] ?? '');
             $data['title'] = trim($_POST['title'] ?? '');
             $data['content'] = trim($_POST['content'] ?? '');
             $data['media_url'] = trim($_POST['media_url'] ?? '');
@@ -142,11 +155,19 @@ class PostsController extends Controller {
             $data['scheduled_at'] = !empty($_POST['scheduled_at']) ? str_replace('T', ' ', $_POST['scheduled_at']) : null;
             $data['published_at'] = !empty($_POST['published_at']) ? str_replace('T', ' ', $_POST['published_at']) : null;
 
+            if (empty($data['post_code'])) {
+                $data['post_code_err'] = 'Post ID cannot be empty.';
+            } else {
+                if (!$this->postModel->isPostCodeUnique($data['post_code'], $id)) {
+                    $data['post_code_err'] = 'This Post ID is already in use by another post.';
+                }
+            }
+
             if (empty($data['title'])) {
                 $data['title_err'] = 'Please enter a post title';
             }
 
-            if (empty($data['title_err'])) {
+            if (empty($data['title_err']) && empty($data['post_code_err'])) {
                 if ($this->postModel->updatePost($data)) {
                     $this->redirect('index.php?route=posts/index');
                 } else {

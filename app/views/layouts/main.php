@@ -1026,7 +1026,67 @@
                 </li>
                 <?php endif; ?>
 
-                <!-- 4. Operations Accordion Group -->
+                <!-- 4. Marketing Accordion Group -->
+                <?php if (isset($_SESSION['user_role'])): ?>
+                <li class="menu-section" data-section="marketing">
+                    <div class="menu-section-header">
+                        <i class="fa-solid fa-share-nodes section-icon"></i>
+                        <span class="section-text">Marketing</span>
+                        <i class="fa-solid fa-chevron-right section-arrow"></i>
+                    </div>
+                    <ul class="menu-section-items">
+                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'campaigns/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'campaigns') !== false)) ? 'active' : ''; ?>">
+                            <a href="index.php?route=campaigns/index">
+                                <i class="fa-solid fa-bullhorn"></i><span>Campaign Registry</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'posts') !== false) ? 'active' : ''; ?>">
+                            <a href="index.php?route=posts/index">
+                                <i class="fa-solid fa-rectangle-list"></i><span>Content Management & Analytics</span>
+                            </a>
+                        </li>
+                        <?php if (in_array($_SESSION['user_role'], ['admin', 'manager'])): ?>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'social_manager') ? 'active' : ''; ?>">
+                            <a href="index.php?route=social/manager">
+                                <i class="fa-solid fa-user-gear"></i><span>Manager Performance</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'social_admin') ? 'active' : ''; ?>">
+                            <a href="index.php?route=social/admin">
+                                <i class="fa-solid fa-folder-tree"></i><span>Accounts Directory</span>
+                            </a>
+                        </li>
+                        <?php if (!Policy::isEmployee()): ?>
+                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'website_analytics/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'website_analytics') !== false)) ? 'active' : ''; ?>">
+                            <a href="index.php?route=website_analytics/index">
+                                <i class="fa-solid fa-chart-pie"></i><span>Website Analytics</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                    </ul>
+                </li>
+                <?php endif; ?>
+
+                <!-- 5. Finance Accordion Group -->
+                <?php if (in_array($_SESSION['user_role'], ['admin', 'manager', 'finance'], true)): ?>
+                <li class="menu-section" data-section="finance">
+                    <div class="menu-section-header">
+                        <i class="fa-solid fa-file-invoice-dollar section-icon"></i>
+                        <span class="section-text">Finance</span>
+                        <i class="fa-solid fa-chevron-right section-arrow"></i>
+                    </div>
+                    <ul class="menu-section-items">
+                        <li class="menu-item <?php echo (strpos($data['title'], 'Invoice') !== false || $data['title'] === 'Billing Ledger | Raptor CRM') ? 'active' : ''; ?>">
+                            <a href="index.php?route=invoices/index">
+                                <i class="fa-solid fa-file-invoice-dollar"></i><span>Invoicing</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <?php endif; ?>
+
+                <!-- 6. Operations Accordion Group -->
                 <?php if (in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader', 'employee', 'sales_person', 'analyst', 'hr', 'finance'], true)): ?>
                 <li class="menu-section" data-section="operations">
                     <div class="menu-section-header">
@@ -1093,64 +1153,6 @@
                             </a>
                         </li>
                         <?php endif; ?>
-                    </ul>
-                </li>
-                <?php endif; ?>
-
-                <!-- 5. Finance Accordion Group -->
-                <?php if (in_array($_SESSION['user_role'], ['admin', 'manager', 'finance'], true)): ?>
-                <li class="menu-section" data-section="finance">
-                    <div class="menu-section-header">
-                        <i class="fa-solid fa-file-invoice-dollar section-icon"></i>
-                        <span class="section-text">Finance</span>
-                        <i class="fa-solid fa-chevron-right section-arrow"></i>
-                    </div>
-                    <ul class="menu-section-items">
-                        <li class="menu-item <?php echo (strpos($data['title'], 'Invoice') !== false || $data['title'] === 'Billing Ledger | Raptor CRM') ? 'active' : ''; ?>">
-                            <a href="index.php?route=invoices/index">
-                                <i class="fa-solid fa-file-invoice-dollar"></i><span>Invoicing</span>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-                <?php endif; ?>
-
-                <!-- 6. Marketing Accordion Group -->
-                <?php if (isset($_SESSION['user_role'])): ?>
-                <li class="menu-section" data-section="marketing">
-                    <div class="menu-section-header">
-                        <i class="fa-solid fa-share-nodes section-icon"></i>
-                        <span class="section-text">Marketing</span>
-                        <i class="fa-solid fa-chevron-right section-arrow"></i>
-                    </div>
-                    <ul class="menu-section-items">
-                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'campaigns/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'campaigns') !== false)) ? 'active' : ''; ?>">
-                            <a href="index.php?route=campaigns/index">
-                                <i class="fa-solid fa-bullhorn"></i><span>Campaign Registry</span>
-                            </a>
-                        </li>
-                        <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'posts') !== false) ? 'active' : ''; ?>">
-                            <a href="index.php?route=posts/index">
-                                <i class="fa-solid fa-rectangle-list"></i><span>Content Management & Analytics</span>
-                            </a>
-                        </li>
-                        <?php if (in_array($_SESSION['user_role'], ['admin', 'manager'])): ?>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'social_manager') ? 'active' : ''; ?>">
-                            <a href="index.php?route=social/manager">
-                                <i class="fa-solid fa-user-gear"></i><span>Manager Performance</span>
-                            </a>
-                        </li>
-                        <?php endif; ?>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'social_admin') ? 'active' : ''; ?>">
-                            <a href="index.php?route=social/admin">
-                                <i class="fa-solid fa-folder-tree"></i><span>Accounts Directory</span>
-                            </a>
-                        </li>
-                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'website_analytics/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'website_analytics') !== false)) ? 'active' : ''; ?>">
-                            <a href="index.php?route=website_analytics/index">
-                                <i class="fa-solid fa-chart-pie"></i><span>Website Analytics</span>
-                            </a>
-                        </li>
                     </ul>
                 </li>
                 <?php endif; ?> <!-- end Marketing -->

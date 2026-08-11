@@ -7,10 +7,20 @@
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                 
                 <div class="row g-3">
-                    <!-- Post ID (Auto-generated) -->
+                    <!-- Post ID (Unique & Editable) -->
                     <div class="col-md-6">
-                        <label for="post_code" class="form-label text-secondary">Post ID</label>
-                        <input type="text" name="post_code" id="post_code" class="form-control bg-dark border-secondary text-light font-monospace fw-bold" value="<?php echo htmlspecialchars($post_code ?? ''); ?>" readonly>
+                        <label for="post_code" class="form-label text-secondary">Post ID <span class="badge bg-secondary bg-opacity-25 text-info font-monospace ms-1 fw-normal">Editable Unique ID</span></label>
+                        <div class="input-group">
+                            <input type="text" name="post_code" id="post_code" 
+                                   class="form-control bg-dark border-secondary text-light font-monospace fw-bold <?php echo (!empty($post_code_err)) ? 'is-invalid' : ''; ?>" 
+                                   value="<?php echo htmlspecialchars($post_code ?? ''); ?>" placeholder="e.g. PST-2026-00008" required>
+                            <button type="button" class="btn btn-outline-secondary text-info border-secondary" id="btn_generate_post_code" title="Generate New Unique ID">
+                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Auto ID
+                            </button>
+                        </div>
+                        <?php if (!empty($post_code_err)): ?>
+                            <div class="text-danger small mt-1"><?php echo htmlspecialchars($post_code_err); ?></div>
+                        <?php endif; ?>
                     </div>
 
                     <!-- Client Company -->
@@ -111,3 +121,17 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnGen = document.getElementById('btn_generate_post_code');
+    const inputCode = document.getElementById('post_code');
+    if (btnGen && inputCode) {
+        btnGen.addEventListener('click', function() {
+            const year = new Date().getFullYear();
+            const rand = Math.floor(10000 + Math.random() * 90000);
+            inputCode.value = 'PST-' + year + '-' + rand;
+        });
+    }
+});
+</script>

@@ -238,11 +238,11 @@ test.describe('Raptor CRM seeded smoke suite', () => {
     await page.goto('index.php?route=posts/add');
     await expect(page.locator('body')).toContainText(/Create Content Post/i);
 
-    // 1. Verify Post ID field exists and is read-only
+    // 1. Verify Post ID field exists, is prefilled, and is editable
     const postCodeInput = page.locator('#post_code');
     await expect(postCodeInput).toBeVisible();
-    await expect(postCodeInput).toHaveValue(/Auto-generated/i);
-    await expect(postCodeInput).toBeDisabled();
+    await expect(postCodeInput).toBeEditable();
+    await expect(postCodeInput).toHaveValue(/PST-/i);
 
     // 2. Select Platform & Content Type
     const testTitle = 'Automated Launch Reel Post ' + Date.now();

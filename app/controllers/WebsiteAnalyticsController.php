@@ -9,6 +9,9 @@ class WebsiteAnalyticsController extends Controller {
 
     public function __construct() {
         $this->requireAuth();
+        if (Policy::isEmployee()) {
+            $this->redirect('index.php?route=dashboard/index');
+        }
         $this->analyticsModel = $this->model('WebsiteAnalytics');
         $this->clientModel = $this->model('Client');
         $this->campaignModel = $this->model('Campaign');

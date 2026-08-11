@@ -77,6 +77,20 @@ class ContentPost extends Model {
         return $this->single();
     }
 
+    public function isPostCodeUnique(string $postCode, $excludePostId = null): bool {
+        $sql = 'SELECT COUNT(*) as count FROM posts WHERE LOWER(post_code) = LOWER(:post_code)';
+        if ($excludePostId) {
+            $sql .= ' AND post_id != :exclude_id';
+        }
+        $this->query($sql);
+        $this->bind(':post_code', trim($postCode));
+        if ($excludePostId) {
+            $this->bind(':exclude_id', (int)$excludePostId);
+        }
+        $row = $this->single();
+        return ($row && (int)$row->count === 0);
+    }
+
     public function addPost($data) {
         if (empty($data['post_code']) || strpos($data['post_code'], 'Auto-generated') !== false) {
             $data['post_code'] = $this->generatePostCode();
@@ -105,13 +119,14 @@ class ContentPost extends Model {
 
     public function updatePost($data) {
         $this->query('UPDATE posts 
-                      SET client_id = :client_id, campaign_id = :campaign_id, title = :title, 
+                      SET post_code = :post_code, client_id = :client_id, campaign_id = :campaign_id, title = :title, 
                           content = :content, media_url = :media_url, content_type = :content_type, 
                           platform = :platform, status = :status, scheduled_at = :scheduled_at, 
                           published_at = :published_at 
                       WHERE post_id = :id');
 
         $this->bind(':id', $data['post_id']);
+        $this->bind(':post_code', !empty($data['post_code']) ? $data['post_code'] : null);
         $this->bind(':client_id', !empty($data['client_id']) ? (int)$data['client_id'] : null);
         $this->bind(':campaign_id', !empty($data['campaign_id']) ? (int)$data['campaign_id'] : null);
         $this->bind(':title', !empty($data['title']) ? $data['title'] : null);

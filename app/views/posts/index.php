@@ -212,10 +212,10 @@
                             </td>
                             <td class="text-center">
                                 <div class="d-inline-flex gap-2 text-secondary small bg-dark p-1 px-2 rounded border border-secondary border-opacity-25" style="font-size: 0.78rem;">
+                                    <span title="Reach"><i class="fa-solid fa-eye text-warning me-1"></i><?php echo number_format((int)$post->current_reach); ?></span>
                                     <span title="Likes"><i class="fa-solid fa-heart text-danger me-1"></i><?php echo number_format((int)$post->current_likes); ?></span>
                                     <span title="Comments"><i class="fa-solid fa-comment text-info me-1"></i><?php echo number_format((int)$post->current_comments); ?></span>
                                     <span title="Shares"><i class="fa-solid fa-share text-success me-1"></i><?php echo number_format((int)$post->current_shares); ?></span>
-                                    <span title="Reach"><i class="fa-solid fa-eye text-warning me-1"></i><?php echo number_format((int)$post->current_reach); ?></span>
                                 </div>
                             </td>
                             <td class="text-center">
@@ -316,6 +316,14 @@
                         <div class="tab-pane fade show active" id="tab-metrics" role="tabpanel">
                             <div class="row g-3">
                                 <div class="col-6 col-md-3">
+                                    <label for="modal_reach" class="form-label text-secondary"><i class="fa-solid fa-eye text-primary me-1"></i>Reach</label>
+                                    <input type="number" name="reach" id="modal_reach" class="form-control bg-dark border-secondary text-white" value="0" min="0">
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <label for="modal_impressions" class="form-label text-secondary"><i class="fa-solid fa-chart-simple text-info me-1"></i>Impressions</label>
+                                    <input type="number" name="impressions" id="modal_impressions" class="form-control bg-dark border-secondary text-white" value="0" min="0">
+                                </div>
+                                <div class="col-6 col-md-3">
                                     <label for="modal_likes" class="form-label text-secondary"><i class="fa-solid fa-heart text-danger me-1"></i>Likes</label>
                                     <input type="number" name="likes" id="modal_likes" class="form-control bg-dark border-secondary text-white" value="0" min="0">
                                 </div>
@@ -330,14 +338,6 @@
                                 <div class="col-6 col-md-3">
                                     <label for="modal_saves" class="form-label text-secondary"><i class="fa-solid fa-bookmark text-warning me-1"></i>Saves</label>
                                     <input type="number" name="saves" id="modal_saves" class="form-control bg-dark border-secondary text-white" value="0" min="0">
-                                </div>
-                                <div class="col-6 col-md-3">
-                                    <label for="modal_reach" class="form-label text-secondary"><i class="fa-solid fa-eye text-primary me-1"></i>Reach</label>
-                                    <input type="number" name="reach" id="modal_reach" class="form-control bg-dark border-secondary text-white" value="0" min="0">
-                                </div>
-                                <div class="col-6 col-md-3">
-                                    <label for="modal_impressions" class="form-label text-secondary"><i class="fa-solid fa-chart-simple text-info me-1"></i>Impressions</label>
-                                    <input type="number" name="impressions" id="modal_impressions" class="form-control bg-dark border-secondary text-white" value="0" min="0">
                                 </div>
                                 <div class="col-6 col-md-3">
                                     <label for="modal_clicks" class="form-label text-secondary"><i class="fa-solid fa-arrow-pointer text-secondary me-1"></i>Link Clicks</label>

@@ -39,6 +39,12 @@
             <div class="row g-3 mt-2">
                 <div class="col-md-2 col-4">
                     <div class="p-2 bg-dark rounded border border-secondary text-center">
+                        <div class="text-secondary small"><i class="fa-solid fa-eye text-primary me-1"></i>Reach</div>
+                        <div class="text-white fw-bold fs-5"><?php echo number_format((int)$post->current_reach); ?></div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-4">
+                    <div class="p-2 bg-dark rounded border border-secondary text-center">
                         <div class="text-secondary small"><i class="fa-solid fa-heart text-danger me-1"></i>Likes</div>
                         <div class="text-white fw-bold fs-5"><?php echo number_format((int)$post->current_likes); ?></div>
                     </div>
@@ -59,12 +65,6 @@
                     <div class="p-2 bg-dark rounded border border-secondary text-center">
                         <div class="text-secondary small"><i class="fa-solid fa-bookmark text-warning me-1"></i>Saves</div>
                         <div class="text-white fw-bold fs-5"><?php echo number_format((int)$post->current_saves); ?></div>
-                    </div>
-                </div>
-                <div class="col-md-2 col-4">
-                    <div class="p-2 bg-dark rounded border border-secondary text-center">
-                        <div class="text-secondary small"><i class="fa-solid fa-eye text-primary me-1"></i>Reach</div>
-                        <div class="text-white fw-bold fs-5"><?php echo number_format((int)$post->current_reach); ?></div>
                     </div>
                 </div>
                 <div class="col-md-2 col-4">
