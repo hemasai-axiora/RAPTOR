@@ -97,37 +97,50 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
     box-shadow: var(--shadow-soft);
     display: flex;
     flex-direction: column;
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
 }
 .canvas-widget.selected {
     border-color: var(--primary) !important;
     box-shadow: 0 0 0 2px var(--primary-glow) !important;
 }
+.canvas-widget.drag-over-target {
+    border: 2px dashed var(--primary) !important;
+    background: rgba(29, 78, 216, 0.08) !important;
+}
 
-/* VISIBLE, HIGH-CONTRAST TOOLBAR BUTTONS */
+/* SLEEK, COMPACT ICON-ONLY WIDGET ACTION TOOLBAR */
 .canvas-widget-toolbar {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    top: 6px;
+    right: 6px;
     display: flex;
-    gap: 6px;
+    gap: 4px;
     z-index: 20;
-    opacity: 0.9;
+    opacity: 0;
     transition: opacity 0.2s ease;
-    background: rgba(15, 23, 42, 0.85);
-    padding: 4px 6px;
-    border-radius: 8px;
+    background: var(--surface-soft);
     border: 1px solid var(--border-color);
-    backdrop-filter: blur(4px);
+    border-radius: 8px;
+    padding: 3px 5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
-.canvas-widget:hover .canvas-widget-toolbar {
+.canvas-widget:hover .canvas-widget-toolbar,
+.canvas-widget.selected .canvas-widget-toolbar {
     opacity: 1;
 }
-.canvas-widget-toolbar .btn {
-    padding: 3px 8px !important;
-    font-size: 0.78rem !important;
+.canvas-widget-toolbar .btn-icon {
+    width: 26px !important;
+    height: 26px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 0.72rem !important;
     border-radius: 6px !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: all 0.15s ease;
+}
+.canvas-widget-toolbar .btn-icon:hover {
+    transform: scale(1.1);
 }
 
 /* Skeleton Loading */
@@ -240,7 +253,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
     <!-- Center Canvas Area -->
     <div class="builder-canvas-wrapper" id="builder-canvas-container">
         <div class="d-flex justify-content-between align-items-center mb-3" id="canvas-header">
-            <span class="text-secondary small"><i class="fa-solid fa-grip me-1"></i> 12-Column Grid Canvas</span>
+            <span class="text-secondary small"><i class="fa-solid fa-grip me-1"></i> 12-Column Drag & Drop Canvas</span>
             <button type="button" class="btn btn-sm btn-link text-danger text-decoration-none p-0" id="btn-clear-canvas">
                 <i class="fa-solid fa-trash me-1"></i> Clear Canvas
             </button>
@@ -398,6 +411,7 @@ $(function() {
     var selectedWidgetIdx = null;
     var isPreviewMode = false;
     var chartInstances = {};
+    var draggedWidgetIdx = null;
 
     // Render Initial Widgets
     renderCanvas();
@@ -451,19 +465,57 @@ $(function() {
             var $wBox = $('<div class="canvas-widget" style="grid-column: ' + colSpan + ';"></div>');
             if (selectedWidgetIdx === idx && !isPreviewMode) $wBox.addClass('selected');
 
-            // HIGH CONTRAST VISIBLE TOOLBAR
+            // Sleek, Icon-Only Toolbar
             if (!isPreviewMode) {
                 var toolbar = '<div class="canvas-widget-toolbar">' +
-                    '<button type="button" class="btn btn-primary text-white btn-edit-w" data-idx="' + idx + '" title="Configure Widget"><i class="fa-solid fa-gear"></i> Edit</button>' +
-                    '<button type="button" class="btn btn-info text-white btn-dup-w" data-idx="' + idx + '" title="Duplicate Widget"><i class="fa-solid fa-copy"></i> Duplicate</button>' +
-                    '<button type="button" class="btn btn-danger text-white btn-del-w" data-idx="' + idx + '" title="Delete Widget"><i class="fa-solid fa-trash"></i></button>' +
+                    '<button type="button" class="btn btn-icon btn-outline-primary text-primary btn-edit-w" data-idx="' + idx + '" title="Configure Widget"><i class="fa-solid fa-gear"></i></button>' +
+                    '<button type="button" class="btn btn-icon btn-outline-info text-info btn-dup-w" data-idx="' + idx + '" title="Duplicate Widget"><i class="fa-solid fa-copy"></i></button>' +
+                    '<button type="button" class="btn btn-icon btn-outline-danger text-danger btn-del-w" data-idx="' + idx + '" title="Delete Widget"><i class="fa-solid fa-trash"></i></button>' +
                     '</div>';
                 $wBox.append(toolbar);
+
+                // Make Widget Draggable
+                $wBox.attr('draggable', 'true');
+                $wBox.attr('data-idx', idx);
+
+                $wBox.on('dragstart', function(e) {
+                    draggedWidgetIdx = idx;
+                    e.originalEvent.dataTransfer.setData('text/plain', idx);
+                    $(this).css('opacity', '0.4');
+                });
+
+                $wBox.on('dragend', function() {
+                    $(this).css('opacity', '1');
+                    $('.canvas-widget').removeClass('drag-over-target');
+                });
+
+                $wBox.on('dragover', function(e) {
+                    e.preventDefault();
+                    $(this).addClass('drag-over-target');
+                });
+
+                $wBox.on('dragleave', function() {
+                    $(this).removeClass('drag-over-target');
+                });
+
+                $wBox.on('drop', function(e) {
+                    e.preventDefault();
+                    $(this).removeClass('drag-over-target');
+                    var targetIdx = idx;
+                    if (draggedWidgetIdx !== null && draggedWidgetIdx !== targetIdx) {
+                        var movedItem = widgets.splice(draggedWidgetIdx, 1)[0];
+                        widgets.splice(targetIdx, 0, movedItem);
+                        draggedWidgetIdx = null;
+                        renderCanvas();
+                    }
+                });
             }
 
             var dsLabel = escapeHtml(w.data_source || 'leads').toUpperCase();
+            var gripIcon = isPreviewMode ? '' : '<i class="fa-solid fa-grip-vertical text-secondary me-2 drag-handle" title="Drag to reorder" style="cursor: move;"></i>';
             var header = '<div class="d-flex justify-content-between align-items-center mb-2">' +
-                '<h6 class="text-white fw-bold mb-0 text-truncate" style="max-width: 65%;" title="' + escapeHtml(w.title) + '">' + escapeHtml(w.title) + '</h6>' +
+                '<h6 class="text-white fw-bold mb-0 text-truncate d-flex align-items-center" style="max-width: 70%;" title="' + escapeHtml(w.title) + '">' +
+                gripIcon + escapeHtml(w.title) + '</h6>' +
                 '<span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.65rem;">' + dsLabel + '</span>' +
                 '</div>';
 
