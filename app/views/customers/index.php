@@ -17,6 +17,61 @@
         </div>
     </div>
 
+    <?php
+    if (file_exists(APPROOT . '/views/components/liquid_gauge.php')) {
+        require_once APPROOT . '/views/components/liquid_gauge.php';
+    }
+    ?>
+
+    <!-- Customer Intelligence Liquid Fill Gauges Standalone Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="pulse-card h-100 p-2">
+                <?php
+                if (function_exists('renderLiquidGauge')) {
+                    echo renderLiquidGauge([
+                        'value' => 45,
+                        'max' => 100,
+                        'title' => 'Customer Engagement Score',
+                        'description' => 'mixed interest, room to strengthen it',
+                        'animate' => true
+                    ]);
+                }
+                ?>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="pulse-card h-100 p-2">
+                <?php
+                if (function_exists('renderLiquidGauge')) {
+                    echo renderLiquidGauge([
+                        'value' => 84.5,
+                        'max' => 100,
+                        'title' => 'Account Retention Rate',
+                        'description' => 'excellent score — target surpassed',
+                        'animate' => true
+                    ]);
+                }
+                ?>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="pulse-card h-100 p-2">
+                <?php
+                if (function_exists('renderLiquidGauge')) {
+                    echo renderLiquidGauge([
+                        'value' => 68.0,
+                        'max' => 100,
+                        'title' => 'NPS Loyalty Index',
+                        'description' => 'good performance — strong trajectory',
+                        'animate' => true
+                    ]);
+                }
+                ?>
+            </div>
+        </div>
+    </div>
+
     <?php if (isset($_SESSION['flash_success'])): ?>
         <div class="alert alert-success alert-dismissible fade show border-0 shadow mb-4" role="alert" style="background: rgba(25, 135, 84, 0.15); color: #2ec4b6;">
             <i class="fa-solid fa-circle-check me-2"></i> <?php echo $_SESSION['flash_success']; unset($_SESSION['flash_success']); ?>

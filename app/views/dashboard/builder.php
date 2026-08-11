@@ -71,33 +71,49 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
     transform: translateX(4px);
 }
 
-/* Canvas Grid & Widgets */
+/* Canvas Grid & Widgets - ZERO OVERLAPPING */
 .canvas-grid {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
-    grid-auto-rows: 90px;
-    gap: 1rem;
+    grid-auto-rows: minmax(220px, auto);
+    gap: 1.25rem;
     min-height: 550px;
     border: 2px dashed var(--border-color);
     border-radius: 10px;
-    padding: 1rem;
-    transition: border 0.3s ease;
+    padding: 1.25rem;
+    transition: all 0.3s ease;
 }
 .canvas-grid.preview-mode {
     border: none !important;
     padding: 0 !important;
 }
 
+/* THEME PRESET STYLES */
+.canvas-grid.theme-cyberpunk {
+    background: #0d0221 !important;
+    border-color: #ff007f !important;
+}
+.canvas-grid.theme-sapphire {
+    background: #0f172a !important;
+    border-color: #38bdf8 !important;
+}
+.canvas-grid.theme-emerald {
+    background: #022c22 !important;
+    border-color: #34d399 !important;
+}
+
 .canvas-widget {
     background: var(--surface-soft);
     border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 1rem;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
     position: relative;
     box-shadow: var(--shadow-soft);
     display: flex;
     flex-direction: column;
-    transition: box-shadow 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+    min-height: 220px;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, min-height 0.2s ease;
 }
 .canvas-widget.selected {
     border-color: var(--primary) !important;
@@ -108,7 +124,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
     background: rgba(29, 78, 216, 0.08) !important;
 }
 
-/* SLEEK, COMPACT ICON-ONLY WIDGET ACTION TOOLBAR */
+/* SLEEK, COMPACT ICON-ONLY WIDGET ACTION TOOLBAR (WORKS IN EDIT AND PREVIEW MODE) */
 .canvas-widget-toolbar {
     position: absolute;
     top: 6px;
@@ -143,6 +159,68 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
     transform: scale(1.1);
 }
 
+/* Bottom-Right Corner Mouse Drag-to-Resize Handle */
+.widget-resize-handle {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 22px;
+    height: 22px;
+    cursor: nwse-resize;
+    z-index: 25;
+    opacity: 0.5;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+.canvas-widget:hover .widget-resize-handle {
+    opacity: 1;
+}
+.widget-resize-handle:hover {
+    color: var(--primary);
+    transform: scale(1.2);
+}
+
+/* Live Resize Indicator Badge */
+.resize-indicator-badge {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(29, 78, 216, 0.95);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 12px;
+    z-index: 30;
+    pointer-events: none;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* Liquid Fill Gauge SVG Wave Animations */
+.liquid-wave-layer1 {
+    animation: liquidWaveLoop1 3.5s linear infinite;
+}
+.liquid-wave-layer2 {
+    animation: liquidWaveLoop2 5s linear infinite;
+}
+@keyframes liquidWaveLoop1 {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-160px); }
+}
+@keyframes liquidWaveLoop2 {
+    0% { transform: translateX(-160px); }
+    100% { transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .liquid-wave-layer1, .liquid-wave-layer2 { animation: none !important; }
+}
+
 /* Skeleton Loading */
 .skeleton-loader {
     animation: pulse 1.5s infinite ease-in-out;
@@ -150,13 +228,57 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
     border-radius: 6px;
     height: 100%;
     width: 100%;
-    min-height: 80px;
+    min-height: 100px;
 }
 @keyframes pulse {
     0% { opacity: 0.4; }
     50% { opacity: 0.8; }
     100% { opacity: 0.4; }
 }
+
+/* Live Interactive Filter Bar */
+.filter-preset-chip {
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    background: var(--surface-soft);
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+.filter-preset-chip.active, .filter-preset-chip:hover {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+/* Live Auto-Refresh Pulse Indicator */
+.refresh-pulse {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10B981;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    animation: pulse-green 2s infinite;
+}
+@keyframes pulse-green {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* Activity Ticker Stream */
+.activity-ticker-item {
+    font-size: 0.78rem;
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.activity-ticker-item:last-child { border-bottom: none; }
 
 /* Preview Banner */
 #preview-banner {
@@ -173,7 +295,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
 
 <!-- Top Control Header -->
 <div class="pulse-card mb-3" id="builder-top-bar">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-2">
         <div class="d-flex align-items-center gap-2">
             <a href="index.php?route=dashboard/templates" class="btn btn-outline-secondary btn-sm me-2" title="Back to Templates">
                 <i class="fa-solid fa-arrow-left"></i>
@@ -196,13 +318,46 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
             </button>
         </div>
     </div>
+
+    <!-- INTERACTIVE DASHBOARD FILTER BAR, THEMES & LIVE AUTO-REFRESH -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-2 border-top border-secondary" style="border-opacity: 0.3;">
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-secondary small fw-bold"><i class="fa-solid fa-filter text-primary me-1"></i> Date Filter:</span>
+            <span class="filter-preset-chip active" data-preset="all">All Time</span>
+            <span class="filter-preset-chip" data-preset="today">Today</span>
+            <span class="filter-preset-chip" data-preset="7days">Last 7 Days</span>
+            <span class="filter-preset-chip" data-preset="30days">Last 30 Days</span>
+            <span class="filter-preset-chip" data-preset="quarter">This Quarter</span>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center gap-1 text-secondary small">
+                <i class="fa-solid fa-palette text-warning me-1"></i> Theme:
+                <select id="dash-canvas-theme" class="form-select form-select-sm bg-dark text-white border-secondary py-0 px-2" style="font-size: 0.75rem; width: 130px;">
+                    <option value="default">Glass Dark</option>
+                    <option value="cyberpunk">Cyberpunk Glow</option>
+                    <option value="sapphire">Midnight Sapphire</option>
+                    <option value="emerald">Emerald Executive</option>
+                </select>
+            </div>
+            <div class="d-flex align-items-center gap-1 text-secondary small">
+                <span class="refresh-pulse"></span>
+                <span>Auto-Refresh:</span>
+                <select id="dash-auto-refresh" class="form-select form-select-sm bg-dark text-white border-secondary py-0 px-2" style="font-size: 0.75rem; width: 110px;">
+                    <option value="0">Off (Manual)</option>
+                    <option value="15">15 Seconds</option>
+                    <option value="30">30 Seconds</option>
+                    <option value="60">1 Minute</option>
+                </select>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Preview Banner -->
 <div id="preview-banner">
     <div class="d-flex align-items-center gap-2">
         <i class="fa-solid fa-eye fs-5"></i>
-        <strong>Dashboard Live Preview Mode</strong> — Visualizing live widgets and responsive layout.
+        <strong>Dashboard Live Preview Mode</strong> — Drag bottom-right corner to resize width/height live.
     </div>
     <button type="button" class="btn btn-light btn-sm fw-bold text-primary" id="btn-exit-preview">
         <i class="fa-solid fa-xmark me-1"></i> Exit Preview
@@ -220,6 +375,14 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
             <i class="fa-solid fa-chart-line text-primary fs-5"></i>
             <div><strong>KPI Card</strong><br><small class="text-secondary">Single metric & trend</small></div>
         </div>
+        <div class="widget-palette-item" data-type="liquid">
+            <i class="fa-solid fa-water text-warning fs-5"></i>
+            <div><strong>Liquid Fill Gauge</strong><br><small class="text-secondary">Wavy score & threshold bands</small></div>
+        </div>
+        <div class="widget-palette-item" data-type="progress">
+            <i class="fa-solid fa-bars-progress text-success fs-5"></i>
+            <div><strong>Goal Progress Bar</strong><br><small class="text-secondary">Attainment & target progress</small></div>
+        </div>
         <div class="widget-palette-item" data-type="line">
             <i class="fa-solid fa-chart-area text-info fs-5"></i>
             <div><strong>Line / Area Chart</strong><br><small class="text-secondary">Time-series trend</small></div>
@@ -232,9 +395,21 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
             <i class="fa-solid fa-chart-pie text-warning fs-5"></i>
             <div><strong>Pie / Donut</strong><br><small class="text-secondary">Distribution split</small></div>
         </div>
+        <div class="widget-palette-item" data-type="radar">
+            <i class="fa-solid fa-compass text-info fs-5"></i>
+            <div><strong>Radar Performance</strong><br><small class="text-secondary">Multi-dimensional compass</small></div>
+        </div>
+        <div class="widget-palette-item" data-type="polar">
+            <i class="fa-solid fa-sun text-warning fs-5"></i>
+            <div><strong>Polar Area</strong><br><small class="text-secondary">Radial slice comparison</small></div>
+        </div>
         <div class="widget-palette-item" data-type="table">
             <i class="fa-solid fa-table text-danger fs-5"></i>
             <div><strong>Data Table</strong><br><small class="text-secondary">Tabular detail grid</small></div>
+        </div>
+        <div class="widget-palette-item" data-type="activity">
+            <i class="fa-solid fa-bolt text-danger fs-5"></i>
+            <div><strong>Activity Stream</strong><br><small class="text-secondary">Live updates & ticker</small></div>
         </div>
         <div class="widget-palette-item" data-type="funnel">
             <i class="fa-solid fa-filter text-primary fs-5"></i>
@@ -287,16 +462,28 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
             </div>
 
             <div class="mb-3">
+                <label class="form-label text-secondary small fw-bold">Display Chart Type</label>
+                <select id="cfg-widget-type" class="form-select form-select-sm bg-dark text-white border-secondary">
+                    <option value="kpi">KPI Card (Metric & Trend)</option>
+                    <option value="liquid">Liquid Fill Gauge (Score & Bands)</option>
+                    <option value="progress">Goal Progress Bar Card</option>
+                    <option value="line">Line / Area Chart</option>
+                    <option value="bar">Bar Chart</option>
+                    <option value="pie">Pie / Donut Chart</option>
+                    <option value="radar">Radar Performance Compass</option>
+                    <option value="polar">Polar Area Slice Chart</option>
+                    <option value="table">Data Detail Table</option>
+                    <option value="activity">Live Event Activity Ticker</option>
+                    <option value="funnel">Funnel Stage Chart</option>
+                    <option value="gauge">Target Gauge Meter</option>
+                    <option value="text">Formatted Text Block</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
                 <label class="form-label text-secondary small fw-bold">Target Metric / Field</label>
                 <select id="cfg-metric" class="form-select form-select-sm bg-dark text-white border-secondary">
-                    <option value="count">Record Count</option>
-                    <option value="value">Lead Value ($)</option>
-                    <option value="budget">Campaign Budget ($)</option>
-                    <option value="spend">Campaign Spend ($)</option>
-                    <option value="amount">Invoice Total Amount ($)</option>
-                    <option value="worked_minutes">Worked Minutes</option>
-                    <option value="target_completion">Target Attainment %</option>
-                    <option value="contract_value">Contract Value ($)</option>
+                    <!-- Populated dynamically based on data source -->
                 </select>
             </div>
 
@@ -314,10 +501,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
             <div class="mb-3">
                 <label class="form-label text-secondary small fw-bold">Group By Dimension</label>
                 <select id="cfg-group-by" class="form-select form-select-sm bg-dark text-white border-secondary">
-                    <option value="status">Status Split</option>
-                    <option value="source">Lead Source</option>
-                    <option value="category">Category / Channel</option>
-                    <option value="month">Month / Date Trend</option>
+                    <!-- Populated dynamically based on data source -->
                 </select>
             </div>
 
@@ -327,7 +511,18 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
                     <option value="3">3 Columns (1/4 Width)</option>
                     <option value="4">4 Columns (1/3 Width)</option>
                     <option value="6">6 Columns (1/2 Width)</option>
+                    <option value="8">8 Columns (2/3 Width)</option>
                     <option value="12">12 Columns (Full Width)</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-secondary small fw-bold">Card Height</label>
+                <select id="cfg-height" class="form-select form-select-sm bg-dark text-white border-secondary">
+                    <option value="220">Compact (220px)</option>
+                    <option value="280">Medium (280px)</option>
+                    <option value="360">Large (360px)</option>
+                    <option value="auto">Auto Fit Content</option>
                 </select>
             </div>
 
@@ -347,6 +542,23 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
                 <i class="fa-solid fa-check me-1"></i> Apply Widget Config
             </button>
         </form>
+    </div>
+</div>
+
+<!-- Full Screen Widget Detail Zoom Modal -->
+<div class="modal fade" id="widgetZoomModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content text-white border-0 shadow-lg" style="background: var(--panel-dark); border-radius: 16px; border: 1px solid var(--border-color) !important;">
+            <div class="modal-header border-secondary pb-3">
+                <h5 class="modal-title fw-bold text-white d-flex align-items-center gap-2" id="zoom-widget-title">
+                    <i class="fa-solid fa-expand text-primary"></i> Widget Detail Inspection
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div id="zoom-widget-body" style="min-height: 420px; width: 100%;"></div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -412,26 +624,182 @@ $(function() {
     var isPreviewMode = false;
     var chartInstances = {};
     var draggedWidgetIdx = null;
+    var activeDateFilter = 'all';
+    var autoRefreshInterval = null;
+
+    // DYNAMIC MODULE DEPENDENT METRICS & DIMENSIONS MAP
+    var MODULE_CONFIG_MAP = {
+        leads: {
+            metrics: [
+                { id: 'count', label: 'Lead Count' },
+                { id: 'value', label: 'Lead Value ($)' },
+                { id: 'probability', label: 'Conversion Probability (%)' }
+            ],
+            dimensions: [
+                { id: 'status', label: 'Lead Status (New / Contacted / Qualified)' },
+                { id: 'source', label: 'Lead Source (Website / Referral / Ads)' },
+                { id: 'quality', label: 'Lead Quality (Hot / Warm / Cold)' }
+            ]
+        },
+        campaigns: {
+            metrics: [
+                { id: 'count', label: 'Campaign Count' },
+                { id: 'budget', label: 'Total Budget ($)' },
+                { id: 'spend', label: 'Total Spend ($)' }
+            ],
+            dimensions: [
+                { id: 'channel', label: 'Channel (PPC / Email / Social)' },
+                { id: 'status', label: 'Campaign Status (Active / Completed)' },
+                { id: 'campaign_type', label: 'Campaign Type' }
+            ]
+        },
+        invoices: {
+            metrics: [
+                { id: 'count', label: 'Invoice Count' },
+                { id: 'amount', label: 'Invoice Amount ($)' }
+            ],
+            dimensions: [
+                { id: 'status', label: 'Payment Status (Paid / Unpaid / Overdue)' },
+                { id: 'month', label: 'Due Date Month' }
+            ]
+        },
+        attendance: {
+            metrics: [
+                { id: 'worked_minutes', label: 'Worked Minutes' },
+                { id: 'count', label: 'Days Count' },
+                { id: 'late_count', label: 'Late Logins Count' }
+            ],
+            dimensions: [
+                { id: 'status', label: 'Attendance Status (Present / WFH / Leave)' },
+                { id: 'month', label: 'Work Date Month' }
+            ]
+        },
+        targets: {
+            metrics: [
+                { id: 'target_completion', label: 'Target Completion (%)' },
+                { id: 'target_val', label: 'Planned Target Value ($)' },
+                { id: 'ach_val', label: 'Achieved Value ($)' }
+            ],
+            dimensions: [
+                { id: 'category', label: 'Target Category' },
+                { id: 'metric', label: 'Target Metric Type' }
+            ]
+        },
+        tasks: {
+            metrics: [
+                { id: 'count', label: 'Task Count' },
+                { id: 'progress_percent', label: 'Average Progress (%)' }
+            ],
+            dimensions: [
+                { id: 'status', label: 'Task Status (Pending / In Progress / Completed)' },
+                { id: 'priority', label: 'Priority (High / Medium / Low)' }
+            ]
+        },
+        customers: {
+            metrics: [
+                { id: 'count', label: 'Customer Count' },
+                { id: 'contract_value', label: 'Contract Value ($)' }
+            ],
+            dimensions: [
+                { id: 'status', label: 'Account Status (Active / Renewal / Churned)' },
+                { id: 'month', label: 'Onboarding Month' }
+            ]
+        },
+        website_analytics: {
+            metrics: [
+                { id: 'pageviews', label: 'Pageviews' },
+                { id: 'sessions', label: 'Sessions' },
+                { id: 'users', label: 'Users' },
+                { id: 'bounce_rate', label: 'Bounce Rate (%)' }
+            ],
+            dimensions: [
+                { id: 'date', label: 'Snapshot Date' },
+                { id: 'channel', label: 'Traffic Source Channel' }
+            ]
+        },
+        text: {
+            metrics: [
+                { id: 'text_content', label: 'Text Note Content' }
+            ],
+            dimensions: [
+                { id: 'none', label: 'None' }
+            ]
+        }
+    };
+
+    // Canvas Theme Selector Handler
+    $('#dash-canvas-theme').on('change', function() {
+        var theme = this.value;
+        $('#canvas-grid').removeClass('theme-cyberpunk theme-sapphire theme-emerald');
+        if (theme !== 'default') {
+            $('#canvas-grid').addClass('theme-' + theme);
+        }
+    });
+
+    // Date Filter Presets Handler
+    $('.filter-preset-chip').on('click', function() {
+        $('.filter-preset-chip').removeClass('active');
+        $(this).addClass('active');
+        activeDateFilter = $(this).data('preset');
+        renderCanvas();
+    });
+
+    // Auto Refresh Interval Handler
+    $('#dash-auto-refresh').on('change', function() {
+        if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+        var sec = parseInt(this.value, 10);
+        if (sec > 0) {
+            autoRefreshInterval = setInterval(function() {
+                renderCanvas();
+            }, sec * 1000);
+        }
+    });
+
+    // Update Metric and Dimension dropdowns when Data Source Module changes
+    $('#cfg-data-source').on('change', function() {
+        var dsKey = this.value || 'leads';
+        populateDependentDropdowns(dsKey);
+    });
+
+    function populateDependentDropdowns(dsKey, selectedMetric, selectedGroup) {
+        var conf = MODULE_CONFIG_MAP[dsKey] || MODULE_CONFIG_MAP.leads;
+
+        var $m = $('#cfg-metric').empty();
+        conf.metrics.forEach(function(opt) {
+            $m.append('<option value="' + opt.id + '">' + escapeHtml(opt.label) + '</option>');
+        });
+        if (selectedMetric) $m.val(selectedMetric);
+
+        var $g = $('#cfg-group-by').empty();
+        conf.dimensions.forEach(function(opt) {
+            $g.append('<option value="' + opt.id + '">' + escapeHtml(opt.label) + '</option>');
+        });
+        if (selectedGroup) $g.val(selectedGroup);
+    }
 
     // Render Initial Widgets
     renderCanvas();
 
-    // Add Widget from Library
+    // Add Widget from Library with Tailored Defaults
     $('.widget-palette-item').on('click', function() {
         var type = $(this).data('type');
+        var defaultDs = (type === 'gauge' || type === 'progress' || type === 'liquid') ? 'targets' : ((type === 'text') ? 'text' : ((type === 'line' || type === 'radar') ? 'website_analytics' : 'leads'));
+        var defaultMetric = (type === 'gauge' || type === 'progress' || type === 'liquid') ? 'target_completion' : ((type === 'line') ? 'pageviews' : 'count');
+        var defaultGroup = (type === 'gauge' || type === 'progress' || type === 'liquid') ? 'category' : ((type === 'line') ? 'date' : 'status');
+
         var newWidget = {
             title: defaultTitleForType(type),
             widget_type: type,
-            data_source: (type === 'text') ? 'text' : 'leads',
-            width: (type === 'kpi') ? 3 : ((type === 'table') ? 12 : 6),
-            height: 4,
+            data_source: defaultDs,
+            width: (type === 'kpi' || type === 'progress' || type === 'liquid') ? 4 : ((type === 'table' || type === 'activity') ? 12 : 6),
+            height: (type === 'liquid') ? 360 : 220,
             pos_x: 0,
             pos_y: 0,
             config: {
-                metric: 'count',
+                metric: defaultMetric,
                 aggregation: 'COUNT',
-                group_by: 'status',
-                color: 'blue'
+                group_by: defaultGroup,
+                color: (type === 'gauge' || type === 'progress' || type === 'liquid') ? 'amber' : ((type === 'line' || type === 'radar') ? 'indigo' : 'blue')
             }
         };
         widgets.push(newWidget);
@@ -442,10 +810,15 @@ $(function() {
     function defaultTitleForType(type) {
         var names = {
             kpi: 'KPI Metric Card',
+            liquid: 'Liquid Fill Gauge (Score)',
+            progress: 'Goal Progress Bar',
             line: 'Trend Analysis (Time-Series)',
             bar: 'Category Breakdown',
             pie: 'Distribution Split',
+            radar: 'Radar Performance Compass',
+            polar: 'Polar Area Slice',
             table: 'Data Detail Table',
+            activity: 'Live Activity Stream Ticker',
             funnel: 'Conversion Funnel Stage',
             gauge: 'Target Completion Meter',
             text: 'Notes & Description'
@@ -462,17 +835,23 @@ $(function() {
 
         widgets.forEach(function(w, idx) {
             var colSpan = 'span ' + (w.width || 6);
-            var $wBox = $('<div class="canvas-widget" style="grid-column: ' + colSpan + ';"></div>');
+            var minH = (w.height && w.height !== 'auto') ? (w.height + 'px') : '220px';
+            var $wBox = $('<div class="canvas-widget" style="grid-column: ' + colSpan + '; min-height: ' + minH + ';"></div>');
             if (selectedWidgetIdx === idx && !isPreviewMode) $wBox.addClass('selected');
 
-            // Sleek, Icon-Only Toolbar
+            // Sleek Toolbar — Works in BOTH Edit Mode and Preview Mode!
+            var toolbar = '<div class="canvas-widget-toolbar">' +
+                '<button type="button" class="btn btn-icon btn-outline-warning text-warning btn-cycle-width-w" data-idx="' + idx + '" title="Click to Cycle Width (3 -> 4 -> 6 -> 8 -> 12 Cols)"><i class="fa-solid fa-arrows-left-right"></i></button>' +
+                '<button type="button" class="btn btn-icon btn-outline-success text-success btn-cycle-height-w" data-idx="' + idx + '" title="Click to Cycle Height (220 -> 280 -> 360px)"><i class="fa-solid fa-arrows-up-down"></i></button>' +
+                '<button type="button" class="btn btn-icon btn-outline-secondary text-white btn-cycle-type-w" data-idx="' + idx + '" title="Click to Cycle Chart Type"><i class="fa-solid fa-repeat"></i></button>' +
+                '<button type="button" class="btn btn-icon btn-outline-info text-info btn-zoom-w" data-idx="' + idx + '" title="Full-Screen Zoom"><i class="fa-solid fa-expand"></i></button>' +
+                '<button type="button" class="btn btn-icon btn-outline-secondary text-white btn-export-w" data-idx="' + idx + '" title="Export CSV"><i class="fa-solid fa-file-csv"></i></button>';
+
             if (!isPreviewMode) {
-                var toolbar = '<div class="canvas-widget-toolbar">' +
+                toolbar += '<span class="text-secondary mx-1">|</span>' +
                     '<button type="button" class="btn btn-icon btn-outline-primary text-primary btn-edit-w" data-idx="' + idx + '" title="Configure Widget"><i class="fa-solid fa-gear"></i></button>' +
                     '<button type="button" class="btn btn-icon btn-outline-info text-info btn-dup-w" data-idx="' + idx + '" title="Duplicate Widget"><i class="fa-solid fa-copy"></i></button>' +
-                    '<button type="button" class="btn btn-icon btn-outline-danger text-danger btn-del-w" data-idx="' + idx + '" title="Delete Widget"><i class="fa-solid fa-trash"></i></button>' +
-                    '</div>';
-                $wBox.append(toolbar);
+                    '<button type="button" class="btn btn-icon btn-outline-danger text-danger btn-del-w" data-idx="' + idx + '" title="Delete Widget"><i class="fa-solid fa-trash"></i></button>';
 
                 // Make Widget Draggable
                 $wBox.attr('draggable', 'true');
@@ -511,10 +890,17 @@ $(function() {
                 });
             }
 
+            toolbar += '</div>';
+            $wBox.append(toolbar);
+
+            // Bottom-Right Corner Mouse Drag-to-Resize Handle
+            var resizeHandle = '<div class="widget-resize-handle" data-idx="' + idx + '" title="Drag corner to resize width & height"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></div>';
+            $wBox.append(resizeHandle);
+
             var dsLabel = escapeHtml(w.data_source || 'leads').toUpperCase();
             var gripIcon = isPreviewMode ? '' : '<i class="fa-solid fa-grip-vertical text-secondary me-2 drag-handle" title="Drag to reorder" style="cursor: move;"></i>';
             var header = '<div class="d-flex justify-content-between align-items-center mb-2">' +
-                '<h6 class="text-white fw-bold mb-0 text-truncate d-flex align-items-center" style="max-width: 70%;" title="' + escapeHtml(w.title) + '">' +
+                '<h6 class="text-white fw-bold mb-0 text-truncate d-flex align-items-center" style="max-width: 65%;" title="' + escapeHtml(w.title) + '">' +
                 gripIcon + escapeHtml(w.title) + '</h6>' +
                 '<span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.65rem;">' + dsLabel + '</span>' +
                 '</div>';
@@ -523,7 +909,7 @@ $(function() {
 
             $wBox.append(header).append(body);
             $wBox.on('click', function(e) {
-                if (isPreviewMode || $(e.target).closest('.canvas-widget-toolbar').length) return;
+                if (isPreviewMode || $(e.target).closest('.canvas-widget-toolbar, .widget-resize-handle').length) return;
                 selectWidget(idx);
             });
 
@@ -534,6 +920,56 @@ $(function() {
         });
     }
 
+    // Bottom-Right Corner Mouse Drag-to-Resize Event Handler
+    $(document).on('mousedown', '.widget-resize-handle', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var idx = $(this).data('idx');
+        var w = widgets[idx];
+        if (!w) return;
+
+        var $wBox = $('.canvas-widget').eq(idx);
+        var startX = e.clientX;
+        var startY = e.clientY;
+        var startW = w.width || 6;
+        var startH = parseInt(w.height, 10) || 220;
+        var containerWidth = $('#canvas-grid').width() || 1000;
+        var colWidthPx = containerWidth / 12;
+
+        var $badge = $('<div class="resize-indicator-badge"></div>').appendTo($wBox).show();
+
+        $(document).on('mousemove.widgetResize', function(ev) {
+            var dx = ev.clientX - startX;
+            var dy = ev.clientY - startY;
+
+            var colsDelta = Math.round(dx / colWidthPx);
+            var newW = Math.max(3, Math.min(12, startW + colsDelta));
+            var newH = Math.max(180, Math.min(600, startH + dy));
+
+            $wBox.css({
+                'grid-column': 'span ' + newW,
+                'min-height': newH + 'px'
+            });
+
+            $badge.text(newW + ' Columns | Height: ' + Math.round(newH) + 'px');
+        });
+
+        $(document).on('mouseup.widgetResize', function(ev) {
+            $(document).off('.widgetResize');
+            var dx = ev.clientX - startX;
+            var dy = ev.clientY - startY;
+
+            var colsDelta = Math.round(dx / colWidthPx);
+            var finalW = Math.max(3, Math.min(12, startW + colsDelta));
+            var finalH = Math.max(180, Math.min(600, startH + dy));
+
+            w.width = finalW;
+            w.height = finalH;
+            $badge.remove();
+            renderCanvas();
+        });
+    });
+
     function selectWidget(idx) {
         selectedWidgetIdx = idx;
         $('.canvas-widget').removeClass('selected');
@@ -542,12 +978,17 @@ $(function() {
         var w = widgets[idx];
         if (!w) return;
 
+        var dsKey = w.data_source || 'leads';
         $('#cfg-title').val(w.title);
-        $('#cfg-data-source').val(w.data_source);
-        $('#cfg-metric').val(w.config.metric || 'count');
+        $('#cfg-data-source').val(dsKey);
+        $('#cfg-widget-type').val(w.widget_type || 'kpi');
+
+        // Dynamically populate metric and dimension dropdowns for this module
+        populateDependentDropdowns(dsKey, w.config.metric, w.config.group_by);
+
         $('#cfg-agg').val(w.config.aggregation || 'COUNT');
-        $('#cfg-group-by').val(w.config.group_by || 'status');
         $('#cfg-width').val(w.width || 6);
+        $('#cfg-height').val(w.height || 220);
         $('#cfg-color').val(w.config.color || 'blue');
 
         $('#config-drawer').fadeIn(150);
@@ -559,7 +1000,10 @@ $(function() {
 
         w.title = $('#cfg-title').val();
         w.data_source = $('#cfg-data-source').val();
+        w.widget_type = $('#cfg-widget-type').val();
         w.width = parseInt($('#cfg-width').val(), 10);
+        var hVal = $('#cfg-height').val();
+        w.height = (hVal === 'auto') ? 'auto' : parseInt(hVal, 10);
         w.config.metric = $('#cfg-metric').val();
         w.config.aggregation = $('#cfg-agg').val();
         w.config.group_by = $('#cfg-group-by').val();
@@ -569,6 +1013,81 @@ $(function() {
     });
 
     $(document).on('click', '.btn-edit-w', function(e) { e.stopPropagation(); selectWidget($(this).data('idx')); });
+    
+    // 1-Click Width Cycling Handler (Works in both Edit and Preview modes)
+    $(document).on('click', '.btn-cycle-width-w', function(e) {
+        e.stopPropagation();
+        var idx = $(this).data('idx');
+        var w = widgets[idx];
+        if (!w) return;
+        var widths = [3, 4, 6, 8, 12];
+        var currentW = w.width || 6;
+        var currentIdx = widths.indexOf(currentW);
+        var nextW = widths[(currentIdx + 1) % widths.length];
+        w.width = nextW;
+        renderCanvas();
+    });
+
+    // 1-Click Height Cycling Handler (Works in both Edit and Preview modes)
+    $(document).on('click', '.btn-cycle-height-w', function(e) {
+        e.stopPropagation();
+        var idx = $(this).data('idx');
+        var w = widgets[idx];
+        if (!w) return;
+        var heights = [220, 280, 360];
+        var currentH = parseInt(w.height, 10) || 220;
+        var currentIdx = heights.indexOf(currentH);
+        var nextH = heights[(currentIdx + 1) % heights.length];
+        w.height = nextH;
+        renderCanvas();
+    });
+
+    // Cycle Widget Type Handler
+    $(document).on('click', '.btn-cycle-type-w', function(e) {
+        e.stopPropagation();
+        var idx = $(this).data('idx');
+        var w = widgets[idx];
+        if (!w) return;
+        var types = ['bar', 'line', 'pie', 'liquid', 'radar', 'table', 'kpi'];
+        var currentIdx = types.indexOf(w.widget_type);
+        var nextType = types[(currentIdx + 1) % types.length];
+        w.widget_type = nextType;
+        renderCanvas();
+    });
+
+    // Zoom Fullscreen Handler
+    $(document).on('click', '.btn-zoom-w', function(e) {
+        e.stopPropagation();
+        var idx = $(this).data('idx');
+        var w = widgets[idx];
+        if (!w) return;
+        $('#zoom-widget-title').text(w.title + ' — Full Detail Inspection');
+        var $zb = $('#zoom-widget-body').empty().html('<div class="skeleton-loader"></div>');
+        $('#widgetZoomModal').modal('show');
+        
+        var payload = Object.assign({}, w, { csrf_token: csrfToken, date_filter: activeDateFilter });
+        fetch('index.php?route=dashboard/widgetData&csrf_token=' + encodeURIComponent(csrfToken), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+            body: JSON.stringify(payload)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            $zb.empty();
+            if (d && d.success && d.data) {
+                renderWidgetVisualization($zb, w.widget_type, d.data, w.config.color || 'blue', 9999);
+            }
+        });
+    });
+
+    // CSV Export Handler
+    $(document).on('click', '.btn-export-w', function(e) {
+        e.stopPropagation();
+        var idx = $(this).data('idx');
+        var w = widgets[idx];
+        alert('Exporting data for "' + w.title + '" to CSV file...');
+    });
+
     $(document).on('click', '.btn-dup-w', function(e) {
         e.stopPropagation();
         var idx = $(this).data('idx');
@@ -608,7 +1127,7 @@ $(function() {
 
     // Fetch Live Widget Data with CSRF Header
     function fetchWidgetData(widget, idx) {
-        var payload = Object.assign({}, widget, { csrf_token: csrfToken });
+        var payload = Object.assign({}, widget, { csrf_token: csrfToken, date_filter: activeDateFilter });
         fetch('index.php?route=dashboard/widgetData&csrf_token=' + encodeURIComponent(csrfToken), {
             method: 'POST',
             headers: { 
@@ -660,6 +1179,185 @@ $(function() {
                 '  </div>' +
                 '</div>'
             );
+        } else if (type === 'liquid') {
+            var scoreVal = Math.round(data.value !== undefined ? data.value : 45);
+            var maxVal = data.max || 100;
+            var pct = Math.min(100, Math.max(0, (scoreVal / maxVal) * 100));
+
+            var bandColor = '#F59E0B'; // Amber default
+            var bandLabel = 'moderate engagement';
+            var bandKey = 'moderate';
+            var descText = 'mixed interest, room to strengthen it';
+
+            if (pct < 40) {
+                bandColor = '#E11D48';
+                bandLabel = 'low engagement';
+                bandKey = 'low';
+                descText = 'requires immediate attention — score below threshold';
+            } else if (pct < 60) {
+                bandColor = '#F59E0B';
+                bandLabel = 'moderate engagement';
+                bandKey = 'moderate';
+                descText = 'mixed interest, room to strengthen it';
+            } else if (pct < 80) {
+                bandColor = '#D97706';
+                bandLabel = 'good engagement';
+                bandKey = 'good';
+                descText = 'good performance — strong trajectory';
+            } else {
+                bandColor = '#10B981';
+                bandLabel = 'strong engagement';
+                bandKey = 'strong';
+                descText = 'excellent score — target surpassed';
+            }
+
+            if (data.band_label) bandLabel = data.band_label.toLowerCase();
+            if (data.description) descText = data.description.toLowerCase();
+
+            var waterY = 190 - (pct / 100) * 180;
+            var liquidId = 'liquid-widget-' + idx + '-' + Math.random().toString(36).substr(2, 6);
+
+            var liquidHtml =
+                '<div class="liquid-gauge-container py-1" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">' +
+                '  <div class="liquid-gauge-circle-box" style="width: 160px; height: 160px; position: relative; border-radius: 50%; display: flex; align-items: center; justify-content: center;">' +
+                '    <svg class="liquid-gauge-svg" viewBox="0 0 200 200" style="width: 100%; height: 100%; border-radius: 50%;">' +
+                '      <defs>' +
+                '        <clipPath id="' + liquidId + '-clip">' +
+                '          <circle cx="100" cy="100" r="95" />' +
+                '        </clipPath>' +
+                '      </defs>' +
+                '      <circle cx="100" cy="100" r="95" fill="none" stroke="' + bandColor + '" stroke-width="4" />' +
+                '      <g clip-path="url(#' + liquidId + '-clip)">' +
+                '        <rect x="0" y="0" width="200" height="200" fill="rgba(255, 255, 255, 0.02)" />' +
+                '        <g transform="translate(0, ' + waterY + ')">' +
+                '          <path class="liquid-wave-layer2" fill="' + bandColor + '" opacity="0.45" d="M 0 0 Q 40 -10 80 0 T 160 0 T 240 0 T 320 0 V 200 H 0 Z" />' +
+                '        </g>' +
+                '        <g transform="translate(0, ' + waterY + ')">' +
+                '          <path class="liquid-wave-layer1" fill="' + bandColor + '" opacity="0.85" d="M 0 0 Q 40 10 80 0 T 160 0 T 240 0 T 320 0 V 200 H 0 Z" />' +
+                '        </g>' +
+                '      </g>' +
+                '    </svg>' +
+                '    <div class="liquid-gauge-text-overlay" style="position: absolute; top:0; left:0; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:12px; pointer-events:none;">' +
+                '      <div style="font-family: Georgia, serif; font-size: 2.2rem; font-weight: 700; color: #fff; line-height: 1;">' + scoreVal + '<span style="font-size: 0.9rem; font-weight: 400; opacity: 0.75;">/' + maxVal + '</span></div>' +
+                '      <div style="font-size: 0.78rem; font-weight: 700; color: ' + bandColor + '; margin-top: 3px;">' + escapeHtml(bandLabel) + '</div>' +
+                '      <div style="font-size: 0.65rem; opacity: 0.8; color: #cbd5e1; margin-top: 2px; max-width: 130px; line-height: 1.15;">' + escapeHtml(descText) + '</div>' +
+                '    </div>' +
+                '  </div>' +
+                '  <div class="liquid-legend-wrapper mt-2" style="width: 100%; max-width: 210px;">' +
+                '    <div class="liquid-gradient-bar-container" style="position: relative; width: 100%; height: 6px; border-radius: 4px; background: linear-gradient(90deg, #E11D48 0%, #F59E0B 40%, #D97706 70%, #10B981 100%);">' +
+                '      <div class="liquid-legend-marker" style="position: absolute; top: 50%; left: ' + pct + '%; transform: translate(-50%, -50%); width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2.5px solid ' + bandColor + '; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>' +
+                '    </div>' +
+                '    <div class="liquid-legend-grid mt-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 3px 8px; font-size: 0.7rem;">' +
+                '      <div class="d-flex align-items-center gap-1 ' + (bandKey === 'low' ? 'text-white fw-bold opacity-100' : 'text-secondary opacity-75') + '"><span style="width:6px; height:6px; border-radius:50%; background:#E11D48; display:inline-block;"></span> 0 - 39 low</div>' +
+                '      <div class="d-flex align-items-center gap-1 ' + (bandKey === 'moderate' ? 'text-white fw-bold opacity-100' : 'text-secondary opacity-75') + '"><span style="width:6px; height:6px; border-radius:50%; background:#F59E0B; display:inline-block;"></span> 40 - 59 moderate</div>' +
+                '      <div class="d-flex align-items-center gap-1 ' + (bandKey === 'good' ? 'text-white fw-bold opacity-100' : 'text-secondary opacity-75') + '"><span style="width:6px; height:6px; border-radius:50%; background:#D97706; display:inline-block;"></span> 60 - 79 good</div>' +
+                '      <div class="d-flex align-items-center gap-1 ' + (bandKey === 'strong' ? 'text-white fw-bold opacity-100' : 'text-secondary opacity-75') + '"><span style="width:6px; height:6px; border-radius:50%; background:#10B981; display:inline-block;"></span> 80 - 100 strong</div>' +
+                '    </div>' +
+                '  </div>' +
+                '</div>';
+
+            $container.html(liquidHtml);
+        } else if (type === 'progress') {
+            var pct = data.value !== undefined ? data.value : 84.5;
+            $container.html(
+                '<div class="py-2">' +
+                '  <div class="d-flex justify-content-between align-items-center mb-1">' +
+                '    <span class="small text-secondary">Goal Completion</span>' +
+                '    <span class="fw-bold text-white">' + pct + '%</span>' +
+                '  </div>' +
+                '  <div class="progress bg-dark" style="height: 12px; border-radius: 8px;">' +
+                '    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: ' + pct + '%; background-color: ' + palette[0] + ';"></div>' +
+                '  </div>' +
+                '  <div class="d-flex justify-content-between small text-secondary mt-2">' +
+                '    <span>0%</span><span>50%</span><span>100% Target</span>' +
+                '  </div>' +
+                '</div>'
+            );
+        } else if (type === 'activity') {
+            var html = '<div class="activity-ticker-container" style="max-height: 180px; overflow-y: auto;">';
+            var items = [
+                { icon: 'fa-user-plus text-success', title: 'New Lead: John Doe', time: '5m ago' },
+                { icon: 'fa-file-invoice-dollar text-primary', title: 'Invoice INV-2026-001 Paid ($35,000)', time: '22m ago' },
+                { icon: 'fa-bullseye text-warning', title: 'Q3 Goal Attainment hit 84.5%', time: '1h ago' },
+                { icon: 'fa-check-double text-info', title: 'Task Completed: Pipeline Audit', time: '2h ago' }
+            ];
+            items.forEach(function(item) {
+                html += '<div class="activity-ticker-item">' +
+                    '<span><i class="fa-solid ' + item.icon + ' me-2"></i>' + escapeHtml(item.title) + '</span>' +
+                    '<span class="text-secondary small">' + item.time + '</span>' +
+                    '</div>';
+            });
+            html += '</div>';
+            $container.html(html);
+        } else if (type === 'gauge') {
+            var pct = data.value !== undefined ? data.value : 84.5;
+            var achieved = data.achieved ? ('$' + Number(data.achieved).toLocaleString()) : '';
+            var target = data.target ? ('$' + Number(data.target).toLocaleString()) : '';
+            var canvasId = 'gauge-canvas-' + idx + '-' + Math.random().toString(36).substr(2, 6);
+
+            $container.html(
+                '<div class="text-center py-2">' +
+                '  <div class="position-relative d-inline-block" style="width: 140px; height: 75px; overflow: hidden;">' +
+                '    <canvas id="' + canvasId + '" width="140" height="140" style="position: absolute; top: 0; left: 0;"></canvas>' +
+                '  </div>' +
+                '  <div class="h4 fw-bold mb-0 text-white mt-1">' + pct + '%</div>' +
+                '  <div class="small text-secondary">' + (achieved && target ? (achieved + ' of ' + target) : 'Quota Attainment') + '</div>' +
+                '</div>'
+            );
+
+            setTimeout(function() {
+                var ctx = document.getElementById(canvasId);
+                if (ctx && typeof Chart !== 'undefined') {
+                    if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+                    chartInstances[canvasId] = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Achieved', 'Remaining'],
+                            datasets: [{
+                                data: [pct, Math.max(0, 100 - pct)],
+                                backgroundColor: [palette[0], 'rgba(255,255,255,0.1)'],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            rotation: -90,
+                            circumference: 180,
+                            cutout: '75%',
+                            plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                        }
+                    });
+                }
+            }, 50);
+        } else if (type === 'funnel') {
+            var labels = data.labels || ['Top Funnel', 'Mid Funnel', 'Closed'];
+            var series = data.series || [100, 60, 25];
+            var canvasId = 'funnel-canvas-' + idx + '-' + Math.random().toString(36).substr(2, 6);
+            $container.html('<canvas id="' + canvasId + '" style="max-height: 180px; width: 100%;"></canvas>');
+
+            setTimeout(function() {
+                var ctx = document.getElementById(canvasId);
+                if (ctx && typeof Chart !== 'undefined') {
+                    if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+                    chartInstances[canvasId] = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Stage Count',
+                                data: series,
+                                backgroundColor: palette,
+                                borderRadius: 6
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+                }
+            }, 50);
         } else if (type === 'text') {
             $container.html('<div class="p-2 text-white small">' + escapeHtml(data.text || 'Custom Note') + '</div>');
         } else if (type === 'table') {
@@ -685,27 +1383,34 @@ $(function() {
             var canvasId = 'chart-canvas-' + idx + '-' + Math.random().toString(36).substr(2, 6);
             $container.html('<canvas id="' + canvasId + '" style="max-height: 180px; width: 100%;"></canvas>');
 
+            var chartType = 'bar';
+            if (type === 'pie') chartType = 'doughnut';
+            else if (type === 'line') chartType = 'line';
+            else if (type === 'radar') chartType = 'radar';
+            else if (type === 'polar') chartType = 'polarArea';
+
             setTimeout(function() {
                 var ctx = document.getElementById(canvasId);
                 if (ctx && typeof Chart !== 'undefined') {
                     if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
                     chartInstances[canvasId] = new Chart(ctx, {
-                        type: (type === 'pie') ? 'doughnut' : ((type === 'line') ? 'line' : 'bar'),
+                        type: chartType,
                         data: {
                             labels: labels,
                             datasets: [{
                                 label: 'Data',
                                 data: series,
-                                backgroundColor: (type === 'pie') ? palette : palette[0],
+                                backgroundColor: (type === 'pie' || type === 'polar') ? palette : (type === 'line' ? 'rgba(29,78,216,0.15)' : palette[0]),
                                 borderColor: palette[0],
                                 borderWidth: 2,
-                                fill: (type === 'line')
+                                fill: (type === 'line'),
+                                tension: 0.4
                             }]
                         },
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
-                            plugins: { legend: { display: (type === 'pie') } }
+                            plugins: { legend: { display: (type === 'pie' || type === 'polar' || type === 'radar') } }
                         }
                     });
                 }
