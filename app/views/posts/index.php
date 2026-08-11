@@ -1,10 +1,10 @@
 <div class="pulse-card mb-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3 mb-4">
         <div>
             <h4 class="text-white mb-1"><i class="fa-solid fa-rectangle-list me-2 text-primary"></i>Content Management & Analytics</h4>
             <div class="text-secondary small">Track published content, post identity (Post ID), audience demographics (Followers split, Age, Gender, Top Countries), and engagement metrics</div>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
             <a href="index.php?route=calendar/index" class="btn btn-outline-secondary btn-sm px-3 py-2" style="border-radius: 8px;">
                 <i class="fa-solid fa-calendar-days me-2"></i>Visual Calendar View
             </a>

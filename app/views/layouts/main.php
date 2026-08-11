@@ -787,27 +787,44 @@
                 margin-left: calc(-1 * var(--sidebar-width));
                 box-shadow: 4px 0 30px rgba(0,0,0,0.4);
                 overflow-y: auto;
+                z-index: 1050;
             }
-            #sidebar.mobile-open { margin-left: 0; }
+            #sidebar.mobile-open { margin-left: 0 !important; }
             #sidebar.mobile-open + #sidebar-overlay,
-            body.drawer-open #sidebar-overlay { display: block; }
+            body.drawer-open #sidebar-overlay { display: block; z-index: 1040; }
 
-            #content-wrapper { width: 100%; }
-            .main-content { padding: 1rem; padding-bottom: 80px; /* clear bottom nav */ }
+            #content-wrapper { width: 100% !important; margin-left: 0 !important; }
+            .main-content { padding: 0.85rem; padding-bottom: 80px; /* clear bottom nav */ }
 
-            #bottom-nav { display: flex; }
+            #bottom-nav { display: flex; z-index: 1030; }
+
+            #topbar {
+                padding: 0.5rem 0.75rem;
+                flex-wrap: nowrap;
+                gap: 0.5rem;
+            }
+            .page-title {
+                font-size: 0.95rem;
+                max-width: 150px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
 
             /* Hide desktop-only topbar filters to save space */
             .topbar-right { gap: 0.5rem; }
-            #client-selector, #date-range { max-width: 130px; }
+            #client-selector, #date-range { max-width: 110px; }
         }
 
         /* Phones */
         @media (max-width: 575.98px) {
-            :root { --topbar-height: 60px; }
-            .page-title { font-size: 1.05rem; }
+            :root { --topbar-height: 56px; }
+            #topbar { padding: 0.4rem 0.65rem; }
+            .page-title { font-size: 0.88rem; max-width: 120px; }
+            .btn-toggle-sidebar { margin-right: 0.5rem; }
             .topbar-right { display: none; } /* filters move into page content on phones */
-            .pulse-card { padding: 1.1rem; border-radius: 12px; }
+            .pulse-card { padding: 0.85rem; border-radius: 12px; }
+            .main-content { padding: 0.65rem; padding-bottom: 75px; }
             /* Stack Bootstrap tables into cards when marked .table-stack */
             table.table-stack thead { display: none; }
             table.table-stack, table.table-stack tbody, table.table-stack tr, table.table-stack td {

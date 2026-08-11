@@ -185,22 +185,42 @@
       <span class="nav-link tab-trigger" data-tab="about">About</span>
       <span class="nav-link tab-trigger" data-tab="contact">Contact</span>
     </div>
-    <div class="hidden md:flex items-center gap-3">
-      <a href="index.php?route=auth/login" class="px-4 py-2 text-sm font-medium text-[var(--ink-2)] hover:text-[var(--ink-1)] transition-colors cursor-pointer">Log in</a>
-      <span class="tab-trigger btn-glow px-5 py-2.5 rounded-xl text-sm font-semibold text-white cursor-pointer" data-tab="contact">Get Started</span>
+    <div class="flex items-center gap-2 sm:gap-3">
+      <a href="index.php?route=auth/login" class="px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-[var(--blue)] to-[var(--violet)] hover:opacity-95 transition-all rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer">
+        <i data-lucide="log-in" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+        <span>Log in</span>
+      </a>
+      <span class="hidden md:inline-flex tab-trigger btn-glow px-5 py-2.5 rounded-xl text-sm font-semibold text-white cursor-pointer" data-tab="contact">Get Started</span>
+      <button id="menuBtn" class="lg:hidden w-9 h-9 sm:w-10 sm:h-10 rounded-lg glass flex items-center justify-center text-[var(--ink-1)] hover:bg-[var(--surface-hover)] transition-colors" aria-label="Toggle Navigation">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+      </button>
     </div>
-    <button id="menuBtn" class="lg:hidden w-10 h-10 rounded-lg glass flex items-center justify-center">
-      <i data-lucide="menu" class="w-5 h-5"></i>
-    </button>
   </nav>
-  <div id="mobileMenu" class="hidden lg:hidden glass mx-4 mb-3 rounded-2xl px-6 py-5 flex flex-col gap-4 text-sm font-medium">
-    <span class="nav-link tab-trigger" data-tab="home">Home</span>
-    <span class="nav-link tab-trigger" data-tab="features">Features</span>
-    <span class="nav-link tab-trigger" data-tab="solutions">Solutions</span>
-    <span class="nav-link tab-trigger" data-tab="analytics">Analytics</span>
-    <span class="nav-link tab-trigger" data-tab="about">About</span>
-    <span class="nav-link tab-trigger" data-tab="contact">Contact</span>
-    <a href="index.php?route=auth/login" class="nav-link py-2 border-t border-[var(--border)] mt-2">Log in</a>
+  <div id="mobileMenu" class="hidden lg:hidden glass mx-4 mb-3 rounded-2xl p-5 flex flex-col gap-3 text-sm font-medium border border-[var(--border)] shadow-xl">
+    <span class="nav-link tab-trigger py-2 px-3 rounded-lg hover:bg-[var(--surface-hover)] flex items-center gap-2.5" data-tab="home">
+      <i data-lucide="home" class="w-4 h-4 text-[var(--blue)]"></i> Home
+    </span>
+    <span class="nav-link tab-trigger py-2 px-3 rounded-lg hover:bg-[var(--surface-hover)] flex items-center gap-2.5" data-tab="features">
+      <i data-lucide="layers" class="w-4 h-4 text-[var(--blue)]"></i> Features
+    </span>
+    <span class="nav-link tab-trigger py-2 px-3 rounded-lg hover:bg-[var(--surface-hover)] flex items-center gap-2.5" data-tab="solutions">
+      <i data-lucide="briefcase" class="w-4 h-4 text-[var(--blue)]"></i> Solutions
+    </span>
+    <span class="nav-link tab-trigger py-2 px-3 rounded-lg hover:bg-[var(--surface-hover)] flex items-center gap-2.5" data-tab="analytics">
+      <i data-lucide="bar-chart-3" class="w-4 h-4 text-[var(--blue)]"></i> Analytics
+    </span>
+    <span class="nav-link tab-trigger py-2 px-3 rounded-lg hover:bg-[var(--surface-hover)] flex items-center gap-2.5" data-tab="about">
+      <i data-lucide="info" class="w-4 h-4 text-[var(--blue)]"></i> About
+    </span>
+    <span class="nav-link tab-trigger py-2 px-3 rounded-lg hover:bg-[var(--surface-hover)] flex items-center gap-2.5" data-tab="contact">
+      <i data-lucide="mail" class="w-4 h-4 text-[var(--blue)]"></i> Contact
+    </span>
+    <div class="pt-3 border-t border-[var(--border)] flex flex-col gap-2.5">
+      <a href="index.php?route=auth/login" class="w-full py-2.5 px-4 text-center text-sm font-semibold text-white bg-gradient-to-r from-[var(--blue)] to-[var(--violet)] rounded-xl shadow-md flex items-center justify-center gap-2 hover:opacity-95 transition-all">
+        <i data-lucide="log-in" class="w-4 h-4"></i> Log in to Platform
+      </a>
+      <span class="tab-trigger btn-glow w-full py-2.5 px-4 text-center text-sm font-semibold text-white rounded-xl cursor-pointer" data-tab="contact">Get Started</span>
+    </div>
   </div>
 </header>
 
@@ -229,7 +249,7 @@
             <i data-lucide="play-circle" class="w-4 h-4"></i> Watch Demo
           </span>
         </div>
-        <div class="flex items-center gap-8">
+        <div class="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-8">
           <div>
             <div class="text-2xl font-bold mono text-grad" data-counter="5" data-suffix="M+">5M+</div>
             <div class="text-xs text-[var(--ink-3)] mt-1">Records Processed</div>
