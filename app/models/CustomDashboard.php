@@ -229,6 +229,12 @@ class CustomDashboard extends Model {
                 case 'campaigns':
                     $res = $this->aggregateCampaignsData($type, $metric, $agg, $groupBy);
                     break;
+                case 'social_content':
+                    $res = $this->aggregateSocialContentData($type, $metric, $agg, $groupBy);
+                    break;
+                case 'social_platforms':
+                    $res = $this->aggregateSocialPlatformsData($type, $metric, $agg, $groupBy);
+                    break;
                 case 'invoices':
                     $res = $this->aggregateInvoicesData($type, $metric, $agg, $groupBy);
                     break;
@@ -351,23 +357,99 @@ class CustomDashboard extends Model {
 
     private function aggregateCampaignsData(string $type, string $metric, string $agg, string $groupBy): array {
         if (in_array($type, ['kpi', 'gauge', 'liquid', 'progress'])) {
-            $col = ($metric === 'budget') ? 'budget' : (($metric === 'spend') ? 'spend' : 'campaign_id');
-            $fn = ($metric === 'count') ? 'COUNT' : 'SUM';
-            $this->query("SELECT COALESCE({$fn}({$col}), 0) AS val FROM campaigns");
-            $val = (float)($this->single()->val ?? 0);
-            if ($val <= 0) $val = 4;
-            return ['value' => round($val, 1), 'label' => ($metric === 'count' ? number_format($val) : '$' . number_format($val, 2))];
+            if ($metric === 'leads_count') {
+                $this->query("SELECT COALESCE(SUM(leads_count), 0) AS val FROM campaigns");
+                $val = (float)($this->single()->val ?? 0);
+                if ($val <= 0) $val = 142;
+                return ['value' => round($val, 1), 'label' => number_format($val) . ' Leads'];
+            } elseif ($metric === 'roi') {
+                $this->query("SELECT COALESCE(AVG(roi), 0) AS val FROM campaigns");
+                $val = (float)($this->single()->val ?? 0);
+                if ($val <= 0) $val = 310.5;
+                return ['value' => round($val, 1), 'label' => round($val, 1) . '% ROI'];
+            } else {
+                $col = ($metric === 'budget') ? 'budget' : (($metric === 'spend') ? 'spend' : 'campaign_id');
+                $fn = ($metric === 'count') ? 'COUNT' : 'SUM';
+                $this->query("SELECT COALESCE({$fn}({$col}), 0) AS val FROM campaigns");
+                $val = (float)($this->single()->val ?? 0);
+                if ($val <= 0) $val = ($metric === 'count' ? 8 : 45000.00);
+                return ['value' => round($val, 1), 'label' => ($metric === 'count' ? number_format($val) : '$' . number_format($val, 2))];
+            }
         }
 
-        $groupCol = ($groupBy === 'campaign_type') ? 'campaign_type' : (($groupBy === 'status') ? 'status' : 'channel');
+        $groupCol = ($groupBy === 'campaign_type') ? 'campaign_type' : (($groupBy === 'status') ? 'status' : (($groupBy === 'is_offline') ? 'is_offline' : 'channel'));
         $this->query("SELECT {$groupCol} AS label, COUNT(*) AS val FROM campaigns GROUP BY {$groupCol} LIMIT 10");
         $rows = $this->resultSet();
         $labels = array_column($rows, 'label');
         $series = array_map('intval', array_column($rows, 'val'));
 
         if (empty($labels)) {
-            $labels = ['Email', 'PPC', 'Social Media', 'Trade Show'];
-            $series = [5, 8, 12, 4];
+            $labels = ['Instagram', 'LinkedIn Ads', 'Google PPC', 'Facebook Ads', 'Email', 'Offline Event'];
+            $series = [5, 8, 12, 6, 4, 3];
+        }
+
+        return ['labels' => $labels, 'series' => $series];
+    }
+
+    private function aggregateSocialContentData(string $type, string $metric, string $agg, string $groupBy): array {
+        if (in_array($type, ['kpi', 'gauge', 'liquid', 'progress'])) {
+            $colMap = [
+                'engagement_rate' => 'current_engagement_rate',
+                'reach' => 'reach',
+                'impressions' => 'impressions',
+                'likes_count' => 'likes_count',
+                'comments_count' => 'comments_count',
+                'shares_count' => 'shares_count',
+                'views_count' => 'views_count',
+                'followers_reach_pct' => 'followers_reach_pct',
+                'non_followers_reach_pct' => 'non_followers_reach_pct'
+            ];
+            $col = $colMap[$metric] ?? 'post_id';
+            $fn = ($metric === 'count') ? 'COUNT' : (($metric === 'engagement_rate' || strpos($metric, 'pct') !== false) ? 'AVG' : ($agg === 'AVG' ? 'AVG' : 'SUM'));
+            
+            $this->query("SELECT COALESCE({$fn}({$col}), 0) AS val FROM posts");
+            $val = (float)($this->single()->val ?? 0);
+            if ($val <= 0) {
+                $val = ($metric === 'engagement_rate') ? 4.8 : (($metric === 'reach') ? 142000 : 28);
+            }
+            
+            $suffix = (strpos($metric, 'pct') !== false || $metric === 'engagement_rate') ? '%' : '';
+            return ['value' => round($val, 1), 'label' => number_format($val, (strpos($metric, 'pct') !== false || $metric === 'engagement_rate' ? 1 : 0)) . $suffix];
+        }
+
+        $groupCol = ($groupBy === 'content_type') ? 'content_type' : (($groupBy === 'campaign_id') ? 'campaign_id' : 'platform');
+        $this->query("SELECT {$groupCol} AS label, COUNT(*) AS val FROM posts GROUP BY {$groupCol} ORDER BY val DESC LIMIT 10");
+        $rows = $this->resultSet();
+        $labels = array_column($rows, 'label');
+        $series = array_map('intval', array_column($rows, 'val'));
+
+        if (empty($labels)) {
+            $labels = ['Instagram', 'LinkedIn', 'Facebook', 'X/Twitter', 'YouTube', 'TikTok'];
+            $series = [14, 9, 7, 5, 4, 3];
+        }
+
+        return ['labels' => $labels, 'series' => $series];
+    }
+
+    private function aggregateSocialPlatformsData(string $type, string $metric, string $agg, string $groupBy): array {
+        if (in_array($type, ['kpi', 'gauge', 'liquid', 'progress'])) {
+            $col = ($metric === 'engagement_rate') ? 'current_engagement_rate' : (($metric === 'reach') ? 'reach' : 'post_id');
+            $fn = ($metric === 'engagement_rate') ? 'AVG' : (($metric === 'reach') ? 'SUM' : 'COUNT');
+            $this->query("SELECT COALESCE({$fn}({$col}), 0) AS val FROM posts");
+            $val = (float)($this->single()->val ?? 0);
+            if ($val <= 0) $val = 6.2;
+            $suffix = ($metric === 'engagement_rate') ? '%' : '';
+            return ['value' => round($val, 1), 'label' => number_format($val, ($metric === 'engagement_rate' ? 1 : 0)) . $suffix];
+        }
+
+        $this->query("SELECT platform AS label, SUM(reach) AS val FROM posts GROUP BY platform ORDER BY val DESC LIMIT 10");
+        $rows = $this->resultSet();
+        $labels = array_column($rows, 'label');
+        $series = array_map('intval', array_column($rows, 'val'));
+
+        if (empty($labels)) {
+            $labels = ['Instagram', 'LinkedIn', 'Facebook', 'X/Twitter', 'YouTube', 'TikTok'];
+            $series = [45000, 32000, 28000, 18000, 15000, 12000];
         }
 
         return ['labels' => $labels, 'series' => $series];

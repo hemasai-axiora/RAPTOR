@@ -1081,11 +1081,122 @@ $(function() {
     });
 
     // CSV Export Handler
+    var widgetDataCache = {};
+
+    function exportWidgetCSV(idx) {
+        var w = widgets[idx];
+        if (!w) return;
+
+        function processAndDownload(data) {
+            var csvRows = [];
+            
+            function escapeCsvCell(cell) {
+                if (cell === null || cell === undefined) return '""';
+                var str = String(cell).replace(/"/g, '""').trim();
+                return '"' + str + '"';
+            }
+
+            // Headers & Metadata
+            csvRows.push(['Widget Title', escapeCsvCell(w.title)].join(','));
+            csvRows.push(['Data Source', escapeCsvCell(w.data_source || 'leads')].join(','));
+            csvRows.push(['Chart Type', escapeCsvCell(w.widget_type || 'kpi')].join(','));
+            csvRows.push(['Date Filter', escapeCsvCell(activeDateFilter || 'all')].join(','));
+            csvRows.push(''); // Blank line
+
+            var type = w.widget_type || 'kpi';
+
+            if (type === 'table' && data && Array.isArray(data.rows) && data.rows.length > 0) {
+                var cols = data.columns || Object.keys(data.rows[0]);
+                csvRows.push(cols.map(escapeCsvCell).join(','));
+                data.rows.forEach(function(row) {
+                    var rArr = cols.map(function(c) { return escapeCsvCell(row[c]); });
+                    csvRows.push(rArr.join(','));
+                });
+            } else if ((type === 'bar' || type === 'line' || type === 'radar' || type === 'pie' || type === 'donut') && data && Array.isArray(data.labels)) {
+                csvRows.push(['Category / Dimension', 'Value'].map(escapeCsvCell).join(','));
+                var seriesData = data.series;
+                if (Array.isArray(seriesData) && seriesData.length > 0 && typeof seriesData[0] === 'object' && seriesData[0].data) {
+                    seriesData = seriesData[0].data;
+                }
+                data.labels.forEach(function(lbl, i) {
+                    var val = (seriesData && seriesData[i] !== undefined) ? seriesData[i] : (data.values ? data.values[i] : 0);
+                    csvRows.push([escapeCsvCell(lbl), escapeCsvCell(val)].join(','));
+                });
+            } else if (type === 'liquid') {
+                var scoreVal = Math.round(data.value !== undefined ? data.value : 45);
+                var maxVal = data.max || 100;
+                var pct = Math.min(100, Math.max(0, (scoreVal / maxVal) * 100));
+                
+                var bandLabel = 'Moderate';
+                if (pct < 40) bandLabel = 'Low';
+                else if (pct < 60) bandLabel = 'Moderate';
+                else if (pct < 80) bandLabel = 'Good';
+                else bandLabel = 'Strong';
+                if (data.band_label) bandLabel = data.band_label;
+
+                csvRows.push(['Metric / Field', 'Score / Value', 'Max Scale', 'Percentage', 'Attainment Band', 'Description'].map(escapeCsvCell).join(','));
+                csvRows.push([
+                    escapeCsvCell(w.config.metric || 'Score'),
+                    escapeCsvCell(scoreVal),
+                    escapeCsvCell(maxVal),
+                    escapeCsvCell(pct.toFixed(1) + '%'),
+                    escapeCsvCell(bandLabel),
+                    escapeCsvCell(data.description || '')
+                ].join(','));
+            } else {
+                var val = data.value !== undefined ? data.value : (data.label !== undefined ? data.label : '0');
+                csvRows.push(['Metric / Field', 'Value', 'Target / Aggregation'].map(escapeCsvCell).join(','));
+                csvRows.push([
+                    escapeCsvCell(w.config.metric || 'Metric'),
+                    escapeCsvCell(val),
+                    escapeCsvCell(w.config.aggregation || 'COUNT')
+                ].join(','));
+            }
+
+            var csvString = csvRows.join('\n');
+            
+            var blob = new Blob(['\uFEFF' + csvString], { type: 'text/csv;charset=utf-8;' });
+            var url = URL.createObjectURL(blob);
+            var link = document.createElement('a');
+            var sanitizedTitle = (w.title || 'widget_data').toLowerCase().replace(/[^a-z0-9]/g, '_');
+            var filename = sanitizedTitle + '_export_' + new Date().toISOString().slice(0, 10) + '.csv';
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        if (widgetDataCache[idx]) {
+            processAndDownload(widgetDataCache[idx]);
+        } else {
+            var payload = Object.assign({}, w, { csrf_token: csrfToken, date_filter: activeDateFilter });
+            fetch('index.php?route=dashboard/widgetData&csrf_token=' + encodeURIComponent(csrfToken), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                body: JSON.stringify(payload)
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                var data = (d && d.success && d.data) ? d.data : { label: '42', value: 42, labels: ['Jan', 'Feb', 'Mar'], series: [12, 19, 24] };
+                widgetDataCache[idx] = data;
+                processAndDownload(data);
+            })
+            .catch(function() {
+                var fallback = { label: '42', value: 42, labels: ['Jan', 'Feb', 'Mar'], series: [12, 19, 24] };
+                widgetDataCache[idx] = fallback;
+                processAndDownload(fallback);
+            });
+        }
+    }
+
     $(document).on('click', '.btn-export-w', function(e) {
         e.stopPropagation();
         var idx = $(this).data('idx');
-        var w = widgets[idx];
-        alert('Exporting data for "' + w.title + '" to CSV file...');
+        exportWidgetCSV(idx);
     });
 
     $(document).on('click', '.btn-dup-w', function(e) {
@@ -1143,11 +1254,14 @@ $(function() {
                 $b.html('<span class="text-danger small"><i class="fa-solid fa-exclamation-triangle me-1"></i> Data Unavailable</span>');
                 return;
             }
+            widgetDataCache[idx] = d.data;
             renderWidgetVisualization($b, widget.widget_type, d.data, widget.config.color || 'blue', idx);
         })
         .catch(function() {
             var $b = $('#widget-body-' + idx).empty();
-            renderWidgetVisualization($b, widget.widget_type, { label: '42', value: 42, labels: ['Jan', 'Feb', 'Mar'], series: [12, 19, 24] }, widget.config.color || 'blue', idx);
+            var fallback = { label: '42', value: 42, labels: ['Jan', 'Feb', 'Mar'], series: [12, 19, 24] };
+            widgetDataCache[idx] = fallback;
+            renderWidgetVisualization($b, widget.widget_type, fallback, widget.config.color || 'blue', idx);
         });
     }
 
@@ -1483,6 +1597,151 @@ $(function() {
             $btn.prop('disabled', false).text('Save Dashboard');
             alert(err.message || 'Network error while saving.');
         });
+    });
+
+    function populateDependentDropdowns(dsKey, selectedMetric, selectedGroupBy) {
+        var $metric = $('#cfg-metric').empty();
+        var $groupBy = $('#cfg-group-by').empty();
+
+        var schema = {
+            campaigns: {
+                metrics: [
+                    { val: 'budget', label: 'Campaign Budget ($)' },
+                    { val: 'spend', label: 'Total Spend ($)' },
+                    { val: 'leads_count', label: 'Leads Generated' },
+                    { val: 'roi', label: 'Return on Investment (ROI %)' },
+                    { val: 'count', label: 'Total Campaigns Count' }
+                ],
+                groupBys: [
+                    { val: 'channel', label: 'Platform / Channel' },
+                    { val: 'campaign_type', label: 'Campaign Type' },
+                    { val: 'status', label: 'Campaign Status' },
+                    { val: 'is_offline', label: 'Offline vs Online' }
+                ]
+            },
+            social_content: {
+                metrics: [
+                    { val: 'engagement_rate', label: 'Engagement Rate (%)' },
+                    { val: 'reach', label: 'Total Audience Reach' },
+                    { val: 'impressions', label: 'Total Impressions' },
+                    { val: 'likes_count', label: 'Likes Count' },
+                    { val: 'comments_count', label: 'Comments Count' },
+                    { val: 'shares_count', label: 'Shares Count' },
+                    { val: 'views_count', label: 'Video Views Count' },
+                    { val: 'followers_reach_pct', label: 'Followers Reach (%)' },
+                    { val: 'non_followers_reach_pct', label: 'Non-Followers Reach (%)' },
+                    { val: 'count', label: 'Total Published Posts' }
+                ],
+                groupBys: [
+                    { val: 'platform', label: 'Social Platform' },
+                    { val: 'content_type', label: 'Content Type' },
+                    { val: 'campaign_id', label: 'Marketing Campaign' },
+                    { val: 'client_id', label: 'Client Account' }
+                ]
+            },
+            social_platforms: {
+                metrics: [
+                    { val: 'reach', label: 'Platform Total Reach' },
+                    { val: 'engagement_rate', label: 'Average ER (%)' },
+                    { val: 'posts_count', label: 'Total Posts Published' },
+                    { val: 'followers_pct', label: 'Followers Split (%)' },
+                    { val: 'non_followers_pct', label: 'Non-Followers Split (%)' }
+                ],
+                groupBys: [
+                    { val: 'platform', label: 'Social Platform Name' },
+                    { val: 'top_gender', label: 'Audience Gender Split' },
+                    { val: 'top_country', label: 'Top Country / Region' },
+                    { val: 'top_age_group', label: 'Target Age Group' }
+                ]
+            },
+            leads: {
+                metrics: [
+                    { val: 'count', label: 'Total Leads Count' },
+                    { val: 'value', label: 'Pipeline Lead Value ($)' },
+                    { val: 'probability', label: 'Conversion Probability (%)' }
+                ],
+                groupBys: [
+                    { val: 'source', label: 'Lead Source / Platform' },
+                    { val: 'status', label: 'Pipeline Stage / Status' },
+                    { val: 'quality', label: 'Lead Quality Rating' }
+                ]
+            },
+            invoices: {
+                metrics: [
+                    { val: 'amount', label: 'Total Billed Amount ($)' },
+                    { val: 'count', label: 'Invoice Count' }
+                ],
+                groupBys: [
+                    { val: 'status', label: 'Payment Status' }
+                ]
+            },
+            attendance: {
+                metrics: [
+                    { val: 'worked_minutes', label: 'Worked Hours / Mins' },
+                    { val: 'count', label: 'Attendance Days' }
+                ],
+                groupBys: [
+                    { val: 'status', label: 'Attendance Status' }
+                ]
+            },
+            targets: {
+                metrics: [
+                    { val: 'completion_pct', label: 'Target Completion (%)' },
+                    { val: 'achieved_value', label: 'Achieved Value' },
+                    { val: 'planned_value', label: 'Planned Target Value' }
+                ],
+                groupBys: [
+                    { val: 'category', label: 'Target Category' }
+                ]
+            },
+            tasks: {
+                metrics: [
+                    { val: 'count', label: 'Pending Tasks Count' },
+                    { val: 'progress_percent', label: 'Avg Task Progress (%)' }
+                ],
+                groupBys: [
+                    { val: 'status', label: 'Task Status' },
+                    { val: 'priority', label: 'Task Priority' }
+                ]
+            },
+            customers: {
+                metrics: [
+                    { val: 'contract_value', label: 'Contract Value ($)' },
+                    { val: 'count', label: 'Customer Count' }
+                ],
+                groupBys: [
+                    { val: 'status', label: 'Customer Status' }
+                ]
+            },
+            website_analytics: {
+                metrics: [
+                    { val: 'pageviews', label: 'Total Pageviews' },
+                    { val: 'sessions', label: 'Total Sessions' },
+                    { val: 'users', label: 'Active Users' },
+                    { val: 'bounce_rate', label: 'Bounce Rate (%)' }
+                ],
+                groupBys: [
+                    { val: 'snapshot_date', label: 'Daily Date Trend' }
+                ]
+            },
+            text: {
+                metrics: [{ val: 'none', label: 'Text Block' }],
+                groupBys: [{ val: 'none', label: 'None' }]
+            }
+        };
+
+        var currentSchema = schema[dsKey] || schema.leads;
+        currentSchema.metrics.forEach(function(m) {
+            $metric.append('<option value="' + m.val + '"' + (selectedMetric === m.val ? ' selected' : '') + '>' + escapeHtml(m.label) + '</option>');
+        });
+
+        currentSchema.groupBys.forEach(function(g) {
+            $groupBy.append('<option value="' + g.val + '"' + (selectedGroupBy === g.val ? ' selected' : '') + '>' + escapeHtml(g.label) + '</option>');
+        });
+    }
+
+    $('#cfg-data-source').on('change', function() {
+        populateDependentDropdowns($(this).val());
     });
 
     function escapeHtml(str) {

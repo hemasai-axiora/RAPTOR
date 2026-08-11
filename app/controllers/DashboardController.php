@@ -103,8 +103,10 @@ class DashboardController extends Controller {
 
         // Available Data Sources per Role
         $allDataSources = [
-            'leads' => 'Leads & Pipeline',
             'campaigns' => 'Marketing Campaigns',
+            'social_content' => 'Content Management & Analytics',
+            'social_platforms' => 'Social Media Platforms & Demographics',
+            'leads' => 'Leads & Pipeline',
             'invoices' => 'Invoices & Billing',
             'attendance' => 'Employee Attendance',
             'targets' => 'Targets & Quotas',
