@@ -142,7 +142,8 @@ class PostsController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
 
-            $data['post_code'] = trim($_POST['post_code'] ?? '');
+            // Post ID is locked once created and cannot be modified
+            $data['post_code'] = $post->post_code ?: ('PST-' . date('Y') . '-' . sprintf('%05d', $post->post_id));
             $data['client_id'] = trim($_POST['client_id'] ?? '');
             $data['campaign_id'] = trim($_POST['campaign_id'] ?? '');
             $data['title_input'] = trim($_POST['title'] ?? '');

@@ -8,20 +8,12 @@
                 <input type="hidden" name="post_id" value="<?php echo $post_id; ?>">
 
                 <div class="row g-3">
-                    <!-- Post ID (Unique & Editable) -->
+                    <!-- Post ID (Unique & Locked - Cannot be edited after creation) -->
                     <div class="col-md-6">
-                        <label for="post_code" class="form-label text-secondary">Post ID <span class="badge bg-secondary bg-opacity-25 text-info font-monospace ms-1 fw-normal">Editable Unique ID</span></label>
-                        <div class="input-group">
-                            <input type="text" name="post_code" id="post_code" 
-                                   class="form-control bg-dark border-secondary text-light font-monospace fw-bold <?php echo (!empty($post_code_err)) ? 'is-invalid' : ''; ?>" 
-                                   value="<?php echo htmlspecialchars($post_code ?? ''); ?>" required>
-                            <button type="button" class="btn btn-outline-secondary text-info border-secondary" id="btn_generate_post_code" title="Generate New Unique ID">
-                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Auto ID
-                            </button>
-                        </div>
-                        <?php if (!empty($post_code_err)): ?>
-                            <div class="text-danger small mt-1"><?php echo htmlspecialchars($post_code_err); ?></div>
-                        <?php endif; ?>
+                        <label for="post_code" class="form-label text-secondary">Post ID <span class="badge bg-secondary bg-opacity-25 text-secondary font-monospace ms-1 fw-normal"><i class="fa-solid fa-lock me-1"></i>Permanent Unique ID</span></label>
+                        <input type="text" name="post_code" id="post_code" 
+                               class="form-control bg-dark border-secondary text-light font-monospace fw-bold opacity-75" 
+                               value="<?php echo htmlspecialchars($post_code ?? ''); ?>" readonly>
                     </div>
 
                     <!-- Client Company -->
