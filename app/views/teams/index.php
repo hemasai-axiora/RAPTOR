@@ -29,6 +29,8 @@ if (!function_exists('renderOrgTree')) {
                 $dragAttributes = ' class="org-node"';
             }
             
+            $hasChildren = !empty($node->children);
+
             echo '<li>';
             echo '<div' . $dragAttributes . '>';
             echo $editButton;
@@ -41,9 +43,13 @@ if (!function_exists('renderOrgTree')) {
             
             // Display Role
             echo '  <div class="org-node-role text-muted small text-uppercase mt-1" style="font-size: 0.68rem; font-weight: 700; letter-spacing: 0.5px;">' . htmlspecialchars($node->role_name) . '</div>';
-            
+
+            if ($hasChildren) {
+                echo '  <button type="button" class="org-toggle-btn btn btn-sm btn-outline-primary border-0 rounded-circle mt-2 p-0" title="Minimize / Expand Sub-tree" style="width: 26px; height: 26px; line-height: 24px; font-size: 0.75rem; background: var(--primary-soft);"><i class="fa-solid fa-minus"></i></button>';
+            }
+
             echo '</div>';
-            if (!empty($node->children)) {
+            if ($hasChildren) {
                 renderOrgTree($node->children);
             }
             echo '</li>';
@@ -168,6 +174,32 @@ if (!function_exists('renderOrgTree')) {
     background: rgba(46, 196, 182, 0.05) !important;
     transform: scale(1.05);
 }
+/* Fullscreen / Maximize view styling */
+.pulse-card.tree-fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 99999 !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+    background-color: var(--panel-dark) !important;
+    padding: 1.75rem !important;
+}
+.pulse-card.tree-fullscreen .org-tree-wrapper {
+    max-height: calc(100vh - 120px) !important;
+    min-height: calc(100vh - 140px) !important;
+}
+.org-toggle-btn {
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+.org-toggle-btn:hover {
+    transform: scale(1.15);
+}
 </style>
 
 <?php if (!empty($_SESSION['team_error'])): ?>
@@ -193,8 +225,24 @@ if (!function_exists('renderOrgTree')) {
 <div class="tab-content">
     <!-- ===================== HIERARCHY TREE ===================== -->
     <div class="tab-pane fade" id="tab-hierarchy">
-        <div class="pulse-card">
-            <h4 class="text-white mb-4">Organization Hierarchy Tree</h4>
+        <div class="pulse-card" id="tree-card">
+            <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="text-white mb-1">Organization Hierarchy Tree</h4>
+                    <p class="text-secondary small mb-0">Visualize organizational reporting structure. Use controls to zoom, minimize, or maximize view.</p>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <div class="btn-group btn-group-sm me-1" role="group" aria-label="Zoom Controls">
+                        <button type="button" class="btn btn-outline-secondary" id="btn-tree-zoom-out" title="Zoom Out"><i class="fa-solid fa-minus"></i></button>
+                        <button type="button" class="btn btn-outline-secondary disabled fw-semibold text-primary" id="tree-zoom-val" style="min-width: 50px;">100%</button>
+                        <button type="button" class="btn btn-outline-secondary" id="btn-tree-zoom-in" title="Zoom In"><i class="fa-solid fa-plus"></i></button>
+                        <button type="button" class="btn btn-outline-secondary" id="btn-tree-zoom-reset" title="Reset Zoom"><i class="fa-solid fa-rotate-left"></i></button>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-tree-expand-all" title="Expand All Nodes"><i class="fa-solid fa-folder-open me-1"></i> Expand All</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-tree-collapse-all" title="Minimize All Sub-nodes"><i class="fa-solid fa-folder me-1"></i> Minimize All</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-tree-fullscreen" style="background: var(--primary); border: none;" title="Maximize / Minimize View"><i class="fa-solid fa-expand me-1"></i> Maximize</button>
+                </div>
+            </div>
             <div class="org-tree-wrapper">
                 <div class="org-tree">
                     <?php renderOrgTree($hierarchy_tree); ?>
@@ -723,6 +771,72 @@ $(function () {
             .catch(() => {
                 alert('Network error while saving hierarchy.');
             });
+        }
+    });
+
+    // --- Hierarchy Tree Maximize / Minimize & Zoom Controls ---
+    $(document).on('click', '.org-toggle-btn', function(e) {
+        e.stopPropagation();
+        var $btn = $(this);
+        var $node = $btn.closest('li');
+        var $subList = $node.children('ul');
+
+        if ($subList.is(':visible')) {
+            $subList.slideUp(200);
+            $btn.html('<i class="fa-solid fa-plus"></i>').attr('title', 'Expand Sub-tree');
+            $node.addClass('node-collapsed');
+        } else {
+            $subList.slideDown(200);
+            $btn.html('<i class="fa-solid fa-minus"></i>').attr('title', 'Minimize Sub-tree');
+            $node.removeClass('node-collapsed');
+        }
+    });
+
+    $('#btn-tree-expand-all').on('click', function() {
+        $('.org-tree ul').slideDown(200);
+        $('.org-toggle-btn').html('<i class="fa-solid fa-minus"></i>').attr('title', 'Minimize Sub-tree');
+        $('.org-tree li').removeClass('node-collapsed');
+    });
+
+    $('#btn-tree-collapse-all').on('click', function() {
+        $('.org-tree ul ul').slideUp(200);
+        $('.org-tree ul ul').parent('li').find('> .org-node .org-toggle-btn').html('<i class="fa-solid fa-plus"></i>').attr('title', 'Expand Sub-tree');
+        $('.org-tree ul ul').parent('li').addClass('node-collapsed');
+    });
+
+    var treeScale = 1.0;
+    function applyTreeScale(scale) {
+        treeScale = Math.min(2.0, Math.max(0.4, scale));
+        $('.org-tree').css({
+            'transform': 'scale(' + treeScale + ')',
+            'transform-origin': 'top center',
+            'transition': 'transform 0.2s ease-in-out'
+        });
+        $('#tree-zoom-val').text(Math.round(treeScale * 100) + '%');
+    }
+
+    $('#btn-tree-zoom-in').on('click', function() { applyTreeScale(treeScale + 0.15); });
+    $('#btn-tree-zoom-out').on('click', function() { applyTreeScale(treeScale - 0.15); });
+    $('#btn-tree-zoom-reset').on('click', function() { applyTreeScale(1.0); });
+
+    $('#btn-tree-fullscreen').on('click', function() {
+        var $card = $('#tree-card');
+        if ($card.hasClass('tree-fullscreen')) {
+            $card.removeClass('tree-fullscreen');
+            $('body').css('overflow', '');
+            $(this).html('<i class="fa-solid fa-expand me-1"></i> Maximize').attr('title', 'Maximize View');
+        } else {
+            $card.addClass('tree-fullscreen');
+            $('body').css('overflow', 'hidden');
+            $(this).html('<i class="fa-solid fa-compress me-1"></i> Minimize').attr('title', 'Minimize View');
+        }
+    });
+
+    $(document).on('keydown', function(e) {
+        if (e.key === 'Escape' && $('#tree-card').hasClass('tree-fullscreen')) {
+            $('#tree-card').removeClass('tree-fullscreen');
+            $('body').css('overflow', '');
+            $('#btn-tree-fullscreen').html('<i class="fa-solid fa-expand me-1"></i> Maximize').attr('title', 'Maximize View');
         }
     });
 });
