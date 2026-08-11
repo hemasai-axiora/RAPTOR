@@ -59,7 +59,7 @@ class Policy {
     }
 
     public static function canCreateDashboardTemplate(): bool {
-        return in_array(self::role(), ['admin', 'analyst'], true);
+        return !empty(self::role());
     }
 
     public static function roleLabel(?string $role = null): string {

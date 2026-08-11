@@ -4,6 +4,7 @@
 class DashboardController extends Controller {
     private $monitoringModel;
     private $dashboardModuleModel;
+    private $customDashboardModel;
 
     public function __construct() {
         // Enforce user authentication for all dashboard routes
@@ -11,6 +12,7 @@ class DashboardController extends Controller {
         $this->requirePermission('dashboard', 'view');
         $this->monitoringModel = $this->model('Monitoring');
         $this->dashboardModuleModel = $this->model('DashboardModule');
+        $this->customDashboardModel = $this->model('CustomDashboard');
     }
 
     // Dedicated dashboard module landing page
@@ -73,15 +75,147 @@ class DashboardController extends Controller {
     }
 
     public function templates() {
-        $this->requirePermission('dashboard', 'manage');
+        $customDashboards = $this->customDashboardModel->getDashboardsForUser((int)$_SESSION['user_id'], $_SESSION['user_role']);
+        $legacyTemplates = $this->dashboardModuleModel->templatesForUser((int)$_SESSION['user_id'], $_SESSION['user_role']);
 
         $this->viewWithLayout('dashboard/templates', 'main', [
             'title' => 'Dashboard Templates | Raptor CRM',
             'active_tab' => 'dashboard_module',
+            'custom_dashboards' => $customDashboards,
+            'legacy_templates' => $legacyTemplates,
             'dashboards' => $this->dashboardModuleModel->dashboardsForRole($_SESSION['user_role']),
-            'templates' => $this->dashboardModuleModel->templatesForUser((int) $_SESSION['user_id'], $_SESSION['user_role']),
             'widget_meta' => $this->dashboardModuleModel->widgetMeta(),
         ]);
+    }
+
+    public function builder($id = null) {
+        $id = $id !== null ? (int)$id : 0;
+        $dashboard = null;
+
+        if ($id > 0) {
+            $dashboard = $this->customDashboardModel->getDashboardById($id);
+            if (!$dashboard) {
+                $_SESSION['template_error'] = 'Dashboard not found.';
+                $this->redirect('index.php?route=dashboard/templates');
+                return;
+            }
+        }
+
+        // Available Data Sources per Role
+        $allDataSources = [
+            'leads' => 'Leads & Pipeline',
+            'campaigns' => 'Marketing Campaigns',
+            'invoices' => 'Invoices & Billing',
+            'attendance' => 'Employee Attendance',
+            'targets' => 'Targets & Quotas',
+            'tasks' => 'Task Board',
+            'customers' => 'Customer Accounts',
+            'website_analytics' => 'Website Analytics (GA4)',
+            'text' => 'Text & Note Block'
+        ];
+
+        if (in_array($_SESSION['user_role'], ['employee', 'sales_person'])) {
+            unset($allDataSources['invoices']);
+        }
+
+        $data = [
+            'title' => ($dashboard ? 'Edit ' . htmlspecialchars($dashboard->name) : 'New Dashboard Builder') . ' | Raptor CRM',
+            'active_tab' => 'dashboard_module',
+            'dashboard' => $dashboard,
+            'data_sources' => $allDataSources,
+            'roles' => ['admin', 'manager', 'team_leader', 'employee', 'sales_person', 'hr', 'finance', 'analyst']
+        ];
+
+        $this->viewWithLayout('dashboard/builder', 'main', $data);
+    }
+
+    public function saveCustomDashboard() {
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $rawInput = file_get_contents('php://input');
+            $data = json_decode($rawInput, true);
+
+            if (!$data && !empty($_POST)) {
+                $data = $_POST;
+            }
+
+            // CSRF Validation Check
+            $csrfToken = $data['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_GET['csrf_token'] ?? '';
+            if (!$this->validateCsrfToken($csrfToken)) {
+                echo json_encode(['success' => false, 'message' => 'Security Error: CSRF token validation failed.']);
+                exit;
+            }
+
+            if (empty($data['name'])) {
+                echo json_encode(['success' => false, 'message' => 'Dashboard name is required.']);
+                exit;
+            }
+
+            $userId = (int)($_SESSION['user_id'] ?? 0);
+            if ($userId <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Session expired. Please log in again.']);
+                exit;
+            }
+
+            try {
+                $id = $this->customDashboardModel->saveDashboard($data, $userId);
+                $this->audit('Saved custom dashboard ID: ' . $id, 'custom_dashboard');
+                echo json_encode(['success' => true, 'id' => $id, 'message' => 'Dashboard saved successfully.']);
+            } catch (Throwable $e) {
+                echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+            }
+            exit;
+        }
+    }
+
+    public function duplicateDashboard($id = null) {
+        $id = (int)$id;
+        if ($id > 0) {
+            $newId = $this->customDashboardModel->duplicateDashboard($id, (int)$_SESSION['user_id']);
+            if ($newId) {
+                $_SESSION['template_success'] = 'Dashboard duplicated successfully.';
+            } else {
+                $_SESSION['template_error'] = 'Failed to duplicate dashboard.';
+            }
+        }
+        $this->redirect('index.php?route=dashboard/templates');
+    }
+
+    public function deleteDashboard($id = null) {
+        $id = (int)$id;
+        if ($id > 0) {
+            $isAdmin = ($_SESSION['user_role'] === 'admin');
+            $res = $this->customDashboardModel->deleteDashboard($id, (int)$_SESSION['user_id'], $isAdmin);
+            if ($res) {
+                $_SESSION['template_success'] = 'Dashboard deleted cleanly.';
+            } else {
+                $_SESSION['template_error'] = 'Could not delete dashboard.';
+            }
+        }
+        $this->redirect('index.php?route=dashboard/templates');
+    }
+
+    public function setDefaultDashboard($id = null) {
+        $id = (int)$id;
+        if ($id > 0) {
+            $this->customDashboardModel->setDefaultDashboard($id, (int)$_SESSION['user_id']);
+            $_SESSION['template_success'] = 'Set as your default dashboard.';
+        }
+        $this->redirect('index.php?route=dashboard/templates');
+    }
+
+    public function widgetData() {
+        header('Content-Type: application/json');
+        $raw = file_get_contents('php://input');
+        $widget = json_decode($raw, true) ?: $_POST;
+
+        $data = $this->customDashboardModel->getWidgetData($widget, $_SESSION['user_role'], (int)$_SESSION['user_id'], $_GET);
+        echo json_encode(['success' => true, 'data' => $data]);
+        exit;
     }
 
     public function createTemplate() {

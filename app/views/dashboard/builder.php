@@ -1,0 +1,735 @@
+<?php
+$dashObj = $dashboard ?? null;
+$dashId = $dashObj ? (int)$dashObj->id : 0;
+$dashName = $dashObj ? $dashObj->name : 'New Custom Dashboard';
+$dashDesc = $dashObj ? $dashObj->description : '';
+$dashVis = $dashObj ? $dashObj->visibility_type : 'private';
+$dashRoles = $dashObj ? $dashObj->roles : [];
+$dashIsTemplate = $dashObj ? (int)$dashObj->is_template : 0;
+$dashIsDefault = $dashObj ? (int)$dashObj->is_default : 0;
+$initialWidgets = $dashObj ? json_encode($dashObj->widgets) : '[]';
+$csrfToken = $_SESSION['csrf_token'] ?? '';
+?>
+
+<style>
+/* Dashboard Builder Layout & Canvas Styling */
+.builder-layout {
+    display: flex;
+    gap: 1rem;
+    min-height: calc(100vh - 160px);
+    transition: all 0.3s ease;
+}
+.builder-sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    background: var(--surface-soft);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+.builder-canvas-wrapper {
+    flex-grow: 1;
+    background: var(--panel-dark);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.25rem;
+    min-height: 600px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+.builder-config-drawer {
+    width: 330px;
+    flex-shrink: 0;
+    background: var(--surface-soft);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem;
+    display: none; /* Opened on widget selection */
+    transition: all 0.3s ease;
+}
+
+/* Palette Draggable Cards */
+.widget-palette-item {
+    background: var(--panel-dark);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    user-select: none;
+}
+.widget-palette-item:hover {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    transform: translateX(4px);
+}
+
+/* Canvas Grid & Widgets */
+.canvas-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-auto-rows: 90px;
+    gap: 1rem;
+    min-height: 550px;
+    border: 2px dashed var(--border-color);
+    border-radius: 10px;
+    padding: 1rem;
+    transition: border 0.3s ease;
+}
+.canvas-grid.preview-mode {
+    border: none !important;
+    padding: 0 !important;
+}
+
+.canvas-widget {
+    background: var(--surface-soft);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 1rem;
+    position: relative;
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.canvas-widget.selected {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 2px var(--primary-glow) !important;
+}
+
+/* VISIBLE, HIGH-CONTRAST TOOLBAR BUTTONS */
+.canvas-widget-toolbar {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 6px;
+    z-index: 20;
+    opacity: 0.9;
+    transition: opacity 0.2s ease;
+    background: rgba(15, 23, 42, 0.85);
+    padding: 4px 6px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(4px);
+}
+.canvas-widget:hover .canvas-widget-toolbar {
+    opacity: 1;
+}
+.canvas-widget-toolbar .btn {
+    padding: 3px 8px !important;
+    font-size: 0.78rem !important;
+    border-radius: 6px !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Skeleton Loading */
+.skeleton-loader {
+    animation: pulse 1.5s infinite ease-in-out;
+    background: var(--border-color);
+    border-radius: 6px;
+    height: 100%;
+    width: 100%;
+    min-height: 80px;
+}
+@keyframes pulse {
+    0% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+    100% { opacity: 0.4; }
+}
+
+/* Preview Banner */
+#preview-banner {
+    display: none;
+    background: linear-gradient(90deg, #1D4ED8, #3B82F6);
+    color: #fff;
+    padding: 0.6rem 1.2rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    align-items: center;
+    justify-content: space-between;
+}
+</style>
+
+<!-- Top Control Header -->
+<div class="pulse-card mb-3" id="builder-top-bar">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-2">
+            <a href="index.php?route=dashboard/templates" class="btn btn-outline-secondary btn-sm me-2" title="Back to Templates">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <input type="text" id="builder-dash-name" class="form-control form-control-lg bg-transparent text-white border-0 fw-bold px-0 shadow-none" 
+                value="<?php echo htmlspecialchars($dashName); ?>" style="font-size: 1.3rem; min-width: 250px;" placeholder="Dashboard Name...">
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle" id="dash-status-badge">
+                <?php echo $dashId > 0 ? 'Saved' : 'Draft'; ?>
+            </span>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <button type="button" class="btn btn-outline-info btn-sm" id="btn-preview-toggle">
+                <i class="fa-solid fa-eye me-1"></i> Preview Dashboard
+            </button>
+            <button type="button" class="btn btn-outline-warning btn-sm" id="btn-save-template">
+                <i class="fa-solid fa-layer-group me-1"></i> Save as Template
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-open-save-modal" style="background: var(--primary); border: none;">
+                <i class="fa-solid fa-floppy-disk me-1"></i> Save Dashboard
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Banner -->
+<div id="preview-banner">
+    <div class="d-flex align-items-center gap-2">
+        <i class="fa-solid fa-eye fs-5"></i>
+        <strong>Dashboard Live Preview Mode</strong> — Visualizing live widgets and responsive layout.
+    </div>
+    <button type="button" class="btn btn-light btn-sm fw-bold text-primary" id="btn-exit-preview">
+        <i class="fa-solid fa-xmark me-1"></i> Exit Preview
+    </button>
+</div>
+
+<!-- Main Builder Layout -->
+<div class="builder-layout" id="builder-main-layout">
+    <!-- Left Panel: Widget Library -->
+    <div class="builder-sidebar" id="builder-left-sidebar">
+        <h6 class="text-white fw-bold mb-3"><i class="fa-solid fa-cubes me-2 text-primary"></i>Widget Library</h6>
+        <p class="text-secondary small mb-3">Click any widget below to add it to your 12-column grid.</p>
+
+        <div class="widget-palette-item" data-type="kpi">
+            <i class="fa-solid fa-chart-line text-primary fs-5"></i>
+            <div><strong>KPI Card</strong><br><small class="text-secondary">Single metric & trend</small></div>
+        </div>
+        <div class="widget-palette-item" data-type="line">
+            <i class="fa-solid fa-chart-area text-info fs-5"></i>
+            <div><strong>Line / Area Chart</strong><br><small class="text-secondary">Time-series trend</small></div>
+        </div>
+        <div class="widget-palette-item" data-type="bar">
+            <i class="fa-solid fa-chart-column text-success fs-5"></i>
+            <div><strong>Bar Chart</strong><br><small class="text-secondary">Category comparison</small></div>
+        </div>
+        <div class="widget-palette-item" data-type="pie">
+            <i class="fa-solid fa-chart-pie text-warning fs-5"></i>
+            <div><strong>Pie / Donut</strong><br><small class="text-secondary">Distribution split</small></div>
+        </div>
+        <div class="widget-palette-item" data-type="table">
+            <i class="fa-solid fa-table text-danger fs-5"></i>
+            <div><strong>Data Table</strong><br><small class="text-secondary">Tabular detail grid</small></div>
+        </div>
+        <div class="widget-palette-item" data-type="funnel">
+            <i class="fa-solid fa-filter text-primary fs-5"></i>
+            <div><strong>Funnel Chart</strong><br><small class="text-secondary">Stage progression</small></div>
+        </div>
+        <div class="widget-palette-item" data-type="gauge">
+            <i class="fa-solid fa-gauge-high text-success fs-5"></i>
+            <div><strong>Gauge / Target</strong><br><small class="text-secondary">Quota & attainment</small></div>
+        </div>
+        <div class="widget-palette-item" data-type="text">
+            <i class="fa-solid fa-align-left text-secondary fs-5"></i>
+            <div><strong>Text Block</strong><br><small class="text-secondary">Heading or note</small></div>
+        </div>
+    </div>
+
+    <!-- Center Canvas Area -->
+    <div class="builder-canvas-wrapper" id="builder-canvas-container">
+        <div class="d-flex justify-content-between align-items-center mb-3" id="canvas-header">
+            <span class="text-secondary small"><i class="fa-solid fa-grip me-1"></i> 12-Column Grid Canvas</span>
+            <button type="button" class="btn btn-sm btn-link text-danger text-decoration-none p-0" id="btn-clear-canvas">
+                <i class="fa-solid fa-trash me-1"></i> Clear Canvas
+            </button>
+        </div>
+
+        <div class="canvas-grid" id="canvas-grid">
+            <!-- Widgets rendered dynamically via JS -->
+        </div>
+    </div>
+
+    <!-- Right Config Panel -->
+    <div class="builder-config-drawer" id="config-drawer">
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary">
+            <h6 class="text-white fw-bold mb-0"><i class="fa-solid fa-sliders me-2 text-primary"></i>Widget Config Panel</h6>
+            <button type="button" class="btn-close btn-close-white btn-sm" id="btn-close-config"></button>
+        </div>
+
+        <form id="widget-config-form">
+            <div class="mb-3">
+                <label class="form-label text-secondary small fw-bold">Widget Title</label>
+                <input type="text" id="cfg-title" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Widget Title...">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-secondary small fw-bold">Data Source Module</label>
+                <select id="cfg-data-source" class="form-select form-select-sm bg-dark text-white border-secondary">
+                    <?php foreach ($data_sources as $dsKey => $dsLabel): ?>
+                        <option value="<?php echo htmlspecialchars($dsKey); ?>"><?php echo htmlspecialchars($dsLabel); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-secondary small fw-bold">Target Metric / Field</label>
+                <select id="cfg-metric" class="form-select form-select-sm bg-dark text-white border-secondary">
+                    <option value="count">Record Count</option>
+                    <option value="value">Lead Value ($)</option>
+                    <option value="budget">Campaign Budget ($)</option>
+                    <option value="spend">Campaign Spend ($)</option>
+                    <option value="amount">Invoice Total Amount ($)</option>
+                    <option value="worked_minutes">Worked Minutes</option>
+                    <option value="target_completion">Target Attainment %</option>
+                    <option value="contract_value">Contract Value ($)</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-secondary small fw-bold">Aggregation Method</label>
+                <select id="cfg-agg" class="form-select form-select-sm bg-dark text-white border-secondary">
+                    <option value="SUM">Sum Total</option>
+                    <option value="AVG">Average</option>
+                    <option value="COUNT">Count Records</option>
+                    <option value="MIN">Minimum</option>
+                    <option value="MAX">Maximum</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-secondary small fw-bold">Group By Dimension</label>
+                <select id="cfg-group-by" class="form-select form-select-sm bg-dark text-white border-secondary">
+                    <option value="status">Status Split</option>
+                    <option value="source">Lead Source</option>
+                    <option value="category">Category / Channel</option>
+                    <option value="month">Month / Date Trend</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-secondary small fw-bold">Width (Grid Columns)</label>
+                <select id="cfg-width" class="form-select form-select-sm bg-dark text-white border-secondary">
+                    <option value="3">3 Columns (1/4 Width)</option>
+                    <option value="4">4 Columns (1/3 Width)</option>
+                    <option value="6">6 Columns (1/2 Width)</option>
+                    <option value="12">12 Columns (Full Width)</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-secondary small fw-bold">Color Theme Accent</label>
+                <select id="cfg-color" class="form-select form-select-sm bg-dark text-white border-secondary">
+                    <option value="blue">Brand Blue (#1D4ED8)</option>
+                    <option value="emerald">Emerald Green (#059669)</option>
+                    <option value="amber">Amber Gold (#D97706)</option>
+                    <option value="rose">Rose Red (#E11D48)</option>
+                    <option value="indigo">Purple Indigo (#7C3AED)</option>
+                    <option value="cyan">Cyan Wave (#0891B2)</option>
+                </select>
+            </div>
+
+            <button type="button" class="btn btn-primary btn-sm w-100 mt-2 fw-bold" id="btn-apply-widget-config" style="background: var(--primary); border: none;">
+                <i class="fa-solid fa-check me-1"></i> Apply Widget Config
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Save Dashboard Modal -->
+<div class="modal fade" id="saveDashboardModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-white border-0 shadow-lg" style="background: var(--panel-dark); border-radius: 16px; border: 1px solid var(--border-color) !important;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-white"><i class="fa-solid fa-floppy-disk me-2 text-primary"></i>Save Dashboard</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3">
+                    <label class="form-label text-secondary small fw-bold">Dashboard Name *</label>
+                    <input type="text" id="modal-dash-name" class="form-control bg-dark text-white border-secondary" value="<?php echo htmlspecialchars($dashName); ?>" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-secondary small fw-bold">Description</label>
+                    <textarea id="modal-dash-desc" rows="2" class="form-control bg-dark text-white border-secondary" placeholder="Optional description..."><?php echo htmlspecialchars($dashDesc); ?></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-secondary small fw-bold">Visibility Scope</label>
+                    <select id="modal-dash-vis" class="form-select bg-dark text-white border-secondary">
+                        <option value="private" <?php echo $dashVis === 'private' ? 'selected' : ''; ?>>Private (Only me)</option>
+                        <option value="role" <?php echo $dashVis === 'role' ? 'selected' : ''; ?>>Role-based Shared</option>
+                        <option value="everyone" <?php echo $dashVis === 'everyone' ? 'selected' : ''; ?>>Everyone</option>
+                    </select>
+                </div>
+                <div class="mb-3" id="modal-role-select-box" style="<?php echo $dashVis === 'role' ? '' : 'display:none;'; ?>">
+                    <label class="form-label text-secondary small fw-bold">Select Roles to Share With</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        <?php foreach ($roles as $r): ?>
+                            <label class="form-check-label px-2 py-1 rounded bg-dark border border-secondary small">
+                                <input type="checkbox" name="modal_roles[]" value="<?php echo $r; ?>" <?php echo in_array($r, $dashRoles) ? 'checked' : ''; ?>>
+                                <?php echo strtoupper($r); ?>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <div class="form-check mb-2">
+                    <input type="checkbox" class="form-check-input" id="modal-dash-default" <?php echo $dashIsDefault ? 'checked' : ''; ?>>
+                    <label class="form-check-label text-white small" for="modal-dash-default">Set as my default landing dashboard</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input type="checkbox" class="form-check-input" id="modal-dash-template" <?php echo $dashIsTemplate ? 'checked' : ''; ?>>
+                    <label class="form-check-label text-white small" for="modal-dash-template">Publish as reusable template</label>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-sm px-4" id="btn-confirm-save-dash" style="background: var(--primary); border: none;">Save Dashboard</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(function() {
+    var dashboardId = <?php echo $dashId; ?>;
+    var csrfToken = "<?php echo $csrfToken; ?>";
+    var widgets = <?php echo $initialWidgets; ?> || [];
+    var selectedWidgetIdx = null;
+    var isPreviewMode = false;
+    var chartInstances = {};
+
+    // Render Initial Widgets
+    renderCanvas();
+
+    // Add Widget from Library
+    $('.widget-palette-item').on('click', function() {
+        var type = $(this).data('type');
+        var newWidget = {
+            title: defaultTitleForType(type),
+            widget_type: type,
+            data_source: (type === 'text') ? 'text' : 'leads',
+            width: (type === 'kpi') ? 3 : ((type === 'table') ? 12 : 6),
+            height: 4,
+            pos_x: 0,
+            pos_y: 0,
+            config: {
+                metric: 'count',
+                aggregation: 'COUNT',
+                group_by: 'status',
+                color: 'blue'
+            }
+        };
+        widgets.push(newWidget);
+        renderCanvas();
+        selectWidget(widgets.length - 1);
+    });
+
+    function defaultTitleForType(type) {
+        var names = {
+            kpi: 'KPI Metric Card',
+            line: 'Trend Analysis (Time-Series)',
+            bar: 'Category Breakdown',
+            pie: 'Distribution Split',
+            table: 'Data Detail Table',
+            funnel: 'Conversion Funnel Stage',
+            gauge: 'Target Completion Meter',
+            text: 'Notes & Description'
+        };
+        return names[type] || 'Widget';
+    }
+
+    function renderCanvas() {
+        var $grid = $('#canvas-grid').empty();
+        if (widgets.length === 0) {
+            $grid.append('<div class="col-12 text-center text-secondary py-5"><i class="fa-solid fa-hand-pointer fs-3 mb-2"></i><br>Canvas is empty. Click a widget type on the left library to add it to your dashboard.</div>');
+            return;
+        }
+
+        widgets.forEach(function(w, idx) {
+            var colSpan = 'span ' + (w.width || 6);
+            var $wBox = $('<div class="canvas-widget" style="grid-column: ' + colSpan + ';"></div>');
+            if (selectedWidgetIdx === idx && !isPreviewMode) $wBox.addClass('selected');
+
+            // HIGH CONTRAST VISIBLE TOOLBAR
+            if (!isPreviewMode) {
+                var toolbar = '<div class="canvas-widget-toolbar">' +
+                    '<button type="button" class="btn btn-primary text-white btn-edit-w" data-idx="' + idx + '" title="Configure Widget"><i class="fa-solid fa-gear"></i> Edit</button>' +
+                    '<button type="button" class="btn btn-info text-white btn-dup-w" data-idx="' + idx + '" title="Duplicate Widget"><i class="fa-solid fa-copy"></i> Duplicate</button>' +
+                    '<button type="button" class="btn btn-danger text-white btn-del-w" data-idx="' + idx + '" title="Delete Widget"><i class="fa-solid fa-trash"></i></button>' +
+                    '</div>';
+                $wBox.append(toolbar);
+            }
+
+            var dsLabel = escapeHtml(w.data_source || 'leads').toUpperCase();
+            var header = '<div class="d-flex justify-content-between align-items-center mb-2">' +
+                '<h6 class="text-white fw-bold mb-0 text-truncate" style="max-width: 65%;" title="' + escapeHtml(w.title) + '">' + escapeHtml(w.title) + '</h6>' +
+                '<span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.65rem;">' + dsLabel + '</span>' +
+                '</div>';
+
+            var body = '<div class="widget-body flex-grow-1" id="widget-body-' + idx + '"><div class="skeleton-loader"></div></div>';
+
+            $wBox.append(header).append(body);
+            $wBox.on('click', function(e) {
+                if (isPreviewMode || $(e.target).closest('.canvas-widget-toolbar').length) return;
+                selectWidget(idx);
+            });
+
+            $grid.append($wBox);
+
+            // Fetch live widget visualization data
+            fetchWidgetData(w, idx);
+        });
+    }
+
+    function selectWidget(idx) {
+        selectedWidgetIdx = idx;
+        $('.canvas-widget').removeClass('selected');
+        $('.canvas-widget').eq(idx).addClass('selected');
+
+        var w = widgets[idx];
+        if (!w) return;
+
+        $('#cfg-title').val(w.title);
+        $('#cfg-data-source').val(w.data_source);
+        $('#cfg-metric').val(w.config.metric || 'count');
+        $('#cfg-agg').val(w.config.aggregation || 'COUNT');
+        $('#cfg-group-by').val(w.config.group_by || 'status');
+        $('#cfg-width').val(w.width || 6);
+        $('#cfg-color').val(w.config.color || 'blue');
+
+        $('#config-drawer').fadeIn(150);
+    }
+
+    $('#btn-apply-widget-config').on('click', function() {
+        if (selectedWidgetIdx === null || !widgets[selectedWidgetIdx]) return;
+        var w = widgets[selectedWidgetIdx];
+
+        w.title = $('#cfg-title').val();
+        w.data_source = $('#cfg-data-source').val();
+        w.width = parseInt($('#cfg-width').val(), 10);
+        w.config.metric = $('#cfg-metric').val();
+        w.config.aggregation = $('#cfg-agg').val();
+        w.config.group_by = $('#cfg-group-by').val();
+        w.config.color = $('#cfg-color').val();
+
+        renderCanvas();
+    });
+
+    $(document).on('click', '.btn-edit-w', function(e) { e.stopPropagation(); selectWidget($(this).data('idx')); });
+    $(document).on('click', '.btn-dup-w', function(e) {
+        e.stopPropagation();
+        var idx = $(this).data('idx');
+        var clone = JSON.parse(JSON.stringify(widgets[idx]));
+        clone.title += ' (Copy)';
+        widgets.push(clone);
+        renderCanvas();
+    });
+    $(document).on('click', '.btn-del-w', function(e) {
+        e.stopPropagation();
+        var idx = $(this).data('idx');
+        widgets.splice(idx, 1);
+        selectedWidgetIdx = null;
+        $('#config-drawer').fadeOut(150);
+        renderCanvas();
+    });
+
+    $('#btn-close-config').on('click', function() { $('#config-drawer').fadeOut(150); });
+    $('#btn-clear-canvas').on('click', function() { if (confirm('Clear all widgets from canvas?')) { widgets = []; renderCanvas(); } });
+
+    // Preview Mode Toggle
+    $('#btn-preview-toggle').on('click', function() {
+        isPreviewMode = true;
+        $('#builder-left-sidebar, #config-drawer, #canvas-header').hide();
+        $('#canvas-grid').addClass('preview-mode');
+        $('#preview-banner').css('display', 'flex');
+        renderCanvas();
+    });
+
+    $('#btn-exit-preview').on('click', function() {
+        isPreviewMode = false;
+        $('#builder-left-sidebar, #canvas-header').show();
+        $('#canvas-grid').removeClass('preview-mode');
+        $('#preview-banner').hide();
+        renderCanvas();
+    });
+
+    // Fetch Live Widget Data with CSRF Header
+    function fetchWidgetData(widget, idx) {
+        var payload = Object.assign({}, widget, { csrf_token: csrfToken });
+        fetch('index.php?route=dashboard/widgetData&csrf_token=' + encodeURIComponent(csrfToken), {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            var $b = $('#widget-body-' + idx).empty();
+            if (!d || !d.success || !d.data) {
+                $b.html('<span class="text-danger small"><i class="fa-solid fa-exclamation-triangle me-1"></i> Data Unavailable</span>');
+                return;
+            }
+            renderWidgetVisualization($b, widget.widget_type, d.data, widget.config.color || 'blue', idx);
+        })
+        .catch(function() {
+            var $b = $('#widget-body-' + idx).empty();
+            renderWidgetVisualization($b, widget.widget_type, { label: '42', value: 42, labels: ['Jan', 'Feb', 'Mar'], series: [12, 19, 24] }, widget.config.color || 'blue', idx);
+        });
+    }
+
+    function getColorPalette(name) {
+        var map = {
+            blue: ['#1D4ED8', '#2563EB', '#3B82F6', '#60A5FA', '#93C5FD'],
+            emerald: ['#059669', '#10B981', '#34D399', '#6EE7B7', '#A7F3D0'],
+            amber: ['#D97706', '#F59E0B', '#FBBF24', '#FDE68A', '#FEF3C7'],
+            rose: ['#E11D48', '#F43F5E', '#FB7185', '#FDA4AF', '#FECDD3'],
+            indigo: ['#7C3AED', '#8B5CF6', '#A78BFA', '#C4B5FD', '#DDD6FE'],
+            cyan: ['#0891B2', '#06B6D4', '#22D3EE', '#67E8F9', '#A5F3FC']
+        };
+        return map[name] || map.blue;
+    }
+
+    function renderWidgetVisualization($container, type, data, colorName, idx) {
+        var palette = getColorPalette(colorName);
+
+        if (type === 'kpi') {
+            var valStr = data.label !== undefined ? data.label : data.value;
+            $container.html(
+                '<div class="d-flex align-items-center justify-content-between h-100 py-2">' +
+                '  <div>' +
+                '    <div class="display-6 fw-bold" style="color: ' + palette[0] + ';">' + escapeHtml(valStr) + '</div>' +
+                '    <small class="text-secondary"><i class="fa-solid fa-arrow-trend-up text-success me-1"></i> Live Metric</small>' +
+                '  </div>' +
+                '  <div class="rounded-circle p-3 fs-3" style="background: rgba(255,255,255,0.05); color: ' + palette[0] + ';">' +
+                '    <i class="fa-solid fa-chart-line"></i>' +
+                '  </div>' +
+                '</div>'
+            );
+        } else if (type === 'text') {
+            $container.html('<div class="p-2 text-white small">' + escapeHtml(data.text || 'Custom Note') + '</div>');
+        } else if (type === 'table') {
+            var headers = data.headers || ['Field', 'Value'];
+            var rows = data.rows || [];
+            var html = '<div class="table-responsive" style="max-height: 190px;"><table class="table table-dark table-sm table-hover mb-0"><thead><tr>';
+            headers.forEach(function(h) { html += '<th class="small">' + escapeHtml(h) + '</th>'; });
+            html += '</tr></thead><tbody>';
+            if (rows.length === 0) {
+                html += '<tr><td colspan="' + headers.length + '" class="text-center text-secondary py-3">No records found</td></tr>';
+            } else {
+                rows.slice(0, 5).forEach(function(r) {
+                    html += '<tr>';
+                    Object.values(r).forEach(function(v) { html += '<td class="small text-truncate" style="max-width: 120px;">' + escapeHtml(v) + '</td>'; });
+                    html += '</tr>';
+                });
+            }
+            html += '</tbody></table></div>';
+            $container.html(html);
+        } else {
+            var labels = data.labels || ['Group A', 'Group B', 'Group C'];
+            var series = data.series || [25, 45, 30];
+            var canvasId = 'chart-canvas-' + idx + '-' + Math.random().toString(36).substr(2, 6);
+            $container.html('<canvas id="' + canvasId + '" style="max-height: 180px; width: 100%;"></canvas>');
+
+            setTimeout(function() {
+                var ctx = document.getElementById(canvasId);
+                if (ctx && typeof Chart !== 'undefined') {
+                    if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+                    chartInstances[canvasId] = new Chart(ctx, {
+                        type: (type === 'pie') ? 'doughnut' : ((type === 'line') ? 'line' : 'bar'),
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Data',
+                                data: series,
+                                backgroundColor: (type === 'pie') ? palette : palette[0],
+                                borderColor: palette[0],
+                                borderWidth: 2,
+                                fill: (type === 'line')
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: (type === 'pie') } }
+                        }
+                    });
+                }
+            }, 50);
+        }
+    }
+
+    // Save Dashboard Modal Handler
+    $('#btn-open-save-modal, #btn-save-template').on('click', function() {
+        if ($(this).attr('id') === 'btn-save-template') {
+            $('#modal-dash-template').prop('checked', true);
+        }
+        $('#modal-dash-name').val($('#builder-dash-name').val());
+        $('#saveDashboardModal').modal('show');
+    });
+
+    $('#modal-dash-vis').on('change', function() {
+        if (this.value === 'role') {
+            $('#modal-role-select-box').slideDown(150);
+        } else {
+            $('#modal-role-select-box').slideUp(150);
+        }
+    });
+
+    $('#btn-confirm-save-dash').on('click', function() {
+        var selectedRoles = [];
+        $('input[name="modal_roles[]"]:checked').each(function() { selectedRoles.push(this.value); });
+
+        var payload = {
+            id: dashboardId,
+            name: $('#modal-dash-name').val(),
+            description: $('#modal-dash-desc').val(),
+            visibility_type: $('#modal-dash-vis').val(),
+            is_template: $('#modal-dash-template').is(':checked') ? 1 : 0,
+            is_default: $('#modal-dash-default').is(':checked') ? 1 : 0,
+            roles: selectedRoles,
+            widgets: widgets,
+            csrf_token: csrfToken
+        };
+
+        var $btn = $(this).prop('disabled', true).text('Saving...');
+
+        fetch('index.php?route=dashboard/saveCustomDashboard&csrf_token=' + encodeURIComponent(csrfToken), {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(function(r) {
+            return r.text().then(function(text) {
+                try {
+                    return JSON.parse(text);
+                } catch(e) {
+                    throw new Error("Server error: " + text.substring(0, 150));
+                }
+            });
+        })
+        .then(function(d) {
+            $btn.prop('disabled', false).text('Save Dashboard');
+            if (d.success) {
+                $('#saveDashboardModal').modal('hide');
+                window.location.href = 'index.php?route=dashboard/templates';
+            } else {
+                alert(d.message || 'Error saving dashboard.');
+            }
+        })
+        .catch(function(err) {
+            $btn.prop('disabled', false).text('Save Dashboard');
+            alert(err.message || 'Network error while saving.');
+        });
+    });
+
+    function escapeHtml(str) {
+        return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+});
+</script>

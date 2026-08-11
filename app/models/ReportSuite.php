@@ -127,9 +127,11 @@ class ReportSuite extends Model {
                     'Owner' => 'employee_name', 'Source' => 'lead_source', 'Status' => 'status',
                     'Quality' => 'lead_quality', 'Value' => 'lead_value',
                 ], "SELECT l.created_at, CONCAT(l.first_name, ' ', COALESCE(l.last_name,'')) AS lead_name,
-                           l.company_name, COALESCE(u.name,'Unassigned') AS employee_name,
+                           COALESCE(cl.company_name, 'N/A') AS company_name, COALESCE(u.name,'Unassigned') AS employee_name,
                            l.lead_source, l.status, l.lead_quality, l.lead_value
-                    FROM leads l LEFT JOIN users u ON l.assigned_to_user_id = u.user_id
+                    FROM leads l
+                    LEFT JOIN clients cl ON l.client_id = cl.client_id
+                    LEFT JOIN users u ON l.assigned_to_user_id = u.user_id
                     LEFT JOIN employees e ON u.user_id = e.user_id
                     WHERE DATE(l.created_at) BETWEEN :from AND :to $userSql
                     ORDER BY l.created_at DESC", $params);
@@ -139,13 +141,13 @@ class ReportSuite extends Model {
                 return $this->simpleReport($key, $filters, [
                     'Converted' => 'converted_at', 'Lead' => 'lead_name', 'Owner' => 'employee_name',
                     'Source' => 'lead_source', 'Probability %' => 'probability', 'Revenue' => 'lead_value',
-                ], "SELECT l.converted_at, CONCAT(l.first_name, ' ', COALESCE(l.last_name,'')) AS lead_name,
+                ], "SELECT l.updated_at AS converted_at, CONCAT(l.first_name, ' ', COALESCE(l.last_name,'')) AS lead_name,
                            COALESCE(u.name,'Unassigned') AS employee_name, l.lead_source,
-                           COALESCE(l.probability, l.conversion_probability, 0) AS probability, l.lead_value
+                           COALESCE(l.conversion_probability, 0) AS probability, l.lead_value
                     FROM leads l LEFT JOIN users u ON l.assigned_to_user_id = u.user_id
                     LEFT JOIN employees e ON u.user_id = e.user_id
-                    WHERE l.status = 'converted' AND DATE(COALESCE(l.converted_at, l.updated_at)) BETWEEN :from AND :to $userSql
-                    ORDER BY COALESCE(l.converted_at, l.updated_at) DESC", $params);
+                    WHERE l.status = 'converted' AND DATE(l.updated_at) BETWEEN :from AND :to $userSql
+                    ORDER BY l.updated_at DESC", $params);
 
             case 'follow_up':
             case 'missed_follow_up':
@@ -209,10 +211,10 @@ class ReportSuite extends Model {
                     'Status' => 'status', 'Owner' => 'owner_name', 'Budget ($)' => 'budget',
                     'Actual Spend ($)' => 'actual_spend', 'Start Date' => 'start_date', 'End Date' => 'end_date'
                 ], "SELECT c.campaign_code, c.name, c.channel, c.status, COALESCE(u.name, 'Unassigned') AS owner_name,
-                           c.budget, c.actual_spend, c.start_date, c.end_date
+                           c.budget, COALESCE(c.spend, 0) AS actual_spend, c.start_date, c.end_date
                     FROM campaigns c
-                    LEFT JOIN users u ON c.owner_user_id = u.user_id
-                    LEFT JOIN employees e ON u.user_id = e.user_id
+                    LEFT JOIN employees e ON c.owner_employee_id = e.employee_id
+                    LEFT JOIN users u ON e.user_id = u.user_id
                     WHERE DATE(c.created_at) BETWEEN :from AND :to $userSql
                     ORDER BY c.created_at DESC", $params);
 
@@ -238,7 +240,7 @@ class ReportSuite extends Model {
                     'Customer Code' => 'customer_code', 'Company' => 'company_name', 'Email' => 'email',
                     'Owner' => 'owner_name', 'Onboarded' => 'onboarding_date', 'Status' => 'status',
                     'Contract Value ($)' => 'contract_value'
-                ], "SELECT c.customer_code, COALESCE(c.company_name, CONCAT(c.first_name, ' ', COALESCE(c.last_name, ''))) AS company_name,
+                ], "SELECT c.customer_code, COALESCE(c.company_name, c.first_name, 'N/A') AS company_name,
                            c.email, COALESCE(u.name, 'Unassigned') AS owner_name, c.onboarding_date,
                            c.status, c.contract_value
                     FROM customers c
@@ -252,11 +254,11 @@ class ReportSuite extends Model {
                     'Invoice Code' => 'invoice_code', 'Customer Name' => 'customer_name',
                     'Issue Date' => 'issue_date', 'Due Date' => 'due_date', 'Status' => 'status',
                     'Subtotal ($)' => 'subtotal', 'Tax ($)' => 'tax_amount', 'Total Amount ($)' => 'total_amount'
-                ], "SELECT i.invoice_code, COALESCE(c.company_name, i.client_company_name, 'N/A') AS customer_name,
-                           i.issue_date, i.due_date, i.status, i.subtotal, i.tax_amount, i.total_amount
+                ], "SELECT i.invoice_number AS invoice_code, COALESCE(c.company_name, 'N/A') AS customer_name,
+                           i.created_at AS issue_date, i.due_date, i.status, i.amount AS subtotal, 0.00 AS tax_amount, i.amount AS total_amount
                     FROM invoices i
                     LEFT JOIN customers c ON i.customer_id = c.customer_id
-                    WHERE DATE(i.issue_date) BETWEEN :from AND :to
+                    WHERE DATE(i.created_at) BETWEEN :from AND :to
                     ORDER BY i.invoice_id DESC", $params);
 
             case 'account_sales_churn_risk':
@@ -264,9 +266,9 @@ class ReportSuite extends Model {
                     'Customer Code' => 'customer_code', 'Company' => 'company_name',
                     'Account Manager' => 'owner_name', 'Contract Value ($)' => 'contract_value',
                     'Status' => 'status', 'Contract End' => 'contract_end_date', 'Last Activity' => 'last_activity_at'
-                ], "SELECT c.customer_code, COALESCE(c.company_name, CONCAT(c.first_name, ' ', COALESCE(c.last_name, ''))) AS company_name,
+                ], "SELECT c.customer_code, COALESCE(c.company_name, c.first_name, 'N/A') AS company_name,
                            COALESCE(u.name, 'Unassigned') AS owner_name, c.contract_value, c.status,
-                           c.contract_end_date, MAX(asa.created_at) AS last_activity_at
+                           c.renewal_date AS contract_end_date, MAX(asa.created_at) AS last_activity_at
                     FROM customers c
                     LEFT JOIN employees e ON c.owner_employee_id = e.employee_id
                     LEFT JOIN users u ON e.user_id = u.user_id
@@ -280,22 +282,21 @@ class ReportSuite extends Model {
                     'Employee' => 'employee_name', 'Leave Type' => 'leave_type_name', 'Year' => 'leave_year',
                     'Allocated' => 'allocated_days', 'Carried Forward' => 'carried_forward_days',
                     'Consumed' => 'consumed_days', 'Pending' => 'pending_days', 'Available' => 'available_days'
-                ], "SELECT u.name AS employee_name, lt.name AS leave_type_name, elb.leave_year,
+                ], "SELECT u.name AS employee_name, elb.leave_type_name, elb.leave_year,
                            elb.allocated_days, elb.carried_forward_days, elb.consumed_days,
-                           elb.pending_days, elb.available_days
+                           elb.pending_days, (elb.allocated_days + elb.carried_forward_days - elb.consumed_days - elb.pending_days) AS available_days
                     FROM employee_leave_balances elb
                     JOIN employees e ON elb.employee_id = e.employee_id
                     JOIN users u ON e.user_id = u.user_id
-                    JOIN leave_types lt ON elb.leave_type_id = lt.id
                     WHERE 1=1 $userSql
-                    ORDER BY u.name ASC, lt.name ASC", $params);
+                    ORDER BY u.name ASC, elb.leave_type_name ASC", $params);
 
             case 'pipeline_conversion_funnel':
                 return $this->simpleReport($key, $filters, [
                     'Stage / Status' => 'status', 'Total Leads' => 'lead_count',
                     'Total Pipeline Value ($)' => 'total_value', 'Avg Probability %' => 'avg_prob'
                 ], "SELECT l.status, COUNT(*) AS lead_count, COALESCE(SUM(l.lead_value), 0) AS total_value,
-                           ROUND(AVG(COALESCE(l.probability, l.conversion_probability, 0)), 1) AS avg_prob
+                           ROUND(AVG(COALESCE(l.conversion_probability, 0)), 1) AS avg_prob
                     FROM leads l
                     LEFT JOIN users u ON l.assigned_to_user_id = u.user_id
                     LEFT JOIN employees e ON u.user_id = e.user_id
@@ -427,8 +428,8 @@ class ReportSuite extends Model {
             ['Distance KM', "SELECT COALESCE(SUM(ts.distance_km),0) FROM travel_summary ts JOIN users u ON ts.user_id = u.user_id LEFT JOIN employees e ON u.user_id = e.user_id WHERE ts.work_date BETWEEN :from AND :to $userSql"],
             ['Tasks Completed', "SELECT COUNT(*) FROM tasks t JOIN users u ON t.assigned_to_user_id = u.user_id LEFT JOIN employees e ON u.user_id = e.user_id WHERE t.status = 'completed' AND DATE(t.completed_at) BETWEEN :from AND :to $userSql"],
             ['Leads Generated', "SELECT COUNT(*) FROM leads l LEFT JOIN users u ON l.assigned_to_user_id = u.user_id LEFT JOIN employees e ON u.user_id = e.user_id WHERE DATE(l.created_at) BETWEEN :from AND :to $userSql"],
-            ['Leads Converted', "SELECT COUNT(*) FROM leads l LEFT JOIN users u ON l.assigned_to_user_id = u.user_id LEFT JOIN employees e ON u.user_id = e.user_id WHERE l.status = 'converted' AND DATE(COALESCE(l.converted_at, l.updated_at)) BETWEEN :from AND :to $userSql"],
-            ['Revenue', "SELECT COALESCE(SUM(l.lead_value),0) FROM leads l LEFT JOIN users u ON l.assigned_to_user_id = u.user_id LEFT JOIN employees e ON u.user_id = e.user_id WHERE l.status = 'converted' AND DATE(COALESCE(l.converted_at, l.updated_at)) BETWEEN :from AND :to $userSql"],
+            ['Leads Converted', "SELECT COUNT(*) FROM leads l LEFT JOIN users u ON l.assigned_to_user_id = u.user_id LEFT JOIN employees e ON u.user_id = e.user_id WHERE l.status = 'converted' AND DATE(l.updated_at) BETWEEN :from AND :to $userSql"],
+            ['Revenue', "SELECT COALESCE(SUM(l.lead_value),0) FROM leads l LEFT JOIN users u ON l.assigned_to_user_id = u.user_id LEFT JOIN employees e ON u.user_id = e.user_id WHERE l.status = 'converted' AND DATE(l.updated_at) BETWEEN :from AND :to $userSql"],
             ['Follow-ups Due', "SELECT COUNT(*) FROM follow_ups f JOIN users u ON f.assigned_to_user_id = u.user_id LEFT JOIN employees e ON u.user_id = e.user_id WHERE DATE(f.due_at) BETWEEN :from AND :to $userSql"],
             ['Missed Follow-ups', "SELECT COUNT(*) FROM follow_ups f JOIN users u ON f.assigned_to_user_id = u.user_id LEFT JOIN employees e ON u.user_id = e.user_id WHERE f.status = 'missed' AND DATE(f.due_at) BETWEEN :from AND :to $userSql"],
             ['Communications', "SELECT COUNT(*) FROM communications c JOIN users u ON c.user_id = u.user_id LEFT JOIN employees e ON u.user_id = e.user_id WHERE DATE(c.happened_at) BETWEEN :from AND :to $userSql"],
