@@ -267,6 +267,15 @@
                                             <i class="fa-solid fa-pen-to-square"></i>
                                         </a>
                                     <?php endif; ?>
+                                    <?php if (strtolower($_SESSION['user_role'] ?? '') === 'admin'): ?>
+                                        <button type="button" class="btn btn-outline-danger btn-sm btn-delete-post" 
+                                                data-id="<?php echo $post->post_id; ?>"
+                                                data-code="<?php echo htmlspecialchars($post->post_code ?: ('PST-2026-' . sprintf('%05d', $post->post_id))); ?>"
+                                                data-title="<?php echo htmlspecialchars($post->title ?: 'Untitled Post'); ?>"
+                                                title="Delete Post (Admin Only)">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
@@ -537,5 +546,53 @@ $(document).ready(function() {
     $(document).on('click', '.btn-remove-country', function() {
         $(this).closest('.country-row').remove();
     });
+
+    // Delete Post Modal Trigger (Admin Only)
+    $(document).on('click', '.btn-delete-post', function() {
+        var id = $(this).data('id');
+        var code = $(this).data('code');
+        var title = $(this).data('title');
+        $('#modal_delete_post_id').val(id);
+        $('#modal_delete_post_code').text(code);
+        $('#modal_delete_post_title').text(title);
+        $('#deletion_remarks').val('');
+        $('#deletePostModal').modal('show');
+    });
 });
 </script>
+
+<!-- Modal: Delete Post (Admin Only with Mandatory Remarks) -->
+<div class="modal fade" id="deletePostModal" tabindex="-1" aria-labelledby="deletePostModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-white border-danger shadow-lg" style="border-radius: 14px;">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title fw-bold text-white d-flex align-items-center gap-2" id="deletePostModalLabel">
+                    <i class="fa-solid fa-trash-can text-danger fs-4"></i> Delete Content Post
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="index.php?route=posts/delete" method="POST">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                <input type="hidden" name="post_id" id="modal_delete_post_id" value="">
+                
+                <div class="modal-body">
+                    <div class="alert alert-danger bg-danger bg-opacity-10 border-danger text-danger mb-3">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> You are deleting Post <strong class="font-monospace text-white" id="modal_delete_post_code"></strong> (<span id="modal_delete_post_title"></span>). This action will permanently remove the record from active view.
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="deletion_remarks" class="form-label text-white fw-bold">Mandatory Deletion Remarks / Reason *</label>
+                        <textarea name="deletion_remarks" id="deletion_remarks" class="form-control bg-dark text-white border-secondary" rows="3" placeholder="Specify mandatory reason for deletion (e.g. Duplicate entry, Client requested cancellation...)" required></textarea>
+                        <small class="text-secondary mt-1 d-block"><i class="fa-solid fa-shield-halved text-info me-1"></i>Remarks will be permanently saved in the security audit log database (`deleted_posts_log`).</small>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger btn-sm px-4 fw-bold">
+                        <i class="fa-solid fa-trash me-1"></i> Confirm & Delete Post
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

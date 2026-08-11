@@ -72,4 +72,45 @@ class Post extends Model {
         $this->bind(':id', $id);
         return $this->execute();
     }
+
+    // Delete post with mandatory admin remarks audit log
+    public function deletePostWithAudit(int $id, string $remarks, int $userId, string $userName): bool {
+        $post = $this->getPostById($id);
+
+        try {
+            // Ensure audit table exists
+            $this->query("CREATE TABLE IF NOT EXISTS deleted_posts_log (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                post_id INT NOT NULL,
+                post_code VARCHAR(100),
+                title VARCHAR(255),
+                platform VARCHAR(100),
+                client_name VARCHAR(255),
+                deleted_by_id INT,
+                deleted_by_name VARCHAR(150),
+                remarks TEXT,
+                deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            $this->execute();
+
+            if ($post) {
+                $postCode = $post->post_code ?? ('PST-' . date('Y') . '-' . sprintf('%05d', $id));
+                $this->query("INSERT INTO deleted_posts_log (post_id, post_code, title, platform, client_name, deleted_by_id, deleted_by_name, remarks)
+                              VALUES (:pid, :pcode, :title, :platform, :client, :uid, :uname, :remarks)");
+                $this->bind(':pid', $id);
+                $this->bind(':pcode', $postCode);
+                $this->bind(':title', $post->title ?? 'Untitled');
+                $this->bind(':platform', $post->platform ?? 'Social');
+                $this->bind(':client', $post->client_name ?? 'Global');
+                $this->bind(':uid', $userId);
+                $this->bind(':uname', $userName);
+                $this->bind(':remarks', $remarks);
+                $this->execute();
+            }
+        } catch (Throwable $e) {
+            error_log("Failed to insert deleted post audit log: " . $e->getMessage());
+        }
+
+        return $this->removePost($id);
+    }
 }

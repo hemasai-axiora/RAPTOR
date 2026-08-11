@@ -291,4 +291,51 @@ class PostsController extends Controller {
             $this->redirect('index.php?route=posts/index');
         }
     }
+
+    // Delete Post (Admin Only with Mandatory Remarks Audit Log)
+    public function delete() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Strict Admin Role Check
+            $userRole = strtolower($_SESSION['user_role'] ?? '');
+            if ($userRole !== 'admin') {
+                $_SESSION['flash_error'] = 'Access Denied: Only Admin users are authorized to delete posts.';
+                $this->redirect('index.php?route=posts/index');
+                return;
+            }
+
+            // CSRF Security Verification
+            $token = $_POST['csrf_token'] ?? '';
+            if (!isset($_SESSION['csrf_token']) || $token !== $_SESSION['csrf_token']) {
+                $_SESSION['flash_error'] = 'Invalid security token.';
+                $this->redirect('index.php?route=posts/index');
+                return;
+            }
+
+            $postId = (int)($_POST['post_id'] ?? 0);
+            $remarks = trim($_POST['deletion_remarks'] ?? '');
+
+            if ($postId <= 0) {
+                $_SESSION['flash_error'] = 'Invalid Post ID specified for deletion.';
+                $this->redirect('index.php?route=posts/index');
+                return;
+            }
+
+            if (empty($remarks)) {
+                $_SESSION['flash_error'] = 'Deletion failed: Mandatory deletion remarks/reason must be provided.';
+                $this->redirect('index.php?route=posts/index');
+                return;
+            }
+
+            $userId = (int)($_SESSION['user_id'] ?? 0);
+            $userName = $_SESSION['user_name'] ?? 'Admin User';
+
+            if ($this->postModel->deletePostWithAudit($postId, $remarks, $userId, $userName)) {
+                $_SESSION['flash_success'] = 'Post deleted successfully and logged to security archives with your remarks.';
+            } else {
+                $_SESSION['flash_error'] = 'Unable to delete post record.';
+            }
+
+            $this->redirect('index.php?route=posts/index');
+        }
+    }
 }
