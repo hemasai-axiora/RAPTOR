@@ -840,7 +840,7 @@
                 width: 70px !important;
                 margin-left: 0 !important;
             }
-            #sidebar.collapsed + #content-wrapper {
+            #sidebar.collapsed ~ #content-wrapper {
                 margin-left: 70px !important;
             }
             #sidebar.collapsed .sidebar-brand {
@@ -883,6 +883,23 @@
                 margin-right: 0 !important;
                 font-size: 1.15rem !important;
             }
+
+            /* Active Section Icon Highlight in Collapsed & Expanded Modes */
+            .menu-section.has-active > .menu-section-header,
+            .menu-section:has(.menu-item.active) > .menu-section-header {
+                color: var(--primary) !important;
+                background-color: var(--primary-soft);
+            }
+            #sidebar.collapsed .menu-section.has-active > .menu-section-header,
+            #sidebar.collapsed .menu-section:has(.menu-item.active) > .menu-section-header {
+                background-color: var(--primary-soft) !important;
+                border-left: 3px solid var(--primary) !important;
+                border-radius: 8px !important;
+            }
+            #sidebar.collapsed .menu-section.has-active .section-icon,
+            #sidebar.collapsed .menu-section:has(.menu-item.active) .section-icon {
+                color: var(--primary) !important;
+            }
         }
     </style>
 </head>
@@ -909,7 +926,7 @@
             <ul class="sidebar-menu">
                 <!-- 1. Dashboard Accordion Group -->
                 <li class="menu-section" data-section="dashboard">
-                    <div class="menu-section-header">
+                    <div class="menu-section-header" title="Dashboard">
                         <i class="fa-solid fa-chart-line section-icon"></i>
                         <span class="section-text">Dashboard</span>
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
@@ -954,7 +971,7 @@
                 <!-- 2. My Day Accordion Group -->
                 <?php if (in_array($role, $salesRoles, true)): ?>
                 <li class="menu-section" data-section="myday">
-                    <div class="menu-section-header">
+                    <div class="menu-section-header" title="My Day">
                         <i class="fa-solid fa-calendar-day section-icon"></i>
                         <span class="section-text">My Day</span>
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
@@ -991,7 +1008,7 @@
                 <!-- 3. Monitoring Accordion Group -->
                 <?php if (in_array($_SESSION['user_role'], ['admin', 'ceo', 'employer', 'manager', 'team_leader', 'hr'], true)): ?>
                 <li class="menu-section" data-section="monitoring">
-                    <div class="menu-section-header">
+                    <div class="menu-section-header" title="Monitoring">
                         <i class="fa-solid fa-desktop section-icon"></i>
                         <span class="section-text">Monitoring</span>
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
@@ -1029,7 +1046,7 @@
                 <!-- 4. Marketing Accordion Group -->
                 <?php if (isset($_SESSION['user_role'])): ?>
                 <li class="menu-section" data-section="marketing">
-                    <div class="menu-section-header">
+                    <div class="menu-section-header" title="Marketing">
                         <i class="fa-solid fa-share-nodes section-icon"></i>
                         <span class="section-text">Marketing</span>
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
@@ -1071,7 +1088,7 @@
                 <!-- 5. Finance Accordion Group -->
                 <?php if (in_array($_SESSION['user_role'], ['admin', 'manager', 'finance'], true)): ?>
                 <li class="menu-section" data-section="finance">
-                    <div class="menu-section-header">
+                    <div class="menu-section-header" title="Finance">
                         <i class="fa-solid fa-file-invoice-dollar section-icon"></i>
                         <span class="section-text">Finance</span>
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
@@ -1089,7 +1106,7 @@
                 <!-- 6. Operations Accordion Group -->
                 <?php if (in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader', 'employee', 'sales_person', 'analyst', 'hr', 'finance'], true)): ?>
                 <li class="menu-section" data-section="operations">
-                    <div class="menu-section-header">
+                    <div class="menu-section-header" title="Operations">
                         <i class="fa-solid fa-briefcase section-icon"></i>
                         <span class="section-text">Operations</span>
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
@@ -1160,7 +1177,7 @@
                 <!-- 7. Reports Accordion Group -->
                 <?php if (!Policy::isEmployee()): ?>
                 <li class="menu-section" data-section="reports">
-                    <div class="menu-section-header">
+                    <div class="menu-section-header" title="Reports">
                         <i class="fa-solid fa-chart-pie section-icon"></i>
                         <span class="section-text">Reports</span>
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
@@ -1185,7 +1202,7 @@
                 <!-- 8. HR & Payroll Accordion Group -->
                 <?php if (in_array($role, ['admin', 'ceo', 'manager', 'team_leader', 'hr', 'finance', 'analyst', 'employee', 'sales_person'], true)): ?>
                 <li class="menu-section" data-section="hr">
-                    <div class="menu-section-header">
+                    <div class="menu-section-header" title="HR & Payroll">
                         <i class="fa-solid fa-users-gear section-icon"></i>
                         <span class="section-text">HR & Payroll</span>
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
@@ -1284,7 +1301,7 @@
 
                 <!-- 9. Settings Accordion Group -->
                 <li class="menu-section" data-section="settings">
-                    <div class="menu-section-header">
+                    <div class="menu-section-header" title="Settings">
                         <i class="fa-solid fa-sliders section-icon"></i>
                         <span class="section-text">Settings</span>
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
@@ -1332,7 +1349,7 @@
 
 
             <div class="sidebar-footer">
-                <div class="user-widget">
+                <div class="user-widget" title="<?php echo htmlspecialchars(($_SESSION['user_name'] ?? '') . ' (' . Policy::roleLabel() . ')'); ?>">
                     <?php
                     $userPhoto = $_SESSION['user_photo'] ?? null;
                     if (empty($userPhoto) && isset($_SESSION['user_id'])) {
@@ -1535,7 +1552,8 @@
             // Accordion Logic for Sidebar Category Drawers
             $('.menu-section-header').on('click', function() {
                 if ($('#sidebar').hasClass('collapsed') && !isMobile()) {
-                    return;
+                    $('#sidebar').removeClass('collapsed');
+                    sessionStorage.setItem('sidebar_collapsed', '0');
                 }
 
                 var section = $(this).closest('.menu-section');
@@ -1553,14 +1571,14 @@
                 }
             });
 
-            // Expand active section on load
+            // Expand active section on load & highlight active section header
             var activeLink = $('.menu-section-items .menu-item.active');
             if (activeLink.length > 0) {
                 var activeSection = activeLink.closest('.menu-section');
-                activeSection.addClass('expanded');
+                activeSection.addClass('expanded has-active');
                 activeSection.find('.menu-section-items').show();
             } else {
-                $('.menu-section[data-section="dashboard"]').addClass('expanded').find('.menu-section-items').show();
+                $('.menu-section[data-section="dashboard"]').addClass('expanded has-active').find('.menu-section-items').show();
             }
 
             // Topbar hamburger: on mobile open the drawer, on desktop collapse.
