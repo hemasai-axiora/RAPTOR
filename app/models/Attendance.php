@@ -46,7 +46,7 @@ class Attendance extends Model {
         $this->bind(':d', $date);
         $row = $this->single();
 
-        // Auto-approve pending records automatically using local time
+        // Auto-approve pending records automatically using login time
         if ($row && $row->attendance_status === 'Pending') {
             $now = date('Y-m-d H:i:s');
             $apprAt = !empty($row->login_at) ? $row->login_at : $now;
@@ -57,15 +57,16 @@ class Attendance extends Model {
             $row->approved_at = $apprAt;
         }
 
-        // Align approved_at with login_at if approved_at has timezone discrepancy
-        if ($row && $row->attendance_status === 'Approved' && !empty($row->login_at) && !empty($row->approved_at)) {
-            if (strtotime($row->approved_at) < strtotime($row->login_at)) {
+        // Always align approved_at with login_at so approval time matches check-in time exactly
+        if ($row && $row->attendance_status === 'Approved' && !empty($row->login_at)) {
+            if ($row->approved_at !== $row->login_at) {
                 $db = Database::getInstance()->getConnection();
                 $stmt = $db->prepare("UPDATE attendance SET approved_at = login_at WHERE attendance_id = :id");
                 $stmt->execute([':id' => (int)$row->attendance_id]);
                 $row->approved_at = $row->login_at;
             }
         }
+
 
 
         return $row;
@@ -377,7 +378,7 @@ class Attendance extends Model {
         $this->query('UPDATE attendance SET 
                         attendance_status = :st, 
                         approved_by = :by, 
-                        approved_at = :appr_at, 
+                        approved_at = COALESCE(login_at, :appr_at), 
                         rejection_reason = :rm,
                         remarks = :rm2
                       WHERE attendance_id = :id AND attendance_status = \'Pending\'');
