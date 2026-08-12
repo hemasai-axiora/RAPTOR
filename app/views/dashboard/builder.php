@@ -854,8 +854,8 @@ $(function() {
 
         widgets.forEach(function(w, idx) {
             var colSpan = 'span ' + (w.width || 6);
-            var minH = (w.height && w.height !== 'auto') ? (w.height + 'px') : '220px';
-            var $wBox = $('<div class="canvas-widget" style="grid-column: ' + colSpan + '; min-height: ' + minH + ';"></div>');
+            var cardH = parseInt(w.height, 10) || 220;
+            var $wBox = $('<div class="canvas-widget" style="grid-column: ' + colSpan + '; height: ' + cardH + 'px !important; max-height: ' + cardH + 'px !important; min-height: ' + cardH + 'px !important; overflow: hidden;"></div>');
             if (selectedWidgetIdx === idx && !isPreviewMode) $wBox.addClass('selected');
 
             // Sleek Toolbar — Works in BOTH Edit Mode and Preview Mode!
@@ -1514,7 +1514,7 @@ $(function() {
             var labels = data.labels || ['Group A', 'Group B', 'Group C'];
             var series = data.series || [25, 45, 30];
             var canvasId = 'chart-canvas-' + idx + '-' + Math.random().toString(36).substr(2, 6);
-            $container.html('<canvas id="' + canvasId + '" style="max-height: 180px; width: 100%;"></canvas>');
+            $container.html('<div style="position: relative; width: 100%; height: 100%; min-height: 140px; max-height: 100%; overflow: hidden;"><canvas id="' + canvasId + '" style="position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; max-height: 100% !important;"></canvas></div>');
 
             var chartType = 'bar';
             if (type === 'pie') chartType = 'doughnut';
@@ -1543,6 +1543,7 @@ $(function() {
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
+                            resizeDelay: 100,
                             plugins: { legend: { display: (type === 'pie' || type === 'polar' || type === 'radar') } }
                         }
                     });
