@@ -107,21 +107,6 @@ $fileUrl = function ($key) { return 'index.php?route=file/show&key=' . urlencode
                         <?php endif; ?>
                     <?php endif; ?>
                 </div>
-
-                <?php if ($today->attendance_status === 'Pending'): ?>
-                <!-- Automated Approval Action Bar -->
-                <div id="auto-approval-action-bar" class="mt-3 pt-3 border-top border-secondary border-opacity-25">
-                    <div class="d-flex flex-wrap gap-2 justify-content-center align-items-center">
-                        <button id="btn-auto-approve" class="btn btn-sm btn-outline-warning shadow-sm" style="border-radius: 20px;">
-                            <i class="fa-solid fa-bolt me-1 text-warning"></i>Automate Approval
-                        </button>
-                        <button id="btn-auto-timer" class="btn btn-sm btn-outline-info shadow-sm" style="border-radius: 20px;">
-                            <i class="fa-solid fa-stopwatch me-1"></i>Auto-Approve Timer (<span id="auto-timer-count">10s</span>)
-                        </button>
-                    </div>
-                    <div id="auto-approve-msg" class="small mt-2 text-info d-none"></div>
-                </div>
-                <?php endif; ?>
             </div>
 
             <div class="row text-center g-2 mb-3">

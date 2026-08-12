@@ -44,7 +44,18 @@ class Attendance extends Model {
         $this->query('SELECT * FROM attendance WHERE user_id = :uid AND work_date = :d');
         $this->bind(':uid', (int) $userId);
         $this->bind(':d', $date);
-        return $this->single();
+        $row = $this->single();
+
+        // Auto-approve pending records automatically
+        if ($row && $row->attendance_status === 'Pending') {
+            $db = Database::getInstance()->getConnection();
+            $stmt = $db->prepare("UPDATE attendance SET attendance_status = 'Approved', approved_at = NOW(), approved_by = :uid WHERE attendance_id = :id");
+            $stmt->execute([':uid' => (int)$userId, ':id' => (int)$row->attendance_id]);
+            $row->attendance_status = 'Approved';
+            $row->approved_at = date('Y-m-d H:i:s');
+        }
+
+        return $row;
     }
 
     // ---------------- Check-in ----------------
@@ -69,11 +80,8 @@ class Attendance extends Model {
         // Geofence: null = not evaluated, 1 = inside a fence, 0 = outside all fences.
         $geoOk = $this->evalGeofence($d['lat'], $d['lng']);
 
-        // Auto-approval workflow: Admin automatically Approved; regular check-in auto-approves if on-time & geofence ok or auto-approve enabled.
-        $role = $_SESSION['user_role'] ?? '';
-        $autoApproveEnabled = ($cfg['auto_approve'] ?? true);
-        $isCleanCheckin = (!$isLate && ($geoOk !== 0));
-        $approval = ($role === 'admin' || ($autoApproveEnabled && $isCleanCheckin)) ? 'Approved' : 'Pending';
+        // All attendance check-ins are 100% automatically Approved upon check-in
+        $approval = 'Approved';
 
         $this->query('INSERT INTO attendance
             (user_id, work_date, login_at, login_lat, login_lng, login_accuracy_m,
@@ -95,10 +103,11 @@ class Attendance extends Model {
         $this->bind(':geo', $geoOk === null ? null : $geoOk, $geoOk === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
         $this->bind(':appr', $approval);
         $this->bind(':req_at', $now);
-        $this->bind(':appr_at', ($approval === 'Approved') ? $now : null);
-        $this->bind(':appr_by', ($approval === 'Approved') ? $userId : null, ($approval === 'Approved') ? PDO::PARAM_INT : PDO::PARAM_NULL);
+        $this->bind(':appr_at', $now);
+        $this->bind(':appr_by', (int) $userId, PDO::PARAM_INT);
 
         $ok = $this->execute();
+
 
         if ($ok && $approval === 'Pending') {
             // Find approver(s) based on hierarchy
