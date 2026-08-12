@@ -456,6 +456,9 @@ $(function () {
                         remainingText.textContent = `🎉 8h Daily Shift Target Completed!`;
                     }
                 }
+
+                // Check 10-Hour & Hourly Overtime Verification Threshold
+                checkOvertimeThreshold(rawWorkedSecs);
             }
 
             // Live Pending Approval Elapsed Timer
@@ -566,9 +569,138 @@ $(function () {
             .catch(() => {});
     }
 
+    // --- 10-Hour & Hourly Overtime Verification & Auto Clock-Out Engine ---
+    let overtimeModalInstance = null;
+    let overtimeCountdownInterval = null;
+    let isOvertimeModalShowing = false;
+    const currentUserId = <?php echo json_encode($_SESSION['user_id'] ?? 0); ?>;
+    const storageKeyPromptTime = 'raptor_ot_last_prompt_' + currentUserId;
+
+    function executeAutoClockOut(reasonText) {
+        if (overtimeCountdownInterval) clearInterval(overtimeCountdownInterval);
+        if (overtimeModalInstance) overtimeModalInstance.hide();
+
+        msg('Executing overtime auto clock-out...', false);
+        const fd = new FormData(); fd.append('csrf_token', csrf);
+
+        fetch('index.php?route=attendance/autoCheckout', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    if (typeof confetti === 'function') {
+                        confetti({ particleCount: 150, spread: 80, origin: { y: 0.5 } });
+                    }
+                    const successModal = new bootstrap.Modal(document.getElementById('clockOutSuccessModal'));
+                    successModal.show();
+                } else {
+                    location.reload();
+                }
+            })
+            .catch(() => {
+                location.reload();
+            });
+    }
+
+    function checkOvertimeThreshold(rawWorkedSecs) {
+        if (isDone || isOvertimeModalShowing) return;
+
+        const tenHoursSecs = 10 * 3600; // 36,000 seconds (10 Hours)
+        if (rawWorkedSecs < tenHoursSecs) return;
+
+        const nowMs = Date.now();
+        const lastPromptMs = parseInt(localStorage.getItem(storageKeyPromptTime) || '0', 10);
+        const oneHourMs = 3600 * 1000; // 1 hour interval between prompts
+
+        // Trigger if 10+ hours worked AND (never prompted OR 1 hour elapsed since last prompt confirmation)
+        if (lastPromptMs === 0 || (nowMs - lastPromptMs) >= oneHourMs) {
+            isOvertimeModalShowing = true;
+            
+            const currentWorkedHours = Math.floor(rawWorkedSecs / 3600);
+            const currentWorkedMins = Math.floor((rawWorkedSecs % 3600) / 60);
+            
+            $('#overtime-modal-title').text(`${currentWorkedHours}-Hour Shift Milestone ⏰`);
+            $('#overtime-worked-display').text(`${currentWorkedHours}h ${currentWorkedMins}m`);
+
+            const modalEl = document.getElementById('overtimeCheckModal');
+            overtimeModalInstance = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
+            overtimeModalInstance.show();
+
+            // 60-Second Countdown for User Response
+            let countdown = 60;
+            $('#overtime-countdown').text(countdown + 's');
+
+            if (overtimeCountdownInterval) clearInterval(overtimeCountdownInterval);
+            overtimeCountdownInterval = setInterval(() => {
+                countdown--;
+                $('#overtime-countdown').text(countdown + 's');
+
+                if (countdown <= 0) {
+                    clearInterval(overtimeCountdownInterval);
+                    executeAutoClockOut('Inactivity timeout');
+                }
+            }, 1000);
+        }
+    }
+
+    // Modal YES Button (User confirms continuing work)
+    $('#btn-overtime-yes').on('click', function () {
+        if (overtimeCountdownInterval) clearInterval(overtimeCountdownInterval);
+        localStorage.setItem(storageKeyPromptTime, Date.now().toString());
+        isOvertimeModalShowing = false;
+        if (overtimeModalInstance) overtimeModalInstance.hide();
+        msg('Overtime status confirmed. Next verification in 1 hour.', true);
+    });
+
+    // Modal NO Button (User chooses to clock out immediately)
+    $('#btn-overtime-no').on('click', function () {
+        executeAutoClockOut('User selected clock out');
+    });
+
     setInterval(checkApprovalStatus, 4000);
 });
 </script>
+
+<!-- Overtime Check Modal (10 Hours & Hourly Check) -->
+<div class="modal fade" id="overtimeCheckModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-white border-0 shadow-lg" style="background: var(--panel-dark); border-radius: 20px; border: 1px solid rgba(245, 158, 11, 0.5) !important;">
+            <div class="modal-header border-0 pb-0 justify-content-center text-center position-relative pt-4">
+                <div>
+                    <span class="badge bg-warning text-dark px-3 py-2 fs-6 fw-bold mb-2 shadow-sm" style="border-radius: 20px;">
+                        <i class="fa-solid fa-clock me-1"></i>Overtime Duty Verification
+                    </span>
+                    <h4 class="fw-bold text-white mb-0" id="overtime-modal-title">10-Hour Shift Milestone</h4>
+                </div>
+            </div>
+            <div class="modal-body text-center p-4">
+                <div class="my-3">
+                    <span style="font-size: 3.8rem; filter: drop-shadow(0 0 15px rgba(245, 158, 11, 0.5));">🌙</span>
+                </div>
+                <p class="text-white fs-5 fw-semibold mb-2">
+                    You have been on duty for <span id="overtime-worked-display" class="text-warning fw-bold font-monospace">10h 00m</span>!
+                </p>
+                <p class="text-secondary small mb-3">
+                    Do you still continue your work? Please confirm below. If no response is received, you will be automatically clocked out for safety.
+                </p>
+
+                <!-- Countdown Timer -->
+                <div class="alert alert-warning py-2 mb-4 d-flex align-items-center justify-content-center gap-2 border-warning border-opacity-50" style="background: rgba(245, 158, 11, 0.1); border-radius: 12px;">
+                    <i class="fa-solid fa-hourglass-half fa-spin text-warning"></i>
+                    <span>Auto Clock-Out in <strong id="overtime-countdown" class="font-monospace text-warning fs-5 ms-1">60s</strong></span>
+                </div>
+
+                <div class="d-flex flex-column gap-2">
+                    <button type="button" id="btn-overtime-yes" class="btn btn-success btn-lg fw-bold border-0 shadow-sm py-3" style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px;">
+                        <i class="fa-solid fa-circle-check me-2"></i>Yes, I am Continuing Work 🚀
+                    </button>
+                    <button type="button" id="btn-overtime-no" class="btn btn-outline-danger btn-lg fw-semibold py-2" style="border-radius: 12px;">
+                        <i class="fa-solid fa-right-from-bracket me-2"></i>No, Clock Out Now 🛑
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Clock Out Success Modal -->
 <div class="modal fade" id="clockOutSuccessModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">

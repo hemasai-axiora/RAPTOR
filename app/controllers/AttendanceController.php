@@ -100,6 +100,42 @@ class AttendanceController extends Controller {
         $this->jsonOk(['worked_minutes' => $res['worked_minutes'], 'is_early' => $res['is_early']], $res['message']);
     }
 
+    /** Overtime Auto Check-out Endpoint (JSON) */
+    public function autoCheckout() {
+        $this->requireAuthApi();
+        $userId = (int) $_SESSION['user_id'];
+        $today = $this->att->getToday($userId);
+
+        if (!$today || !$today->login_at) {
+            $this->jsonError('No active check-in record found to auto check-out.');
+            return;
+        }
+
+        if ($today->logout_at) {
+            $this->jsonOk(null, 'Already checked out today.');
+            return;
+        }
+
+        $in = [
+            'selfie_key' => $today->login_selfie_url ?? 'attendance/overtime_auto_checkout.jpg',
+            'lat'        => $today->login_lat,
+            'lng'        => $today->login_lng,
+            'accuracy'   => $today->login_accuracy_m,
+            'device'     => 'Overtime Auto-Logout (' . substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 100) . ')',
+            'ip'         => $_SERVER['REMOTE_ADDR'] ?? null,
+        ];
+
+        $res = $this->att->checkOut($userId, $in);
+        if (!$res['ok']) {
+            $this->jsonError($res['message']);
+            return;
+        }
+
+        $this->audit('Overtime auto clock-out executed after 10+ hours duty', 'attendance');
+        $this->jsonOk(['worked_minutes' => $res['worked_minutes']], 'Overtime duty completed — auto clocked out successfully.');
+    }
+
+
     /** Live status check endpoint (JSON) for real-time polling of approval status and timers. */
     public function status() {
         $this->requireAuthApi();
