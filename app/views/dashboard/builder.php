@@ -909,22 +909,6 @@ $(function() {
         populateDependentDropdowns(dsKey);
     });
 
-    function populateDependentDropdowns(dsKey, selectedMetric, selectedGroup) {
-        var conf = MODULE_CONFIG_MAP[dsKey] || MODULE_CONFIG_MAP.leads;
-
-        var $m = $('#cfg-metric').empty();
-        conf.metrics.forEach(function(opt) {
-            $m.append('<option value="' + opt.id + '">' + escapeHtml(opt.label) + '</option>');
-        });
-        if (selectedMetric) $m.val(selectedMetric);
-
-        var $g = $('#cfg-group-by').empty();
-        conf.dimensions.forEach(function(opt) {
-            $g.append('<option value="' + opt.id + '">' + escapeHtml(opt.label) + '</option>');
-        });
-        if (selectedGroup) $g.val(selectedGroup);
-    }
-
     // Render Initial Widgets
     renderCanvas();
 
@@ -1425,6 +1409,21 @@ $(function() {
     });
 
     function getColorPalette(name) {
+        var map = {
+            blue: ['#2563EB', '#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8'],
+            amber: ['#D97706', '#F59E0B', '#FBBF24', '#FCD34D', '#B45309'],
+            emerald: ['#059669', '#10B981', '#34D399', '#6EE7B7', '#047857'],
+            rose: ['#E11D48', '#F43F5E', '#FB7185', '#FDA4AF', '#BE123C'],
+            indigo: ['#4338CA', '#6366F1', '#818CF8', '#A5B4FC', '#3730A3'],
+            cyan: ['#0E7490', '#06B6D4', '#22D3EE', '#67E8F9', '#155E75'],
+            purple: ['#7E22CE', '#9333EA', '#C084FC', '#E9D5FF', '#581C87'],
+            orange: ['#C2410C', '#EA580C', '#F97316', '#FB923C', '#9A3412']
+        };
+
+        if (name && map[name]) {
+            return map[name];
+        }
+
         var activeTheme = $('#dash-canvas-theme').val();
         if (activeTheme === 'corporate-clean') {
             return ['#0284C7', '#1E3A8A', '#0D9488', '#D97706', '#6366F1'];
@@ -1448,15 +1447,7 @@ $(function() {
             return ['#38BDF8', '#6366F1', '#34D399', '#FBBF24', '#F43F5E'];
         }
 
-        var map = {
-            blue: ['#1D4ED8', '#2563EB', '#3B82F6', '#60A5FA', '#93C5FD'],
-            emerald: ['#059669', '#10B981', '#34D399', '#6EE7B7', '#A7F3D0'],
-            amber: ['#D97706', '#F59E0B', '#FBBF24', '#FDE68A', '#FEF3C7'],
-            rose: ['#E11D48', '#F43F5E', '#FB7185', '#FDA4AF', '#FECDD3'],
-            indigo: ['#7C3AED', '#8B5CF6', '#A78BFA', '#C4B5FD', '#DDD6FE'],
-            cyan: ['#0891B2', '#06B6D4', '#22D3EE', '#67E8F9', '#A5F3FC']
-        };
-        return map[name] || map.blue;
+        return map.blue;
     }
 
     function renderWidgetVisualization($container, type, data, colorName, idx) {
