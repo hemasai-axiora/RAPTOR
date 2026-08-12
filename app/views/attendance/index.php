@@ -458,7 +458,7 @@ $(function () {
                 }
 
                 // Check 10-Hour & Hourly Overtime Verification Threshold
-                checkOvertimeThreshold(rawWorkedSecs);
+                checkOvertimeThreshold(rawWorkedSecs, isDone);
             }
 
             // Live Pending Approval Elapsed Timer
@@ -601,8 +601,8 @@ $(function () {
             });
     }
 
-    function checkOvertimeThreshold(rawWorkedSecs) {
-        if (isDone || isOvertimeModalShowing) return;
+    function checkOvertimeThreshold(rawWorkedSecs, isDoneFlag) {
+        if (isDoneFlag || isOvertimeModalShowing) return;
 
         const tenHoursSecs = 10 * 3600; // 36,000 seconds (10 Hours)
         if (rawWorkedSecs < tenHoursSecs) return;
@@ -618,12 +618,18 @@ $(function () {
             const currentWorkedHours = Math.floor(rawWorkedSecs / 3600);
             const currentWorkedMins = Math.floor((rawWorkedSecs % 3600) / 60);
             
-            $('#overtime-modal-title').text(`${currentWorkedHours}-Hour Shift Milestone ⏰`);
+            $('#overtime-modal-title').text(`${currentWorkedHours}-Hour Duty Milestone ⏰`);
             $('#overtime-worked-display').text(`${currentWorkedHours}h ${currentWorkedMins}m`);
 
             const modalEl = document.getElementById('overtimeCheckModal');
-            overtimeModalInstance = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
-            overtimeModalInstance.show();
+            if (modalEl) {
+                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    overtimeModalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
+                    overtimeModalInstance.show();
+                } else {
+                    $(modalEl).modal({ backdrop: 'static', keyboard: false }).modal('show');
+                }
+            }
 
             // 60-Second Countdown for User Response
             let countdown = 60;
