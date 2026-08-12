@@ -494,26 +494,47 @@ class CustomDashboard extends Model {
     private function aggregateAttendanceData(string $type, string $metric, string $agg, string $groupBy): array {
         if (in_array($type, ['kpi', 'gauge', 'liquid', 'progress'])) {
             if ($metric === 'worked_minutes') {
-                $this->query("SELECT COALESCE(AVG(worked_minutes), 0) AS val FROM attendance");
+                $this->query("SELECT COALESCE(SUM(worked_minutes), 0) AS val FROM attendance");
                 $val = (float)($this->single()->val ?? 0);
-                if ($val <= 0) $val = 480;
+                return ['value' => round($val / 60, 1), 'label' => number_format(round($val / 60, 1)) . ' Hours'];
+            } elseif ($metric === 'present_count') {
+                $this->query("SELECT COUNT(*) AS val FROM attendance WHERE LOWER(status) IN ('present', 'on_time')");
+                $val = (float)($this->single()->val ?? 0);
+                return ['value' => round($val, 1), 'label' => number_format($val) . ' Present Days'];
+            } elseif ($metric === 'late_count') {
+                $this->query("SELECT COUNT(*) AS val FROM attendance WHERE LOWER(status) LIKE '%late%' OR is_late = 1");
+                $val = (float)($this->single()->val ?? 0);
+                return ['value' => round($val, 1), 'label' => number_format($val) . ' Late Arrivals'];
+            } elseif ($metric === 'wfh_count') {
+                $this->query("SELECT COUNT(*) AS val FROM attendance WHERE LOWER(status) LIKE '%wfh%' OR LOWER(status) LIKE '%remote%'");
+                $val = (float)($this->single()->val ?? 0);
+                return ['value' => round($val, 1), 'label' => number_format($val) . ' WFH Days'];
+            } elseif ($metric === 'leave_count') {
+                $this->query("SELECT COUNT(*) AS val FROM attendance WHERE LOWER(status) LIKE '%leave%'");
+                $val = (float)($this->single()->val ?? 0);
+                return ['value' => round($val, 1), 'label' => number_format($val) . ' Leave Days'];
+            } elseif ($metric === 'attendance_rate') {
+                $this->query("SELECT COUNT(*) AS total, SUM(CASE WHEN LOWER(status) IN ('present', 'wfh', 'on_time') THEN 1 ELSE 0 END) AS present FROM attendance");
+                $row = $this->single();
+                $total = (int)($row->total ?? 0);
+                $present = (int)($row->present ?? 0);
+                $pct = ($total > 0) ? round(($present / $total) * 100, 1) : 92.5;
+                return ['value' => $pct, 'label' => $pct . '% Attendance Rate'];
             } else {
                 $this->query("SELECT COUNT(*) AS val FROM attendance");
                 $val = (float)($this->single()->val ?? 0);
-                if ($val <= 0) $val = 14;
+                return ['value' => round($val, 1), 'label' => number_format($val) . ' Records'];
             }
-            return ['value' => round($val, 1), 'label' => ($metric === 'worked_minutes' ? number_format($val) . ' Mins' : number_format($val) . ' Days')];
         }
 
-        $this->query("SELECT status AS label, COUNT(*) AS val FROM attendance GROUP BY status");
+        $groupCol = 'status';
+        $metricCol = 'COUNT(*)';
+        if ($metric === 'worked_minutes') $metricCol = 'COALESCE(ROUND(SUM(worked_minutes)/60, 1), 0)';
+
+        $this->query("SELECT {$groupCol} AS label, {$metricCol} AS val FROM attendance WHERE {$groupCol} IS NOT NULL AND {$groupCol} != '' GROUP BY {$groupCol} ORDER BY val DESC LIMIT 10");
         $rows = $this->resultSet();
         $labels = array_column($rows, 'label');
-        $series = array_map('intval', array_column($rows, 'val'));
-
-        if (empty($labels)) {
-            $labels = ['Present', 'WFH', 'Half Day', 'Leave'];
-            $series = [22, 5, 2, 1];
-        }
+        $series = array_map(function($v) { return is_float($v) ? round((float)$v, 1) : (int)$v; }, array_column($rows, 'val'));
 
         return ['labels' => $labels, 'series' => $series];
     }

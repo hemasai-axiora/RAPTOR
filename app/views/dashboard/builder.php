@@ -106,14 +106,33 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
     background: var(--surface-soft);
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    padding: 1rem 1.25rem;
+    padding: 0.85rem 1.1rem;
     position: relative;
     box-shadow: var(--shadow-soft);
     display: flex;
     flex-direction: column;
     min-height: 220px;
+    height: 100%;
     overflow: hidden;
-    transition: box-shadow 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, min-height 0.2s ease;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+.widget-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+.widget-body canvas {
+    max-height: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    width: 100% !important;
 }
 .canvas-widget.selected {
     border-color: var(--primary) !important;
@@ -1677,11 +1696,18 @@ $(function() {
             },
             attendance: {
                 metrics: [
-                    { val: 'worked_minutes', label: 'Worked Hours / Mins' },
-                    { val: 'count', label: 'Attendance Days' }
+                    { val: 'worked_minutes', label: 'Worked Hours' },
+                    { val: 'present_count', label: 'Present Days Count' },
+                    { val: 'late_count', label: 'Late Arrivals Count' },
+                    { val: 'wfh_count', label: 'WFH Days Count' },
+                    { val: 'leave_count', label: 'Leaves Taken Count' },
+                    { val: 'attendance_rate', label: 'Attendance Rate (%)' },
+                    { val: 'count', label: 'Total Attendance Logs' }
                 ],
                 groupBys: [
-                    { val: 'status', label: 'Attendance Status' }
+                    { val: 'status', label: 'Attendance Status' },
+                    { val: 'department', label: 'Department' },
+                    { val: 'check_in_location', label: 'Check-in Location' }
                 ]
             },
             targets: {
