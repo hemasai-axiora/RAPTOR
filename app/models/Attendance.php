@@ -46,14 +46,27 @@ class Attendance extends Model {
         $this->bind(':d', $date);
         $row = $this->single();
 
-        // Auto-approve pending records automatically
+        // Auto-approve pending records automatically using local time
         if ($row && $row->attendance_status === 'Pending') {
+            $now = date('Y-m-d H:i:s');
+            $apprAt = !empty($row->login_at) ? $row->login_at : $now;
             $db = Database::getInstance()->getConnection();
-            $stmt = $db->prepare("UPDATE attendance SET attendance_status = 'Approved', approved_at = NOW(), approved_by = :uid WHERE attendance_id = :id");
-            $stmt->execute([':uid' => (int)$userId, ':id' => (int)$row->attendance_id]);
+            $stmt = $db->prepare("UPDATE attendance SET attendance_status = 'Approved', approved_at = :appr_at, approved_by = :uid WHERE attendance_id = :id");
+            $stmt->execute([':appr_at' => $apprAt, ':uid' => (int)$userId, ':id' => (int)$row->attendance_id]);
             $row->attendance_status = 'Approved';
-            $row->approved_at = date('Y-m-d H:i:s');
+            $row->approved_at = $apprAt;
         }
+
+        // Align approved_at with login_at if approved_at has timezone discrepancy
+        if ($row && $row->attendance_status === 'Approved' && !empty($row->login_at) && !empty($row->approved_at)) {
+            if (strtotime($row->approved_at) < strtotime($row->login_at)) {
+                $db = Database::getInstance()->getConnection();
+                $stmt = $db->prepare("UPDATE attendance SET approved_at = login_at WHERE attendance_id = :id");
+                $stmt->execute([':id' => (int)$row->attendance_id]);
+                $row->approved_at = $row->login_at;
+            }
+        }
+
 
         return $row;
     }
@@ -360,20 +373,23 @@ class Attendance extends Model {
 
     public function setApproval($attendanceId, $decision, $approverId, $remark = null): bool {
         // decision: 'Approved' | 'Rejected'
+        $now = date('Y-m-d H:i:s');
         $this->query('UPDATE attendance SET 
                         attendance_status = :st, 
                         approved_by = :by, 
-                        approved_at = NOW(), 
+                        approved_at = :appr_at, 
                         rejection_reason = :rm,
                         remarks = :rm2
                       WHERE attendance_id = :id AND attendance_status = \'Pending\'');
         $this->bind(':st', $decision);
         $this->bind(':by', (int) $approverId);
+        $this->bind(':appr_at', $now);
         $this->bind(':rm', $remark);
         $this->bind(':rm2', $remark);
         $this->bind(':id', (int) $attendanceId);
         $this->execute();
         $ok = $this->rowCount() > 0;
+
 
         if ($ok) {
             // Send in-app notification to the employee who requested it
