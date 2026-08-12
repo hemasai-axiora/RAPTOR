@@ -88,18 +88,136 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
     padding: 0 !important;
 }
 
-/* THEME PRESET STYLES */
-.canvas-grid.theme-cyberpunk {
-    background: #0d0221 !important;
-    border-color: #ff007f !important;
+/* ==========================================================================
+   DASHBOARD CANVAS THEMES (BUSINESS & VIBRANT COLORFUL PRESETS)
+   ========================================================================== */
+
+/* 1. Corporate Executive Clean (Light Slate & Corporate Blue) */
+.canvas-grid.theme-corporate-clean {
+    background: #F8FAFC !important;
+    border-color: #CBD5E1 !important;
 }
+.canvas-grid.theme-corporate-clean .canvas-widget {
+    background: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06) !important;
+    color: #0F172A !important;
+}
+.canvas-grid.theme-corporate-clean .widget-title-text,
+.canvas-grid.theme-corporate-clean .canvas-widget-toolbar button {
+    color: #1E293B !important;
+}
+
+/* 2. Enterprise Platinum Minimalist (Crisp Off-White & Steel Indigo) */
+.canvas-grid.theme-enterprise-minimal {
+    background: #F1F5F9 !important;
+    border-color: #94A3B8 !important;
+}
+.canvas-grid.theme-enterprise-minimal .canvas-widget {
+    background: #FFFFFF !important;
+    border: 1px solid #CBD5E1 !important;
+    box-shadow: 0 4px 14px rgba(30, 41, 59, 0.08) !important;
+    color: #0F172A !important;
+}
+.canvas-grid.theme-enterprise-minimal .widget-title-text,
+.canvas-grid.theme-enterprise-minimal .canvas-widget-toolbar button {
+    color: #0F172A !important;
+}
+
+/* 3. Wall Street Executive Navy (Gold & Cyan Highlights) */
+.canvas-grid.theme-wall-street {
+    background: #0A192F !important;
+    border-color: #1E3A8A !important;
+}
+.canvas-grid.theme-wall-street .canvas-widget {
+    background: #112240 !important;
+    border: 1px solid #233554 !important;
+    box-shadow: 0 6px 16px rgba(2, 12, 27, 0.5) !important;
+    color: #E2E8F0 !important;
+}
+
+/* 4. Midnight Sapphire (Deep Blue & Sky Glow) */
 .canvas-grid.theme-sapphire {
-    background: #0f172a !important;
-    border-color: #38bdf8 !important;
+    background: #0F172A !important;
+    border-color: #38BDF8 !important;
 }
+.canvas-grid.theme-sapphire .canvas-widget {
+    background: #1E293B !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.6) !important;
+    color: #F8FAFC !important;
+}
+
+/* 5. Neon Sunset Horizon (Vibrant Purple & Coral Magenta) */
+.canvas-grid.theme-neon-sunset {
+    background: linear-gradient(135deg, #1A0B2E 0%, #2D124D 100%) !important;
+    border-color: #C084FC !important;
+}
+.canvas-grid.theme-neon-sunset .canvas-widget {
+    background: rgba(45, 18, 77, 0.85) !important;
+    border: 1px solid #6B21A8 !important;
+    box-shadow: 0 6px 20px rgba(168, 85, 247, 0.25) !important;
+    color: #F3E8FF !important;
+}
+
+/* 6. Nordic Aurora Mint (Vibrant Mint & Deep Emerald) */
+.canvas-grid.theme-nordic-aurora {
+    background: #051C1E !important;
+    border-color: #2DD4BF !important;
+}
+.canvas-grid.theme-nordic-aurora .canvas-widget {
+    background: #0D2A2C !important;
+    border: 1px solid #134E4A !important;
+    box-shadow: 0 6px 18px rgba(45, 212, 191, 0.2) !important;
+    color: #E0F2FE !important;
+}
+
+/* 7. Tokyo Electric Cyberpunk (Vivid Pink & Cyan Neon) */
+.canvas-grid.theme-tokyo-electric {
+    background: #050515 !important;
+    border-color: #FF007F !important;
+}
+.canvas-grid.theme-tokyo-electric .canvas-widget {
+    background: #0D0B26 !important;
+    border: 1px solid #FF007F !important;
+    box-shadow: 0 0 16px rgba(255, 0, 127, 0.3) !important;
+    color: #FFFFFF !important;
+}
+
+/* 8. Solar Flare Warm Orange (High Energy Amber) */
+.canvas-grid.theme-solar-flare {
+    background: #1C0D02 !important;
+    border-color: #F97316 !important;
+}
+.canvas-grid.theme-solar-flare .canvas-widget {
+    background: #2A1405 !important;
+    border: 1px solid #451A03 !important;
+    box-shadow: 0 6px 18px rgba(249, 115, 22, 0.2) !important;
+    color: #FFEDD5 !important;
+}
+
+/* 9. Royal Purple Velvet (Regal Luxury & Gold) */
+.canvas-grid.theme-royal-purple {
+    background: #160C28 !important;
+    border-color: #A855F7 !important;
+}
+.canvas-grid.theme-royal-purple .canvas-widget {
+    background: #23143D !important;
+    border: 1px solid #3B0764 !important;
+    box-shadow: 0 6px 18px rgba(168, 85, 247, 0.25) !important;
+    color: #FAF5FF !important;
+}
+
+/* 10. Emerald Executive (Rich Emerald & Mint) */
 .canvas-grid.theme-emerald {
-    background: #022c22 !important;
-    border-color: #34d399 !important;
+    background: #022C22 !important;
+    border-color: #34D399 !important;
+}
+.canvas-grid.theme-emerald .canvas-widget {
+    background: #064E3B !important;
+    border: 1px solid #047857 !important;
+    box-shadow: 0 6px 18px rgba(52, 211, 153, 0.2) !important;
+    color: #ECFDF5 !important;
 }
 
 .canvas-widget {
@@ -351,11 +469,22 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
         <div class="d-flex align-items-center gap-3">
             <div class="d-flex align-items-center gap-1 text-secondary small">
                 <i class="fa-solid fa-palette text-warning me-1"></i> Theme:
-                <select id="dash-canvas-theme" class="form-select form-select-sm bg-dark text-white border-secondary py-0 px-2" style="font-size: 0.75rem; width: 130px;">
-                    <option value="default">Glass Dark</option>
-                    <option value="cyberpunk">Cyberpunk Glow</option>
-                    <option value="sapphire">Midnight Sapphire</option>
-                    <option value="emerald">Emerald Executive</option>
+                <select id="dash-canvas-theme" class="form-select form-select-sm bg-dark text-white border-secondary py-0 px-2" style="font-size: 0.75rem; width: 185px;">
+                    <optgroup label="💼 Business Themes">
+                        <option value="corporate-clean">Corporate Clean (Light)</option>
+                        <option value="enterprise-minimal">Enterprise Minimal (Light)</option>
+                        <option value="wall-street">Wall Street Navy (Dark)</option>
+                        <option value="sapphire">Midnight Sapphire (Dark)</option>
+                        <option value="emerald">Emerald Executive (Dark)</option>
+                    </optgroup>
+                    <optgroup label="🎨 Vibrant Themes">
+                        <option value="neon-sunset">Neon Sunset Horizon</option>
+                        <option value="nordic-aurora">Nordic Aurora Mint</option>
+                        <option value="tokyo-electric">Tokyo Electric Neon</option>
+                        <option value="solar-flare">Solar Flare Orange</option>
+                        <option value="royal-purple">Royal Purple Velvet</option>
+                        <option value="default">Glass Dark (Classic)</option>
+                    </optgroup>
                 </select>
             </div>
             <div class="d-flex align-items-center gap-1 text-secondary small">
@@ -1284,7 +1413,41 @@ $(function() {
         });
     }
 
+    $('#dash-canvas-theme').on('change', function() {
+        var theme = $(this).val();
+        $('#canvas-grid').removeClass(function(index, className) {
+            return (className.match(/(^|\s)theme-\S+/g) || []).join(' ');
+        });
+        if (theme !== 'default') {
+            $('#canvas-grid').addClass('theme-' + theme);
+        }
+        renderCanvas();
+    });
+
     function getColorPalette(name) {
+        var activeTheme = $('#dash-canvas-theme').val();
+        if (activeTheme === 'corporate-clean') {
+            return ['#0284C7', '#1E3A8A', '#0D9488', '#D97706', '#6366F1'];
+        } else if (activeTheme === 'enterprise-minimal') {
+            return ['#2563EB', '#4F46E5', '#059669', '#D97706', '#0284C7'];
+        } else if (activeTheme === 'wall-street') {
+            return ['#F59E0B', '#06B6D4', '#10B981', '#3B82F6', '#EC4899'];
+        } else if (activeTheme === 'neon-sunset') {
+            return ['#E056FD', '#FF6B6B', '#FF9F43', '#48DBFB', '#1DD1A1'];
+        } else if (activeTheme === 'nordic-aurora') {
+            return ['#2DD4BF', '#84CC16', '#38BDF8', '#A855F7', '#F43F5E'];
+        } else if (activeTheme === 'tokyo-electric') {
+            return ['#FF007F', '#FACC15', '#00F0FF', '#A855F7', '#FF6B6B'];
+        } else if (activeTheme === 'solar-flare') {
+            return ['#F97316', '#F59E0B', '#EF4444', '#FBBF24', '#10B981'];
+        } else if (activeTheme === 'royal-purple') {
+            return ['#9333EA', '#C084FC', '#F43F5E', '#F59E0B', '#06B6D4'];
+        } else if (activeTheme === 'emerald') {
+            return ['#34D399', '#10B981', '#059669', '#F59E0B', '#3B82F6'];
+        } else if (activeTheme === 'sapphire') {
+            return ['#38BDF8', '#6366F1', '#34D399', '#FBBF24', '#F43F5E'];
+        }
+
         var map = {
             blue: ['#1D4ED8', '#2563EB', '#3B82F6', '#60A5FA', '#93C5FD'],
             emerald: ['#059669', '#10B981', '#34D399', '#6EE7B7', '#A7F3D0'],
