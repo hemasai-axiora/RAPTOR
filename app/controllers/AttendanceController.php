@@ -168,6 +168,29 @@ class AttendanceController extends Controller {
         $this->redirect('index.php?route=attendance/approvals');
     }
 
+    /** Bulk automate approval for all visible pending attendance requests. */
+    public function approveAll() {
+        $this->requireOversight();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->requireAuth();
+            $pending = $this->att->getPendingApprovals($this->visibleUserIds());
+            $count = 0;
+            $approverId = (int) $_SESSION['user_id'];
+            foreach ($pending as $p) {
+                if ($this->inScope((int) $p->attendance_id)) {
+                    $ok = $this->att->setApproval((int) $p->attendance_id, 'Approved', $approverId, 'Automated bulk approval');
+                    if ($ok) { $count++; }
+                }
+            }
+            if ($count > 0) {
+                $this->audit("Bulk automated approval of $count attendance requests", 'attendance');
+                $_SESSION['att_msg'] = "$count attendance request(s) automatically approved!";
+            }
+        }
+        $this->redirect('index.php?route=attendance/approvals');
+    }
+
+
     public function reject($id = 0) {
         $this->requireOversight();
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {

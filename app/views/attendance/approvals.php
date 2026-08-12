@@ -6,15 +6,26 @@ $fileUrl = function ($key) { return 'index.php?route=file/show&key=' . urlencode
 <div class="pulse-card" style="background: var(--panel-dark); border: 1px solid var(--border-color); border-radius: 14px; padding: 1.75rem; box-shadow: var(--shadow-soft);">
 
     <!-- Header Section -->
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; background: var(--primary-soft); padding:0.85rem 1.1rem; border-radius:10px; border-left:4px solid var(--primary); margin-bottom:1.5rem;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; background: var(--primary-soft); padding:0.85rem 1.1rem; border-radius:10px; border-left:4px solid var(--primary); margin-bottom:1.5rem;" class="flex-wrap">
         <div style="display:flex; align-items:center; gap:0.6rem;">
             <i class="fa-solid fa-user-check" style="color: var(--primary); font-size:1.05rem;"></i>
             <h4 style="margin:0; font-size:1.05rem; font-weight:700; color: var(--primary);">Attendance Approvals</h4>
         </div>
-        <span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-weight:700;">
-            <?php echo count($pending); ?> Pending Request<?php echo count($pending) !== 1 ? 's' : ''; ?>
-        </span>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-weight:700;">
+                <?php echo count($pending); ?> Pending Request<?php echo count($pending) !== 1 ? 's' : ''; ?>
+            </span>
+            <?php if (!empty($pending)): ?>
+            <form action="index.php?route=attendance/approveAll" method="POST" class="d-inline" onsubmit="return confirm('Automate and approve all <?php echo count($pending); ?> pending attendance requests?');">
+                <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
+                <button type="submit" class="btn btn-sm btn-success shadow-sm fw-bold px-3" style="border-radius: 8px;">
+                    <i class="fa-solid fa-bolt me-1"></i>Automate All Approvals
+                </button>
+            </form>
+            <?php endif; ?>
+        </div>
     </div>
+
 
     <?php if (empty($pending)): ?>
         <div class="text-center py-5">
