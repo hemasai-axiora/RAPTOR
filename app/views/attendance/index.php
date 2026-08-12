@@ -5,6 +5,33 @@ $hasLogout = $today && $today->logout_at;
 $fileUrl = function ($key) { return 'index.php?route=file/show&key=' . urlencode($key); };
 ?>
 
+<style>
+@keyframes pulse-dot {
+    0% { transform: scale(0.95); opacity: 0.8; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+    70% { transform: scale(1.15); opacity: 1; box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+    100% { transform: scale(0.95); opacity: 0.8; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+.live-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: pulse-dot 1.8s infinite;
+}
+@keyframes badge-pulse-anim {
+    0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.5); }
+    70% { box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
+}
+.badge-pulse {
+    animation: badge-pulse-anim 2s infinite;
+}
+.font-monospace {
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+}
+</style>
+
 <div class="row justify-content-center">
     <div class="col-12 col-md-8 col-lg-6">
 
@@ -19,7 +46,7 @@ $fileUrl = function ($key) { return 'index.php?route=file/show&key=' . urlencode
                     <?php if ($hasLogout): ?>
                         <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">COMPLETED</span>
                     <?php elseif ($hasLogin): ?>
-                        <span class="badge bg-success-subtle text-success border border-success-subtle">ON DUTY</span>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle"><span class="live-dot me-1"></span>ON DUTY</span>
                     <?php else: ?>
                         <span class="badge bg-warning-subtle text-warning border border-warning-subtle">NOT CHECKED IN</span>
                     <?php endif; ?>
@@ -47,19 +74,92 @@ $fileUrl = function ($key) { return 'index.php?route=file/show&key=' . urlencode
         <div class="pulse-card">
 
             <?php if ($hasLogin): ?>
-            <!-- Display current approval status -->
-            <div class="text-center mb-4 py-2" style="background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border-color);">
-                <span class="text-secondary small d-block mb-1">Approval Status</span>
-                <?php if ($today->attendance_status === 'Pending'): ?>
-                    <span class="badge bg-warning text-dark border border-warning" style="font-size: 0.85rem; padding: 0.4em 0.8em;"><i class="fa-solid fa-hourglass-half me-1"></i>Pending Approval</span>
-                <?php elseif ($today->attendance_status === 'Approved'): ?>
-                    <span class="badge bg-success text-white border border-success" style="font-size: 0.85rem; padding: 0.4em 0.8em;"><i class="fa-solid fa-circle-check me-1"></i>Approved</span>
-                <?php elseif ($today->attendance_status === 'Rejected'): ?>
-                    <span class="badge bg-danger text-white border border-danger" style="font-size: 0.85rem; padding: 0.4em 0.8em;"><i class="fa-solid fa-circle-xmark me-1"></i>Rejected</span>
-                    <?php if (!empty($today->rejection_reason)): ?>
-                        <div class="text-danger small mt-2 px-2">Reason: <?php echo htmlspecialchars($today->rejection_reason); ?></div>
+            <!-- Display current approval status with Real-Time Automate & Live Sync -->
+            <div id="approval-status-card" class="text-center mb-4 p-3" style="background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid var(--border-color); position: relative; overflow: hidden;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-secondary small fw-semibold"><i class="fa-solid fa-shield-check me-1 text-primary"></i>Approval Status</span>
+                    <span id="sync-indicator" class="badge bg-dark text-secondary border border-secondary border-opacity-25 small" style="font-size: 0.7rem;">
+                        <span class="live-dot me-1" style="width:6px; height:6px;"></span>Live Sync
+                    </span>
+                </div>
+
+                <div id="status-badge-wrapper" class="py-1">
+                    <?php if ($today->attendance_status === 'Pending'): ?>
+                        <span id="current-status-badge" class="badge bg-warning text-dark border border-warning shadow-sm badge-pulse" style="font-size: 0.95rem; padding: 0.5em 1em;" data-status="Pending">
+                            <i class="fa-solid fa-hourglass-half me-1 fa-spin" style="animation-duration: 3s;"></i>Pending Approval
+                        </span>
+                        <div id="pending-timer-container" class="mt-2 text-warning small">
+                            <i class="fa-regular fa-clock me-1"></i>Pending for: <span id="approval-elapsed-timer" data-start="<?php echo strtotime($today->requested_at ?? $today->login_at) * 1000; ?>">00m 00s</span>
+                        </div>
+                    <?php elseif ($today->attendance_status === 'Approved'): ?>
+                        <span id="current-status-badge" class="badge bg-success text-white border border-success shadow-sm" style="font-size: 0.95rem; padding: 0.5em 1em;" data-status="Approved">
+                            <i class="fa-solid fa-circle-check me-1"></i>Approved
+                        </span>
+                        <?php if (!empty($today->approved_at)): ?>
+                            <div class="text-success small mt-1"><i class="fa-solid fa-check me-1"></i>Approved at <?php echo formatToLocalTime($today->approved_at, 'h:i A'); ?></div>
+                        <?php endif; ?>
+                    <?php elseif ($today->attendance_status === 'Rejected'): ?>
+                        <span id="current-status-badge" class="badge bg-danger text-white border border-danger shadow-sm" style="font-size: 0.95rem; padding: 0.5em 1em;" data-status="Rejected">
+                            <i class="fa-solid fa-circle-xmark me-1"></i>Rejected
+                        </span>
+                        <?php if (!empty($today->rejection_reason)): ?>
+                            <div class="text-danger small mt-2 px-2">Reason: <?php echo htmlspecialchars($today->rejection_reason); ?></div>
+                        <?php endif; ?>
                     <?php endif; ?>
+                </div>
+
+                <?php if ($today->attendance_status === 'Pending'): ?>
+                <!-- Automated Approval Action Bar -->
+                <div id="auto-approval-action-bar" class="mt-3 pt-3 border-top border-secondary border-opacity-25">
+                    <div class="d-flex flex-wrap gap-2 justify-content-center align-items-center">
+                        <button id="btn-auto-approve" class="btn btn-sm btn-outline-warning shadow-sm" style="border-radius: 20px;">
+                            <i class="fa-solid fa-bolt me-1 text-warning"></i>Automate Approval
+                        </button>
+                        <button id="btn-auto-timer" class="btn btn-sm btn-outline-info shadow-sm" style="border-radius: 20px;">
+                            <i class="fa-solid fa-stopwatch me-1"></i>Auto-Approve Timer (<span id="auto-timer-count">10s</span>)
+                        </button>
+                    </div>
+                    <div id="auto-approve-msg" class="small mt-2 text-info d-none"></div>
+                </div>
                 <?php endif; ?>
+            </div>
+
+            <div class="row text-center g-2 mb-3">
+                <div class="col-6">
+                    <div class="text-secondary small mb-1">
+                        Worked <?php if (!$hasLogout): ?><span class="badge bg-success-subtle text-success border border-success-subtle py-0 px-1 ms-1" style="font-size: 0.65rem;"><span class="live-dot me-1"></span>LIVE</span><?php endif; ?>
+                    </div>
+                    <div class="text-white fs-4 fw-bold font-monospace" id="worked-clock"
+                         data-login="<?php echo strtotime($today->login_at) * 1000; ?>"
+                         data-done="<?php echo $hasLogout ? '1' : '0'; ?>"
+                         data-break="<?php echo (int)$today->break_minutes; ?>"
+                         data-worked-min="<?php echo (int)$today->worked_minutes; ?>">
+                        <?php echo $hasLogout ? (floor($today->worked_minutes / 60) . 'h ' . ($today->worked_minutes % 60) . 'm') : '00h 00m 00s'; ?>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="text-secondary small mb-1">
+                        Break <?php if ($open_break): ?><span class="badge bg-warning-subtle text-warning border border-warning-subtle py-0 px-1 ms-1" style="font-size: 0.65rem;"><span class="live-dot me-1" style="background:#f59e0b;"></span>ACTIVE</span><?php endif; ?>
+                    </div>
+                    <div class="text-white fs-4 fw-bold font-monospace" id="break-clock"
+                         data-open="<?php echo $open_break ? '1' : '0'; ?>"
+                         data-start="<?php echo $open_break ? strtotime($open_break->start_at) * 1000 : '0'; ?>"
+                         data-total-min="<?php echo (int)$today->break_minutes; ?>">
+                        <?php echo (int)$today->break_minutes; ?>m
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shift Progress Bar & Goal Tracker -->
+            <div class="mb-4 p-2" style="background: rgba(0,0,0,0.25); border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                <div class="d-flex justify-content-between text-secondary small mb-1">
+                    <span><i class="fa-solid fa-chart-line me-1 text-info"></i>Shift Progress (8h Goal)</span>
+                    <span id="shift-progress-percent" class="fw-bold text-white">0%</span>
+                </div>
+                <div class="progress" style="height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px;">
+                    <div id="shift-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%; background: linear-gradient(90deg, #3b82f6, #10b981);" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <div id="shift-remaining-text" class="text-end text-secondary mt-1" style="font-size: 0.75rem;">Calculating remaining shift time…</div>
             </div>
 
             <div class="row text-center g-2 mb-3">
@@ -74,22 +174,6 @@ $fileUrl = function ($key) { return 'index.php?route=file/show&key=' . urlencode
                         <?php echo $hasLogout ? formatToLocalTime($today->logout_at, 'h:i A') : '—'; ?>
                     </div>
                     <?php if ($hasLogout && $today->is_early_logout): ?><span class="badge bg-warning-subtle text-warning">EARLY</span><?php endif; ?>
-                </div>
-            </div>
-
-            <div class="row text-center g-2 mb-3">
-                <div class="col-6">
-                    <div class="text-secondary small">Worked</div>
-                    <div class="text-white fs-4 fw-bold" id="worked-clock"
-                         data-login="<?php echo strtotime($today->login_at) * 1000; ?>"
-                         data-done="<?php echo $hasLogout ? '1' : '0'; ?>"
-                         data-break="<?php echo (int)$today->break_minutes; ?>">
-                        <?php echo $hasLogout ? (floor($today->worked_minutes / 60) . 'h ' . ($today->worked_minutes % 60) . 'm') : '0h 0m'; ?>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="text-secondary small">Break</div>
-                    <div class="text-white fs-4 fw-bold"><?php echo (int)$today->break_minutes; ?>m</div>
                 </div>
             </div>
 
@@ -324,19 +408,180 @@ $(function () {
             .catch(() => { btn.prop('disabled', false); msg('Network error.', false); });
     });
 
-    // --- Live worked clock while on duty ---
-    const clock = document.getElementById('worked-clock');
-    if (clock && clock.dataset.done === '0') {
-        const loginMs = parseInt(clock.dataset.login, 10);
-        const brk = parseInt(clock.dataset.break || '0', 10);
-        const tick = function () {
-            let mins = Math.floor((Date.now() - loginMs) / 60000) - brk;
-            if (mins < 0) mins = 0;
-            clock.textContent = Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm';
-        };
-        tick();
-        setInterval(tick, 30000);
+    // --- Helper to format seconds into HHh MMm SSs ---
+    function formatHMS(totalSeconds) {
+        if (isNaN(totalSeconds) || totalSeconds < 0) totalSeconds = 0;
+        const h = Math.floor(totalSeconds / 3600);
+        const m = Math.floor((totalSeconds % 3600) / 60);
+        const s = Math.floor(totalSeconds % 60);
+        const pad = (n) => String(n).padStart(2, '0');
+        if (h > 0) {
+            return `${pad(h)}h ${pad(m)}m ${pad(s)}s`;
+        }
+        return `${pad(m)}m ${pad(s)}s`;
     }
+
+    // --- Live worked clock & shift progress engine (1-second precision) ---
+    const workedClock = document.getElementById('worked-clock');
+    if (workedClock && workedClock.dataset.login && workedClock.dataset.login !== '0') {
+        const loginMs = parseInt(workedClock.dataset.login, 10);
+        const isDone = workedClock.dataset.done === '1';
+        const breakMins = parseInt(workedClock.dataset.break || '0', 10);
+        const breakClock = document.getElementById('break-clock');
+        const isBreakOpen = breakClock && breakClock.dataset.open === '1';
+        const breakStartMs = isBreakOpen ? parseInt(breakClock.dataset.start || '0', 10) : 0;
+        const targetShiftSecs = 8 * 3600; // 8 hours target shift
+
+        const tickTimers = function () {
+            const now = Date.now();
+            
+            // Calculate Break Time
+            let currentBreakSecs = breakMins * 60;
+            if (isBreakOpen && breakStartMs > 0) {
+                currentBreakSecs += Math.max(0, Math.floor((now - breakStartMs) / 1000));
+            }
+            if (breakClock) {
+                if (isBreakOpen) {
+                    breakClock.textContent = formatHMS(currentBreakSecs);
+                } else {
+                    breakClock.textContent = (breakMins) + 'm';
+                }
+            }
+
+            // Calculate Worked Time
+            if (!isDone) {
+                let rawWorkedSecs = Math.floor((now - loginMs) / 1000) - currentBreakSecs;
+                if (rawWorkedSecs < 0) rawWorkedSecs = 0;
+                workedClock.textContent = formatHMS(rawWorkedSecs);
+
+                // Update Shift Progress Bar
+                const percent = Math.min(100, Math.max(0, ((rawWorkedSecs / targetShiftSecs) * 100))).toFixed(1);
+                const progressBar = document.getElementById('shift-progress-bar');
+                const progressPercent = document.getElementById('shift-progress-percent');
+                const remainingText = document.getElementById('shift-remaining-text');
+
+                if (progressBar) progressBar.style.width = percent + '%';
+                if (progressPercent) progressPercent.textContent = percent + '%';
+
+                if (remainingText) {
+                    const remainingSecs = targetShiftSecs - rawWorkedSecs;
+                    if (remainingSecs > 0) {
+                        remainingText.textContent = `${formatHMS(remainingSecs)} remaining until 8h goal`;
+                    } else {
+                        remainingText.textContent = `🎉 8h Daily Shift Target Completed!`;
+                    }
+                }
+            }
+
+            // Live Pending Approval Elapsed Timer
+            const elapsedTimerEl = document.getElementById('approval-elapsed-timer');
+            if (elapsedTimerEl && elapsedTimerEl.dataset.start) {
+                const reqStart = parseInt(elapsedTimerEl.dataset.start, 10);
+                if (reqStart > 0) {
+                    const pendingSecs = Math.max(0, Math.floor((now - reqStart) / 1000));
+                    elapsedTimerEl.textContent = formatHMS(pendingSecs);
+                }
+            }
+        };
+
+        tickTimers();
+        setInterval(tickTimers, 1000); // 1-second precision tick
+    }
+
+    // --- Interactive Automate Approval Logic ---
+    function triggerAutoApproval(btnEl) {
+        if (btnEl) { $(btnEl).prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-1"></i>Approving…'); }
+        const fd = new FormData(); fd.append('csrf_token', csrf);
+        fetch('index.php?route=attendance/autoApprove', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    if (typeof confetti === 'function') {
+                        confetti({ particleCount: 120, spread: 70, origin: { y: 0.5 } });
+                    }
+                    msg('Attendance automatically approved!', true);
+                    updateStatusUI('Approved');
+                } else {
+                    if (btnEl) { $(btnEl).prop('disabled', false).html('<i class="fa-solid fa-bolt me-1 text-warning"></i>Automate Approval'); }
+                    msg(d.message || 'Auto-approval failed.', false);
+                }
+            })
+            .catch(() => {
+                if (btnEl) { $(btnEl).prop('disabled', false).html('<i class="fa-solid fa-bolt me-1 text-warning"></i>Automate Approval'); }
+                msg('Network error during auto-approval.', false);
+            });
+    }
+
+    $('#btn-auto-approve').on('click', function () {
+        triggerAutoApproval(this);
+    });
+
+    let autoTimerInterval = null;
+    $('#btn-auto-timer').on('click', function () {
+        const btn = $(this).prop('disabled', true);
+        let count = 10;
+        $('#auto-timer-count').text(count + 's');
+        $('#auto-approve-msg').removeClass('d-none').text('Auto-approving in ' + count + ' seconds…');
+
+        if (autoTimerInterval) clearInterval(autoTimerInterval);
+        autoTimerInterval = setInterval(() => {
+            count--;
+            $('#auto-timer-count').text(count + 's');
+            $('#auto-approve-msg').text('Auto-approving in ' + count + ' seconds…');
+            if (count <= 0) {
+                clearInterval(autoTimerInterval);
+                triggerAutoApproval(btn);
+            }
+        }, 1000);
+    });
+
+    // --- Update Status UI dynamically on screen ---
+    function updateStatusUI(status, approvedAt, rejectionReason) {
+        const wrapper = $('#status-badge-wrapper');
+        const currentBadge = $('#current-status-badge');
+
+        if (currentBadge.data('status') === status) return; // No change
+
+        if (status === 'Approved') {
+            wrapper.html(`
+                <span id="current-status-badge" class="badge bg-success text-white border border-success shadow-sm" style="font-size: 0.95rem; padding: 0.5em 1em;" data-status="Approved">
+                    <i class="fa-solid fa-circle-check me-1"></i>Approved
+                </span>
+                <div class="text-success small mt-1"><i class="fa-solid fa-check me-1"></i>Approved at ${approvedAt || new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+            `);
+            $('#auto-approval-action-bar').fadeOut();
+            if (typeof confetti === 'function') {
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.5 } });
+            }
+        } else if (status === 'Rejected') {
+            wrapper.html(`
+                <span id="current-status-badge" class="badge bg-danger text-white border border-danger shadow-sm" style="font-size: 0.95rem; padding: 0.5em 1em;" data-status="Rejected">
+                    <i class="fa-solid fa-circle-xmark me-1"></i>Rejected
+                </span>
+                <div class="text-danger small mt-2 px-2">Reason: ${rejectionReason || 'Not specified'}</div>
+            `);
+            $('#auto-approval-action-bar').fadeOut();
+        }
+    }
+
+    // --- Real-time Status Auto-Sync Polling (every 4 seconds) ---
+    function checkApprovalStatus() {
+        const badge = $('#current-status-badge');
+        if (!badge.length || badge.data('status') !== 'Pending') return;
+
+        fetch('index.php?route=attendance/status')
+            .then(r => r.json())
+            .then(d => {
+                if (d.success && d.data && d.data.attendance_status) {
+                    if (d.data.attendance_status !== 'Pending') {
+                        updateStatusUI(d.data.attendance_status, d.data.approved_at, d.data.rejection_reason);
+                    }
+                }
+            })
+            .catch(() => {});
+    }
+
+    setInterval(checkApprovalStatus, 4000);
 });
 </script>
 

@@ -100,6 +100,45 @@ class AttendanceController extends Controller {
         $this->jsonOk(['worked_minutes' => $res['worked_minutes'], 'is_early' => $res['is_early']], $res['message']);
     }
 
+    /** Live status check endpoint (JSON) for real-time polling of approval status and timers. */
+    public function status() {
+        $this->requireAuthApi();
+        $userId = (int) $_SESSION['user_id'];
+        $today = $this->att->getToday($userId);
+
+        if (!$today) {
+            $this->jsonOk(['has_login' => false, 'attendance_status' => null]);
+            return;
+        }
+
+        $this->jsonOk([
+            'has_login'         => !empty($today->login_at),
+            'has_logout'        => !empty($today->logout_at),
+            'attendance_status' => $today->attendance_status,
+            'rejection_reason'  => $today->rejection_reason,
+            'approved_at'       => $today->approved_at ? formatToLocalTime($today->approved_at, 'h:i A') : null,
+            'login_at'          => $today->login_at,
+            'login_time_formatted' => formatToLocalTime($today->login_at, 'h:i A'),
+            'requested_at'      => $today->requested_at ?? $today->login_at,
+            'worked_minutes'    => (int) $today->worked_minutes,
+            'break_minutes'     => (int) $today->break_minutes,
+        ]);
+    }
+
+    /** Auto-approve endpoint (JSON) for automated approval workflow / interactive trigger. */
+    public function autoApprove() {
+        $this->requireAuthApi();
+        $userId = (int) $_SESSION['user_id'];
+        $res = $this->att->autoApproveRecord($userId);
+        if ($res) {
+            $this->audit('Automated attendance approval executed', 'attendance');
+            $this->jsonOk(null, 'Attendance status successfully auto-approved!');
+        } else {
+            $this->jsonError('No pending attendance record found to auto-approve.');
+        }
+    }
+
+
     // ================= Oversight: approvals & report =================
 
     private function requireOversight() {

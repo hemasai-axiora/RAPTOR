@@ -385,6 +385,18 @@ class Attendance extends Model {
         return $ok;
     }
 
+    /** Auto approve the current pending attendance record for a user. */
+    public function autoApproveRecord($userId): bool {
+        $today = $this->getToday($userId);
+        if (!$today || !$today->login_at) {
+            return false;
+        }
+        if ($today->attendance_status === 'Approved') {
+            return true;
+        }
+        return $this->setApproval($today->attendance_id, 'Approved', $userId, 'Automated auto-approval rule');
+    }
+
     // ---------------- Report ----------------
 
     /**
