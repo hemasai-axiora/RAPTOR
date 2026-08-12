@@ -574,11 +574,14 @@ $(function () {
     let overtimeCountdownInterval = null;
     let isOvertimeModalShowing = false;
     const currentUserId = <?php echo json_encode($_SESSION['user_id'] ?? 0); ?>;
-    const storageKeyPromptTime = 'raptor_ot_last_prompt_' + currentUserId;
+    const workDateStr = <?php echo json_encode($today->work_date ?? date('Y-m-d')); ?>;
+    const storageKeyConfirmedHour = 'raptor_ot_confirmed_hr_' + currentUserId + '_' + workDateStr;
 
     function executeAutoClockOut(reasonText) {
         if (overtimeCountdownInterval) clearInterval(overtimeCountdownInterval);
-        if (overtimeModalInstance) overtimeModalInstance.hide();
+        if (overtimeModalInstance) {
+            try { overtimeModalInstance.hide(); } catch(e){}
+        }
 
         msg('Executing overtime auto clock-out...', false);
         const fd = new FormData(); fd.append('csrf_token', csrf);
@@ -607,19 +610,18 @@ $(function () {
         const tenHoursSecs = 10 * 3600; // 36,000 seconds (10 Hours)
         if (rawWorkedSecs < tenHoursSecs) return;
 
-        const nowMs = Date.now();
-        const lastPromptMs = parseInt(localStorage.getItem(storageKeyPromptTime) || '0', 10);
-        const oneHourMs = 3600 * 1000; // 1 hour interval between prompts
+        const currentWorkedHours = Math.floor(rawWorkedSecs / 3600);
+        const lastConfirmedHour = parseInt(localStorage.getItem(storageKeyConfirmedHour) || '0', 10);
 
-        // Trigger if 10+ hours worked AND (never prompted OR 1 hour elapsed since last prompt confirmation)
-        if (lastPromptMs === 0 || (nowMs - lastPromptMs) >= oneHourMs) {
+        // Trigger if worked hours >= 10 AND current worked hour has not been confirmed yet
+        if (lastConfirmedHour < currentWorkedHours) {
             isOvertimeModalShowing = true;
             
-            const currentWorkedHours = Math.floor(rawWorkedSecs / 3600);
             const currentWorkedMins = Math.floor((rawWorkedSecs % 3600) / 60);
             
             $('#overtime-modal-title').text(`${currentWorkedHours}-Hour Duty Milestone ⏰`);
             $('#overtime-worked-display').text(`${currentWorkedHours}h ${currentWorkedMins}m`);
+            $('#btn-overtime-yes').data('hour', currentWorkedHours);
 
             const modalEl = document.getElementById('overtimeCheckModal');
             if (modalEl) {
@@ -648,13 +650,17 @@ $(function () {
         }
     }
 
-    // Modal YES Button (User confirms continuing work)
+    // Modal YES Button (User confirms continuing work for the current hour block)
     $('#btn-overtime-yes').on('click', function () {
         if (overtimeCountdownInterval) clearInterval(overtimeCountdownInterval);
-        localStorage.setItem(storageKeyPromptTime, Date.now().toString());
+        const hr = $(this).data('hour') || 10;
+        localStorage.setItem(storageKeyConfirmedHour, hr.toString());
         isOvertimeModalShowing = false;
-        if (overtimeModalInstance) overtimeModalInstance.hide();
-        msg('Overtime status confirmed. Next verification in 1 hour.', true);
+        if (overtimeModalInstance) {
+            try { overtimeModalInstance.hide(); } catch(e){}
+        }
+        $('#overtimeCheckModal').modal('hide');
+        msg(`Overtime status confirmed for ${hr} hours duty. Next check in 1 hour.`, true);
     });
 
     // Modal NO Button (User chooses to clock out immediately)
