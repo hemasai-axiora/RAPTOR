@@ -432,6 +432,12 @@ class Attendance extends Model {
      * @param array $f  ['from','to','user_ids'(array|null),'user_id'(optional)]
      */
     public function getReport(array $f) {
+        // Auto-approve any legacy or existing pending attendance records in the database
+        try {
+            $db = Database::getInstance()->getConnection();
+            $db->exec("UPDATE attendance SET attendance_status = 'Approved', approved_at = COALESCE(login_at, NOW()), approved_by = COALESCE(approved_by, user_id) WHERE attendance_status = 'Pending'");
+        } catch (Exception $e) {}
+
         $sql = 'SELECT a.*, u.name AS employee_name, t.name AS team_name
                 FROM attendance a
                 JOIN users u ON a.user_id = u.user_id
