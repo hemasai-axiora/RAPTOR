@@ -42,7 +42,51 @@ class Communication extends Model {
     }
 
     public function delete(int $id, ?array $visibleUserIds = null): bool {
-        return false;
+        [$where, $params] = $this->buildWhere(['communication_id' => $id], $visibleUserIds);
+        $this->query('DELETE c FROM communications c ' . $where);
+        $this->bindParams($params);
+        return $this->execute();
+    }
+
+    public function deleteBulk(array $ids, ?array $visibleUserIds = null): int {
+        if (empty($ids)) return 0;
+        $deleted = 0;
+        foreach ($ids as $id) {
+            if ($this->delete((int)$id, $visibleUserIds)) {
+                $deleted++;
+            }
+        }
+        return $deleted;
+    }
+
+    public function findLeadByPhoneOrEmail(string $identifier) {
+        $identifier = trim($identifier);
+        if (empty($identifier)) return null;
+
+        $db = Database::getInstance()->getConnection();
+        if (is_numeric($identifier) && (int)$identifier > 0) {
+            $stmt = $db->prepare('SELECT lead_id FROM leads WHERE lead_id = :id LIMIT 1');
+            $stmt->execute([':id' => (int)$identifier]);
+            $lead = $stmt->fetch(PDO::FETCH_OBJ);
+            if ($lead) return (int)$lead->lead_id;
+        }
+
+        $cleanPhone = preg_replace('/[^0-9]/', '', $identifier);
+        if (strlen($cleanPhone) >= 7) {
+            $stmt = $db->prepare('SELECT lead_id FROM leads WHERE REPLACE(REPLACE(REPLACE(phone, "-", ""), " ", ""), "+", "") LIKE :p LIMIT 1');
+            $stmt->execute([':p' => '%' . $cleanPhone . '%']);
+            $lead = $stmt->fetch(PDO::FETCH_OBJ);
+            if ($lead) return (int)$lead->lead_id;
+        }
+
+        if (strpos($identifier, '@') !== false) {
+            $stmt = $db->prepare('SELECT lead_id FROM leads WHERE LOWER(email) = LOWER(:e) LIMIT 1');
+            $stmt->execute([':e' => $identifier]);
+            $lead = $stmt->fetch(PDO::FETCH_OBJ);
+            if ($lead) return (int)$lead->lead_id;
+        }
+
+        return null;
     }
 
     private function buildWhere(array $filters, ?array $visibleUserIds): array {
@@ -66,8 +110,18 @@ class Communication extends Model {
         foreach (['communication_id', 'lead_id', 'user_id', 'channel', 'direction'] as $field) {
             if (isset($filters[$field]) && $filters[$field] !== '') {
                 $where[] = 'c.' . $field . ' = :' . $field;
-                $params[':' . $field] = $filters[$field];
+                $params[':' . $field] = strtolower($filters[$field]);
             }
+        }
+
+        if (!empty($filters['outcome'])) {
+            $where[] = 'c.outcome LIKE :outcome';
+            $params[':outcome'] = '%' . $filters['outcome'] . '%';
+        }
+
+        if (!empty($filters['search'])) {
+            $where[] = '(l.first_name LIKE :search OR l.last_name LIKE :search OR l.phone LIKE :search OR l.email LIKE :search OR c.outcome LIKE :search OR c.note LIKE :search)';
+            $params[':search'] = '%' . $filters['search'] . '%';
         }
 
         if (!empty($filters['date_from'])) {
