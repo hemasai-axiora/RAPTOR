@@ -44,6 +44,16 @@ class PerformanceController extends Controller {
     public function profile($userId = 0) {
         $userId = (int) ($userId ?: $_SESSION['user_id']);
 
+        $userRole = strtolower($_SESSION['user_role'] ?? '');
+        $isManagerOrAdmin = in_array($userRole, ['admin', 'manager', 'team_leader'], true);
+        if (!$isManagerOrAdmin && $userId !== (int) $_SESSION['user_id']) {
+            $this->viewWithLayout('errors/403', 'main', [
+                'title' => 'Access Denied',
+                'message' => 'You are only authorized to view your own performance profile.'
+            ]);
+            return;
+        }
+
         $period = $_GET['period'] ?? 'weekly';
         if (!in_array($period, ['weekly', 'monthly'], true)) {
             $period = 'weekly';

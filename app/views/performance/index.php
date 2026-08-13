@@ -292,9 +292,13 @@
                                         </div>
                                     </td>
                                     <td class="text-end">
-                                        <a class="btn btn-outline-info btn-sm px-3 py-1 fw-semibold" href="index.php?route=performance/profile/<?php echo $score->user_id; ?>&period=<?php echo urlencode($period); ?>" style="border-radius: 8px;">
-                                            <i class="fa-solid fa-eye me-1"></i> View Profile
-                                        </a>
+                                        <?php if ($can_manage || (int)$score->user_id === (int)$_SESSION['user_id']): ?>
+                                            <a class="btn btn-outline-info btn-sm px-3 py-1 fw-semibold" href="index.php?route=performance/profile/<?php echo $score->user_id; ?>&period=<?php echo urlencode($period); ?>" style="border-radius: 8px;">
+                                                <i class="fa-solid fa-eye me-1"></i> View Profile
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="text-secondary small fst-italic" title="Profile viewing restricted">—</span>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
