@@ -149,9 +149,17 @@ if (!function_exists('getInitialsBadge')) {
         </p>
     </div>
     <?php if ($can_assign): ?>
-        <button class="btn btn-primary px-3 py-2 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#addTaskModal" style="background: var(--primary, #2563eb); border: none; border-radius: 10px;">
-            ➕ Assign Task
-        </button>
+        <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-danger px-3 py-2 fw-semibold shadow-sm" id="btn-bulk-delete-tasks" style="display: none; border-radius: 10px;">
+                🗑️ Delete Selected (<span id="selected-tasks-count">0</span>)
+            </button>
+            <button type="button" class="btn btn-outline-danger px-3 py-2 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#deleteByEmployeeModal" style="border-radius: 10px;">
+                👤 Delete Tasks by Employee
+            </button>
+            <button class="btn btn-primary px-3 py-2 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#addTaskModal" style="background: var(--primary, #2563eb); border: none; border-radius: 10px;">
+                ➕ Assign Task
+            </button>
+        </div>
     <?php endif; ?>
 </div>
 
@@ -291,18 +299,33 @@ if (!function_exists('getInitialsBadge')) {
                         ?>
                         <div class="task-card <?php echo $priorityClass; ?> d-flex flex-column gap-2">
                             
-                            <!-- Card Header Badges -->
+                            <!-- Card Header Badges & Actions -->
                             <div class="d-flex justify-content-between align-items-center gap-2">
-                                <span class="badge px-2 py-1 fw-bold" style="<?php 
-                                    if ($p === 'high') echo 'background: rgba(239,68,68,0.15); color: #dc2626; border: 1px solid rgba(239,68,68,0.3);';
-                                    elseif ($p === 'medium') echo 'background: rgba(245,158,11,0.15); color: #d97706; border: 1px solid rgba(245,158,11,0.3);';
-                                    else echo 'background: rgba(16,185,129,0.15); color: #059669; border: 1px solid rgba(16,185,129,0.3);';
-                                ?>">
-                                    <?php echo $priorityLabel; ?>
-                                </span>
-                                <?php if ($task->is_carry_forward): ?>
-                                    <span class="badge px-2 py-1 fw-bold" style="background: rgba(245, 158, 11, 0.2); color: #b45309; border: 1px solid rgba(245, 158, 11, 0.4);">⏩ CARRY FORWARD</span>
-                                <?php endif; ?>
+                                <div class="d-flex align-items-center gap-2">
+                                    <?php if ($can_assign): ?>
+                                        <input type="checkbox" class="form-check-input task-select-checkbox me-1" value="<?php echo $task->task_id; ?>" title="Select task for bulk delete">
+                                    <?php endif; ?>
+                                    <span class="badge px-2 py-1 fw-bold" style="<?php 
+                                        if ($p === 'high') echo 'background: rgba(239,68,68,0.15); color: #dc2626; border: 1px solid rgba(239,68,68,0.3);';
+                                        elseif ($p === 'medium') echo 'background: rgba(245,158,11,0.15); color: #d97706; border: 1px solid rgba(245,158,11,0.3);';
+                                        else echo 'background: rgba(16,185,129,0.15); color: #059669; border: 1px solid rgba(16,185,129,0.3);';
+                                    ?>">
+                                        <?php echo $priorityLabel; ?>
+                                    </span>
+                                </div>
+                                <div class="d-flex align-items-center gap-1">
+                                    <?php if ($task->is_carry_forward): ?>
+                                        <span class="badge px-2 py-1 fw-bold" style="background: rgba(245, 158, 11, 0.2); color: #b45309; border: 1px solid rgba(245, 158, 11, 0.4);">⏩ CARRY FORWARD</span>
+                                    <?php endif; ?>
+                                    <?php if ($can_assign): ?>
+                                        <form action="index.php?route=tasks/delete/<?php echo $task->task_id; ?>" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete task #<?php echo $task->task_id; ?> (<?php echo htmlspecialchars(addslashes($task->title)); ?>)?');">
+                                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                                            <button type="submit" class="btn btn-link text-danger p-0 ms-1" style="font-size: 0.9rem;" title="Delete Task">
+                                                🗑️
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
+                                </div>
                             </div>
 
                             <!-- Title & Description -->
@@ -524,6 +547,63 @@ if (!function_exists('getInitialsBadge')) {
         </div>
     </div>
 </div>
+<!-- Delete Tasks by Employee Modal -->
+<div class="modal fade" id="deleteByEmployeeModal" tabindex="-1" aria-labelledby="deleteByEmployeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="background: var(--panel-dark, #ffffff); border-radius: 16px;">
+            <div class="modal-header border-bottom border-secondary border-opacity-10">
+                <h5 class="modal-title fw-bold text-danger" id="deleteByEmployeeModalLabel">👤 Delete Tasks by Employee</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="index.php?route=tasks/deleteByEmployee" method="POST" onsubmit="return confirm('Are you sure you want to delete ALL tasks assigned to the selected employee? This action cannot be undone.');">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                <div class="modal-body">
+                    <div class="alert alert-warning border-0 py-2 px-3 mb-3 rounded-3 text-warning" style="background: rgba(245, 158, 11, 0.12); font-size: 0.85rem;">
+                        <i class="fa-solid fa-triangle-exclamation me-2"></i> Selecting an employee will permanently remove all tasks assigned to them from the task board.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small fw-semibold">Select Employee *</label>
+                        <select name="employee_user_id" class="form-select" required>
+                            <option value="">-- Choose Employee --</option>
+                            <?php foreach ($assignees as $user): ?>
+                                <option value="<?php echo $user->user_id; ?>"><?php echo htmlspecialchars($user->name); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-top border-secondary border-opacity-10">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger px-4 fw-semibold">🗑️ Delete All Employee Tasks</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Delete Selected Tasks Modal -->
+<div class="modal fade" id="bulkDeleteTasksModal" tabindex="-1" aria-labelledby="bulkDeleteTasksModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="background: var(--panel-dark, #ffffff); border-radius: 16px;">
+            <div class="modal-header border-bottom border-secondary border-opacity-10">
+                <h5 class="modal-title fw-bold text-danger" id="bulkDeleteTasksModalLabel">🗑️ Delete Selected Tasks</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="index.php?route=tasks/deleteMultiple" method="POST">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                <div id="bulk_task_ids_container"></div>
+                <div class="modal-body">
+                    <div class="alert alert-danger border-0 py-2 px-3 mb-3 rounded-3 text-danger" style="background: rgba(239, 68, 68, 0.12); font-size: 0.85rem;">
+                        <i class="fa-solid fa-triangle-exclamation me-2"></i> Are you sure you want to delete <strong id="modal_bulk_task_count">0</strong> selected task(s)? This action cannot be undone.
+                    </div>
+                </div>
+                <div class="modal-footer border-top border-secondary border-opacity-10">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger px-4 fw-semibold">🗑️ Confirm & Delete Selected</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 <?php endif; ?>
 
 <script>
@@ -540,6 +620,29 @@ $(function() {
                 alert(res.message || 'Failed to update task status.');
             }
         }, 'json');
+    });
+
+    $(document).on('change', '.task-select-checkbox', function() {
+        const checkedCount = $('.task-select-checkbox:checked').length;
+        if (checkedCount > 0) {
+            $('#selected-tasks-count').text(checkedCount);
+            $('#btn-bulk-delete-tasks').fadeIn(150);
+        } else {
+            $('#btn-bulk-delete-tasks').fadeOut(150);
+        }
+    });
+
+    $('#btn-bulk-delete-tasks').on('click', function() {
+        const selectedCheckboxes = $('.task-select-checkbox:checked');
+        if (selectedCheckboxes.length === 0) return;
+
+        let container = $('#bulk_task_ids_container').empty();
+        selectedCheckboxes.each(function() {
+            container.append('<input type="hidden" name="task_ids[]" value="' + $(this).val() + '">');
+        });
+
+        $('#modal_bulk_task_count').text(selectedCheckboxes.length);
+        $('#bulkDeleteTasksModal').modal('show');
     });
 });
 </script>

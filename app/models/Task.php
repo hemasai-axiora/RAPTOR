@@ -260,7 +260,37 @@ class Task extends Model {
     }
 
     public function deleteTask($id, ?array $visibleUserIds = null) {
-        return false;
+        if (!$this->getTaskById((int) $id, $visibleUserIds)) {
+            return false;
+        }
+        $this->query('DELETE FROM tasks WHERE task_id = :id');
+        $this->bind(':id', (int) $id);
+        $ok = $this->execute();
+        if ($ok) {
+            $this->triggerIntegrationSync();
+        }
+        return $ok;
+    }
+
+    public function deleteMultipleTasks(array $ids, ?array $visibleUserIds = null): int {
+        $count = 0;
+        foreach ($ids as $id) {
+            if ($this->deleteTask((int) $id, $visibleUserIds)) {
+                $count++;
+            }
+        }
+        return $count;
+    }
+
+    public function deleteTasksByEmployee(int $employeeUserId, ?array $visibleUserIds = null): int {
+        $tasks = $this->getTasks($visibleUserIds, ['assigned_to_user_id' => $employeeUserId]);
+        $count = 0;
+        foreach ($tasks as $task) {
+            if ($this->deleteTask((int) $task->task_id, $visibleUserIds)) {
+                $count++;
+            }
+        }
+        return $count;
     }
 
     private function buildWhere(?array $visibleUserIds, array $filters): array {

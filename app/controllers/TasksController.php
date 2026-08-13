@@ -195,6 +195,54 @@ class TasksController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($this->taskModel->deleteTask((int) $id, $this->visibleUserIds())) {
                 $this->audit('Deleted task #' . (int) $id, 'task', (int) $id);
+                $_SESSION['task_success'] = 'Task deleted successfully.';
+            } else {
+                $_SESSION['task_error'] = 'Failed to delete task.';
+            }
+        }
+        $this->redirect('index.php?route=tasks/index');
+    }
+
+    public function deleteMultiple() {
+        $this->requirePermission('tasks', 'assign');
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $rawIds = $_POST['task_ids'] ?? [];
+            if (is_string($rawIds)) {
+                $rawIds = explode(',', $rawIds);
+            }
+            $taskIds = array_filter(array_map('intval', (array)$rawIds), function($id) { return $id > 0; });
+
+            if (empty($taskIds)) {
+                $_SESSION['task_error'] = 'Please select at least one task to delete.';
+            } else {
+                $count = $this->taskModel->deleteMultipleTasks($taskIds, $this->visibleUserIds());
+                if ($count > 0) {
+                    $this->audit("Bulk deleted {$count} task(s)", 'task');
+                    $_SESSION['task_success'] = "Successfully deleted {$count} task(s).";
+                } else {
+                    $_SESSION['task_error'] = 'Failed to delete selected tasks.';
+                }
+            }
+        }
+        $this->redirect('index.php?route=tasks/index');
+    }
+
+    public function deleteByEmployee() {
+        $this->requirePermission('tasks', 'assign');
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $employeeUserId = (int)($_POST['employee_user_id'] ?? 0);
+            if ($employeeUserId <= 0) {
+                $_SESSION['task_error'] = 'Please select a valid employee.';
+            } else {
+                $count = $this->taskModel->deleteTasksByEmployee($employeeUserId, $this->visibleUserIds());
+                if ($count > 0) {
+                    $this->audit("Deleted all {$count} task(s) for employee #{$employeeUserId}", 'task');
+                    $_SESSION['task_success'] = "Successfully deleted {$count} task(s) assigned to the selected employee.";
+                } else {
+                    $_SESSION['task_error'] = 'No tasks found for the selected employee or deletion failed.';
+                }
             }
         }
         $this->redirect('index.php?route=tasks/index');
