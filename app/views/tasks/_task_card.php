@@ -120,8 +120,16 @@ $fillGradient = ($pct >= 100 || $task->status === 'completed') ? 'linear-gradien
 
     <!-- Proof Document Link -->
     <?php if (!empty($task->proof_url)): ?>
+        <?php
+            $proofUrl = trim($task->proof_url);
+            if (strpos($proofUrl, 'http://') !== 0 && strpos($proofUrl, 'https://') !== 0) {
+                $proofHref = 'index.php?route=file/show&key=' . urlencode($proofUrl);
+            } else {
+                $proofHref = $proofUrl;
+            }
+        ?>
         <div class="mt-1">
-            <a href="<?php echo htmlspecialchars($task->proof_url); ?>" target="_blank" class="btn btn-outline-info btn-sm w-100 fw-semibold" style="font-size: 0.78rem;">
+            <a href="<?php echo htmlspecialchars($proofHref); ?>" target="_blank" class="btn btn-outline-info btn-sm w-100 fw-semibold" style="font-size: 0.78rem;">
                 📄 View Proof Document
             </a>
         </div>
@@ -153,17 +161,17 @@ $fillGradient = ($pct >= 100 || $task->status === 'completed') ? 'linear-gradien
         <div class="btn-group btn-group-sm">
             <?php if ($task->status !== 'pending'): ?>
                 <button type="button" class="btn btn-outline-secondary btn-move" data-id="<?php echo $task->task_id; ?>" data-status="pending" title="Move to Pending">
-                    🚀 P
+                    📋 P
                 </button>
             <?php endif; ?>
             <?php if ($task->status !== 'in_progress'): ?>
                 <button type="button" class="btn btn-outline-primary btn-move" data-id="<?php echo $task->task_id; ?>" data-status="in_progress" title="Move to In Progress">
-                    🏆 I
+                    🚀 I
                 </button>
             <?php endif; ?>
             <?php if ($task->status !== 'completed'): ?>
                 <button type="button" class="btn btn-outline-success btn-move" data-id="<?php echo $task->task_id; ?>" data-status="completed" title="Move to Completed">
-                    📋 C
+                    🏆 C
                 </button>
             <?php endif; ?>
         </div>
