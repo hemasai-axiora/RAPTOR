@@ -178,15 +178,22 @@ class Performance extends Model {
 
     private function punctualityScore(int $uid, string $start, string $end): float {
         $present = $this->scalar('SELECT COUNT(*) FROM attendance WHERE user_id = :uid AND work_date BETWEEN :start AND :end AND status IN ("present","half_day")', $uid, $start, $end);
-        if ($present <= 0) { return 100.0; }
+        if ($present <= 0) { return 0.0; }
         $late = $this->scalar('SELECT COUNT(*) FROM attendance WHERE user_id = :uid AND work_date BETWEEN :start AND :end AND is_late = 1', $uid, $start, $end);
         return max(0, round((1 - ($late / $present)) * 100, 2));
     }
 
     private function activityScore(int $uid, string $start, string $end): float {
         $comms = $this->scalarDateTime('SELECT COUNT(*) FROM communications WHERE user_id = :uid AND happened_at BETWEEN :start AND :end', $uid, $start, $end);
-        $tasks = $this->scalarDateTime('SELECT COUNT(*) FROM tasks WHERE assigned_to_user_id = :uid AND (status = "completed" OR review_status = "approved") AND COALESCE(reviewed_at, completed_at, updated_at, start_date) BETWEEN :start AND :end', $uid, $start, $end);
-        return min(100, round((($comms / 15) * 50) + (($tasks / 5) * 50), 2));
+        $tasks = $this->scalarDateTime('SELECT COUNT(*) FROM tasks WHERE (assigned_to_user_id = :uid OR team_id IN (SELECT team_id FROM employees WHERE user_id = :uid)) AND (COALESCE(updated_at, start_date, deadline) BETWEEN :start AND :end OR status IN ("completed", "in_progress"))', $uid, $start, $end);
+        $followups = $this->scalarDateTime('SELECT COUNT(*) FROM follow_ups WHERE assigned_to_user_id = :uid AND COALESCE(updated_at, due_at) BETWEEN :start AND :end', $uid, $start, $end);
+        $leads = $this->scalarDateTime('SELECT COUNT(*) FROM leads WHERE (assigned_to_user_id = :uid OR created_by = :uid) AND COALESCE(updated_at, created_at) BETWEEN :start AND :end', $uid, $start, $end);
+
+        $totalActivity = $comms + $tasks + $followups + $leads;
+        if ($totalActivity <= 0) {
+            return 0.0;
+        }
+        return min(100.0, round(($totalActivity / 10.0) * 100.0, 2));
     }
 
     private function targetScore(int $uid, string $start, string $end): float {
@@ -211,7 +218,10 @@ class Performance extends Model {
 
     private function followupScore(int $uid, string $start, string $end): float {
         $total = $this->scalarDateTime('SELECT COUNT(*) FROM follow_ups WHERE assigned_to_user_id = :uid AND due_at BETWEEN :start AND :end', $uid, $start, $end);
-        if ($total <= 0) { return 100.0; }
+        if ($total <= 0) {
+            $anyCompleted = $this->scalarDateTime('SELECT COUNT(*) FROM follow_ups WHERE assigned_to_user_id = :uid AND status = "completed" AND COALESCE(updated_at, due_at) BETWEEN :start AND :end', $uid, $start, $end);
+            return $anyCompleted > 0 ? min(100.0, (float)($anyCompleted * 20)) : 0.0;
+        }
         $good = $this->scalarDateTime('SELECT COUNT(*) FROM follow_ups WHERE assigned_to_user_id = :uid AND due_at BETWEEN :start AND :end AND status IN ("completed","scheduled")', $uid, $start, $end);
         return round(($good / $total) * 100, 2);
     }
