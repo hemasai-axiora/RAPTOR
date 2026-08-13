@@ -141,9 +141,6 @@ class ContentPost extends Model {
         return $this->execute();
     }
 
-        return $this->execute();
-    }
-
     public function updatePost($data) {
         $this->query('UPDATE posts 
                       SET post_code = :post_code, client_id = :client_id, campaign_id = :campaign_id, title = :title, 
