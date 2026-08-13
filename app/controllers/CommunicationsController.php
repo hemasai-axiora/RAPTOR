@@ -138,6 +138,7 @@ class CommunicationsController extends Controller {
 
             $id = $this->communicationModel->add([
                 'lead_id' => $leadId,
+                'phone_number' => $rec['identifier'],
                 'user_id' => $userId,
                 'channel' => $channel,
                 'direction' => $direction,
@@ -218,6 +219,7 @@ class CommunicationsController extends Controller {
         $note = strip_tags(trim($_POST['note'] ?? ''));
 
         $updated = $this->communicationModel->update((int)$id, [
+            'phone_number' => $_POST['phone_number'] ?? null,
             'channel' => $_POST['channel'] ?? 'call',
             'direction' => $_POST['direction'] ?? 'made',
             'outcome' => $outcome,

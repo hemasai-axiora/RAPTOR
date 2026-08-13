@@ -5,6 +5,26 @@ class Communication extends Model {
     public const CHANNELS = ['call', 'whatsapp', 'sms', 'email', 'social', 'other'];
     public const DIRECTIONS = ['made', 'received', 'missed', 'sent'];
 
+    public function __construct() {
+        parent::__construct();
+        $this->ensureSchema();
+    }
+
+    private function ensureSchema() {
+        try {
+            $this->query("ALTER TABLE communications ADD COLUMN phone_number VARCHAR(100) NULL AFTER lead_id");
+            $this->execute();
+        } catch (Exception $e) {
+            // Column exists
+        }
+        try {
+            $this->query("UPDATE communications SET phone_number = TRIM(SUBSTRING_INDEX(note, 'for ', -1)) WHERE (phone_number IS NULL OR phone_number = '') AND note LIKE '%for %'");
+            $this->execute();
+        } catch (Exception $e) {
+            // Backfill ignore
+        }
+    }
+
     public function getCommunications(array $filters = [], ?array $visibleUserIds = null) {
         [$where, $params] = $this->buildWhere($filters, $visibleUserIds);
         $this->query('SELECT c.*, u.name AS user_name, l.first_name, l.last_name, l.phone AS lead_phone, l.email AS lead_email, l.company_name AS lead_company_name
@@ -23,13 +43,15 @@ class Communication extends Model {
 
     public function update(int $id, array $data): bool {
         $this->query('UPDATE communications 
-                      SET outcome = :outcome, 
+                      SET phone_number = :phone_number,
+                          outcome = :outcome, 
                           note = :note, 
                           channel = :channel, 
                           direction = :direction, 
                           happened_at = :happened_at 
                       WHERE communication_id = :id');
         $this->bind(':id', $id);
+        $this->bind(':phone_number', !empty($data['phone_number']) ? trim($data['phone_number']) : null);
         $this->bind(':outcome', $data['outcome'] ?? null);
         $this->bind(':note', $data['note'] ?? null);
         $this->bind(':channel', $this->valid($data['channel'] ?? 'call', self::CHANNELS, 'call'));
@@ -40,9 +62,10 @@ class Communication extends Model {
 
     public function add(array $data) {
         $this->query('INSERT INTO communications
-            (lead_id, user_id, channel, direction, duration_seconds, outcome, note, proof_url, happened_at)
-            VALUES (:lead_id, :user_id, :channel, :direction, :duration, :outcome, :note, :proof_url, :happened_at)');
+            (lead_id, phone_number, user_id, channel, direction, duration_seconds, outcome, note, proof_url, happened_at)
+            VALUES (:lead_id, :phone_number, :user_id, :channel, :direction, :duration, :outcome, :note, :proof_url, :happened_at)');
         $this->bind(':lead_id', $this->nullableInt($data['lead_id'] ?? null));
+        $this->bind(':phone_number', !empty($data['phone_number']) ? trim($data['phone_number']) : null);
         $this->bind(':user_id', (int) $data['user_id']);
         $this->bind(':channel', $this->valid($data['channel'] ?? 'call', self::CHANNELS, 'call'));
         $this->bind(':direction', $this->valid($data['direction'] ?? 'made', self::DIRECTIONS, 'made'));
