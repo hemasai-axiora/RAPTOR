@@ -36,12 +36,12 @@ $components = [
     'Demos' => ['score' => $score->demo_score, 'icon' => '💻', 'desc' => 'Completed Product Demos'],
 ];
 
-$tone = [
-    'excellent' => 'success',
-    'good' => 'info',
-    'average' => 'warning',
-    'needs_attention' => 'danger',
-][$score->performance_band] ?? 'secondary';
+$bandStyle = match($score->performance_band) {
+    'excellent' => 'background: #10b981; color: #ffffff !important;',
+    'good' => 'background: #06b6d4; color: #ffffff !important;',
+    'average' => 'background: #f59e0b; color: #ffffff !important;',
+    default => 'background: #ef4444; color: #ffffff !important;',
+};
 ?>
 
 <div class="row g-4">
@@ -52,25 +52,25 @@ $tone = [
                 <div>
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <span class="fs-4">👤</span>
-                        <h4 class="fw-bold mb-0 text-white"><?php echo htmlspecialchars($score->user_name); ?></h4>
-                        <span class="badge" style="background: #2563eb; color: #ffffff; font-weight: 600; font-size: 0.85rem; padding: 0.35rem 0.65rem; border-radius: 6px;">
+                        <h4 class="fw-bold mb-0" style="color: var(--text-primary, #0f172a);"><?php echo htmlspecialchars($score->user_name); ?></h4>
+                        <span class="badge" style="background: #2563eb; color: #ffffff !important; font-weight: 600; font-size: 0.85rem; padding: 0.35rem 0.65rem; border-radius: 6px;">
                             👥 <?php echo htmlspecialchars($score->team_name ?? 'Unassigned'); ?>
                         </span>
                     </div>
                     <div class="text-secondary small">
-                        Evaluation Window: <span class="text-white font-monospace"><?php echo htmlspecialchars($score->start_date . ' to ' . $score->end_date); ?></span>
+                        Evaluation Window: <span class="font-monospace fw-semibold" style="color: var(--text-primary, #0f172a);"><?php echo htmlspecialchars($score->start_date . ' to ' . $score->end_date); ?></span>
                     </div>
                 </div>
                 <div class="text-end">
                     <div class="text-secondary small fw-semibold">Overall Rating</div>
-                    <div class="display-6 text-white fw-extrabold font-monospace my-1">
+                    <div class="display-6 fw-extrabold font-monospace my-1" style="color: var(--text-primary, #0f172a);">
                         <?php echo number_format((float)$score->overall_score, 1); ?> <small style="font-size:1rem;" class="text-secondary">/ 100</small>
                     </div>
-                    <span class="badge bg-<?php echo $tone; ?>-subtle text-<?php echo $tone; ?> border border-<?php echo $tone; ?>-subtle fs-6 px-3 py-1 fw-bold">
+                    <span class="badge px-3 py-1 fw-bold fs-6" style="<?php echo $bandStyle; ?> border-radius: 6px;">
                         <?php echo strtoupper(str_replace('_', ' ', $score->performance_band)); ?>
                     </span>
                     <div class="text-secondary small mt-2">
-                        🏆 Team Rank <strong class="text-white">#<?php echo htmlspecialchars($score->team_rank ?: '-'); ?></strong>
+                        🏆 Team Rank <strong style="color: var(--text-primary, #0f172a);">#<?php echo htmlspecialchars($score->team_rank ?: '-'); ?></strong>
                     </div>
                 </div>
             </div>
@@ -78,7 +78,7 @@ $tone = [
 
         <!-- Component Scores Grid -->
         <div class="pulse-card p-4 shadow-sm" style="background: var(--panel-dark, #ffffff); border-radius: 16px; border: 1px solid var(--border-color, #e2e8f0);">
-            <h5 class="fw-bold mb-4 text-white d-flex align-items-center gap-2">
+            <h5 class="fw-bold mb-4 d-flex align-items-center gap-2" style="color: var(--text-primary, #0f172a);">
                 📊 Detailed Performance Components
             </h5>
             <div class="row g-3">
@@ -88,9 +88,9 @@ $tone = [
                         $compTone = $val >= 85 ? 'success' : ($val >= 70 ? 'info' : ($val >= 50 ? 'warning' : 'danger'));
                     ?>
                     <div class="col-md-6">
-                        <div class="p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color, #334155);">
+                        <div class="p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color, #e2e8f0);">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="fw-semibold text-white d-flex align-items-center gap-2">
+                                <span class="fw-semibold d-flex align-items-center gap-2" style="color: var(--text-primary, #0f172a);">
                                     <span><?php echo $item['icon']; ?></span> <?php echo htmlspecialchars($label); ?>
                                 </span>
                                 <span class="fw-bold font-monospace text-<?php echo $compTone; ?>">
@@ -112,7 +112,7 @@ $tone = [
     <div class="col-lg-4">
         <?php if ($can_review): ?>
         <div class="pulse-card p-3 mb-4 shadow-sm" style="background: var(--panel-dark, #ffffff); border-radius: 16px; border: 1px solid var(--border-color, #e2e8f0);">
-            <h5 class="text-white fw-bold mb-3 d-flex align-items-center gap-2">
+            <h5 class="fw-bold mb-3 d-flex align-items-center gap-2" style="color: var(--text-primary, #0f172a);">
                 ✍️ Add Manager Review
             </h5>
             <form action="index.php?route=performance/review/<?php echo $user_id; ?>" method="POST">
@@ -122,7 +122,7 @@ $tone = [
                 <input type="hidden" name="end_date" value="<?php echo htmlspecialchars($score->end_date); ?>">
                 <div class="mb-3">
                     <label class="form-label text-secondary small fw-semibold">Rating (1 to 5 Stars) *</label>
-                    <select name="rating" class="form-select bg-dark border-secondary text-white" required>
+                    <select name="rating" class="form-select" required>
                         <option value="5">⭐⭐⭐⭐⭐ 5 - Exceptional</option>
                         <option value="4" selected>⭐⭐⭐⭐ 4 - Exceeds Expectations</option>
                         <option value="3">⭐⭐⭐ 3 - Meets Expectations</option>
@@ -132,7 +132,7 @@ $tone = [
                 </div>
                 <div class="mb-3">
                     <label class="form-label text-secondary small fw-semibold">Review Remarks / Feedback</label>
-                    <textarea name="remarks" rows="3" class="form-control bg-dark border-secondary text-white" placeholder="Write feedback or guidance for employee..."></textarea>
+                    <textarea name="remarks" rows="3" class="form-control" placeholder="Write feedback or guidance for employee..."></textarea>
                 </div>
                 <button type="submit" class="btn btn-primary w-100 fw-semibold py-2" style="background: var(--primary, #2563eb); border: none; border-radius: 10px;">
                     💾 Save Manager Review
@@ -142,7 +142,7 @@ $tone = [
         <?php endif; ?>
 
         <div class="pulse-card p-3 shadow-sm" style="background: var(--panel-dark, #ffffff); border-radius: 16px; border: 1px solid var(--border-color, #e2e8f0);">
-            <h5 class="text-white fw-bold mb-3 d-flex align-items-center gap-2">
+            <h5 class="fw-bold mb-3 d-flex align-items-center gap-2" style="color: var(--text-primary, #0f172a);">
                 📝 Review History
             </h5>
             <?php if (empty($reviews)): ?>
@@ -151,7 +151,7 @@ $tone = [
                 <?php foreach ($reviews as $review): ?>
                     <div class="border-bottom border-secondary border-opacity-10 pb-3 mb-3">
                         <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-white fw-semibold">👤 <?php echo htmlspecialchars($review->reviewer_name); ?></span>
+                            <span class="fw-semibold" style="color: var(--text-primary, #0f172a);">👤 <?php echo htmlspecialchars($review->reviewer_name); ?></span>
                             <?php if ($review->rating): ?>
                                 <span class="badge bg-warning bg-opacity-20 text-warning">
                                     <?php echo str_repeat('⭐', (int)$review->rating); ?>
@@ -161,7 +161,7 @@ $tone = [
                         <div class="text-secondary small" style="font-size:0.75rem;">
                             <?php echo htmlspecialchars(formatToLocalTime($review->created_at, 'M d, Y h:i A')); ?>
                         </div>
-                        <p class="text-white small mb-0 mt-2 p-2 rounded-2" style="background: rgba(255,255,255,0.03);">
+                        <p class="small mb-0 mt-2 p-2 rounded-2" style="background: rgba(255,255,255,0.03); color: var(--text-primary, #0f172a);">
                             <?php echo htmlspecialchars($review->remarks ?: 'No additional remarks provided.'); ?>
                         </p>
                     </div>

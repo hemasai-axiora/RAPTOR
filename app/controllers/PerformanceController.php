@@ -32,7 +32,7 @@ class PerformanceController extends Controller {
             'period' => $period,
             'start' => $start,
             'end' => $end,
-            'scores' => $this->performanceModel->getScores($period, $start, $end, $this->visibleUserIds()),
+            'scores' => $this->performanceModel->getScores($period, $start, $end, null),
             'weights' => $this->performanceModel->getWeights(),
             'can_manage' => in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader'], true),
             'is_admin' => $_SESSION['user_role'] === 'admin',
@@ -43,14 +43,6 @@ class PerformanceController extends Controller {
 
     public function profile($userId = 0) {
         $userId = (int) ($userId ?: $_SESSION['user_id']);
-        $scope = $this->visibleUserIds();
-        if ($scope !== null && !in_array($userId, $scope, true)) {
-            $this->viewWithLayout('errors/403', 'main', [
-                'title' => 'Access Denied',
-                'message' => 'This performance profile is outside your team scope.'
-            ]);
-            return;
-        }
 
         $period = $_GET['period'] ?? 'weekly';
         if (!in_array($period, ['weekly', 'monthly'], true)) {
