@@ -352,12 +352,12 @@ if (!function_exists('getInitialsBadge')) {
                                         <div class="avatar-circle" title="Owner: <?php echo htmlspecialchars($task->assignee_name); ?>">
                                             <?php echo getInitialsBadge($task->assignee_name); ?>
                                         </div>
-                                        <span class="text-secondary small fw-semibold" title="Assigned Owner"><?php echo htmlspecialchars($task->assignee_name); ?></span>
+                                        <span class="fw-semibold small" style="color: var(--text-primary, #0f172a);" title="Assigned Owner"><?php echo htmlspecialchars($task->assignee_name); ?></span>
                                     <?php elseif (!empty($task->team_name)): ?>
                                         <div class="avatar-circle" style="background: linear-gradient(135deg, #059669, #10b981);" title="Team: <?php echo htmlspecialchars($task->team_name); ?>">
                                             👥
                                         </div>
-                                        <span class="text-secondary small fw-semibold" title="Assigned Team"><?php echo htmlspecialchars($task->team_name); ?></span>
+                                        <span class="fw-semibold small" style="color: var(--text-primary, #0f172a);" title="Assigned Team"><?php echo htmlspecialchars($task->team_name); ?></span>
                                     <?php else: ?>
                                         <span class="text-secondary small fst-italic">Unassigned</span>
                                     <?php endif; ?>
@@ -374,7 +374,7 @@ if (!function_exists('getInitialsBadge')) {
                                     <?php echo $reviewEmoji; ?> <?php echo strtoupper(str_replace('_', ' ', $task->review_status)); ?>
                                 </span>
                                 <?php if (!empty($task->team_name) && !empty($task->assignee_name)): ?>
-                                    <span class="badge bg-primary bg-opacity-15 text-primary border border-primary border-opacity-20 px-2 py-1">
+                                    <span class="badge px-2 py-1 fw-bold" style="background: #2563eb; color: #ffffff !important; font-size: 0.78rem;">
                                         👥 Team: <?php echo htmlspecialchars($task->team_name); ?>
                                     </span>
                                 <?php endif; ?>
