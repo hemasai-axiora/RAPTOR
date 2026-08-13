@@ -544,9 +544,10 @@ if (!function_exists('getInitialsBadge')) {
                     <button type="submit" class="btn btn-primary px-4 fw-semibold" style="background: var(--primary, #2563eb); border: none;">➕ Assign Task</button>
                 </div>
             </form>
-        </div>
     </div>
 </div>
+<?php endif; ?>
+
 <?php if (!empty($can_delete)): ?>
 <!-- Delete Tasks by Employee Modal -->
 <div class="modal fade" id="deleteByEmployeeModal" tabindex="-1" aria-labelledby="deleteByEmployeeModalLabel" aria-hidden="true">
