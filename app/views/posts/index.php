@@ -1,3 +1,18 @@
+<?php $isAdmin = strtolower($_SESSION['user_role'] ?? '') === 'admin'; ?>
+
+<?php if (!empty($_SESSION['flash_error'])): ?>
+    <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-3" role="alert">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i><?php echo htmlspecialchars($_SESSION['flash_error']); unset($_SESSION['flash_error']); ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
+<?php if (!empty($_SESSION['flash_success'])): ?>
+    <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-3" role="alert">
+        <i class="fa-solid fa-circle-check me-2"></i><?php echo htmlspecialchars($_SESSION['flash_success']); unset($_SESSION['flash_success']); ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
+
 <div class="pulse-card mb-4">
     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3 mb-4">
         <div>
@@ -5,6 +20,11 @@
             <div class="text-secondary small">Track published content, post identity (Post ID), audience demographics (Followers split, Age, Gender, Top Countries), and engagement metrics</div>
         </div>
         <div class="d-flex flex-wrap gap-2">
+            <?php if ($isAdmin): ?>
+                <button type="button" class="btn btn-danger btn-sm px-3 py-2" id="btn-bulk-delete" style="display: none; border-radius: 8px;" title="Delete Selected Posts">
+                    <i class="fa-solid fa-trash-can me-2"></i>Delete Selected (<span id="selected-posts-count">0</span>)
+                </button>
+            <?php endif; ?>
             <a href="index.php?route=calendar/index" class="btn btn-outline-secondary btn-sm px-3 py-2" style="border-radius: 8px;">
                 <i class="fa-solid fa-calendar-days me-2"></i>Visual Calendar View
             </a>
@@ -136,6 +156,11 @@
         <table class="table table-dark table-hover align-middle border-secondary" id="posts-table">
             <thead>
                 <tr class="text-secondary" style="border-bottom: 1px solid var(--border-color);">
+                    <?php if ($isAdmin): ?>
+                        <th style="width: 40px;" class="text-center">
+                            <input type="checkbox" id="select-all-posts" class="form-check-input" title="Select All Posts">
+                        </th>
+                    <?php endif; ?>
                     <th>Post ID</th>
                     <th>Content & Title</th>
                     <th>Platform & Type</th>
@@ -150,7 +175,7 @@
             <tbody>
                 <?php if (empty($posts)): ?>
                     <tr>
-                        <td colspan="9" class="text-center py-4 text-secondary">No content posts found.</td>
+                        <td colspan="<?php echo $isAdmin ? '10' : '9'; ?>" class="text-center py-4 text-secondary">No content posts found.</td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($posts as $post): ?>
@@ -180,6 +205,11 @@
                             }
                         ?>
                         <tr style="border-bottom: 1px solid var(--border-color);">
+                            <?php if ($isAdmin): ?>
+                                <td class="text-center">
+                                    <input type="checkbox" class="form-check-input post-select-checkbox" value="<?php echo $post->post_id; ?>" data-code="<?php echo htmlspecialchars($post->post_code ?: ('PST-' . date('Y') . '-' . sprintf('%05d', $post->post_id))); ?>">
+                                </td>
+                            <?php endif; ?>
                             <td>
                                 <span class="badge bg-dark border border-secondary text-primary font-monospace" style="font-size:0.8rem;">
                                     <?php echo htmlspecialchars($post->post_code ?: ('PST-' . date('Y') . '-' . sprintf('%05d', $post->post_id))); ?>
@@ -558,10 +588,50 @@ $(document).ready(function() {
         $('#deletion_remarks').val('');
         $('#deletePostModal').modal('show');
     });
+
+    // Select All Checkbox Handler
+    $('#select-all-posts').on('change', function() {
+        $('.post-select-checkbox').prop('checked', $(this).prop('checked')).trigger('change');
+    });
+
+    // Post Checkbox Change Handler
+    $(document).on('change', '.post-select-checkbox', function() {
+        const checkedCount = $('.post-select-checkbox:checked').length;
+        const totalCount = $('.post-select-checkbox').length;
+        $('#select-all-posts').prop('checked', totalCount > 0 && checkedCount === totalCount);
+        
+        if (checkedCount > 0) {
+            $('#selected-posts-count').text(checkedCount);
+            $('#btn-bulk-delete').fadeIn(150);
+        } else {
+            $('#btn-bulk-delete').fadeOut(150);
+        }
+    });
+
+    // Bulk Delete Button Handler
+    $('#btn-bulk-delete').on('click', function() {
+        const selectedCheckboxes = $('.post-select-checkbox:checked');
+        if (selectedCheckboxes.length === 0) return;
+
+        let container = $('#bulk_post_ids_container').empty();
+        let codes = [];
+
+        selectedCheckboxes.each(function() {
+            const id = $(this).val();
+            const code = $(this).data('code');
+            container.append('<input type="hidden" name="post_ids[]" value="' + id + '">');
+            codes.push(code);
+        });
+
+        $('#bulk_delete_count_text').text(selectedCheckboxes.length);
+        $('#bulk_delete_codes_list').text(codes.join(', '));
+        $('#bulk_deletion_remarks').val('');
+        $('#bulkDeletePostModal').modal('show');
+    });
 });
 </script>
 
-<!-- Modal: Delete Post (Admin Only with Mandatory Remarks) -->
+<!-- Modal: Single Delete Post (Admin Only with Mandatory Remarks) -->
 <div class="modal fade" id="deletePostModal" tabindex="-1" aria-labelledby="deletePostModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content bg-dark text-white border-danger shadow-lg" style="border-radius: 14px;">
@@ -596,3 +666,40 @@ $(document).ready(function() {
         </div>
     </div>
 </div>
+
+<!-- Modal: Bulk Delete Posts (Admin Only with Mandatory Remarks) -->
+<div class="modal fade" id="bulkDeletePostModal" tabindex="-1" aria-labelledby="bulkDeletePostModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-white border-danger shadow-lg" style="border-radius: 14px;">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title fw-bold text-white d-flex align-items-center gap-2" id="bulkDeletePostModalLabel">
+                    <i class="fa-solid fa-trash-can text-danger fs-4"></i> Bulk Delete Content Posts
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="index.php?route=posts/deleteMultiple" method="POST" id="bulkDeleteForm">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                <div id="bulk_post_ids_container"></div>
+                
+                <div class="modal-body">
+                    <div class="alert alert-danger bg-danger bg-opacity-10 border-danger text-danger mb-3">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> You are deleting <strong class="text-white" id="bulk_delete_count_text">0</strong> selected post(s): <span id="bulk_delete_codes_list" class="font-monospace text-warning"></span>. This action will permanently remove these records.
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="bulk_deletion_remarks" class="form-label text-white fw-bold">Mandatory Deletion Remarks / Reason *</label>
+                        <textarea name="deletion_remarks" id="bulk_deletion_remarks" class="form-control bg-dark text-white border-secondary" rows="3" placeholder="Specify mandatory reason for bulk deletion (e.g. Bulk removal of outdated campaigns, Client requested cancellation...)" required></textarea>
+                        <small class="text-secondary mt-1 d-block"><i class="fa-solid fa-shield-halved text-info me-1"></i>Remarks will be permanently saved in the security audit log database (`deleted_posts_log`).</small>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger btn-sm px-4 fw-bold">
+                        <i class="fa-solid fa-trash me-1"></i> Confirm & Delete Selected Posts
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+

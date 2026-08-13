@@ -338,4 +338,57 @@ class PostsController extends Controller {
             $this->redirect('index.php?route=posts/index');
         }
     }
+
+    // Delete Multiple Posts (Admin Only Bulk Action with Mandatory Remarks Audit Log)
+    public function deleteMultiple() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Strict Admin Role Check
+            $userRole = strtolower($_SESSION['user_role'] ?? '');
+            if ($userRole !== 'admin') {
+                $_SESSION['flash_error'] = 'Access Denied: Only Admin users are authorized to delete posts.';
+                $this->redirect('index.php?route=posts/index');
+                return;
+            }
+
+            // CSRF Security Verification
+            $token = $_POST['csrf_token'] ?? '';
+            if (!isset($_SESSION['csrf_token']) || $token !== $_SESSION['csrf_token']) {
+                $_SESSION['flash_error'] = 'Invalid security token.';
+                $this->redirect('index.php?route=posts/index');
+                return;
+            }
+
+            $rawIds = $_POST['post_ids'] ?? [];
+            if (is_string($rawIds)) {
+                $rawIds = explode(',', $rawIds);
+            }
+            $postIds = array_filter(array_map('intval', (array)$rawIds), function($id) { return $id > 0; });
+            $remarks = trim($_POST['deletion_remarks'] ?? '');
+
+            if (empty($postIds)) {
+                $_SESSION['flash_error'] = 'Please select at least one post to delete.';
+                $this->redirect('index.php?route=posts/index');
+                return;
+            }
+
+            if (empty($remarks)) {
+                $_SESSION['flash_error'] = 'Deletion failed: Mandatory deletion remarks/reason must be provided.';
+                $this->redirect('index.php?route=posts/index');
+                return;
+            }
+
+            $userId = (int)($_SESSION['user_id'] ?? 0);
+            $userName = $_SESSION['user_name'] ?? 'Admin User';
+
+            $deletedCount = $this->postModel->deleteMultiplePostsWithAudit($postIds, $remarks, $userId, $userName);
+            if ($deletedCount > 0) {
+                $_SESSION['flash_success'] = "Successfully deleted {$deletedCount} post(s) and logged to security archives.";
+            } else {
+                $_SESSION['flash_error'] = 'Unable to delete selected post records.';
+            }
+
+            $this->redirect('index.php?route=posts/index');
+        }
+    }
 }
+
