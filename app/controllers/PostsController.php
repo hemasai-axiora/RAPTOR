@@ -20,12 +20,15 @@ class PostsController extends Controller {
             'client_id' => $_GET['client_id'] ?? '',
             'platform' => $_GET['platform'] ?? '',
             'content_type' => $_GET['content_type'] ?? '',
+            'created_by_user_id' => $_GET['created_by_user_id'] ?? '',
             'search' => $_GET['search'] ?? '',
             'sort' => $_GET['sort'] ?? 'published_at'
         ];
 
         $posts = $this->postModel->getPosts($filters);
         $clients = $this->clientModel->getClients();
+        $userModel = $this->model('User');
+        $creators = $userModel->getUsers();
         $aggregatedDemographics = $this->postModel->getAggregatedDemographics($filters['client_id'] ?: null);
 
         $data = [
@@ -33,6 +36,7 @@ class PostsController extends Controller {
             'active_tab' => 'calendar',
             'posts' => $posts,
             'clients' => $clients,
+            'creators' => $creators,
             'filters' => $filters,
             'aggregated_demographics' => $aggregatedDemographics,
             'can_edit' => in_array($_SESSION['user_role'] ?? '', ['admin', 'ceo', 'manager', 'employee', 'sales_person', 'analyst', 'hr'])

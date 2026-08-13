@@ -37,10 +37,20 @@
     </div>
 
     <!-- Filters & Search Bar -->
-    <form action="index.php" method="GET" class="row g-3 mb-4">
-        <input type="hidden" name="route" value="posts/index">
-        
-        <div class="col-md-3">
+        <div class="col-md-2">
+            <select name="created_by_user_id" class="form-select bg-dark border-secondary text-white" onchange="this.form.submit()">
+                <option value="">All Authors</option>
+                <?php if (!empty($creators)): ?>
+                    <?php foreach ($creators as $creator): ?>
+                        <option value="<?php echo $creator->user_id; ?>" <?php echo (string)($filters['created_by_user_id'] ?? '') === (string)$creator->user_id ? 'selected' : ''; ?>>
+                            👤 <?php echo htmlspecialchars($creator->name); ?>
+                        </option>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </select>
+        </div>
+
+        <div class="col-md-2">
             <select name="client_id" class="form-select bg-dark border-secondary text-white" onchange="this.form.submit()">
                 <option value="">All Clients</option>
                 <?php foreach ($clients as $client): ?>
@@ -63,7 +73,7 @@
             </select>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-2">
             <select name="content_type" class="form-select bg-dark border-secondary text-white" onchange="this.form.submit()">
                 <option value="">All Content Types</option>
                 <?php 
@@ -165,6 +175,7 @@
                     <th>Content & Title</th>
                     <th>Platform & Type</th>
                     <th>Client & Campaign</th>
+                    <th>Created By</th>
                     <th class="text-center">Engagement At-a-Glance</th>
                     <th class="text-center">Audience Split (F / NF)</th>
                     <th class="text-center">Engagement Rate</th>
@@ -175,7 +186,7 @@
             <tbody>
                 <?php if (empty($posts)): ?>
                     <tr>
-                        <td colspan="<?php echo $isAdmin ? '10' : '9'; ?>" class="text-center py-4 text-secondary">No content posts found.</td>
+                        <td colspan="<?php echo $isAdmin ? '11' : '10'; ?>" class="text-center py-4 text-secondary">No content posts found.</td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($posts as $post): ?>
@@ -239,6 +250,11 @@
                                         <i class="fa-solid fa-bullhorn me-1 text-info"></i><?php echo htmlspecialchars($post->campaign_name); ?>
                                     </div>
                                 <?php endif; ?>
+                            </td>
+                            <td>
+                                <span class="badge" style="background: rgba(37, 99, 235, 0.15); color: #60a5fa; border: 1px solid rgba(37, 99, 235, 0.3); font-weight: 600; font-size: 0.78rem;">
+                                    <i class="fa-solid fa-user me-1"></i><?php echo htmlspecialchars($post->creator_name ?: 'System Admin'); ?>
+                                </span>
                             </td>
                             <td class="text-center">
                                 <div class="d-inline-flex gap-2 text-secondary small bg-dark p-1 px-2 rounded border border-secondary border-opacity-25" style="font-size: 0.78rem;">

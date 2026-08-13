@@ -3,6 +3,20 @@
 
 class ContentPost extends Model {
 
+    public function __construct() {
+        parent::__construct();
+        $this->ensureSchema();
+    }
+
+    private function ensureSchema() {
+        try {
+            $this->query("ALTER TABLE posts ADD COLUMN created_by_user_id INT NULL AFTER account_id");
+            $this->execute();
+        } catch (Exception $e) {
+            // Column exists
+        }
+    }
+
     public function generatePostCode(): string {
         $year = date('Y');
         $this->query('SELECT MAX(post_id) AS max_id FROM posts');
@@ -15,10 +29,12 @@ class ContentPost extends Model {
         $sql = 'SELECT p.*, 
                        cl.company_name AS client_name, 
                        cmp.name AS campaign_name,
-                       cmp.campaign_code
+                       cmp.campaign_code,
+                       u_creator.name AS creator_name
                 FROM posts p
                 LEFT JOIN clients cl ON p.client_id = cl.client_id
                 LEFT JOIN campaigns cmp ON p.campaign_id = cmp.campaign_id
+                LEFT JOIN users u_creator ON p.created_by_user_id = u_creator.user_id
                 WHERE 1=1';
 
         $params = [];
@@ -36,6 +52,11 @@ class ContentPost extends Model {
         if (!empty($filters['content_type'])) {
             $sql .= ' AND p.content_type = :content_type';
             $params[':content_type'] = $filters['content_type'];
+        }
+
+        if (!empty($filters['created_by_user_id'])) {
+            $sql .= ' AND p.created_by_user_id = :created_by_user_id';
+            $params[':created_by_user_id'] = (int)$filters['created_by_user_id'];
         }
 
         if (!empty($filters['search'])) {
@@ -68,10 +89,12 @@ class ContentPost extends Model {
         $this->query('SELECT p.*, 
                              cl.company_name AS client_name, 
                              cmp.name AS campaign_name,
-                             cmp.campaign_code
+                             cmp.campaign_code,
+                             u_creator.name AS creator_name
                       FROM posts p
                       LEFT JOIN clients cl ON p.client_id = cl.client_id
                       LEFT JOIN campaigns cmp ON p.campaign_id = cmp.campaign_id
+                      LEFT JOIN users u_creator ON p.created_by_user_id = u_creator.user_id
                       WHERE p.post_id = :id');
         $this->bind(':id', $id);
         return $this->single();
@@ -97,14 +120,15 @@ class ContentPost extends Model {
         }
 
         $this->query('INSERT INTO posts 
-            (post_code, client_id, campaign_id, account_id, title, content, media_url, content_type, platform, status, scheduled_at, published_at) 
+            (post_code, client_id, campaign_id, account_id, created_by_user_id, title, content, media_url, content_type, platform, status, scheduled_at, published_at) 
             VALUES 
-            (:post_code, :client_id, :campaign_id, :account_id, :title, :content, :media_url, :content_type, :platform, :status, :scheduled_at, :published_at)');
+            (:post_code, :client_id, :campaign_id, :account_id, :created_by_user_id, :title, :content, :media_url, :content_type, :platform, :status, :scheduled_at, :published_at)');
 
         $this->bind(':post_code', $data['post_code']);
         $this->bind(':client_id', !empty($data['client_id']) ? (int)$data['client_id'] : null);
         $this->bind(':campaign_id', !empty($data['campaign_id']) ? (int)$data['campaign_id'] : null);
         $this->bind(':account_id', !empty($data['account_id']) ? (int)$data['account_id'] : null);
+        $this->bind(':created_by_user_id', !empty($data['created_by_user_id']) ? (int)$data['created_by_user_id'] : ($_SESSION['user_id'] ?? null));
         $this->bind(':title', !empty($data['title']) ? $data['title'] : null);
         $this->bind(':content', $data['content'] ?? '');
         $this->bind(':media_url', !empty($data['media_url']) ? $data['media_url'] : null);
@@ -113,6 +137,9 @@ class ContentPost extends Model {
         $this->bind(':status', $data['status'] ?? 'published');
         $this->bind(':scheduled_at', !empty($data['scheduled_at']) ? $data['scheduled_at'] : null);
         $this->bind(':published_at', !empty($data['published_at']) ? $data['published_at'] : date('Y-m-d H:i:s'));
+
+        return $this->execute();
+    }
 
         return $this->execute();
     }
