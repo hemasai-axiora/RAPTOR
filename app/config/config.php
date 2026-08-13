@@ -94,9 +94,8 @@ if (!function_exists('formatToLocalTime')) {
                 $dt->setTimezone($targetTz);
                 return $dt->format($format);
             }
-            // Parse UTC stored datetime and convert to APP_TIMEZONE
-            $dt = new DateTime($datetime, new DateTimeZone('UTC'));
-            $dt->setTimezone($targetTz);
+            // Parse datetime string in APP_TIMEZONE (Asia/Kolkata)
+            $dt = new DateTime($datetime, $targetTz);
             return $dt->format($format);
         } catch (Exception $e) {
             return $datetime;
