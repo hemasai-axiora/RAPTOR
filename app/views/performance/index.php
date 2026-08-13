@@ -6,7 +6,7 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
         <h3 class="fw-bold mb-1" style="color: var(--text-primary, #0f172a);">
-            🏆 Employee Performance Ranking & Leaderboard
+            🏆 Employee Performance Leaderboard
         </h3>
         <div class="text-secondary small">
             <i class="fa-solid fa-calendar-range me-1 text-primary"></i>
@@ -56,187 +56,32 @@
     </div>
 </form>
 
-<!-- Company Top Performers Showcase Cards -->
-<?php if (!empty($scores)): ?>
-    <div class="mb-4">
-        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2" style="color: var(--text-primary, #0f172a);">
-            🌟 Company Top Performers Showcase
-        </h5>
-        <div class="row g-3">
-            <!-- 🥇 #1 Rank Performer Card -->
-            <?php if (isset($scores[0])): $p1 = $scores[0]; 
-                $bandStyle1 = match($p1->performance_band) {
-                    'excellent' => 'background: #10b981; color: #ffffff !important;',
-                    'good' => 'background: #06b6d4; color: #ffffff !important;',
-                    'average' => 'background: #f59e0b; color: #ffffff !important;',
-                    default => 'background: #ef4444; color: #ffffff !important;',
-                };
-            ?>
-                <div class="col-md-6 col-lg-4">
-                    <div class="pulse-card p-3 shadow-lg position-relative h-100 d-flex flex-column justify-content-between" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.04)); border: 2px solid #f59e0b; border-radius: 16px;">
-                        <div>
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <span class="badge px-3 py-2 fw-bold text-dark" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); font-size: 0.82rem; border-radius: 8px;">
-                                    🥇 #1 TOP PERFORMER
-                                </span>
-                                <span class="badge px-2 py-1 fw-bold" style="<?php echo $bandStyle1; ?> border-radius: 6px; font-size: 0.72rem;">
-                                    <?php echo strtoupper(str_replace('_', ' ', $p1->performance_band)); ?>
-                                </span>
-                            </div>
-                            <div class="my-3">
-                                <div class="fs-5 fw-bold mb-1 d-flex align-items-center gap-2" style="color: var(--text-primary, #0f172a);">
-                                    👑 <?php echo htmlspecialchars($p1->user_name); ?>
-                                </div>
-                                <span class="badge" style="background: #2563eb; color: #ffffff !important; font-weight: 600; font-size: 0.78rem;">
-                                    👥 <?php echo htmlspecialchars($p1->team_name ?: 'No Team'); ?>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="border-top border-secondary border-opacity-20 pt-2 mt-2">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="text-secondary small fw-semibold">Overall Score</span>
-                                <span class="fs-4 fw-extrabold text-warning font-monospace"><?php echo number_format((float)$p1->overall_score, 1); ?> <small style="font-size:0.75rem;" class="text-secondary">/ 100</small></span>
-                            </div>
-                            <div class="progress bg-dark" style="height: 9px; border-radius: 6px;">
-                                <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated" style="width: <?php echo min(100, (float)$p1->overall_score); ?>%;"></div>
-                            </div>
-                            <div class="mt-2 d-flex flex-wrap gap-2 text-secondary" style="font-size: 0.76rem;">
-                                <span>🎯 Target: <strong style="color: var(--text-primary, #0f172a);"><?php echo number_format((float)$p1->target_score, 0); ?>%</strong></span>
-                                <span>⚡ Activity: <strong style="color: var(--text-primary, #0f172a);"><?php echo number_format((float)$p1->activity_score, 0); ?>%</strong></span>
-                                <span>📞 Follow-up: <strong style="color: var(--text-primary, #0f172a);"><?php echo number_format((float)$p1->followup_score, 0); ?>%</strong></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <!-- 🥈 #2 Rank Performer Card -->
-            <?php if (isset($scores[1])): $p2 = $scores[1]; 
-                $bandStyle2 = match($p2->performance_band) {
-                    'excellent' => 'background: #10b981; color: #ffffff !important;',
-                    'good' => 'background: #06b6d4; color: #ffffff !important;',
-                    'average' => 'background: #f59e0b; color: #ffffff !important;',
-                    default => 'background: #ef4444; color: #ffffff !important;',
-                };
-            ?>
-                <div class="col-md-6 col-lg-4">
-                    <div class="pulse-card p-3 shadow-lg position-relative h-100 d-flex flex-column justify-content-between" style="background: linear-gradient(135deg, rgba(148, 163, 184, 0.15), rgba(71, 85, 105, 0.04)); border: 2px solid #94a3b8; border-radius: 16px;">
-                        <div>
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <span class="badge px-3 py-2 fw-bold text-dark" style="background: linear-gradient(135deg, #cbd5e1, #94a3b8); font-size: 0.82rem; border-radius: 8px;">
-                                    🥈 #2 RUNNER UP
-                                </span>
-                                <span class="badge px-2 py-1 fw-bold" style="<?php echo $bandStyle2; ?> border-radius: 6px; font-size: 0.72rem;">
-                                    <?php echo strtoupper(str_replace('_', ' ', $p2->performance_band)); ?>
-                                </span>
-                            </div>
-                            <div class="my-3">
-                                <div class="fs-5 fw-bold mb-1 d-flex align-items-center gap-2" style="color: var(--text-primary, #0f172a);">
-                                    🥈 <?php echo htmlspecialchars($p2->user_name); ?>
-                                </div>
-                                <span class="badge" style="background: #2563eb; color: #ffffff !important; font-weight: 600; font-size: 0.78rem;">
-                                    👥 <?php echo htmlspecialchars($p2->team_name ?: 'No Team'); ?>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="border-top border-secondary border-opacity-20 pt-2 mt-2">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="text-secondary small fw-semibold">Overall Score</span>
-                                <span class="fs-4 fw-extrabold text-info font-monospace"><?php echo number_format((float)$p2->overall_score, 1); ?> <small style="font-size:0.75rem;" class="text-secondary">/ 100</small></span>
-                            </div>
-                            <div class="progress bg-dark" style="height: 9px; border-radius: 6px;">
-                                <div class="progress-bar bg-info" style="width: <?php echo min(100, (float)$p2->overall_score); ?>%;"></div>
-                            </div>
-                            <div class="mt-2 d-flex flex-wrap gap-2 text-secondary" style="font-size: 0.76rem;">
-                                <span>🎯 Target: <strong style="color: var(--text-primary, #0f172a);"><?php echo number_format((float)$p2->target_score, 0); ?>%</strong></span>
-                                <span>⚡ Activity: <strong style="color: var(--text-primary, #0f172a);"><?php echo number_format((float)$p2->activity_score, 0); ?>%</strong></span>
-                                <span>📞 Follow-up: <strong style="color: var(--text-primary, #0f172a);"><?php echo number_format((float)$p2->followup_score, 0); ?>%</strong></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <!-- 🥉 #3 Rank Performer Card -->
-            <?php if (isset($scores[2])): $p3 = $scores[2]; 
-                $bandStyle3 = match($p3->performance_band) {
-                    'excellent' => 'background: #10b981; color: #ffffff !important;',
-                    'good' => 'background: #06b6d4; color: #ffffff !important;',
-                    'average' => 'background: #f59e0b; color: #ffffff !important;',
-                    default => 'background: #ef4444; color: #ffffff !important;',
-                };
-            ?>
-                <div class="col-md-6 col-lg-4">
-                    <div class="pulse-card p-3 shadow-lg position-relative h-100 d-flex flex-column justify-content-between" style="background: linear-gradient(135deg, rgba(217, 119, 6, 0.12), rgba(180, 83, 9, 0.04)); border: 2px solid #b45309; border-radius: 16px;">
-                        <div>
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <span class="badge px-3 py-2 fw-bold text-white" style="background: linear-gradient(135deg, #d97706, #b45309); font-size: 0.82rem; border-radius: 8px;">
-                                    🥉 #3 THIRD PLACE
-                                </span>
-                                <span class="badge px-2 py-1 fw-bold" style="<?php echo $bandStyle3; ?> border-radius: 6px; font-size: 0.72rem;">
-                                    <?php echo strtoupper(str_replace('_', ' ', $p3->performance_band)); ?>
-                                </span>
-                            </div>
-                            <div class="my-3">
-                                <div class="fs-5 fw-bold mb-1 d-flex align-items-center gap-2" style="color: var(--text-primary, #0f172a);">
-                                    🥉 <?php echo htmlspecialchars($p3->user_name); ?>
-                                </div>
-                                <span class="badge" style="background: #2563eb; color: #ffffff !important; font-weight: 600; font-size: 0.78rem;">
-                                    👥 <?php echo htmlspecialchars($p3->team_name ?: 'No Team'); ?>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="border-top border-secondary border-opacity-20 pt-2 mt-2">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="text-secondary small fw-semibold">Overall Score</span>
-                                <span class="fs-4 fw-extrabold text-warning font-monospace"><?php echo number_format((float)$p3->overall_score, 1); ?> <small style="font-size:0.75rem;" class="text-secondary">/ 100</small></span>
-                            </div>
-                            <div class="progress bg-dark" style="height: 9px; border-radius: 6px;">
-                                <div class="progress-bar bg-warning" style="width: <?php echo min(100, (float)$p3->overall_score); ?>%;"></div>
-                            </div>
-                            <div class="mt-2 d-flex flex-wrap gap-2 text-secondary" style="font-size: 0.76rem;">
-                                <span>🎯 Target: <strong style="color: var(--text-primary, #0f172a);"><?php echo number_format((float)$p3->target_score, 0); ?>%</strong></span>
-                                <span>⚡ Activity: <strong style="color: var(--text-primary, #0f172a);"><?php echo number_format((float)$p3->activity_score, 0); ?>%</strong></span>
-                                <span>📞 Follow-up: <strong style="color: var(--text-primary, #0f172a);"><?php echo number_format((float)$p3->followup_score, 0); ?>%</strong></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
-        </div>
-    </div>
-<?php endif; ?>
-
-<!-- Main Rankings Table & Scoring Weights Sidebar -->
+<!-- Single Clean Leaderboard Table (All Members on 1 Page) & Scoring Weights Sidebar -->
 <div class="row g-4">
     <div class="col-xl-<?php echo $is_admin ? '8' : '12'; ?>">
-        <div class="pulse-card p-3 shadow-sm" style="background: var(--panel-dark, #ffffff); border-radius: 16px; border: 1px solid var(--border-color, #e2e8f0);">
+        <div class="pulse-card p-4 shadow-sm" style="background: var(--panel-dark, #ffffff); border-radius: 16px; border: 1px solid var(--border-color, #e2e8f0);">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="fw-bold mb-0 d-flex align-items-center gap-2" style="color: var(--text-primary, #0f172a);">
                     📊 Employee Performance Leaderboard
                 </h5>
                 <span class="badge bg-secondary text-white font-monospace">
-                    Total Evaluated: <?php echo count($scores); ?>
+                    All Members: <?php echo count($scores); ?>
                 </span>
             </div>
 
             <div class="table-responsive">
-                <table class="table table-dark table-hover align-middle mb-0">
+                <table class="table table-hover align-middle mb-0" style="border-collapse: separate; border-spacing: 0 4px;">
                     <thead>
-                        <tr class="text-secondary" style="border-bottom: 2px solid var(--border-color, #e2e8f0);">
-                            <th style="width: 75px;">Rank</th>
-                            <th style="min-width: 170px;">Employee Name</th>
-                            <th style="width: 110px;">Team</th>
-                            <th style="width: 140px;">Overall Score</th>
-                            <th style="width: 150px;">Performance Band</th>
-                            <th style="min-width: 220px;">Key Breakdown</th>
-                            <th class="text-end" style="width: 110px;">Profile</th>
+                        <tr style="border-bottom: 2px solid var(--border-color, #e2e8f0); color: var(--text-secondary, #64748b);">
+                            <th style="width: 120px; font-weight: 700; font-size: 1rem; padding: 12px 16px;">Rank</th>
+                            <th style="font-weight: 700; font-size: 1rem; padding: 12px 16px;">Name</th>
+                            <th style="width: 140px; font-weight: 700; font-size: 1rem; padding: 12px 16px;" class="text-end">Score</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($scores)): ?>
                             <tr>
-                                <td colspan="7" class="text-center py-4 text-secondary">
+                                <td colspan="3" class="text-center py-4 text-secondary">
                                     No employee performance scores computed yet. Click <strong>Recalculate Scores</strong> to generate rankings.
                                 </td>
                             </tr>
@@ -244,67 +89,26 @@
                             <?php foreach ($scores as $i => $score): ?>
                                 <?php
                                     $rankNum = $i + 1;
-                                    $bandStyle = match($score->performance_band) {
-                                        'excellent' => 'background: #10b981; color: #ffffff !important;',
-                                        'good' => 'background: #06b6d4; color: #ffffff !important;',
-                                        'average' => 'background: #f59e0b; color: #ffffff !important;',
-                                        default => 'background: #ef4444; color: #ffffff !important;',
-                                    };
-
-                                    $rankBadge = '<span class="badge bg-secondary font-monospace" style="font-size: 0.82rem;">#' . $rankNum . '</span>';
-                                    $rowStyle = '';
-                                    if ($i === 0) {
-                                        $rankBadge = '<span class="badge text-dark font-monospace fw-bold" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); font-size: 0.85rem;">🥇 #1</span>';
-                                        $rowStyle = 'background: rgba(245, 158, 11, 0.08);';
-                                    } elseif ($i === 1) {
-                                        $rankBadge = '<span class="badge text-dark font-monospace fw-bold" style="background: linear-gradient(135deg, #cbd5e1, #94a3b8); font-size: 0.85rem;">🥈 #2</span>';
-                                        $rowStyle = 'background: rgba(148, 163, 184, 0.06);';
-                                    } elseif ($i === 2) {
-                                        $rankBadge = '<span class="badge text-white font-monospace fw-bold" style="background: linear-gradient(135deg, #d97706, #b45309); font-size: 0.85rem;">🥉 #3</span>';
-                                        $rowStyle = 'background: rgba(180, 83, 9, 0.05);';
-                                    }
+                                    $rankLabel = '#' . $rankNum;
                                 ?>
-                                <tr style="border-bottom: 1px solid var(--border-color); <?php echo $rowStyle; ?>">
-                                    <td><?php echo $rankBadge; ?></td>
-                                    <td>
-                                        <div class="fw-bold d-flex align-items-center gap-2" style="color: var(--text-primary, #0f172a);">
-                                            <span>👤</span> <?php echo htmlspecialchars($score->user_name); ?>
+                                <tr style="border-bottom: 1px solid var(--border-color, #e2e8f0); background: transparent;">
+                                    <td style="padding: 14px 16px; font-weight: 600; font-size: 1.05rem; color: var(--text-primary, #0f172a);">
+                                        <?php echo $rankLabel; ?>
+                                    </td>
+                                    <td style="padding: 14px 16px;">
+                                        <div class="fw-semibold fs-6" style="color: var(--text-primary, #0f172a);">
+                                            <?php echo htmlspecialchars($score->user_name); ?>
+                                            <?php if (!empty($score->team_name)): ?>
+                                                <span class="badge ms-2" style="background: #2563eb; color: #ffffff !important; font-weight: 600; font-size: 0.75rem;">
+                                                    👥 <?php echo htmlspecialchars($score->team_name); ?>
+                                                </span>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
-                                    <td>
-                                        <span class="badge" style="background: #2563eb; color: #ffffff !important; font-weight: 600; font-size: 0.78rem; padding: 0.35rem 0.6rem; border-radius: 6px;">
-                                            👥 <?php echo htmlspecialchars($score->team_name ?: 'Unassigned'); ?>
+                                    <td style="padding: 14px 16px;" class="text-end">
+                                        <span class="fw-bold font-monospace fs-5" style="color: var(--text-primary, #0f172a);">
+                                            <?php echo number_format((float)$score->overall_score, 1); ?>
                                         </span>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-2" style="min-width: 120px;">
-                                            <div class="progress bg-dark flex-grow-1" style="height: 8px; border-radius: 4px;">
-                                                <div class="progress-bar bg-primary" style="width: <?php echo min(100, (float)$score->overall_score); ?>%;"></div>
-                                            </div>
-                                            <span class="fw-bold font-monospace" style="color: var(--text-primary, #0f172a);"><?php echo number_format((float)$score->overall_score, 1); ?></span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="badge px-2 py-1 fw-bold" style="<?php echo $bandStyle; ?> border-radius: 6px; font-size: 0.75rem;">
-                                            <?php echo strtoupper(str_replace('_', ' ', $score->performance_band)); ?>
-                                        </span>
-                                    </td>
-                                    <td class="text-secondary small">
-                                        <div class="d-flex flex-wrap gap-2" style="font-size: 0.78rem;">
-                                            <span title="Target Achievement">🎯 <?php echo number_format((float)$score->target_score, 0); ?>%</span>
-                                            <span title="Activity Volume">⚡ <?php echo number_format((float)$score->activity_score, 0); ?>%</span>
-                                            <span title="Follow-up Discipline">📞 <?php echo number_format((float)$score->followup_score, 0); ?>%</span>
-                                            <span title="Lead Generation">🧲 <?php echo number_format((float)$score->lead_score, 0); ?>%</span>
-                                        </div>
-                                    </td>
-                                    <td class="text-end">
-                                        <?php if ($can_manage || (int)$score->user_id === (int)$_SESSION['user_id']): ?>
-                                            <a class="btn btn-outline-info btn-sm px-2 py-1 fw-semibold" href="index.php?route=performance/profile/<?php echo $score->user_id; ?>&period=<?php echo urlencode($period); ?>" style="border-radius: 8px; font-size: 0.78rem;">
-                                                <i class="fa-solid fa-eye me-1"></i> View Profile
-                                            </a>
-                                        <?php else: ?>
-                                            <span class="text-secondary small fst-italic" title="Profile viewing restricted">—</span>
-                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
