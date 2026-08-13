@@ -453,17 +453,15 @@ if (!function_exists('getInitialsBadge')) {
                             <?php endif; ?>
 
                             <!-- Quick Move Buttons -->
-                            <?php if ($can_assign): ?>
-                                <div class="d-flex gap-2 border-top border-secondary border-opacity-10 pt-2 mt-1 align-items-center">
-                                    <span class="text-secondary small me-1">Move:</span>
-                                    <?php foreach (['pending', 'in_progress', 'completed'] as $target): ?>
-                                        <?php if ($target === $task->status) { continue; } ?>
-                                            <button class="btn btn-outline-secondary btn-sm btn-move px-2 py-0" data-id="<?php echo $task->task_id; ?>" data-status="<?php echo $target; ?>" title="Move to <?php echo htmlspecialchars($target); ?>">
-                                                <?php echo $columnEmojis[$target]; ?> <?php echo strtoupper(substr($target, 0, 1)); ?>
-                                            </button>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php endif; ?>
+                            <div class="d-flex gap-2 border-top border-secondary border-opacity-10 pt-2 mt-1 align-items-center">
+                                <span class="text-secondary small me-1">Move:</span>
+                                <?php foreach (['pending', 'in_progress', 'completed'] as $target): ?>
+                                    <?php if ($target === $task->status) { continue; } ?>
+                                        <button class="btn btn-outline-secondary btn-sm btn-move px-2 py-0" data-id="<?php echo $task->task_id; ?>" data-status="<?php echo $target; ?>" title="Move to <?php echo htmlspecialchars($target); ?>">
+                                            <?php echo $columnEmojis[$target]; ?> <?php echo strtoupper(substr($target, 0, 1)); ?>
+                                        </button>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
