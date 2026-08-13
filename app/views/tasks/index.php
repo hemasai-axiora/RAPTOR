@@ -9,12 +9,8 @@ $emptyMessages = [
 ];
 
 $grouped = ['pending' => [], 'in_progress' => [], 'completed' => []];
-$approvedArchive = [];
 
 foreach ($tasks as $task) {
-    if ($task->status === 'completed' && $task->review_status === 'approved') {
-        $approvedArchive[] = $task;
-    }
     $grouped[$task->status][] = $task;
 }
 $completionPct = $metrics['total'] > 0 ? round(($metrics['approved'] / $metrics['total']) * 100) : 0;
@@ -51,7 +47,26 @@ if (!function_exists('getInitialsBadge')) {
     border: 1px solid var(--border-color, #e2e8f0);
     border-radius: 16px;
     padding: 1.25rem;
-    min-height: 520px;
+}
+
+/* Independent Column Internal Scrollbars */
+.task-column-scrollable {
+    max-height: 640px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+.task-column-scrollable::-webkit-scrollbar {
+    width: 6px;
+}
+.task-column-scrollable::-webkit-scrollbar-track {
+    background: transparent;
+}
+.task-column-scrollable::-webkit-scrollbar-thumb {
+    background: rgba(37, 99, 235, 0.35);
+    border-radius: 999px;
+}
+.task-column-scrollable::-webkit-scrollbar-thumb:hover {
+    background: rgba(37, 99, 235, 0.65);
 }
 
 .task-card {
@@ -150,7 +165,7 @@ if (!function_exists('getInitialsBadge')) {
     <div>
         <h3 class="mb-1 fw-bold" style="color: var(--text-primary, #0f172a);">🦅 Operations Task Board</h3>
         <p class="text-secondary mb-0" style="font-size:0.9rem;">
-            Assign team tasks, track process stages, log execution hours, and store approved deliverables.
+            Assign team tasks, track process stages, log execution hours, and review deliverables.
         </p>
     </div>
     <div class="d-flex flex-wrap gap-2">
@@ -178,7 +193,7 @@ if (!function_exists('getInitialsBadge')) {
                 🏆
             </div>
             <div>
-                <span class="text-secondary small fw-semibold text-uppercase" style="font-size:0.75rem;">Approved Tasks Stored</span>
+                <span class="text-secondary small fw-semibold text-uppercase" style="font-size:0.75rem;">Approved Tasks</span>
                 <h4 class="mb-0 mt-1 fw-bold text-success"><?php echo $metrics['approved']; ?> <span class="fs-6 text-secondary font-monospace">/ <?php echo $metrics['total']; ?></span></h4>
             </div>
         </div>
@@ -207,7 +222,7 @@ if (!function_exists('getInitialsBadge')) {
     </div>
 </div>
 
-<!-- Filter Bar with Date Range Filter -->
+<!-- Filter Bar with Date Filter Option -->
 <form method="GET" action="index.php" class="pulse-card p-3 mb-4 shadow-sm" style="background: var(--panel-dark, #ffffff); border-radius: 14px; border: 1px solid var(--border-color, #e2e8f0);">
     <input type="hidden" name="route" value="tasks/index">
     <div class="row g-3 align-items-end">
@@ -262,7 +277,7 @@ if (!function_exists('getInitialsBadge')) {
     </div>
 </form>
 
-<!-- 3-Column Kanban Board with Dropdown for Remaining Tasks -->
+<!-- 3-Column Kanban Board with Independent Column Scrollbars -->
 <div class="row g-4 mb-4">
     <?php foreach ($columns as $status => $label): ?>
         <div class="col-lg-4">
@@ -276,104 +291,21 @@ if (!function_exists('getInitialsBadge')) {
                     </span>
                 </div>
 
-                <div class="d-flex flex-column gap-3">
+                <div class="task-column-scrollable d-flex flex-column gap-3">
                     <?php if (empty($grouped[$status])): ?>
                         <div class="empty-kanban-state">
                             <div style="font-size: 2.2rem;" class="mb-2"><?php echo $emptyEmojis[$status]; ?></div>
                             <div class="fw-semibold text-secondary small"><?php echo $emptyMessages[$status]; ?></div>
                         </div>
                     <?php else: ?>
-                        <?php 
-                            $firstTasks = array_slice($grouped[$status], 0, 3);
-                            $remainingTasks = array_slice($grouped[$status], 3);
-                        ?>
-
-                        <!-- Initial 3 Tasks -->
-                        <?php foreach ($firstTasks as $task): ?>
+                        <?php foreach ($grouped[$status] as $task): ?>
                             <?php include __DIR__ . '/_task_card.php'; ?>
                         <?php endforeach; ?>
-
-                        <!-- Dropdown Toggle Button for Remaining Tasks -->
-                        <?php if (!empty($remainingTasks)): ?>
-                            <div class="collapse" id="collapseRemaining_<?php echo $status; ?>">
-                                <div class="d-flex flex-column gap-3 mt-3">
-                                    <?php foreach ($remainingTasks as $task): ?>
-                                        <?php include __DIR__ . '/_task_card.php'; ?>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
-                            <button class="btn btn-outline-primary btn-sm w-100 mt-2 fw-semibold py-2 shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRemaining_<?php echo $status; ?>" aria-expanded="false" style="border-radius: 10px; border-style: dashed;">
-                                ▼ View Remaining Tasks (<?php echo count($remainingTasks); ?>)
-                            </button>
-                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
     <?php endforeach; ?>
-</div>
-
-<!-- 🏆 Approved Tasks Storage Archive Area -->
-<div class="pulse-card p-4 shadow-sm mb-4" style="background: var(--panel-dark, #ffffff); border-radius: 16px; border: 1px solid var(--border-color, #e2e8f0);">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
-        <div>
-            <h5 class="fw-bold mb-1 d-flex align-items-center gap-2" style="color: var(--text-primary, #0f172a);">
-                🏆 Approved Tasks Storage Archive
-            </h5>
-            <div class="text-secondary small">
-                Tasks completed by employees and reviewed & approved by managers are permanently stored here.
-            </div>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-            <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30 px-3 py-2 fs-6 fw-bold">
-                Stored Approved: <?php echo count($approvedArchive); ?>
-            </span>
-            <?php if (!empty($approvedArchive)): ?>
-                <button class="btn btn-outline-success btn-sm px-3 py-2 fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseApprovedStorage" aria-expanded="true" style="border-radius: 10px;">
-                    📂 Toggle Approved Storage (<?php echo count($approvedArchive); ?>)
-                </button>
-            <?php endif; ?>
-        </div>
-    </div>
-
-    <div class="collapse show" id="collapseApprovedStorage">
-        <?php if (empty($approvedArchive)): ?>
-            <div class="text-center py-4 text-secondary">
-                <i class="fa-solid fa-box-archive fs-2 mb-2 d-block text-secondary"></i>
-                No approved tasks stored yet. Tasks approved by managers will automatically be stored in this archive.
-            </div>
-        <?php else: ?>
-            <div class="row g-3 mt-1">
-                <?php foreach ($approvedArchive as $task): ?>
-                    <div class="col-md-6 col-lg-4">
-                        <div class="p-3 rounded-3 h-100 d-flex flex-column justify-content-between" style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px;">
-                            <div>
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="badge bg-success text-white fw-bold">✅ APPROVED</span>
-                                    <span class="text-secondary small font-monospace">Task #<?php echo $task->task_id; ?></span>
-                                </div>
-                                <h6 class="fw-bold mb-1" style="color: var(--text-primary, #0f172a);"><?php echo htmlspecialchars($task->title); ?></h6>
-                                <p class="text-secondary small mb-2 text-truncate"><?php echo htmlspecialchars($task->description ?: 'No description'); ?></p>
-                            </div>
-                            <div class="border-top border-secondary border-opacity-20 pt-2 mt-2" style="font-size: 0.78rem;">
-                                <div class="d-flex justify-content-between text-secondary">
-                                    <span>👤 Owner: <strong style="color: var(--text-primary, #0f172a);"><?php echo htmlspecialchars($task->assignee_name ?: 'Unassigned'); ?></strong></span>
-                                    <span>👥 Team: <strong style="color: var(--text-primary, #0f172a);"><?php echo htmlspecialchars($task->team_name ?: 'No Team'); ?></strong></span>
-                                </div>
-                                <?php if (!empty($task->proof_url)): ?>
-                                    <div class="mt-2">
-                                        <a href="<?php echo htmlspecialchars($task->proof_url); ?>" target="_blank" class="btn btn-sm btn-outline-primary w-100 py-1" style="font-size: 0.75rem;">
-                                            📄 View Approved Proof Document
-                                        </a>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-    </div>
 </div>
 
 <?php if ($can_assign): ?>
