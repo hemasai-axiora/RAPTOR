@@ -82,13 +82,21 @@ if (!function_exists('formatToLocalTime')) {
     function formatToLocalTime($datetime, $format = 'Y-m-d H:i:s'): string {
         if (empty($datetime)) return '';
         try {
-            $targetTz = new DateTimeZone(APP_TIMEZONE); // Asia/Kolkata (IST)
-            if (is_string($datetime) && (strpos($datetime, 'Z') !== false || strpos($datetime, '+00:00') !== false)) {
+            $targetTz = new DateTimeZone(APP_TIMEZONE); // Asia/Kolkata (IST, UTC+5:30)
+            if (is_numeric($datetime)) {
+                $dt = new DateTime();
+                $dt->setTimestamp((int)$datetime);
+                $dt->setTimezone($targetTz);
+                return $dt->format($format);
+            }
+            if (is_string($datetime) && (strpos($datetime, 'Z') !== false || strpos($datetime, '+') !== false)) {
                 $dt = new DateTime($datetime);
                 $dt->setTimezone($targetTz);
-            } else {
-                $dt = new DateTime($datetime, $targetTz);
+                return $dt->format($format);
             }
+            // Parse UTC stored datetime and convert to APP_TIMEZONE
+            $dt = new DateTime($datetime, new DateTimeZone('UTC'));
+            $dt->setTimezone($targetTz);
             return $dt->format($format);
         } catch (Exception $e) {
             return $datetime;
