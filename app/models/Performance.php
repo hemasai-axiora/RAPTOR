@@ -24,7 +24,6 @@ class Performance extends Model {
     public function getScores(string $period, string $start, string $end, ?array $visibleUserIds = null) {
         [$where, $params] = $this->scopeWhere($visibleUserIds, 'ps.user_id');
         $where[] = 'ps.period = :period AND ps.start_date = :start AND ps.end_date = :end';
-        $where[] = 'r.role_name IN ("employee", "sales_person")';
         $params[':period'] = $period;
         $params[':start'] = $start;
         $params[':end'] = $end;
@@ -32,7 +31,6 @@ class Performance extends Model {
         $this->query('SELECT ps.*, u.name AS user_name, t.name AS team_name
                       FROM performance_scores ps
                       JOIN users u ON ps.user_id = u.user_id
-                      JOIN roles r ON u.role_id = r.role_id
                       LEFT JOIN employees e ON u.user_id = e.user_id
                       LEFT JOIN teams t ON e.team_id = t.team_id
                       WHERE ' . implode(' AND ', $where) . '
@@ -160,7 +158,7 @@ class Performance extends Model {
         $this->query('SELECT u.user_id
                       FROM users u
                       JOIN roles r ON u.role_id = r.role_id
-                      WHERE u.status = "active" AND r.role_name IN ("employee","sales_person")');
+                      WHERE u.status = "active" AND r.role_name IN ("employee","sales_person","team_leader","manager")');
         return $this->resultSet();
     }
 
