@@ -16,6 +16,8 @@ class TasksController extends Controller {
             'assigned_to_user_id' => $_GET['assigned_to_user_id'] ?? '',
             'team_id' => $_GET['team_id'] ?? '',
             'review_status' => $_GET['review_status'] ?? '',
+            'start_date' => $_GET['start_date'] ?? '',
+            'end_date' => $_GET['end_date'] ?? '',
         ];
         if (Policy::isEmployee() && empty($_GET['assigned_to_user_id'])) {
             // Employee sees tasks assigned to them or their team via $visibleUserIds scoping

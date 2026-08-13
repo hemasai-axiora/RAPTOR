@@ -323,6 +323,16 @@ class Task extends Model {
             }
         }
 
+        if (!empty($filters['start_date'])) {
+            $where[] = 'DATE(t.deadline) >= :start_date';
+            $params[':start_date'] = $filters['start_date'];
+        }
+
+        if (!empty($filters['end_date'])) {
+            $where[] = 'DATE(t.deadline) <= :end_date';
+            $params[':end_date'] = $filters['end_date'];
+        }
+
         return [$where ? 'WHERE ' . implode(' AND ', $where) : '', $params];
     }
 

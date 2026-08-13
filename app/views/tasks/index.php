@@ -9,7 +9,12 @@ $emptyMessages = [
 ];
 
 $grouped = ['pending' => [], 'in_progress' => [], 'completed' => []];
+$approvedArchive = [];
+
 foreach ($tasks as $task) {
+    if ($task->status === 'completed' && $task->review_status === 'approved') {
+        $approvedArchive[] = $task;
+    }
     $grouped[$task->status][] = $task;
 }
 $completionPct = $metrics['total'] > 0 ? round(($metrics['approved'] / $metrics['total']) * 100) : 0;
@@ -145,7 +150,7 @@ if (!function_exists('getInitialsBadge')) {
     <div>
         <h3 class="mb-1 fw-bold" style="color: var(--text-primary, #0f172a);">🦅 Operations Task Board</h3>
         <p class="text-secondary mb-0" style="font-size:0.9rem;">
-            Assign team tasks, track process stages, log execution hours, and review deliverables.
+            Assign team tasks, track process stages, log execution hours, and store approved deliverables.
         </p>
     </div>
     <div class="d-flex flex-wrap gap-2">
@@ -173,7 +178,7 @@ if (!function_exists('getInitialsBadge')) {
                 🏆
             </div>
             <div>
-                <span class="text-secondary small fw-semibold text-uppercase" style="font-size:0.75rem;">Approved Tasks</span>
+                <span class="text-secondary small fw-semibold text-uppercase" style="font-size:0.75rem;">Approved Tasks Stored</span>
                 <h4 class="mb-0 mt-1 fw-bold text-success"><?php echo $metrics['approved']; ?> <span class="fs-6 text-secondary font-monospace">/ <?php echo $metrics['total']; ?></span></h4>
             </div>
         </div>
@@ -202,7 +207,7 @@ if (!function_exists('getInitialsBadge')) {
     </div>
 </div>
 
-<!-- Filter Bar -->
+<!-- Filter Bar with Date Range Filter -->
 <form method="GET" action="index.php" class="pulse-card p-3 mb-4 shadow-sm" style="background: var(--panel-dark, #ffffff); border-radius: 14px; border: 1px solid var(--border-color, #e2e8f0);">
     <input type="hidden" name="route" value="tasks/index">
     <div class="row g-3 align-items-end">
@@ -218,7 +223,7 @@ if (!function_exists('getInitialsBadge')) {
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label text-secondary small fw-semibold">Assignee Team</label>
                 <select name="team_id" class="form-select">
                     <option value="">👥 All Teams</option>
@@ -232,7 +237,7 @@ if (!function_exists('getInitialsBadge')) {
                 </select>
             </div>
         <?php endif; ?>
-        <div class="col-md-<?php echo Policy::isEmployee() ? '6' : '3'; ?>">
+        <div class="col-md-2">
             <label class="form-label text-secondary small fw-semibold">Review Status</label>
             <select name="review_status" class="form-select">
                 <option value="">🔍 All Statuses</option>
@@ -241,16 +246,24 @@ if (!function_exists('getInitialsBadge')) {
                 <?php endforeach; ?>
             </select>
         </div>
-        <div class="col-md-<?php echo Policy::isEmployee() ? '6' : '3'; ?>">
-            <button class="btn btn-primary w-100 fw-semibold" type="submit" style="background: var(--primary, #2563eb); border: none; padding: 0.55rem 1rem;">
-                🎯 Filter Tasks
+        <div class="col-md-2">
+            <label class="form-label text-secondary small fw-semibold">📅 Start Date</label>
+            <input type="date" name="start_date" value="<?php echo htmlspecialchars($filters['start_date'] ?? ''); ?>" class="form-control">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label text-secondary small fw-semibold">📅 End Date</label>
+            <input type="date" name="end_date" value="<?php echo htmlspecialchars($filters['end_date'] ?? ''); ?>" class="form-control">
+        </div>
+        <div class="col-md-1">
+            <button class="btn btn-primary w-100 fw-semibold" type="submit" style="background: var(--primary, #2563eb); border: none; padding: 0.55rem 0.5rem;" title="Apply Filter">
+                🎯 Filter
             </button>
         </div>
     </div>
 </form>
 
-<!-- 3-Column Kanban Board -->
-<div class="row g-4">
+<!-- 3-Column Kanban Board with Dropdown for Remaining Tasks -->
+<div class="row g-4 mb-4">
     <?php foreach ($columns as $status => $label): ?>
         <div class="col-lg-4">
             <div class="kanban-column-card h-100">
@@ -269,214 +282,107 @@ if (!function_exists('getInitialsBadge')) {
                             <div style="font-size: 2.2rem;" class="mb-2"><?php echo $emptyEmojis[$status]; ?></div>
                             <div class="fw-semibold text-secondary small"><?php echo $emptyMessages[$status]; ?></div>
                         </div>
-                    <?php endif; ?>
-
-                    <?php foreach ($grouped[$status] as $task): ?>
-                        <?php
-                            $p = strtolower($task->priority);
-                            $priorityClass = 'priority-' . ($p === 'high' ? 'high' : ($p === 'medium' ? 'medium' : 'low'));
-                            
-                            $priorityLabel = [
-                                'high' => '🔥 HIGH',
-                                'medium' => '⚡ MEDIUM',
-                                'low' => '🌱 LOW'
-                            ][$p] ?? '🌱 LOW';
-
-                            $reviewTone = [
-                                'not_submitted' => 'secondary',
-                                'pending_review' => 'warning',
-                                'approved' => 'success',
-                                'rejected' => 'danger',
-                            ][$task->review_status] ?? 'secondary';
-
-                            $reviewEmoji = [
-                                'not_submitted' => '⏳',
-                                'pending_review' => '👀',
-                                'approved' => '✅',
-                                'rejected' => '❌',
-                            ][$task->review_status] ?? '⏳';
-
-                            $pct = (int) $task->progress_percent;
-                            $fillGradient = ($pct >= 100 || $task->status === 'completed') ? 'linear-gradient(90deg, #10b981, #06b6d4)' : 'linear-gradient(90deg, #f59e0b, #10b981)';
+                    <?php else: ?>
+                        <?php 
+                            $firstTasks = array_slice($grouped[$status], 0, 3);
+                            $remainingTasks = array_slice($grouped[$status], 3);
                         ?>
-                        <div class="task-card <?php echo $priorityClass; ?> d-flex flex-column gap-2">
-                            
-                            <!-- Card Header Badges & Actions -->
-                            <div class="d-flex justify-content-between align-items-center gap-2">
-                                <div class="d-flex align-items-center gap-2">
-                                    <?php if (!empty($can_delete)): ?>
-                                        <input type="checkbox" class="form-check-input task-select-checkbox me-1" value="<?php echo $task->task_id; ?>" title="Select task for bulk delete">
-                                    <?php endif; ?>
-                                    <span class="badge px-2 py-1 fw-bold" style="<?php 
-                                        if ($p === 'high') echo 'background: rgba(239,68,68,0.15); color: #dc2626; border: 1px solid rgba(239,68,68,0.3);';
-                                        elseif ($p === 'medium') echo 'background: rgba(245,158,11,0.15); color: #d97706; border: 1px solid rgba(245,158,11,0.3);';
-                                        else echo 'background: rgba(16,185,129,0.15); color: #059669; border: 1px solid rgba(16,185,129,0.3);';
-                                    ?>">
-                                        <?php echo $priorityLabel; ?>
-                                    </span>
-                                </div>
-                                <div class="d-flex align-items-center gap-1">
-                                    <?php if ($task->is_carry_forward): ?>
-                                        <span class="badge px-2 py-1 fw-bold" style="background: rgba(245, 158, 11, 0.2); color: #b45309; border: 1px solid rgba(245, 158, 11, 0.4);">⏩ CARRY FORWARD</span>
-                                    <?php endif; ?>
-                                    <?php if (!empty($can_delete)): ?>
-                                        <form action="index.php?route=tasks/delete/<?php echo $task->task_id; ?>" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete task #<?php echo $task->task_id; ?> (<?php echo htmlspecialchars(addslashes($task->title)); ?>)?');">
-                                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
-                                            <button type="submit" class="btn btn-link text-danger p-0 ms-1" style="font-size: 0.9rem;" title="Delete Task">
-                                                🗑️
-                                            </button>
-                                        </form>
-                                    <?php endif; ?>
+
+                        <!-- Initial 3 Tasks -->
+                        <?php foreach ($firstTasks as $task): ?>
+                            <?php include __DIR__ . '/_task_card.php'; ?>
+                        <?php endforeach; ?>
+
+                        <!-- Dropdown Toggle Button for Remaining Tasks -->
+                        <?php if (!empty($remainingTasks)): ?>
+                            <div class="collapse" id="collapseRemaining_<?php echo $status; ?>">
+                                <div class="d-flex flex-column gap-3 mt-3">
+                                    <?php foreach ($remainingTasks as $task): ?>
+                                        <?php include __DIR__ . '/_task_card.php'; ?>
+                                    <?php endforeach; ?>
                                 </div>
                             </div>
-
-                            <!-- Title & Description -->
-                            <div class="fw-bold fs-6 mt-1" style="color: var(--text-primary, #0f172a);"><?php echo htmlspecialchars($task->title); ?></div>
-                            <p class="text-secondary mb-1" style="font-size:0.86rem; line-height: 1.4;"><?php echo htmlspecialchars($task->description ?: 'No description provided.'); ?></p>
-
-                            <!-- Gradient Progress Bar -->
-                            <div class="mt-1">
-                                <div class="d-flex justify-content-between text-secondary small fw-semibold mb-1">
-                                    <span>Progress</span>
-                                    <span><?php echo $pct; ?>%</span>
-                                </div>
-                                <div class="task-progress-track">
-                                    <div class="task-progress-fill" style="width: <?php echo $pct; ?>%; background: <?php echo $fillGradient; ?>;"></div>
-                                </div>
-                            </div>
-
-                            <!-- Assignee & Details Row -->
-                            <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mt-2 pt-2 border-top border-secondary border-opacity-10">
-                                <div class="d-flex align-items-center gap-2">
-                                    <?php if (!empty($task->assignee_name)): ?>
-                                        <div class="avatar-circle" title="Owner: <?php echo htmlspecialchars($task->assignee_name); ?>">
-                                            <?php echo getInitialsBadge($task->assignee_name); ?>
-                                        </div>
-                                        <span class="fw-semibold small" style="color: var(--text-primary, #0f172a);" title="Assigned Owner"><?php echo htmlspecialchars($task->assignee_name); ?></span>
-                                    <?php elseif (!empty($task->team_name)): ?>
-                                        <div class="avatar-circle" style="background: linear-gradient(135deg, #059669, #10b981);" title="Team: <?php echo htmlspecialchars($task->team_name); ?>">
-                                            👥
-                                        </div>
-                                        <span class="fw-semibold small" style="color: var(--text-primary, #0f172a);" title="Assigned Team"><?php echo htmlspecialchars($task->team_name); ?></span>
-                                    <?php else: ?>
-                                        <span class="text-secondary small fst-italic">Unassigned</span>
-                                    <?php endif; ?>
-                                </div>
-
-                                <div class="d-flex align-items-center gap-1 text-secondary small">
-                                    <span>📅 <?php echo htmlspecialchars(date('M d', strtotime($task->deadline))); ?></span>
-                                </div>
-                            </div>
-
-                            <!-- Review Status Chip & Team Badge -->
-                            <div class="d-flex flex-wrap gap-2 align-items-center">
-                                <span class="badge px-2 py-1 fw-semibold bg-<?php echo $reviewTone; ?>-subtle text-<?php echo $reviewTone; ?> border border-<?php echo $reviewTone; ?>-subtle">
-                                    <?php echo $reviewEmoji; ?> <?php echo strtoupper(str_replace('_', ' ', $task->review_status)); ?>
-                                </span>
-                                <?php if (!empty($task->team_name) && !empty($task->assignee_name)): ?>
-                                    <span class="badge px-2 py-1 fw-bold" style="background: #2563eb; color: #ffffff !important; font-size: 0.78rem;">
-                                        👥 Team: <?php echo htmlspecialchars($task->team_name); ?>
-                                    </span>
-                                <?php endif; ?>
-                            </div>
-
-                            <!-- Celebratory Banners -->
-                            <?php if ($task->status === 'completed' && $task->review_status === 'approved'): ?>
-                                <div class="alert alert-success border-0 py-2 px-3 my-1 rounded-3 text-success d-flex align-items-center gap-2" style="background: rgba(16, 185, 129, 0.12); font-size: 0.82rem; font-weight: 600;">
-                                    <span>🎊</span> Nice work — this task is completed & approved!
-                                </div>
-                            <?php elseif ($task->review_status === 'pending_review'): ?>
-                                <div class="alert alert-warning border-0 py-2 px-3 my-1 rounded-3 text-warning d-flex align-items-center gap-2" style="background: rgba(245, 158, 11, 0.12); font-size: 0.82rem; font-weight: 600;">
-                                    <span>👀</span> Work submitted — waiting for manager review!
-                                </div>
-                            <?php endif; ?>
-
-                            <!-- Proof Link & Remarks -->
-                            <?php if ($task->proof_url): ?>
-                                <a class="btn btn-outline-primary btn-sm my-1" href="index.php?route=file/show&key=<?php echo urlencode($task->proof_url); ?>" target="_blank">
-                                    📎 View Proof Document
-                                </a>
-                            <?php endif; ?>
-
-                            <?php if ($task->review_remark): ?>
-                                <div class="text-secondary small fst-italic">💬 Review Note: <?php echo htmlspecialchars($task->review_remark); ?></div>
-                            <?php endif; ?>
-
-                            <!-- In-Progress Form Actions -->
-                            <?php if ($task->status !== 'completed'): ?>
-                                <form action="index.php?route=tasks/progress/<?php echo $task->task_id; ?>" method="POST" class="border-top border-secondary border-opacity-10 pt-2 mt-1">
-                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
-                                    <div class="row g-2">
-                                        <div class="col-5">
-                                            <input type="number" min="0" max="100" name="progress_percent" class="form-control form-control-sm" value="<?php echo (int) $task->progress_percent; ?>" title="Progress %" placeholder="% Progress">
-                                        </div>
-                                        <div class="col-5">
-                                            <input type="number" min="0" step="0.25" name="actual_hours" class="form-control form-control-sm" value="<?php echo htmlspecialchars($task->actual_hours ?? '0.00'); ?>" title="Actual hours" placeholder="Hours">
-                                        </div>
-                                        <div class="col-2">
-                                            <button class="btn btn-outline-primary btn-sm w-100" title="Save progress">💾</button>
-                                        </div>
-                                        <div class="col-12">
-                                            <input type="text" name="remarks" class="form-control form-control-sm" value="<?php echo htmlspecialchars($task->remarks ?? ''); ?>" placeholder="Progress remarks...">
-                                        </div>
-                                    </div>
-                                </form>
-
-                                <form action="index.php?route=tasks/complete/<?php echo $task->task_id; ?>" method="POST" enctype="multipart/form-data" class="border-top border-secondary border-opacity-10 pt-2 mt-1">
-                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
-                                    <div class="mb-2">
-                                        <label class="form-label text-secondary small fw-semibold mb-1">Attach Proof Document</label>
-                                        <input type="file" name="proof" class="form-control form-control-sm" accept="image/*,.pdf" <?php echo empty($task->proof_url) ? 'required' : ''; ?>>
-                                    </div>
-                                    <div class="row g-2">
-                                        <div class="col-5">
-                                            <input type="number" min="0" step="0.25" name="actual_hours" class="form-control form-control-sm" value="<?php echo htmlspecialchars($task->actual_hours ?? '0.00'); ?>" placeholder="Hours">
-                                        </div>
-                                        <div class="col-7">
-                                            <input type="text" name="remarks" class="form-control form-control-sm" value="<?php echo htmlspecialchars($task->remarks ?? ''); ?>" placeholder="Completion note...">
-                                        </div>
-                                    </div>
-                                    <button class="btn btn-success btn-sm w-100 mt-2 fw-semibold" style="background: #10b981; border: none;">🎉 Submit Complete</button>
-                                </form>
-                            <?php endif; ?>
-
-                            <!-- Manager Review Actions -->
-                            <?php if ($can_review && $task->review_status === 'pending_review'): ?>
-                                <form action="index.php?route=tasks/review/<?php echo $task->task_id; ?>" method="POST" class="border-top border-secondary border-opacity-10 pt-2 mt-1">
-                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
-                                    <input type="text" name="review_remark" class="form-control form-control-sm mb-2" placeholder="Review remark / feedback...">
-                                    <div class="d-flex gap-2">
-                                        <button name="decision" value="approved" class="btn btn-success btn-sm flex-fill fw-semibold">👍 Approve</button>
-                                        <button name="decision" value="rejected" class="btn btn-danger btn-sm flex-fill fw-semibold">👎 Reject</button>
-                                    </div>
-                                </form>
-                            <?php endif; ?>
-
-                            <!-- Quick Move Buttons -->
-                            <div class="d-flex gap-2 border-top border-secondary border-opacity-10 pt-2 mt-1 align-items-center">
-                                <span class="text-secondary small me-1">Move:</span>
-                                <?php foreach (['pending', 'in_progress', 'completed'] as $target): ?>
-                                    <?php if ($target === $task->status) { continue; } ?>
-                                        <button class="btn btn-outline-secondary btn-sm btn-move px-2 py-0" data-id="<?php echo $task->task_id; ?>" data-status="<?php echo $target; ?>" title="Move to <?php echo htmlspecialchars($target); ?>">
-                                            <?php echo $columnEmojis[$target]; ?> <?php echo strtoupper(substr($target, 0, 1)); ?>
-                                        </button>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
+                            <button class="btn btn-outline-primary btn-sm w-100 mt-2 fw-semibold py-2 shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRemaining_<?php echo $status; ?>" aria-expanded="false" style="border-radius: 10px; border-style: dashed;">
+                                ▼ View Remaining Tasks (<?php echo count($remainingTasks); ?>)
+                            </button>
+                        <?php endif; ?>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
     <?php endforeach; ?>
 </div>
 
-<!-- Assign Task Modal -->
+<!-- 🏆 Approved Tasks Storage Archive Area -->
+<div class="pulse-card p-4 shadow-sm mb-4" style="background: var(--panel-dark, #ffffff); border-radius: 16px; border: 1px solid var(--border-color, #e2e8f0);">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <h5 class="fw-bold mb-1 d-flex align-items-center gap-2" style="color: var(--text-primary, #0f172a);">
+                🏆 Approved Tasks Storage Archive
+            </h5>
+            <div class="text-secondary small">
+                Tasks completed by employees and reviewed & approved by managers are permanently stored here.
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30 px-3 py-2 fs-6 fw-bold">
+                Stored Approved: <?php echo count($approvedArchive); ?>
+            </span>
+            <?php if (!empty($approvedArchive)): ?>
+                <button class="btn btn-outline-success btn-sm px-3 py-2 fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseApprovedStorage" aria-expanded="true" style="border-radius: 10px;">
+                    📂 Toggle Approved Storage (<?php echo count($approvedArchive); ?>)
+                </button>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="collapse show" id="collapseApprovedStorage">
+        <?php if (empty($approvedArchive)): ?>
+            <div class="text-center py-4 text-secondary">
+                <i class="fa-solid fa-box-archive fs-2 mb-2 d-block text-secondary"></i>
+                No approved tasks stored yet. Tasks approved by managers will automatically be stored in this archive.
+            </div>
+        <?php else: ?>
+            <div class="row g-3 mt-1">
+                <?php foreach ($approvedArchive as $task): ?>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="p-3 rounded-3 h-100 d-flex flex-column justify-content-between" style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px;">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="badge bg-success text-white fw-bold">✅ APPROVED</span>
+                                    <span class="text-secondary small font-monospace">Task #<?php echo $task->task_id; ?></span>
+                                </div>
+                                <h6 class="fw-bold mb-1" style="color: var(--text-primary, #0f172a);"><?php echo htmlspecialchars($task->title); ?></h6>
+                                <p class="text-secondary small mb-2 text-truncate"><?php echo htmlspecialchars($task->description ?: 'No description'); ?></p>
+                            </div>
+                            <div class="border-top border-secondary border-opacity-20 pt-2 mt-2" style="font-size: 0.78rem;">
+                                <div class="d-flex justify-content-between text-secondary">
+                                    <span>👤 Owner: <strong style="color: var(--text-primary, #0f172a);"><?php echo htmlspecialchars($task->assignee_name ?: 'Unassigned'); ?></strong></span>
+                                    <span>👥 Team: <strong style="color: var(--text-primary, #0f172a);"><?php echo htmlspecialchars($task->team_name ?: 'No Team'); ?></strong></span>
+                                </div>
+                                <?php if (!empty($task->proof_url)): ?>
+                                    <div class="mt-2">
+                                        <a href="<?php echo htmlspecialchars($task->proof_url); ?>" target="_blank" class="btn btn-sm btn-outline-primary w-100 py-1" style="font-size: 0.75rem;">
+                                            📄 View Approved Proof Document
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
 <?php if ($can_assign): ?>
+<!-- Add Task Modal -->
 <div class="modal fade" id="addTaskModal" tabindex="-1" aria-labelledby="addTaskModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="background: var(--panel-dark, #ffffff); border-radius: 16px;">
             <div class="modal-header border-bottom border-secondary border-opacity-10">
-                <h5 class="modal-title fw-bold" id="addTaskModalLabel">➕ Assign New Task</h5>
+                <h5 class="modal-title fw-bold" id="addTaskModalLabel" style="color: var(--text-primary, #0f172a);">➕ Assign New Task</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="index.php?route=tasks/add" method="POST">
@@ -544,6 +450,7 @@ if (!function_exists('getInitialsBadge')) {
                     <button type="submit" class="btn btn-primary px-4 fw-semibold" style="background: var(--primary, #2563eb); border: none;">➕ Assign Task</button>
                 </div>
             </form>
+        </div>
     </div>
 </div>
 <?php endif; ?>
