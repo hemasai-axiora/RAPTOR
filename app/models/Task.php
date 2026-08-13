@@ -13,6 +13,7 @@ class Task extends Model {
 
     private function ensureSchema() {
         $cols = [
+            "MODIFY COLUMN assigned_to_user_id INT NULL",
             "ADD COLUMN team_id INT NULL AFTER assigned_to_user_id",
             "ADD COLUMN progress_percent INT DEFAULT 0 AFTER status",
             "ADD COLUMN estimated_hours DECIMAL(5,2) DEFAULT 0.00 AFTER progress_percent",
@@ -215,12 +216,13 @@ class Task extends Model {
         foreach ($tasks as $task) {
             $newDeadline = date('Y-m-d H:i:s', strtotime($date . ' ' . date('H:i:s', strtotime($task->deadline))));
             $this->query('INSERT INTO tasks
-                (assigned_to_user_id, created_by_user_id, title, description, start_date, priority, deadline,
+                (assigned_to_user_id, team_id, created_by_user_id, title, description, start_date, priority, deadline,
                  status, progress_percent, estimated_hours, actual_hours, remarks, is_carry_forward, source_task_id, review_status)
                 VALUES
-                (:assigned, :creator, :title, :description, :start_date, :priority, :deadline,
+                (:assigned, :team_id, :creator, :title, :description, :start_date, :priority, :deadline,
                  "pending", :progress, :estimated, 0.00, :remarks, TRUE, :source_task_id, "not_submitted")');
-            $this->bind(':assigned', (int) $task->assigned_to_user_id);
+            $this->bind(':assigned', !empty($task->assigned_to_user_id) ? (int) $task->assigned_to_user_id : null);
+            $this->bind(':team_id', !empty($task->team_id) ? (int) $task->team_id : null);
             $this->bind(':creator', (int) $task->created_by_user_id);
             $this->bind(':title', $task->title);
             $this->bind(':description', $task->description);

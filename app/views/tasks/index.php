@@ -186,7 +186,7 @@ if (!function_exists('getInitialsBadge')) {
             </div>
             <div>
                 <span class="text-secondary small fw-semibold text-uppercase" style="font-size:0.75rem;">Carried Forward</span>
-                <h4 class="mb-0 mt-1 fw-bold style="color: #d97706;""><?php echo $metrics['carried']; ?> <span class="fs-6 text-secondary">Tasks</span></h4>
+                <h4 class="mb-0 mt-1 fw-bold" style="color: #d97706;"><?php echo $metrics['carried']; ?> <span class="fs-6 text-secondary">Tasks</span></h4>
             </div>
         </div>
     </div>
@@ -301,7 +301,7 @@ if (!function_exists('getInitialsBadge')) {
                                     <?php echo $priorityLabel; ?>
                                 </span>
                                 <?php if ($task->is_carry_forward): ?>
-                                    <span class="badge bg-warning bg-opacity-20 text-warning border border-warning border-opacity-30 px-2 py-1">⏩ CARRY</span>
+                                    <span class="badge px-2 py-1 fw-bold" style="background: rgba(245, 158, 11, 0.2); color: #b45309; border: 1px solid rgba(245, 158, 11, 0.4);">⏩ CARRY FORWARD</span>
                                 <?php endif; ?>
                             </div>
 
@@ -327,7 +327,14 @@ if (!function_exists('getInitialsBadge')) {
                                         <div class="avatar-circle" title="Owner: <?php echo htmlspecialchars($task->assignee_name); ?>">
                                             <?php echo getInitialsBadge($task->assignee_name); ?>
                                         </div>
-                                        <span class="text-secondary small fw-semibold"><?php echo htmlspecialchars($task->assignee_name); ?></span>
+                                        <span class="text-secondary small fw-semibold" title="Assigned Owner"><?php echo htmlspecialchars($task->assignee_name); ?></span>
+                                    <?php elseif (!empty($task->team_name)): ?>
+                                        <div class="avatar-circle" style="background: linear-gradient(135deg, #059669, #10b981);" title="Team: <?php echo htmlspecialchars($task->team_name); ?>">
+                                            👥
+                                        </div>
+                                        <span class="text-secondary small fw-semibold" title="Assigned Team"><?php echo htmlspecialchars($task->team_name); ?></span>
+                                    <?php else: ?>
+                                        <span class="text-secondary small fst-italic">Unassigned</span>
                                     <?php endif; ?>
                                 </div>
 
@@ -341,7 +348,7 @@ if (!function_exists('getInitialsBadge')) {
                                 <span class="badge px-2 py-1 fw-semibold bg-<?php echo $reviewTone; ?>-subtle text-<?php echo $reviewTone; ?> border border-<?php echo $reviewTone; ?>-subtle">
                                     <?php echo $reviewEmoji; ?> <?php echo strtoupper(str_replace('_', ' ', $task->review_status)); ?>
                                 </span>
-                                <?php if (!empty($task->team_name)): ?>
+                                <?php if (!empty($task->team_name) && !empty($task->assignee_name)): ?>
                                     <span class="badge bg-primary bg-opacity-15 text-primary border border-primary border-opacity-20 px-2 py-1">
                                         👥 Team: <?php echo htmlspecialchars($task->team_name); ?>
                                     </span>
