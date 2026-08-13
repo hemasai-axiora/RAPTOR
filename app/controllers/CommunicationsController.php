@@ -207,6 +207,34 @@ class CommunicationsController extends Controller {
         exit();
     }
 
+    public function update($id) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('index.php?route=communications/index');
+        }
+
+        $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
+        $happenedAt = $this->normalizeDatetime($_POST['happened_at'] ?? '') ?: date('Y-m-d H:i:s');
+        $outcome = strip_tags(trim($_POST['outcome'] ?? ''));
+        $note = strip_tags(trim($_POST['note'] ?? ''));
+
+        $updated = $this->communicationModel->update((int)$id, [
+            'channel' => $_POST['channel'] ?? 'call',
+            'direction' => $_POST['direction'] ?? 'made',
+            'outcome' => $outcome,
+            'note' => $note,
+            'happened_at' => $happenedAt,
+        ]);
+
+        if ($updated) {
+            $_SESSION['communication_success'] = 'Communication record updated successfully.';
+            $this->audit('Updated communication #' . (int)$id, 'communication', (int)$id);
+        } else {
+            $_SESSION['communication_error'] = 'Failed to update communication record.';
+        }
+
+        $this->redirect('index.php?route=communications/index');
+    }
+
     public function bulkDelete() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['ids']) && is_array($_POST['ids'])) {
             $deleted = $this->communicationModel->deleteBulk($_POST['ids'], $this->visibleUserIds());

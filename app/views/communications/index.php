@@ -103,14 +103,31 @@
                     <tr><td colspan="7" class="text-center py-4 text-secondary">No communication records found for the selected filters.</td></tr>
                 <?php endif; ?>
                 <?php foreach ($communications as $item): ?>
+                    <?php 
+                        $displayPhone = '';
+                        if (!empty($item->lead_phone)) {
+                            $displayPhone = $item->lead_phone;
+                        } elseif (!empty($item->lead_email)) {
+                            $displayPhone = $item->lead_email;
+                        } elseif (!empty($item->note) && preg_match('/(\+?[0-9]{7,15}|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/', $item->note, $matches)) {
+                            $displayPhone = $matches[0];
+                        }
+                    ?>
                     <tr style="border-bottom: 1px solid var(--border-color);">
                         <td data-label="Lead">
                             <?php if ($item->lead_id): ?>
                                 <a class="text-white text-decoration-none fw-semibold" href="index.php?route=leads/view/<?php echo $item->lead_id; ?>">
                                     <i class="fa-solid fa-user me-1 text-primary"></i><?php echo htmlspecialchars(trim($item->first_name . ' ' . ($item->last_name ?? ''))); ?>
                                 </a>
-                                <div class="text-secondary small"><?php echo htmlspecialchars($item->lead_company_name ?: 'Individual'); ?></div>
+                                <?php if ($displayPhone): ?>
+                                    <div class="text-info small font-monospace"><i class="fa-solid fa-phone me-1"></i><?php echo htmlspecialchars($displayPhone); ?></div>
+                                <?php else: ?>
+                                    <div class="text-secondary small"><?php echo htmlspecialchars($item->lead_company_name ?: 'Individual'); ?></div>
+                                <?php endif; ?>
                             <?php else: ?>
+                                <?php if ($displayPhone): ?>
+                                    <div class="text-warning fw-semibold small font-monospace"><i class="fa-solid fa-phone me-1"></i><?php echo htmlspecialchars($displayPhone); ?></div>
+                                <?php endif; ?>
                                 <span class="text-secondary small"><i class="fa-solid fa-user-slash me-1"></i>Unlinked Lead</span>
                             <?php endif; ?>
                         </td>
@@ -159,6 +176,16 @@
                                         <i class="fa-solid fa-paperclip"></i>
                                     </a>
                                 <?php endif; ?>
+                                <button type="button" class="btn btn-outline-warning btn-sm edit-comm-btn" 
+                                        data-id="<?php echo $item->communication_id; ?>"
+                                        data-channel="<?php echo htmlspecialchars($item->channel); ?>"
+                                        data-direction="<?php echo htmlspecialchars($item->direction); ?>"
+                                        data-outcome="<?php echo htmlspecialchars($item->outcome ?? ''); ?>"
+                                        data-note="<?php echo htmlspecialchars($item->note ?? ''); ?>"
+                                        data-happened="<?php echo date('Y-m-d\TH:i', strtotime($item->happened_at)); ?>"
+                                        title="Edit Outcome & Notes">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
                                 <form action="index.php?route=communications/delete/<?php echo $item->communication_id; ?>" method="POST" onsubmit="return confirm('Delete this communication record?');">
                                     <button class="btn btn-outline-danger btn-sm" type="submit" title="Delete Log"><i class="fa-solid fa-trash"></i></button>
                                 </form>
@@ -299,3 +326,75 @@ john@example.com, email, sent, Email Sent, Sent monthly brochure
         </div>
     </div>
 </div>
+
+<!-- Edit Communication Modal (Outcome & Notes) -->
+<div class="modal fade" id="editCommunicationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-white border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title"><i class="fa-solid fa-pen-to-square text-warning me-2"></i>Edit Outcome & Notes</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editCommForm" action="" method="POST">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                <div class="modal-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary">Channel</label>
+                            <select name="channel" id="edit_channel" class="form-select bg-dark border-secondary text-white">
+                                <?php foreach ($channels as $channel): ?><option value="<?php echo $channel; ?>"><?php echo strtoupper($channel); ?></option><?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary">Direction</label>
+                            <select name="direction" id="edit_direction" class="form-select bg-dark border-secondary text-white">
+                                <?php foreach ($directions as $direction): ?><option value="<?php echo $direction; ?>"><?php echo strtoupper($direction); ?></option><?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary">Happened At</label>
+                        <input type="datetime-local" name="happened_at" id="edit_happened_at" class="form-control bg-dark border-secondary text-white">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary">Outcome</label>
+                        <input type="text" name="outcome" id="edit_outcome" class="form-control bg-dark border-secondary text-white" placeholder="Interested, Connected, Left Voicemail, Template Sent...">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary">Notes / Touchpoint Log</label>
+                        <textarea name="note" id="edit_note" class="form-control bg-dark border-secondary text-white" rows="4" placeholder="Enter updated details or notes..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning"><i class="fa-solid fa-check me-1"></i>Update Log</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.edit-comm-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            const channel = this.getAttribute('data-channel');
+            const direction = this.getAttribute('data-direction');
+            const outcome = this.getAttribute('data-outcome');
+            const note = this.getAttribute('data-note');
+            const happened = this.getAttribute('data-happened');
+
+            document.getElementById('editCommForm').action = 'index.php?route=communications/update/' + id;
+            document.getElementById('edit_channel').value = channel;
+            document.getElementById('edit_direction').value = direction;
+            document.getElementById('edit_outcome').value = outcome;
+            document.getElementById('edit_note').value = note;
+            document.getElementById('edit_happened_at').value = happened;
+
+            const modal = new bootstrap.Modal(document.getElementById('editCommunicationModal'));
+            modal.show();
+        });
+    });
+});
+</script>

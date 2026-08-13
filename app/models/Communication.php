@@ -7,7 +7,7 @@ class Communication extends Model {
 
     public function getCommunications(array $filters = [], ?array $visibleUserIds = null) {
         [$where, $params] = $this->buildWhere($filters, $visibleUserIds);
-        $this->query('SELECT c.*, u.name AS user_name, l.first_name, l.last_name, l.company_name AS lead_company_name
+        $this->query('SELECT c.*, u.name AS user_name, l.first_name, l.last_name, l.phone AS lead_phone, l.email AS lead_email, l.company_name AS lead_company_name
                       FROM communications c
                       LEFT JOIN users u ON c.user_id = u.user_id
                       LEFT JOIN leads l ON c.lead_id = l.lead_id
@@ -19,6 +19,23 @@ class Communication extends Model {
 
     public function getForLead(int $leadId) {
         return $this->getCommunications(['lead_id' => $leadId], null);
+    }
+
+    public function update(int $id, array $data): bool {
+        $this->query('UPDATE communications 
+                      SET outcome = :outcome, 
+                          note = :note, 
+                          channel = :channel, 
+                          direction = :direction, 
+                          happened_at = :happened_at 
+                      WHERE communication_id = :id');
+        $this->bind(':id', $id);
+        $this->bind(':outcome', $data['outcome'] ?? null);
+        $this->bind(':note', $data['note'] ?? null);
+        $this->bind(':channel', $this->valid($data['channel'] ?? 'call', self::CHANNELS, 'call'));
+        $this->bind(':direction', $this->valid($data['direction'] ?? 'made', self::DIRECTIONS, 'made'));
+        $this->bind(':happened_at', $data['happened_at'] ?? date('Y-m-d H:i:s'));
+        return $this->execute();
     }
 
     public function add(array $data) {
