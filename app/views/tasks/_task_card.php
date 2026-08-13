@@ -63,8 +63,11 @@ $fillGradient = ($pct >= 100 || $task->status === 'completed') ? 'linear-gradien
             <?php echo htmlspecialchars($task->title); ?>
         </h6>
         <?php if (!empty($task->description)): ?>
+            <?php
+                $cleanDesc = html_entity_decode($task->description, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            ?>
             <p class="text-secondary small mb-1" style="font-size: 0.83rem; line-height: 1.35;">
-                <?php echo nl2br(htmlspecialchars($task->description)); ?>
+                <?php echo nl2br(htmlspecialchars(trim($cleanDesc))); ?>
             </p>
         <?php endif; ?>
     </div>

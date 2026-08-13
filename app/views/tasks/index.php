@@ -78,6 +78,7 @@ if (!function_exists('getInitialsBadge')) {
     box-shadow: 0 4px 12px rgba(0,0,0,0.04);
     position: relative;
     overflow: hidden;
+    flex-shrink: 0 !important;
 }
 .task-card:hover {
     transform: translateY(-3px);
