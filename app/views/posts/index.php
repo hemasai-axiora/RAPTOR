@@ -36,7 +36,10 @@
         </div>
     </div>
 
-    <!-- Filters & Search Bar -->
+    <!-- Filters & Search Bar (Side-by-Side Horizontal Row) -->
+    <form action="index.php" method="GET" class="row g-2 align-items-center mb-4">
+        <input type="hidden" name="route" value="posts/index">
+        
         <div class="col-md-2">
             <select name="created_by_user_id" class="form-select bg-dark border-secondary text-white" onchange="this.form.submit()">
                 <option value="">All Authors</option>
