@@ -275,14 +275,20 @@ john@example.com, email, sent, Email Sent, Sent monthly brochure
             <form action="index.php?route=communications/add" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label text-secondary">Lead</label>
-                        <select name="lead_id" class="form-select bg-dark border-secondary text-white">
-                            <option value="">No linked lead</option>
-                            <?php foreach ($leads as $lead): ?>
-                                <option value="<?php echo $lead->lead_id; ?>"><?php echo htmlspecialchars($lead->first_name . ' ' . ($lead->last_name ?? '') . ' - ' . ($lead->lead_company_name ?: $lead->client_company_name ?: 'Individual')); ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary">Lead</label>
+                            <select name="lead_id" class="form-select bg-dark border-secondary text-white">
+                                <option value="">No linked lead</option>
+                                <?php foreach ($leads as $lead): ?>
+                                    <option value="<?php echo $lead->lead_id; ?>"><?php echo htmlspecialchars($lead->first_name . ' ' . ($lead->last_name ?? '') . ' - ' . ($lead->lead_company_name ?: $lead->client_company_name ?: 'Individual')); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary">Mobile Number / Email / Contact Identifier</label>
+                            <input type="text" name="phone_number" class="form-control bg-dark border-secondary text-white font-monospace" placeholder="+919876543210 or email@domain.com">
+                        </div>
                     </div>
                     <div class="row g-3">
                         <div class="col-md-6">

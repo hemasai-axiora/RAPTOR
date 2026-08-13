@@ -297,8 +297,14 @@ class CommunicationsController extends Controller {
             return;
         }
 
+        $phoneNumber = trim($_POST['phone_number'] ?? '');
+        if (empty($leadId) && !empty($phoneNumber)) {
+            $leadId = $this->communicationModel->findLeadByPhoneOrEmail($phoneNumber);
+        }
+
         $id = $this->communicationModel->add([
             'lead_id' => $leadId,
+            'phone_number' => !empty($phoneNumber) ? $phoneNumber : null,
             'user_id' => $_SESSION['user_id'],
             'channel' => $_POST['channel'] ?? 'call',
             'direction' => $_POST['direction'] ?? 'made',
