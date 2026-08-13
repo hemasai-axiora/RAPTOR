@@ -70,19 +70,22 @@
             </div>
 
             <div class="table-responsive">
-                <table class="table table-dark table-hover align-middle">
+                <table class="table table-dark table-hover align-middle mb-0">
                     <thead>
-                        <tr class="text-secondary" style="border-bottom: 1px solid var(--border-color);">
-                            <th style="width: 100px;">Rank</th>
-                            <th>Employee Name</th>
-                            <th>Team</th>
-                            <th class="text-end" style="width: 220px;">Overall Score</th>
+                        <tr class="text-secondary" style="border-bottom: 2px solid var(--border-color, #e2e8f0);">
+                            <th style="width: 75px;">Rank</th>
+                            <th style="min-width: 170px;">Employee Name</th>
+                            <th style="width: 110px;">Team</th>
+                            <th style="width: 140px;">Overall Score</th>
+                            <th style="width: 150px;">Performance Band</th>
+                            <th style="min-width: 220px;">Key Breakdown</th>
+                            <th class="text-end" style="width: 110px;">Profile</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($scores)): ?>
                             <tr>
-                                <td colspan="4" class="text-center py-4 text-secondary">
+                                <td colspan="7" class="text-center py-4 text-secondary">
                                     No employee performance scores computed yet. Click <strong>Recalculate Scores</strong> to generate rankings.
                                 </td>
                             </tr>
@@ -90,16 +93,23 @@
                             <?php foreach ($scores as $i => $score): ?>
                                 <?php
                                     $rankNum = $i + 1;
-                                    $rankBadge = '<span class="badge bg-secondary font-monospace" style="font-size: 0.85rem;">#' . $rankNum . '</span>';
+                                    $bandStyle = match($score->performance_band) {
+                                        'excellent' => 'background: #10b981; color: #ffffff !important;',
+                                        'good' => 'background: #06b6d4; color: #ffffff !important;',
+                                        'average' => 'background: #f59e0b; color: #ffffff !important;',
+                                        default => 'background: #ef4444; color: #ffffff !important;',
+                                    };
+
+                                    $rankBadge = '<span class="badge bg-secondary font-monospace" style="font-size: 0.82rem;">#' . $rankNum . '</span>';
                                     $rowStyle = '';
                                     if ($i === 0) {
-                                        $rankBadge = '<span class="badge text-dark font-monospace fw-bold" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); font-size: 0.88rem;">🥇 #1</span>';
+                                        $rankBadge = '<span class="badge text-dark font-monospace fw-bold" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); font-size: 0.85rem;">🥇 #1</span>';
                                         $rowStyle = 'background: rgba(245, 158, 11, 0.08);';
                                     } elseif ($i === 1) {
-                                        $rankBadge = '<span class="badge text-dark font-monospace fw-bold" style="background: linear-gradient(135deg, #cbd5e1, #94a3b8); font-size: 0.88rem;">🥈 #2</span>';
+                                        $rankBadge = '<span class="badge text-dark font-monospace fw-bold" style="background: linear-gradient(135deg, #cbd5e1, #94a3b8); font-size: 0.85rem;">🥈 #2</span>';
                                         $rowStyle = 'background: rgba(148, 163, 184, 0.06);';
                                     } elseif ($i === 2) {
-                                        $rankBadge = '<span class="badge text-white font-monospace fw-bold" style="background: linear-gradient(135deg, #d97706, #b45309); font-size: 0.88rem;">🥉 #3</span>';
+                                        $rankBadge = '<span class="badge text-white font-monospace fw-bold" style="background: linear-gradient(135deg, #d97706, #b45309); font-size: 0.85rem;">🥉 #3</span>';
                                         $rowStyle = 'background: rgba(180, 83, 9, 0.05);';
                                     }
                                 ?>
@@ -111,17 +121,39 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="badge" style="background: #2563eb; color: #ffffff !important; font-weight: 600; font-size: 0.8rem; padding: 0.35rem 0.65rem; border-radius: 6px;">
+                                        <span class="badge" style="background: #2563eb; color: #ffffff !important; font-weight: 600; font-size: 0.78rem; padding: 0.35rem 0.6rem; border-radius: 6px;">
                                             👥 <?php echo htmlspecialchars($score->team_name ?: 'Unassigned'); ?>
                                         </span>
                                     </td>
-                                    <td class="text-end">
-                                        <div class="d-inline-flex align-items-center gap-2" style="min-width: 160px;">
-                                            <div class="progress bg-dark flex-grow-1" style="height: 10px; border-radius: 6px;">
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2" style="min-width: 120px;">
+                                            <div class="progress bg-dark flex-grow-1" style="height: 8px; border-radius: 4px;">
                                                 <div class="progress-bar bg-primary" style="width: <?php echo min(100, (float)$score->overall_score); ?>%;"></div>
                                             </div>
-                                            <span class="fw-bold font-monospace fs-5" style="color: var(--text-primary, #0f172a);"><?php echo number_format((float)$score->overall_score, 1); ?></span>
+                                            <span class="fw-bold font-monospace" style="color: var(--text-primary, #0f172a);"><?php echo number_format((float)$score->overall_score, 1); ?></span>
                                         </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge px-2 py-1 fw-bold" style="<?php echo $bandStyle; ?> border-radius: 6px; font-size: 0.75rem;">
+                                            <?php echo strtoupper(str_replace('_', ' ', $score->performance_band)); ?>
+                                        </span>
+                                    </td>
+                                    <td class="text-secondary small">
+                                        <div class="d-flex flex-wrap gap-2" style="font-size: 0.78rem;">
+                                            <span title="Target Achievement">🎯 <?php echo number_format((float)$score->target_score, 0); ?>%</span>
+                                            <span title="Activity Volume">⚡ <?php echo number_format((float)$score->activity_score, 0); ?>%</span>
+                                            <span title="Follow-up Discipline">📞 <?php echo number_format((float)$score->followup_score, 0); ?>%</span>
+                                            <span title="Lead Generation">🧲 <?php echo number_format((float)$score->lead_score, 0); ?>%</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        <?php if ($can_manage || (int)$score->user_id === (int)$_SESSION['user_id']): ?>
+                                            <a class="btn btn-outline-info btn-sm px-2 py-1 fw-semibold" href="index.php?route=performance/profile/<?php echo $score->user_id; ?>&period=<?php echo urlencode($period); ?>" style="border-radius: 8px; font-size: 0.78rem;">
+                                                <i class="fa-solid fa-eye me-1"></i> View Profile
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="text-secondary small fst-italic" title="Profile viewing restricted">—</span>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
