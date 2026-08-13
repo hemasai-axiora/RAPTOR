@@ -148,19 +148,21 @@ if (!function_exists('getInitialsBadge')) {
             Assign team tasks, track process stages, log execution hours, and review deliverables.
         </p>
     </div>
-    <?php if ($can_assign): ?>
-        <div class="d-flex flex-wrap gap-2">
+    <div class="d-flex flex-wrap gap-2">
+        <?php if (!empty($can_delete)): ?>
             <button type="button" class="btn btn-danger px-3 py-2 fw-semibold shadow-sm" id="btn-bulk-delete-tasks" style="display: none; border-radius: 10px;">
                 🗑️ Delete Selected (<span id="selected-tasks-count">0</span>)
             </button>
             <button type="button" class="btn btn-outline-danger px-3 py-2 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#deleteByEmployeeModal" style="border-radius: 10px;">
                 👤 Delete Tasks by Employee
             </button>
+        <?php endif; ?>
+        <?php if ($can_assign): ?>
             <button class="btn btn-primary px-3 py-2 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#addTaskModal" style="background: var(--primary, #2563eb); border: none; border-radius: 10px;">
                 ➕ Assign Task
             </button>
-        </div>
-    <?php endif; ?>
+        <?php endif; ?>
+    </div>
 </div>
 
 <!-- Stat Cards Overview -->
@@ -302,7 +304,7 @@ if (!function_exists('getInitialsBadge')) {
                             <!-- Card Header Badges & Actions -->
                             <div class="d-flex justify-content-between align-items-center gap-2">
                                 <div class="d-flex align-items-center gap-2">
-                                    <?php if ($can_assign): ?>
+                                    <?php if (!empty($can_delete)): ?>
                                         <input type="checkbox" class="form-check-input task-select-checkbox me-1" value="<?php echo $task->task_id; ?>" title="Select task for bulk delete">
                                     <?php endif; ?>
                                     <span class="badge px-2 py-1 fw-bold" style="<?php 
@@ -317,7 +319,7 @@ if (!function_exists('getInitialsBadge')) {
                                     <?php if ($task->is_carry_forward): ?>
                                         <span class="badge px-2 py-1 fw-bold" style="background: rgba(245, 158, 11, 0.2); color: #b45309; border: 1px solid rgba(245, 158, 11, 0.4);">⏩ CARRY FORWARD</span>
                                     <?php endif; ?>
-                                    <?php if ($can_assign): ?>
+                                    <?php if (!empty($can_delete)): ?>
                                         <form action="index.php?route=tasks/delete/<?php echo $task->task_id; ?>" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete task #<?php echo $task->task_id; ?> (<?php echo htmlspecialchars(addslashes($task->title)); ?>)?');">
                                             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                                             <button type="submit" class="btn btn-link text-danger p-0 ms-1" style="font-size: 0.9rem;" title="Delete Task">
@@ -547,6 +549,7 @@ if (!function_exists('getInitialsBadge')) {
         </div>
     </div>
 </div>
+<?php if (!empty($can_delete)): ?>
 <!-- Delete Tasks by Employee Modal -->
 <div class="modal fade" id="deleteByEmployeeModal" tabindex="-1" aria-labelledby="deleteByEmployeeModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">

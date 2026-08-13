@@ -30,6 +30,7 @@ class TasksController extends Controller {
             'metrics' => $this->taskModel->completionMetrics($visible),
             'can_assign' => in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader'], true),
             'can_review' => in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader'], true),
+            'can_delete' => strtolower($_SESSION['user_role'] ?? '') === 'admin',
             'assignees' => $this->getAssignees(),
             'teams' => $teamModel->getTeams(),
             'filters' => $filters,
@@ -190,7 +191,12 @@ class TasksController extends Controller {
     }
 
     public function delete($id) {
-        $this->requirePermission('tasks', 'assign');
+        $userRole = strtolower($_SESSION['user_role'] ?? '');
+        if ($userRole !== 'admin') {
+            $_SESSION['task_error'] = 'Access Denied: Only Admin users are authorized to delete tasks.';
+            $this->redirect('index.php?route=tasks/index');
+            return;
+        }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($this->taskModel->deleteTask((int) $id, $this->visibleUserIds())) {
@@ -204,7 +210,12 @@ class TasksController extends Controller {
     }
 
     public function deleteMultiple() {
-        $this->requirePermission('tasks', 'assign');
+        $userRole = strtolower($_SESSION['user_role'] ?? '');
+        if ($userRole !== 'admin') {
+            $_SESSION['task_error'] = 'Access Denied: Only Admin users are authorized to delete tasks.';
+            $this->redirect('index.php?route=tasks/index');
+            return;
+        }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $rawIds = $_POST['task_ids'] ?? [];
@@ -229,7 +240,12 @@ class TasksController extends Controller {
     }
 
     public function deleteByEmployee() {
-        $this->requirePermission('tasks', 'assign');
+        $userRole = strtolower($_SESSION['user_role'] ?? '');
+        if ($userRole !== 'admin') {
+            $_SESSION['task_error'] = 'Access Denied: Only Admin users are authorized to delete tasks.';
+            $this->redirect('index.php?route=tasks/index');
+            return;
+        }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $employeeUserId = (int)($_POST['employee_user_id'] ?? 0);
