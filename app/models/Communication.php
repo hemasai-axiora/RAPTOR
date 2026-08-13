@@ -82,9 +82,13 @@ class Communication extends Model {
     }
 
     public function delete(int $id, ?array $visibleUserIds = null): bool {
-        [$where, $params] = $this->buildWhere(['communication_id' => $id], $visibleUserIds);
-        $this->query('DELETE c FROM communications c ' . $where);
-        $this->bindParams($params);
+        if ($visibleUserIds !== null) {
+            if (empty($visibleUserIds)) return false;
+            $this->query('DELETE FROM communications WHERE communication_id = :id AND user_id IN (' . implode(',', array_map('intval', $visibleUserIds)) . ')');
+        } else {
+            $this->query('DELETE FROM communications WHERE communication_id = :id');
+        }
+        $this->bind(':id', $id);
         return $this->execute();
     }
 

@@ -329,7 +329,10 @@ class CommunicationsController extends Controller {
     public function delete($id) {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($this->communicationModel->delete((int) $id, $this->visibleUserIds())) {
+                $_SESSION['communication_success'] = 'Communication log entry deleted successfully.';
                 $this->audit('Deleted communication #' . (int) $id, 'communication', (int) $id);
+            } else {
+                $_SESSION['communication_error'] = 'Failed to delete communication log entry.';
             }
         }
         $this->redirect('index.php?route=communications/index');
