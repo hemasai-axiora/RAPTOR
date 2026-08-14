@@ -183,10 +183,19 @@ class TasksController extends Controller {
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
-            $decision = $_POST['decision'] ?? 'rejected';
+            $rawDecision = strtolower(trim($_POST['review_action'] ?? $_POST['decision'] ?? ''));
+            if (in_array($rawDecision, ['approve', 'approved'], true)) {
+                $decision = 'approved';
+            } else {
+                $decision = 'rejected';
+            }
+
             $remark = strip_tags(trim($_POST['review_remark'] ?? ''));
             if ($this->taskModel->review((int) $id, $decision, (int) $_SESSION['user_id'], $remark, $this->visibleUserIds())) {
                 $this->audit('Reviewed task #' . (int) $id . ' as ' . $decision, 'task', (int) $id);
+                $_SESSION['task_success'] = 'Task reviewed as ' . ucfirst($decision) . '.';
+            } else {
+                $_SESSION['task_error'] = 'Failed to review task.';
             }
         }
         $this->redirect('index.php?route=tasks/index');

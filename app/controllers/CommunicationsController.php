@@ -75,6 +75,10 @@ class CommunicationsController extends Controller {
 
         $records = [];
         $userId = $_SESSION['user_id'];
+        $uploadChannel = !empty($_POST['upload_channel']) ? strtolower(trim($_POST['upload_channel'])) : 'auto';
+        if ($uploadChannel === 'mail') {
+            $uploadChannel = 'email';
+        }
 
         // Option 1: File Upload
         if (!empty($_FILES['csv_file']['tmp_name']) && is_uploaded_file($_FILES['csv_file']['tmp_name'])) {
@@ -123,11 +127,19 @@ class CommunicationsController extends Controller {
         }
 
         $inserted = 0;
+        $validChannels = ['call', 'whatsapp', 'sms', 'email', 'social', 'other'];
+
         foreach ($records as $rec) {
             $leadId = $this->communicationModel->findLeadByPhoneOrEmail($rec['identifier']);
             
-            $validChannels = ['call', 'whatsapp', 'sms', 'email', 'social', 'other'];
-            $channel = in_array($rec['channel'], $validChannels) ? $rec['channel'] : 'whatsapp';
+            $recChannel = $rec['channel'];
+            if ($recChannel === 'mail') $recChannel = 'email';
+
+            if ($uploadChannel !== 'auto' && in_array($uploadChannel, $validChannels, true)) {
+                $channel = $uploadChannel;
+            } else {
+                $channel = in_array($recChannel, $validChannels, true) ? $recChannel : 'whatsapp';
+            }
 
             $validDirections = ['made', 'received', 'missed', 'sent', 'inbound', 'outbound'];
             $direction = in_array($rec['direction'], $validDirections) ? $rec['direction'] : 'made';
@@ -238,6 +250,12 @@ class CommunicationsController extends Controller {
     }
 
     public function bulkDelete() {
+        if (!Policy::isAdmin()) {
+            $_SESSION['communication_error'] = 'Only administrators are allowed to delete communication logs.';
+            $this->redirect('index.php?route=communications/index');
+            return;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['ids']) && is_array($_POST['ids'])) {
             $deleted = $this->communicationModel->deleteBulk($_POST['ids'], $this->visibleUserIds());
             if ($deleted > 0) {
@@ -327,6 +345,12 @@ class CommunicationsController extends Controller {
     }
 
     public function delete($id) {
+        if (!Policy::isAdmin()) {
+            $_SESSION['communication_error'] = 'Only administrators are allowed to delete communication logs.';
+            $this->redirect('index.php?route=communications/index');
+            return;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($this->communicationModel->delete((int) $id, $this->visibleUserIds())) {
                 $_SESSION['communication_success'] = 'Communication log entry deleted successfully.';

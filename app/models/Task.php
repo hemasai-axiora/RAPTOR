@@ -156,7 +156,8 @@ class Task extends Model {
         if (!$this->getTaskById($id, $visibleUserIds)) {
             return false;
         }
-        $reviewStatus = $decision === 'approved' ? 'approved' : 'rejected';
+        $dec = strtolower(trim($decision));
+        $reviewStatus = in_array($dec, ['approve', 'approved'], true) ? 'approved' : 'rejected';
         $this->query('UPDATE tasks
                       SET review_status = :review_status,
                           reviewed_by = :reviewer,

@@ -187,9 +187,12 @@
                                         title="Edit Number, Outcome & Notes">
                                     <i class="fa-solid fa-pen-to-square"></i>
                                 </button>
-                                <form action="index.php?route=communications/delete/<?php echo $item->communication_id; ?>" method="POST" onsubmit="return confirm('Delete this communication record?');">
-                                    <button class="btn btn-outline-danger btn-sm" type="submit" title="Delete Log"><i class="fa-solid fa-trash"></i></button>
-                                </form>
+                                <?php if (Policy::isAdmin()): ?>
+                                    <form action="index.php?route=communications/delete/<?php echo $item->communication_id; ?>" method="POST" class="d-inline" onsubmit="return confirm('Delete this communication record?');">
+                                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                                        <button class="btn btn-outline-danger btn-sm" type="submit" title="Delete Log"><i class="fa-solid fa-trash"></i></button>
+                                    </form>
+                                <?php endif; ?>
                             </div>
                         </td>
                     </tr>
@@ -210,6 +213,19 @@
             <form action="index.php?route=communications/bulkUpload" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                 <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-secondary fw-semibold"><i class="fa-solid fa-sliders text-info me-1"></i>Communication Platform / Channel</label>
+                        <select name="upload_channel" class="form-select bg-dark border-secondary text-white">
+                            <option value="auto">Auto (Detect from file / text row)</option>
+                            <option value="whatsapp">WhatsApp</option>
+                            <option value="call">Call</option>
+                            <option value="email">Email / Mail</option>
+                            <option value="sms">SMS</option>
+                            <option value="social">Social</option>
+                            <option value="other">Other</option>
+                        </select>
+                        <div class="form-text text-secondary" style="font-size:0.8rem;">Select a communication platform (WhatsApp, Call, Email, SMS) to apply to all uploaded records, or choose Auto to keep per-row channels.</div>
+                    </div>
                     <ul class="nav nav-tabs border-secondary mb-3" id="bulkTabs" role="tablist">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active text-white" id="csv-tab" data-bs-toggle="tab" data-bs-target="#csv-pane" type="button" role="tab">
