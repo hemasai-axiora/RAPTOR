@@ -13,6 +13,16 @@ $grouped = ['pending' => [], 'in_progress' => [], 'completed' => []];
 foreach ($tasks as $task) {
     $grouped[$task->status][] = $task;
 }
+
+// Sort completed column so older completed tasks appear at top, and tasks completed today go to the last (bottom)
+usort($grouped['completed'], function($a, $b) {
+    $timeA = !empty($a->completed_at) ? strtotime($a->completed_at) : (!empty($a->reviewed_at) ? strtotime($a->reviewed_at) : 0);
+    $timeB = !empty($b->completed_at) ? strtotime($b->completed_at) : (!empty($b->reviewed_at) ? strtotime($b->reviewed_at) : 0);
+    if ($timeA === $timeB) {
+        return $a->task_id <=> $b->task_id;
+    }
+    return $timeA <=> $timeB;
+});
 $completionPct = $metrics['total'] > 0 ? round(($metrics['approved'] / $metrics['total']) * 100) : 0;
 
 if (!function_exists('getInitialsBadge')) {

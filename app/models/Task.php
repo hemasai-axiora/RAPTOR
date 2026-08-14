@@ -157,18 +157,23 @@ class Task extends Model {
             return false;
         }
         $dec = strtolower(trim($decision));
-        $reviewStatus = in_array($dec, ['approve', 'approved'], true) ? 'approved' : 'rejected';
+        $isApproved = in_array($dec, ['approve', 'approved'], true);
+        $reviewStatus = $isApproved ? 'approved' : 'rejected';
         $this->query('UPDATE tasks
                       SET review_status = :review_status,
                           reviewed_by = :reviewer,
                           reviewed_at = NOW(),
                           review_remark = :remark,
-                          status = CASE WHEN :review_status2 = "rejected" THEN "in_progress" ELSE status END,
-                          progress_percent = CASE WHEN :review_status3 = "rejected" THEN 90 ELSE progress_percent END
+                          status = CASE WHEN :is_app1 = 1 THEN "completed" WHEN :is_rej1 = 1 THEN "in_progress" ELSE status END,
+                          progress_percent = CASE WHEN :is_app2 = 1 THEN 100 WHEN :is_rej2 = 1 THEN 90 ELSE progress_percent END,
+                          completed_at = CASE WHEN :is_app3 = 1 THEN COALESCE(completed_at, NOW()) ELSE completed_at END
                       WHERE task_id = :id');
         $this->bind(':review_status', $reviewStatus);
-        $this->bind(':review_status2', $reviewStatus);
-        $this->bind(':review_status3', $reviewStatus);
+        $this->bind(':is_app1', $isApproved ? 1 : 0);
+        $this->bind(':is_rej1', !$isApproved ? 1 : 0);
+        $this->bind(':is_app2', $isApproved ? 1 : 0);
+        $this->bind(':is_rej2', !$isApproved ? 1 : 0);
+        $this->bind(':is_app3', $isApproved ? 1 : 0);
         $this->bind(':reviewer', $reviewerId);
         $this->bind(':remark', $remark);
         $this->bind(':id', $id);

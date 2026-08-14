@@ -136,7 +136,7 @@ $fillGradient = ($pct >= 100 || $task->status === 'completed') ? 'linear-gradien
     <?php endif; ?>
 
     <!-- Review Form / Actions -->
-    <?php if ($task->status === 'completed'): ?>
+    <?php if ($task->status === 'completed' && $task->review_status !== 'approved'): ?>
         <?php if (!empty($can_review)): ?>
             <form action="index.php?route=tasks/review/<?php echo $task->task_id; ?>" method="POST" class="mt-2 p-2 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color, #e2e8f0);">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
