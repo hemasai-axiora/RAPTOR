@@ -4,19 +4,20 @@ $monthYearFormatted = date('F Y', strtotime($rawMonth . '-01'));
 $payPeriod = date('F Y', strtotime($rawMonth . '-01'));
 $payDate = date('j F Y', strtotime($rawMonth . '-01 +1 month'));
 
-$empName = $detail->name ?? 'Employee';
-$empCode = $detail->employee_code ?? 'EMP000';
-$doj = !empty($detail->date_of_joining) ? date('d M Y', strtotime($detail->date_of_joining)) : '02 Mar 2026';
-$rawDesig = $detail->job_title ?: 'Software Engineer - II';
+$empName = !empty($detail->name) ? $detail->name : 'Employee';
+$empCode = !empty($detail->employee_code) ? $detail->employee_code : '-';
+$dojVal = !empty($detail->date_of_joining) ? $detail->date_of_joining : (!empty($detail->hire_date) ? $detail->hire_date : '');
+$doj = !empty($dojVal) ? date('d M Y', strtotime($dojVal)) : '-';
+$rawDesig = !empty($detail->job_title) ? $detail->job_title : '-';
 $desig = str_replace(['–', '—'], '-', $rawDesig);
-$location = $detail->work_location ?: 'Hyderabad';
-$dept = $detail->department ?: 'Development';
+$location = !empty($detail->work_location) ? $detail->work_location : '-';
+$dept = !empty($detail->department) ? $detail->department : '-';
 
 $paidDays = (int)($detail->present_days ?? 30);
 $lopDays = (int)($detail->absent_days ?? 0);
-$bankAc = $detail->account_number ?: '3327101004003';
-$ifsc = $detail->ifsc_code ?: 'CNRB0003327';
-$uan = $detail->uan ?: '101825984981';
+$bankAc = !empty($detail->account_number) ? trim($detail->account_number) : '-';
+$ifsc = !empty($detail->ifsc_code) ? trim($detail->ifsc_code) : '-';
+$uan = !empty($detail->uan) ? trim($detail->uan) : '-';
 
 $basic = round((float)($detail->basic_salary ?? 0));
 $hra = round((float)($detail->hra ?? 0));
