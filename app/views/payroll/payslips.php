@@ -19,15 +19,13 @@
         <form method="GET" action="index.php" class="row g-3 align-items-end mb-4 bg-dark bg-opacity-50 p-3 rounded border border-secondary">
             <input type="hidden" name="route" value="payroll/payslips">
             <div class="col-md-8">
-                <label for="run_id" class="form-label text-secondary font-weight-bold small text-uppercase">Select Released Payroll Period</label>
+                <label for="run_id" class="form-label text-secondary font-weight-bold small text-uppercase">Select Payroll Period</label>
                 <select name="run_id" id="run_id" class="form-select bg-dark border-secondary text-white" onchange="this.form.submit()">
-                    <option value="">-- Select Released Month --</option>
+                    <option value="">-- Select Payroll Run --</option>
                     <?php foreach ($runs as $r): ?>
-                        <?php if ($r->status === 'released'): ?>
-                            <option value="<?php echo $r->payroll_run_id; ?>" <?php echo (int)$selected_run_id === (int)$r->payroll_run_id ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars(PayslipHelper::formatMonthYear($r->month_year)); ?> (<?php echo htmlspecialchars($r->month_year); ?>)
-                            </option>
-                        <?php endif; ?>
+                        <option value="<?php echo $r->payroll_run_id; ?>" <?php echo (int)$selected_run_id === (int)$r->payroll_run_id ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars(PayslipHelper::formatMonthYear($r->month_year)); ?> (<?php echo htmlspecialchars($r->month_year); ?>) &mdash; <?php echo strtoupper($r->status); ?>
+                        </option>
                     <?php endforeach; ?>
                 </select>
             </div>

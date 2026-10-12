@@ -988,6 +988,9 @@ class PayrollController extends Controller {
                         break;
                     }
                 }
+                if ($runId === 0 && !empty($runs[0])) {
+                    $runId = (int)$runs[0]->payroll_run_id;
+                }
             }
             if ($runId > 0) {
                 $allPayslips = $this->payrollModel->getPayrollDetailsByRunId($runId);
