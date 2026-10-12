@@ -128,6 +128,56 @@ accounts@axioraglobalsolutions.com</textarea>
                 </div>
             </div>
 
+            <?php 
+                $totalEmployees = count($all_payslips);
+                $totalNetPayout = 0;
+                $sentEmails = 0;
+                $pendingEmails = 0;
+                foreach ($all_payslips as $slip) {
+                    $totalNetPayout += (float)($slip->net_salary ?? 0);
+                    if (($slip->email_status ?? '') === 'sent') {
+                        $sentEmails++;
+                    } else {
+                        $pendingEmails++;
+                    }
+                }
+            ?>
+            <!-- Executive Payroll Run Summary KPI Cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="card p-3 rounded-4 border" style="background: var(--surface-soft);">
+                        <span class="small text-secondary text-uppercase font-weight-bold" style="font-size: 0.72rem; letter-spacing: 0.5px;">Employees</span>
+                        <div class="fs-4 font-weight-bold mt-1" style="color: var(--text-primary);">
+                            <i class="fa-solid fa-users me-1 text-primary"></i> <?php echo $totalEmployees; ?>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card p-3 rounded-4 border" style="background: var(--surface-soft);">
+                        <span class="small text-secondary text-uppercase font-weight-bold" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Net Payout</span>
+                        <div class="fs-4 font-weight-bold mt-1" style="color: var(--success);">
+                            ₹<?php echo number_format($totalNetPayout, 0); ?>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card p-3 rounded-4 border" style="background: var(--surface-soft);">
+                        <span class="small text-secondary text-uppercase font-weight-bold" style="font-size: 0.72rem; letter-spacing: 0.5px;">Emails Dispatched</span>
+                        <div class="fs-4 font-weight-bold mt-1" style="color: #059669;">
+                            <i class="fa-solid fa-circle-check me-1"></i> <?php echo $sentEmails; ?>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card p-3 rounded-4 border" style="background: var(--surface-soft);">
+                        <span class="small text-secondary text-uppercase font-weight-bold" style="font-size: 0.72rem; letter-spacing: 0.5px;">Pending Emails</span>
+                        <div class="fs-4 font-weight-bold mt-1" style="color: #d97706;">
+                            <i class="fa-solid fa-clock-rotate-left me-1"></i> <?php echo $pendingEmails; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- List Header with Retry Action -->
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
                 <div>

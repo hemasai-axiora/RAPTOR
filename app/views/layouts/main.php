@@ -732,6 +732,97 @@
             pointer-events: none;
         }
 
+        /* ═══════════════════════════════════════════════════════════
+           MODERN SAAS UI REFINEMENTS (Linear / Stripe inspired)
+           ═══════════════════════════════════════════════════════════ */
+        .card, .pulse-card, .glass-panel {
+            border: 1px solid var(--border-color) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 4px 12px 0 rgba(0, 0, 0, 0.03) !important;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        
+        .card-interactive:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px -4px rgba(37, 99, 235, 0.12) !important;
+        }
+
+        /* Modern Table Row Enhancements & Smooth Elevation */
+        .table tbody tr {
+            transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .table tbody tr:hover {
+            background-color: var(--primary-soft) !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        }
+        .table th {
+            font-size: 0.74rem !important;
+            letter-spacing: 0.04em !important;
+            color: var(--text-muted) !important;
+            border-bottom: 2px solid var(--border-color) !important;
+        }
+
+        /* Modern Button Micro-interactions */
+        .btn {
+            font-weight: 500;
+            letter-spacing: 0.01em;
+            transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        .btn:hover:not(:disabled) {
+            transform: translateY(-1.5px);
+        }
+        .btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+            border-color: #1D4ED8 !important;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.22) !important;
+        }
+        .btn-primary:hover:not(:disabled) {
+            box-shadow: 0 5px 16px rgba(37, 99, 235, 0.32) !important;
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+            border-color: #059669 !important;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.22) !important;
+        }
+        .btn-success:hover:not(:disabled) {
+            box-shadow: 0 5px 16px rgba(16, 185, 129, 0.32) !important;
+        }
+
+        /* Form Inputs Modern Focus Rings */
+        .form-control, .form-select {
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 3px var(--primary-glow) !important;
+            background-color: var(--panel-dark) !important;
+        }
+
+        /* Modern Status Pill Badges */
+        .badge {
+            font-weight: 550;
+            letter-spacing: 0.02em;
+            border-radius: 6px;
+        }
+        .badge-pending {
+            background: rgba(245, 158, 11, 0.12) !important;
+            color: #d97706 !important;
+            border: 1px solid rgba(245, 158, 11, 0.28) !important;
+        }
+        .badge-completed {
+            background: rgba(16, 185, 129, 0.12) !important;
+            color: #059669 !important;
+            border: 1px solid rgba(16, 185, 129, 0.28) !important;
+        }
+        .badge-inprogress {
+            background: rgba(37, 99, 235, 0.12) !important;
+            color: #2563eb !important;
+            border: 1px solid rgba(37, 99, 235, 0.28) !important;
+        }
+
         /* Mobile drawer overlay (hidden on desktop) */
         #sidebar-overlay {
             display: none;

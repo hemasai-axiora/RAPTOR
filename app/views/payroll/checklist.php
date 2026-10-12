@@ -36,8 +36,9 @@
     <?php 
     $pct = $total_items > 0 ? round(($completed_count / $total_items) * 100) : 0;
     ?>
-    <div class="p-4 rounded mb-4" style="background: var(--surface-soft); border: 1px solid var(--border-color); box-shadow: var(--shadow-soft);">
-        <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
+    <div class="p-4 mb-4" style="background: var(--surface-soft); border: 1px solid var(--border-color); border-radius: 14px; position: relative; overflow: hidden; box-shadow: 0 4px 20px -2px rgba(0,0,0,0.05);">
+        <div style="height: 3px; background: linear-gradient(90deg, #2563EB, #10B981); position: absolute; top: 0; left: 0; right: 0;"></div>
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2 pt-1">
             <div>
                 <span class="small text-uppercase font-weight-bold" style="color: var(--text-secondary); letter-spacing: 0.5px;">Target Payroll Month</span>
                 <h3 class="mb-0" style="color: var(--text-primary); font-weight: 700;">
@@ -48,7 +49,7 @@
             <div class="d-flex align-items-center gap-3">
                 <div class="text-end">
                     <span class="small d-block" style="color: var(--text-secondary);">Completion Status</span>
-                    <span class="badge <?php echo $is_all_completed ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-warning-subtle text-warning border border-warning-subtle'; ?> px-3 py-2 fs-6">
+                    <span class="badge <?php echo $is_all_completed ? 'badge-completed' : 'badge-pending'; ?> px-3 py-2 fs-6">
                         <i class="fa-solid fa-<?php echo $is_all_completed ? 'circle-check' : 'spinner fa-spin-pulse'; ?> me-1"></i>
                         <?php echo $completed_count; ?> of <?php echo $total_items; ?> Completed (<?php echo $pct; ?>%)
                     </span>
@@ -57,8 +58,8 @@
         </div>
 
         <!-- Progress Bar -->
-        <div class="progress mt-3 mb-3" style="height: 10px; background-color: var(--border-color);">
-            <div class="progress-bar <?php echo $is_all_completed ? 'bg-success' : 'bg-primary'; ?>" role="progressbar" style="width: <?php echo $pct; ?>%;" aria-valuenow="<?php echo $pct; ?>" aria-valuemin="0" aria-valuemax="100"></div>
+        <div class="progress mt-3 mb-3" style="height: 8px; border-radius: 999px; background-color: var(--border-color); overflow: hidden;">
+            <div class="progress-bar <?php echo $is_all_completed ? 'bg-success' : 'bg-primary'; ?>" role="progressbar" style="width: <?php echo $pct; ?>%; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);" aria-valuenow="<?php echo $pct; ?>" aria-valuemin="0" aria-valuemax="100"></div>
         </div>
 
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 pt-2">
@@ -121,22 +122,22 @@
                 $cardBgStyle = $isItemDone ? 'background: rgba(16, 185, 129, 0.04);' : ($isItemProg ? 'background: rgba(245, 158, 11, 0.04);' : 'background: var(--panel-dark);');
             ?>
             <div class="col-12" id="<?php echo htmlspecialchars($item->item_key); ?>">
-                <div class="p-3 rounded border <?php echo $cardBorderClass; ?> transition-all" style="<?php echo $cardBgStyle; ?> box-shadow: var(--shadow-soft);">
+                <div class="card card-interactive p-3 rounded-4 border <?php echo $cardBorderClass; ?> transition-all" style="<?php echo $cardBgStyle; ?> box-shadow: var(--shadow-soft);">
                     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                         <div style="flex: 1; min-width: 290px;">
                             <!-- Header & Status Badge -->
                             <div class="d-flex align-items-center gap-2 mb-1">
                                 <?php if ($isItemDone): ?>
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle text-uppercase font-weight-bold px-2 py-1" style="font-size: 0.72rem;">
+                                    <span class="badge badge-completed text-uppercase font-weight-bold px-2 py-1" style="font-size: 0.72rem;">
                                         <i class="fa-solid fa-circle-check me-1"></i> Completed
                                     </span>
                                 <?php elseif ($isItemProg): ?>
-                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle text-uppercase font-weight-bold px-2 py-1" style="font-size: 0.72rem;">
-                                        <i class="fa-solid fa-clock me-1"></i> In Progress
+                                    <span class="badge badge-inprogress text-uppercase font-weight-bold px-2 py-1" style="font-size: 0.72rem;">
+                                        <i class="fa-solid fa-spinner fa-spin-pulse me-1"></i> In Progress
                                     </span>
                                 <?php else: ?>
-                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle text-uppercase font-weight-bold px-2 py-1" style="font-size: 0.72rem;">
-                                        <i class="fa-solid fa-hourglass-start me-1"></i> Pending
+                                    <span class="badge badge-pending text-uppercase font-weight-bold px-2 py-1" style="font-size: 0.72rem;">
+                                        <i class="fa-solid fa-clock-rotate-left me-1"></i> Pending
                                     </span>
                                 <?php endif; ?>
                                 <h5 class="mb-0 font-weight-bold" style="color: var(--text-primary);">
