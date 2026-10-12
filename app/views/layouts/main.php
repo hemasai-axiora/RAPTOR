@@ -1288,6 +1288,11 @@
                         <?php endif; ?>
 
                         <?php if (in_array($role, ['admin', 'ceo', 'hr', 'finance'], true)): ?>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_checklist') ? 'active' : ''; ?>">
+                            <a href="index.php?route=payroll/checklist">
+                                <i class="fa-solid fa-list-check"></i><span>Pre-Payroll Checklist</span>
+                            </a>
+                        </li>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_processing') ? 'active' : ''; ?>">
                             <a href="index.php?route=payroll/processing">
                                 <i class="fa-solid fa-file-invoice-dollar"></i><span>Payroll Runs</span>
@@ -1566,7 +1571,7 @@
 
             $('#close-sidebar-btn').on('click', closeDrawer);
 
-            // Accordion Logic for Sidebar Category Drawers
+            // Category Drawers Toggle (Keep open without auto-collapsing other sections to prevent jumping)
             $('.menu-section-header').on('click', function() {
                 if ($('#sidebar').hasClass('collapsed') && !isMobile()) {
                     $('#sidebar').removeClass('collapsed');
@@ -1576,16 +1581,17 @@
                 var section = $(this).closest('.menu-section');
                 var isOpen = section.hasClass('expanded');
 
-                // Collapse all other sections (Accordion style)
-                $('.menu-section').not(section).removeClass('expanded').find('.menu-section-items').slideUp(200);
-
                 if (isOpen) {
                     section.removeClass('expanded');
-                    section.find('.menu-section-items').slideUp(200);
+                    section.find('.menu-section-items').slideUp(180);
                 } else {
                     section.addClass('expanded');
-                    section.find('.menu-section-items').slideDown(200);
+                    section.find('.menu-section-items').slideDown(180);
                 }
+
+                setTimeout(function() {
+                    sessionStorage.setItem('sidebar_scroll', $('#sidebar').scrollTop());
+                }, 200);
             });
 
             // Expand active section on load & highlight active section header
@@ -1597,6 +1603,33 @@
             } else {
                 $('.menu-section[data-section="dashboard"]').addClass('expanded has-active').find('.menu-section-items').show();
             }
+
+            // Restore sidebar scroll position so it stays exactly where the user left it
+            var savedScroll = sessionStorage.getItem('sidebar_scroll');
+            if (savedScroll !== null) {
+                $('#sidebar').scrollTop(parseInt(savedScroll, 10));
+                requestAnimationFrame(function() {
+                    $('#sidebar').scrollTop(parseInt(savedScroll, 10));
+                });
+            } else if (activeLink.length > 0) {
+                activeLink[0].scrollIntoView({ block: 'nearest' });
+            }
+
+            // Persist sidebar scroll position across clicks, scrolls, and page unloads
+            $('#sidebar').on('scroll', function() {
+                sessionStorage.setItem('sidebar_scroll', $(this).scrollTop());
+            });
+
+            $('#sidebar a').on('click', function() {
+                sessionStorage.setItem('sidebar_scroll', $('#sidebar').scrollTop());
+            });
+
+            window.addEventListener('beforeunload', function() {
+                var sidebar = document.getElementById('sidebar');
+                if (sidebar) {
+                    sessionStorage.setItem('sidebar_scroll', sidebar.scrollTop);
+                }
+            });
 
             // Topbar hamburger: on mobile open the drawer, on desktop collapse.
             $('#toggle-btn').on('click', function() {

@@ -1,287 +1,720 @@
+<?php
+$rawMonth = $detail->month_year ?? date('Y-m');
+$monthYearFormatted = date('F Y', strtotime($rawMonth . '-01'));
+$payPeriod = date('F Y', strtotime($rawMonth . '-01'));
+$payDate = date('j F Y', strtotime($rawMonth . '-01 +1 month'));
+
+$empName = $detail->name ?? 'Employee';
+$empCode = $detail->employee_code ?? 'EMP000';
+$doj = !empty($detail->date_of_joining) ? date('d M Y', strtotime($detail->date_of_joining)) : '02 Mar 2026';
+$rawDesig = $detail->job_title ?: 'Software Engineer - II';
+$desig = str_replace(['–', '—'], '-', $rawDesig);
+$location = $detail->work_location ?: 'Hyderabad';
+$dept = $detail->department ?: 'Development';
+
+$paidDays = (int)($detail->present_days ?? 30);
+$lopDays = (int)($detail->absent_days ?? 0);
+$bankAc = $detail->account_number ?: '3327101004003';
+$ifsc = $detail->ifsc_code ?: 'CNRB0003327';
+$uan = $detail->uan ?: '101825984981';
+
+$basic = round((float)($detail->basic_salary ?? 0));
+$hra = round((float)($detail->hra ?? 0));
+$special = round((float)($detail->special_allowance ?? 0));
+$otherAll = round((float)($detail->other_allowance ?? 0));
+$bonus = round((float)($detail->bonus ?? 0));
+$otherEarnings = round((float)($detail->other_earnings ?? 0));
+
+$actualBasic = round((float)(isset($detail->actual_basic) && (float)$detail->actual_basic > 0 ? $detail->actual_basic : $basic));
+$actualHra = round((float)(isset($detail->actual_hra) && (float)$detail->actual_hra > 0 ? $detail->actual_hra : $hra));
+$actualSpecial = round((float)(isset($detail->actual_special_allowance) && (float)$detail->actual_special_allowance > 0 ? $detail->actual_special_allowance : $special));
+$actualOther = round((float)(isset($detail->actual_other_allowance) && (float)$detail->actual_other_allowance > 0 ? $detail->actual_other_allowance : $otherAll));
+
+$grossActual = round($actualBasic + $actualHra + $actualSpecial + $actualOther);
+$gross = round((float)($detail->gross_salary ?? ($basic + $hra + $special + $otherAll + $bonus + $otherEarnings)));
+
+$epf = round((float)($detail->pf ?? ($basic * 0.12)));
+$pt = round((float)($detail->professional_tax ?? 200.00));
+$otherDeductions = round((float)($detail->other_deductions ?? 0.00));
+$deductions = round((float)($detail->total_deductions ?? ($epf + $pt + $otherDeductions)));
+
+$employerPf = round((float)(isset($detail->employer_pf) && (float)$detail->employer_pf > 0 ? $detail->employer_pf : $epf));
+$gratuity = round((float)(isset($detail->gratuity) && (float)$detail->gratuity > 0 ? $detail->gratuity : round($basic * 0.0481)));
+$totalBenefits = round($employerPf + $gratuity);
+
+$ctc = round((float)(isset($detail->ctc) && (float)$detail->ctc > 0 ? $detail->ctc : ($gross + $totalBenefits)));
+$netPay = round((float)($detail->net_salary ?? ($gross - $deductions)));
+$inWords = PayslipHelper::numberToWords($netPay);
+
+// Helper for formatting without thousands comma (matching sample)
+$fmt = function($num, $decimals = 2) {
+    return number_format($num, $decimals, '.', '');
+};
+
+// Robust Base64 Logo embedding for seamless printing and standalone display
+$logoCandidates = [
+    (defined('APPROOT') ? dirname(APPROOT) . '/public/payslip_logo.jpg' : ''),
+    dirname(__DIR__, 3) . '/public/payslip_logo.jpg',
+    dirname(__DIR__, 2) . '/public/payslip_logo.jpg',
+    '/var/www/html/public/payslip_logo.jpg',
+    __DIR__ . '/../../../public/payslip_logo.jpg'
+];
+$logoBase64 = '';
+foreach ($logoCandidates as $cand) {
+    if (!empty($cand) && file_exists($cand)) {
+        $logoBase64 = base64_encode(file_get_contents($cand));
+        break;
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payslip - <?php echo htmlspecialchars($detail->name); ?> - <?php echo htmlspecialchars($detail->month_year); ?></title>
+    <title>Payslip - <?php echo htmlspecialchars($empName); ?> - <?php echo htmlspecialchars($monthYearFormatted); ?></title>
     <!-- Inter Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
-            color: #333;
-            background-color: #fff;
-            padding: 2rem;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #0f172a;
+            background-color: #f1f5f9;
+            padding: 2.5rem 1rem;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .payslip-card {
-            max-width: 800px;
-            margin: auto;
-            border: 1px solid #eaeaea;
-            padding: 2.5rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        .payslip-page {
+            max-width: 840px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 40px 45px;
+            border-radius: 4px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+            position: relative;
         }
 
-        .payslip-header {
+        /* Top Header */
+        .company-header {
             display: flex;
             justify-content: space-between;
-            border-bottom: 2px solid #eaeaea;
-            padding-bottom: 1.5rem;
-            margin-bottom: 1.5rem;
+            align-items: flex-start;
+            margin-bottom: 24px;
         }
 
-        .company-title {
-            color: #6366f1;
-            font-weight: 700;
-            margin-bottom: 0.25rem;
+        .company-brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
         }
 
-        .payslip-title {
-            font-weight: 700;
-            color: #1a1c29;
-            font-size: 1.75rem;
+        .company-logo {
+            width: 68px;
+            height: 68px;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .info-table td {
-            padding: 0.4rem 0;
-            font-size: 0.85rem;
-            border: none;
-        }
-
-        .breakdown-table {
+        .company-logo img {
             width: 100%;
-            margin-bottom: 2rem;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .company-info h1 {
+            font-size: 21px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 4px;
+            letter-spacing: -0.2px;
+        }
+
+        .company-info p {
+            font-size: 11.5px;
+            color: #475569;
+            line-height: 1.45;
+        }
+
+        .payslip-period-badge {
+            text-align: right;
+            padding-top: 4px;
+        }
+
+        .payslip-period-badge .label {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .payslip-period-badge .period-month {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        /* Outlined Box Base */
+        .outlined-box {
+            border: 1.2px solid #1c3052;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            background: #ffffff;
+        }
+
+        .box-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 14px;
+        }
+
+        /* Employee Summary Layout */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 20px;
+        }
+
+        .kv-table {
+            width: 100%;
             border-collapse: collapse;
         }
 
-        .breakdown-table th {
-            background-color: #f8fafc;
-            font-weight: 600;
-            color: #1a1c29;
-            padding: 0.75rem 1rem;
-            border-bottom: 2px solid #eaeaea;
-            border-top: 1px solid #eaeaea;
+        .kv-table td {
+            padding: 3.5px 0;
+            font-size: 12px;
+            vertical-align: middle;
         }
 
-        .breakdown-table td {
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid #eaeaea;
-            font-size: 0.9rem;
+        .kv-table td.key {
+            color: #334155;
+            font-weight: 400;
+            width: 120px;
         }
 
-        .net-pay-section {
+        .kv-table td.colon {
+            width: 15px;
+            color: #334155;
+            font-weight: 400;
+        }
+
+        .kv-table td.val {
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        /* Gradient Highlight Cards */
+        .gradient-card {
+            background: linear-gradient(180deg, #a6c1ff 0%, #c4d7fc 25%, #e3ebff 52%, #e3ebff 100%);
+            border: 1.2px solid #1c3052;
+            border-radius: 10px;
+            padding: 14px 16px;
+            text-align: center;
+        }
+
+        .gradient-card .amount {
+            font-size: 24px;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -0.3px;
+            margin-bottom: 2px;
+        }
+
+        .gradient-card .subtitle {
+            font-size: 11.5px;
+            color: #334155;
+            font-weight: 400;
+            margin-bottom: 8px;
+        }
+
+        .card-meta-list {
+            margin-top: 6px;
+            font-size: 11.5px;
+            color: #1e293b;
+            text-align: left;
+            display: inline-block;
+        }
+
+        .card-meta-list div {
+            padding: 2px 0;
+        }
+
+        .bank-summary-sub {
+            margin-top: 14px;
+        }
+
+        /* Split Tables (Earnings / Deductions) */
+        .split-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            border: 1.2px solid #1c3052;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .table-column {
+            padding: 14px 18px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #0f172a;
+            text-transform: uppercase;
+            padding-bottom: 8px;
+            border-bottom: none;
+        }
+
+        .data-table td {
+            font-size: 12px;
+            padding: 4px 0;
+            color: #1e293b;
+        }
+
+        .data-table td.col-name {
+            font-weight: 400;
+        }
+
+        .data-table td.col-num {
+            text-align: right;
+            font-weight: 400;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .data-table tr.total-row td {
+            font-weight: 700;
+            color: #0f172a;
+            padding-top: 10px;
+            padding-bottom: 2px;
+        }
+
+        /* Benefits & CTC */
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 20px;
+            align-items: center;
+        }
+
+        /* Total Net Payable Full Banner */
+        .payable-banner {
             display: flex;
             justify-content: space-between;
-            background-color: #f8fafc;
-            padding: 1.25rem 2rem;
+            align-items: center;
+            border: 1.2px solid #1c3052;
             border-radius: 8px;
-            margin-top: 1rem;
-            border: 1px solid #eaeaea;
+            padding: 8px 12px 8px 18px;
+            margin-top: 14px;
+            margin-bottom: 8px;
         }
 
-        .net-pay-title {
+        .payable-banner .label-pane .main-label {
+            font-size: 12.5px;
             font-weight: 700;
-            color: #1a1c29;
-            font-size: 1.1rem;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
 
-        .net-pay-value {
-            font-size: 1.3rem;
+        .payable-banner .label-pane .sub-label {
+            font-size: 11.5px;
+            color: #64748b;
+        }
+
+        .payable-banner .amount-box {
+            background: linear-gradient(180deg, #a6c1ff 0%, #c4d7fc 45%, #dfe8ff 100%);
+            border: 1.2px solid #1c3052;
+            border-radius: 8px;
+            padding: 8px 30px;
+            font-size: 21px;
             font-weight: 700;
-            color: #10b981;
+            color: #0f172a;
+            min-width: 250px;
+            text-align: center;
         }
 
-        .floating-print-bar {
+        .amount-in-words {
+            text-align: center;
+            font-size: 11.5px;
+            color: #334155;
+            margin-bottom: 30px;
+            margin-top: 6px;
+        }
+
+        /* Footer */
+        .payslip-footer {
+            margin-top: 35px;
+            text-align: center;
+        }
+
+        .payslip-footer .system-gen {
+            font-size: 11px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        /* Floating Action Bar */
+        .floating-action-bar {
             position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            z-index: 100;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            gap: 12px;
+            z-index: 999;
         }
 
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #1e3a8a;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 14px;
+            padding: 12px 22px;
+            border-radius: 30px;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(30, 58, 138, 0.35);
+            transition: all 0.2s ease;
+        }
+
+        .btn-action:hover {
+            background: #172554;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 58, 138, 0.45);
+        }
+
+        .btn-action.btn-secondary-action {
+            background: #ffffff;
+            color: #1e293b;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        }
+
+        .btn-action.btn-secondary-action:hover {
+            background: #f8fafc;
+            border-color: #94a3b8;
+        }
+
+        /* Print Media Styles */
         @media print {
-            .floating-print-bar {
-                display: none;
-            }
             body {
+                background: #ffffff;
                 padding: 0;
             }
-            .payslip-card {
-                border: none;
+
+            .payslip-page {
                 box-shadow: none;
                 padding: 0;
+                max-width: 100%;
+                margin: 0;
+            }
+
+            .floating-action-bar {
+                display: none !important;
+            }
+
+            @page {
+                size: A4 portrait;
+                margin: 10mm 12mm;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Floating Action Button -->
-    <div class="floating-print-bar">
-        <button onclick="window.print()" class="btn btn-primary btn-lg shadow px-4 py-2" style="background: #6366f1; border:none; border-radius:30px;">
-            <i class="fa-solid fa-print me-2"></i>Print Payslip / PDF
+
+    <!-- Floating Actions -->
+    <div class="floating-action-bar">
+        <a href="index.php?route=payroll/payslip_view/<?php echo $detail->payroll_detail_id; ?>&download=pdf" class="btn-action">
+            <i class="fa-solid fa-file-pdf"></i> Download PDF
+        </a>
+        <button onclick="window.print()" class="btn-action btn-secondary-action">
+            <i class="fa-solid fa-print"></i> Print Payslip
         </button>
     </div>
 
-    <div class="payslip-card">
-        <div class="payslip-header">
-            <div>
-                <h3 class="company-title">Raptor Marketing Agency</h3>
-                <div class="text-secondary small">100 Creator Square, Business Bay</div>
-                <div class="text-secondary small">hr@raptor-agency.com</div>
+    <!-- Main Payslip Container -->
+    <div class="payslip-page">
+        <!-- 1. Header -->
+        <div class="company-header">
+            <div class="company-brand">
+                <div class="company-logo">
+                    <?php if (!empty($logoBase64)): ?>
+                        <img src="data:image/jpeg;base64,<?php echo $logoBase64; ?>" alt="Axiora Global Solutions Logo">
+                    <?php else: ?>
+                        <img src="public/payslip_logo.jpg" alt="Axiora Global Solutions Logo">
+                    <?php endif; ?>
+                </div>
+                <div class="company-info">
+                    <h1>Axiora Global Solutions</h1>
+                    <p>3rd Floor, Pranava Business Park, beside Harsha Toyota showroom<br>
+                    Kothaguda, Kondapur, Hyderabad, Telangana 500084 India.</p>
+                </div>
             </div>
-            <div class="text-end">
-                <h1 class="payslip-title">PAYSLIP</h1>
-                <div style="font-size: 1.1rem; color: #666; font-weight:500;">
-                    Period: <?php echo htmlspecialchars($detail->month_year); ?>
+            <div class="payslip-period-badge">
+                <span class="label">Payslip For the Month</span>
+                <span class="period-month"><?php echo htmlspecialchars($monthYearFormatted); ?></span>
+            </div>
+        </div>
+
+        <!-- 2. Employee Summary -->
+        <div class="outlined-box">
+            <div class="box-title">EMPLOYEE SUMMARY</div>
+            <div class="summary-grid">
+                <!-- Left Key Values -->
+                <div>
+                    <table class="kv-table">
+                        <tr>
+                            <td class="key">Employee Name</td>
+                            <td class="colon">:</td>
+                            <td class="val"><?php echo htmlspecialchars($empName); ?></td>
+                        </tr>
+                        <tr>
+                            <td class="key">Employee ID</td>
+                            <td class="colon">:</td>
+                            <td class="val"><?php echo htmlspecialchars($empCode); ?></td>
+                        </tr>
+                        <tr>
+                            <td class="key">Pay Period</td>
+                            <td class="colon">:</td>
+                            <td class="val"><?php echo htmlspecialchars($payPeriod); ?></td>
+                        </tr>
+                        <tr>
+                            <td class="key">Pay Date</td>
+                            <td class="colon">:</td>
+                            <td class="val"><?php echo htmlspecialchars($payDate); ?></td>
+                        </tr>
+                        <tr>
+                            <td class="key">Date of Joining</td>
+                            <td class="colon">:</td>
+                            <td class="val"><?php echo htmlspecialchars($doj); ?></td>
+                        </tr>
+                        <tr>
+                            <td class="key">Designation</td>
+                            <td class="colon">:</td>
+                            <td class="val"><?php echo htmlspecialchars($desig); ?></td>
+                        </tr>
+                        <tr>
+                            <td class="key">Location</td>
+                            <td class="colon">:</td>
+                            <td class="val"><?php echo htmlspecialchars($location); ?></td>
+                        </tr>
+                        <tr>
+                            <td class="key">Department</td>
+                            <td class="colon">:</td>
+                            <td class="val"><?php echo htmlspecialchars($dept); ?></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Right Net Pay Card & Bank Info -->
+                <div>
+                    <div class="gradient-card">
+                        <div class="amount">₹<?php echo $fmt($netPay, 0); ?></div>
+                        <div class="subtitle">Total Net Pay</div>
+                        <div class="card-meta-list">
+                            <div>Paid Days &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;&nbsp;&nbsp;&nbsp;<strong><?php echo $paidDays; ?></strong></div>
+                            <div>LOP Days &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;&nbsp;&nbsp;&nbsp;<strong><?php echo $lopDays; ?></strong></div>
+                        </div>
+                    </div>
+
+                    <div class="bank-summary-sub">
+                        <table class="kv-table">
+                            <tr>
+                                <td class="key" style="width: 110px;">Bank A/C Number</td>
+                                <td class="colon">:</td>
+                                <td class="val"><?php echo htmlspecialchars($bankAc); ?></td>
+                            </tr>
+                            <tr>
+                                <td class="key">IFSC Code</td>
+                                <td class="colon">:</td>
+                                <td class="val text-uppercase"><?php echo htmlspecialchars($ifsc); ?></td>
+                            </tr>
+                            <tr>
+                                <td class="key">UAN Number</td>
+                                <td class="colon">:</td>
+                                <td class="val"><?php echo htmlspecialchars($uan); ?></td>
+                            </tr>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="row mb-4">
-            <!-- Employee Info -->
-            <div class="col-6">
-                <table class="table info-table">
-                    <tr>
-                        <td class="text-secondary" style="width: 140px;">Employee Name:</td>
-                        <td><strong><?php echo htmlspecialchars($detail->name); ?></strong></td>
-                    </tr>
-                    <tr>
-                        <td class="text-secondary">Employee ID:</td>
-                        <td class="font-monospace"><?php echo htmlspecialchars($detail->employee_code); ?></td>
-                    </tr>
-                    <tr>
-                        <td class="text-secondary">Designation:</td>
-                        <td><?php echo htmlspecialchars($detail->job_title ?: 'Staff'); ?></td>
-                    </tr>
-                    <tr>
-                        <td class="text-secondary">Department:</td>
-                        <td><?php echo htmlspecialchars($detail->department ?: 'Sales'); ?></td>
-                    </tr>
-                </table>
-            </div>
-            <!-- Bank & Attendance Info -->
-            <div class="col-6">
-                <table class="table info-table">
-                    <tr>
-                        <td class="text-secondary" style="width: 140px;">Bank Name:</td>
-                        <td><?php echo htmlspecialchars($detail->bank_name ?: 'N/A'); ?></td>
-                    </tr>
-                    <tr>
-                        <td class="text-secondary">Account Number:</td>
-                        <td class="font-monospace"><?php echo htmlspecialchars($detail->account_number ?: 'N/A'); ?></td>
-                    </tr>
-                    <tr>
-                        <td class="text-secondary">IFSC Code:</td>
-                        <td class="font-monospace text-uppercase"><?php echo htmlspecialchars($detail->ifsc_code ?: 'N/A'); ?></td>
-                    </tr>
-                    <tr>
-                        <td class="text-secondary">Days Present:</td>
-                        <td><?php echo htmlspecialchars($detail->present_days); ?> / <?php echo htmlspecialchars($detail->working_days); ?></td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-
-        <div class="row g-4">
-            <!-- Earnings -->
-            <div class="col-6">
-                <table class="breakdown-table">
+        <!-- 3. Earnings & Deductions -->
+        <div class="split-grid">
+            <!-- Left Earnings -->
+            <div class="table-column">
+                <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Earnings Component</th>
-                            <th class="text-end">Amount</th>
+                            <th style="text-align: left; width: 44%;">EARNINGS</th>
+                            <th style="text-align: right; width: 28%;">ACTUAL</th>
+                            <th style="text-align: right; width: 28%;">AMOUNT</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td>Basic Salary</td>
-                            <td class="text-end font-monospace">Rs. <?php echo number_format($detail->basic_salary, 2); ?></td>
+                            <td class="col-name">Basic</td>
+                            <td class="col-num">₹<?php echo $fmt($actualBasic); ?></td>
+                            <td class="col-num">₹<?php echo $fmt($basic); ?></td>
                         </tr>
                         <tr>
-                            <td>HRA (House Rent Allow.)</td>
-                            <td class="text-end font-monospace">Rs. <?php echo number_format($detail->hra, 2); ?></td>
+                            <td class="col-name">House Rent Allowance</td>
+                            <td class="col-num">₹<?php echo $fmt($actualHra); ?></td>
+                            <td class="col-num">₹<?php echo $fmt($hra); ?></td>
                         </tr>
                         <tr>
-                            <td>Special Allowance</td>
-                            <td class="text-end font-monospace">Rs. <?php echo number_format($detail->special_allowance, 2); ?></td>
+                            <td class="col-name">Special Allowance</td>
+                            <td class="col-num">₹<?php echo $fmt($actualSpecial); ?></td>
+                            <td class="col-num">₹<?php echo $fmt($special); ?></td>
                         </tr>
+                        <?php if ($otherAll > 0 || $actualOther > 0): ?>
                         <tr>
-                            <td>Medical Allowance</td>
-                            <td class="text-end font-monospace">Rs. <?php echo number_format($detail->medical_allowance, 2); ?></td>
+                            <td class="col-name">Other Allowance</td>
+                            <td class="col-num">₹<?php echo $fmt($actualOther); ?></td>
+                            <td class="col-num">₹<?php echo $fmt($otherAll); ?></td>
                         </tr>
-                        <tr>
-                            <td>Travel Allowance</td>
-                            <td class="text-end font-monospace">Rs. <?php echo number_format($detail->travel_allowance, 2); ?></td>
-                        </tr>
-                        <?php if ((float)$detail->bonus > 0): ?>
-                            <tr>
-                                <td>Bonus</td>
-                                <td class="text-end font-monospace">Rs. <?php echo number_format($detail->bonus, 2); ?></td>
-                            </tr>
                         <?php endif; ?>
-                        <?php if ((float)$detail->other_earnings > 0): ?>
-                            <tr>
-                                <td>Other Earnings</td>
-                                <td class="text-end font-monospace">Rs. <?php echo number_format($detail->other_earnings, 2); ?></td>
-                            </tr>
+                        <?php if ($bonus > 0): ?>
+                        <tr>
+                            <td class="col-name">Bonus / Incentives</td>
+                            <td class="col-num">₹<?php echo $fmt($bonus); ?></td>
+                            <td class="col-num">₹<?php echo $fmt($bonus); ?></td>
+                        </tr>
                         <?php endif; ?>
-                        <tr class="table-light">
-                            <td class="font-weight-bold">Total Gross Earnings</td>
-                            <td class="text-end font-weight-bold font-monospace">Rs. <?php echo number_format($detail->gross_salary, 2); ?></td>
+                        <?php if ($otherEarnings > 0): ?>
+                        <tr>
+                            <td class="col-name">Arrears / Additional</td>
+                            <td class="col-num">₹<?php echo $fmt($otherEarnings); ?></td>
+                            <td class="col-num">₹<?php echo $fmt($otherEarnings); ?></td>
+                        </tr>
+                        <?php endif; ?>
+                        <tr class="total-row">
+                            <td class="col-name">Gross Earnings</td>
+                            <td class="col-num">₹<?php echo $fmt($grossActual); ?></td>
+                            <td class="col-num">₹<?php echo $fmt($gross); ?></td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            <!-- Deductions -->
-            <div class="col-6">
-                <table class="breakdown-table">
+            <!-- Right Deductions -->
+            <div class="table-column">
+                <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Deduction Component</th>
-                            <th class="text-end">Amount</th>
+                            <th style="text-align: left; width: 60%;">DEDUCTIONS</th>
+                            <th style="text-align: right; width: 40%;">AMOUNT</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td>Provident Fund (PF)</td>
-                            <td class="text-end font-monospace">Rs. <?php echo number_format($detail->pf, 2); ?></td>
+                            <td class="col-name">EPF Contribution</td>
+                            <td class="col-num">₹<?php echo $fmt($epf); ?></td>
                         </tr>
                         <tr>
-                            <td>ESIC Contribution</td>
-                            <td class="text-end font-monospace">Rs. <?php echo number_format($detail->esic, 2); ?></td>
+                            <td class="col-name">Professional Tax</td>
+                            <td class="col-num">₹<?php echo $fmt($pt); ?></td>
                         </tr>
+                        <?php if ($otherDeductions > 0): ?>
                         <tr>
-                            <td>Professional Tax</td>
-                            <td class="text-end font-monospace">Rs. <?php echo number_format($detail->professional_tax, 2); ?></td>
+                            <td class="col-name">Other Deductions</td>
+                            <td class="col-num">₹<?php echo $fmt($otherDeductions); ?></td>
                         </tr>
-                        <tr>
-                            <td>TDS (Income Tax)</td>
-                            <td class="text-end font-monospace">Rs. <?php echo number_format($detail->tds, 2); ?></td>
-                        </tr>
-                        <tr class="table-light">
-                            <td class="font-weight-bold">Total Deductions</td>
-                            <td class="text-end font-weight-bold font-monospace">Rs. <?php echo number_format($detail->total_deductions, 2); ?></td>
+                        <?php endif; ?>
+                        <tr class="total-row">
+                            <td class="col-name">Total Deductions</td>
+                            <td class="col-num">₹<?php echo $fmt($deductions); ?></td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <div class="net-pay-section">
-            <span class="net-pay-title">Net Salary Distributed (NEFT):</span>
-            <span class="net-pay-value font-monospace">Rs. <?php echo number_format($detail->net_salary, 2); ?></span>
+        <!-- 4. Employee Benefits & CTC -->
+        <div class="outlined-box">
+            <div class="benefits-grid">
+                <!-- Left Benefits Table -->
+                <div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; width: 65%;">Employee Benefits</th>
+                                <th style="text-align: right; width: 35%;">AMOUNT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="col-name">Employer EPF Contribution</td>
+                                <td class="col-num">₹<?php echo $fmt($employerPf); ?></td>
+                            </tr>
+                            <tr>
+                                <td class="col-name">Gratuity</td>
+                                <td class="col-num">₹<?php echo $fmt($gratuity); ?></td>
+                            </tr>
+                            <tr class="total-row">
+                                <td class="col-name">Gross Earnings</td>
+                                <td class="col-num">₹<?php echo $fmt($totalBenefits); ?></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Right CTC Card -->
+                <div>
+                    <div class="gradient-card">
+                        <div class="amount">₹<?php echo $fmt($ctc, 0); ?></div>
+                        <div class="subtitle" style="margin-bottom: 0;">Effective Monthly CTC</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="text-center text-secondary small mt-5 pt-4 border-top">
-            <p class="mb-1">This is a system generated payslip of RAPTOR and does not require physical signature.</p>
-            <p style="font-size: 0.72rem;">Generated on <?php echo date('Y-m-d H:i:s'); ?></p>
+        <!-- 5. Total Net Payable Banner -->
+        <div class="payable-banner">
+            <div class="label-pane">
+                <div class="main-label">TOTAL NET PAYABLE</div>
+                <div class="sub-label">Gross Earnings – Total Deductions</div>
+            </div>
+            <div class="amount-box">
+                ₹<?php echo $fmt($netPay); ?>
+            </div>
+        </div>
+
+        <!-- Amount In Words -->
+        <div class="amount-in-words">
+            Amount In Words: Indian Rupee <?php echo htmlspecialchars($inWords); ?> Only
+        </div>
+
+        <!-- 6. Footer (System-generated notice only, removed Zoho branding as requested) -->
+        <div class="payslip-footer">
+            <div class="system-gen">-- This is a system-generated document. --</div>
         </div>
     </div>
+
 </body>
 </html>

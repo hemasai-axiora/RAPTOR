@@ -337,7 +337,7 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label text-secondary">Salary / CTC (Monthly)</label>
-                                    <input type="number" step="0.01" min="0.01" name="salary" class="form-control bg-dark border-secondary text-white" placeholder="0.00" title="Salary must be a positive number greater than 0.">
+                                    <input type="number" step="1" min="1" name="salary" class="form-control bg-dark border-secondary text-white" placeholder="e.g. 50000" title="Salary must be a positive whole number.">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label text-secondary">Pay Grade / Salary Band</label>
@@ -550,7 +550,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label text-secondary">Salary / CTC (Monthly)</label>
-                                        <input type="number" step="0.01" min="0.01" name="salary" id="edit_salary" class="form-control bg-dark border-secondary text-white" placeholder="0.00" title="Salary must be a positive number greater than 0.">
+                                        <input type="number" step="1" min="1" name="salary" id="edit_salary" class="form-control bg-dark border-secondary text-white" placeholder="e.g. 50000" title="Salary must be a positive whole number.">
                                     </div>
                                 <?php else: ?>
                                     <!-- Keep fields hidden but submit current values so they don't get cleared -->

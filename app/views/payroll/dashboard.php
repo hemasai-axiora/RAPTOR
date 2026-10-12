@@ -40,6 +40,7 @@
                         <a href="index.php?route=payroll/structures" class="btn btn-outline-info btn-sm"><i class="fa-solid fa-calculator me-1"></i>Structures</a>
                     <?php endif; ?>
                     <?php if (in_array($role, ['admin', 'hr', 'finance'], true)): ?>
+                        <a href="index.php?route=payroll/checklist" class="btn btn-outline-success btn-sm"><i class="fa-solid fa-list-check me-1"></i>Pre-Payroll Checklist</a>
                         <a href="index.php?route=payroll/processing" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-gears me-1"></i>Process Run</a>
                     <?php endif; ?>
                     <a href="index.php?route=payroll/reimbursements" class="btn btn-outline-warning btn-sm"><i class="fa-solid fa-receipt me-1"></i>Claims</a>

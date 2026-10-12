@@ -6,21 +6,29 @@ services:
     container_name: raptor-db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_ROOT_PASSWORD: RaptorRoot@2026!
       MYSQL_DATABASE: raptor_crm_db
+      MYSQL_USER: raptor_user
+      MYSQL_PASSWORD: RaptorProd@2026!
     ports:
       - "3307:3306"
     volumes:
       - raptor_db_data:/var/lib/mysql
+      - ./dashboard_schema.sql:/docker-entrypoint-initdb.d/init.sql:ro
 
   web:
-    image: mediatrack-web
+    build: .
     container_name: raptor-web
     restart: always
     ports:
-      - "8080:80"
+      - "8080:8000"
     volumes:
       - .:/var/www/html
+    environment:
+      DB_HOST: db
+      DB_USER: raptor_user
+      DB_PASS: RaptorProd@2026!
+      DB_NAME: raptor_crm_db
     depends_on:
       - db
 

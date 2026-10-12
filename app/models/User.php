@@ -143,14 +143,16 @@ class User extends Model {
             $userId = $this->lastInsertId();
 
             // Insert into employees table
-            $this->query('INSERT INTO employees (user_id, employee_code, department, job_title, hire_date, phone_number, salary, date_of_birth, employment_type, work_location, profile_photo, bio, emergency_contact, pan_number, aadhaar_number, uan, pf_applicable, esic_number, pay_grade) 
-                          VALUES (:user_id, :employee_code, :department, :job_title, :hire_date, :phone_number, :salary, :date_of_birth, :employment_type, :work_location, :profile_photo, :bio, :emergency_contact, :pan_number, :aadhaar_number, :uan, :pf_applicable, :esic_number, :pay_grade)');
+            $this->query('INSERT INTO employees (user_id, employee_code, department, job_title, hire_date, date_of_joining, phone_number, salary, date_of_birth, employment_type, work_location, profile_photo, bio, emergency_contact, pan_number, aadhaar_number, uan, pf_applicable, esic_number, pay_grade) 
+                          VALUES (:user_id, :employee_code, :department, :job_title, :hire_date, :date_of_joining, :phone_number, :salary, :date_of_birth, :employment_type, :work_location, :profile_photo, :bio, :emergency_contact, :pan_number, :aadhaar_number, :uan, :pf_applicable, :esic_number, :pay_grade)');
             
+            $doj = !empty($data['date_of_joining']) ? $data['date_of_joining'] : date('Y-m-d');
             $this->bind(':user_id', $userId);
             $this->bind(':employee_code', $data['employee_code']);
             $this->bind(':department', $data['department'] ?? 'Sales');
             $this->bind(':job_title', $data['job_title'] ?? 'Sales Executive');
-            $this->bind(':hire_date', !empty($data['date_of_joining']) ? $data['date_of_joining'] : date('Y-m-d'));
+            $this->bind(':hire_date', $doj);
+            $this->bind(':date_of_joining', $doj);
             $this->bind(':phone_number', $data['phone_number'] ?? null);
             $this->bind(':salary', !empty($data['salary']) ? $data['salary'] : null);
             $this->bind(':date_of_birth', !empty($data['date_of_birth']) ? $data['date_of_birth'] : null);
@@ -243,6 +245,7 @@ class User extends Model {
                                 phone_number = :phone_number,
                                 salary = :salary,
                                 hire_date = :hire_date,
+                                date_of_joining = :date_of_joining,
                                 date_of_birth = :date_of_birth,
                                 employment_type = :employment_type,
                                 work_location = :work_location,
@@ -259,10 +262,12 @@ class User extends Model {
                                 department = :department
                               WHERE employee_id = :employee_id');
                 
+                $doj = !empty($data['date_of_joining']) ? $data['date_of_joining'] : null;
                 $this->bind(':employee_code', $data['employee_code']);
                 $this->bind(':phone_number', $data['phone_number']);
                 $this->bind(':salary', !empty($data['salary']) ? $data['salary'] : null);
-                $this->bind(':hire_date', !empty($data['date_of_joining']) ? $data['date_of_joining'] : null);
+                $this->bind(':hire_date', $doj);
+                $this->bind(':date_of_joining', $doj);
                 $this->bind(':date_of_birth', !empty($data['date_of_birth']) ? $data['date_of_birth'] : null);
                 $this->bind(':employment_type', $data['employment_type'] ?? 'Full-time');
                 $this->bind(':work_location', $data['work_location'] ?? 'Office');
