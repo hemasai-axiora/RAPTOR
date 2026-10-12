@@ -234,6 +234,7 @@ foreach ($logoCandidates as $cand) {
             color: #0f172a;
             letter-spacing: -0.3px;
             margin-bottom: 2px;
+            font-family: 'Times New Roman', Times, Georgia, serif;
         }
 
         .gradient-card .subtitle {
@@ -301,6 +302,8 @@ foreach ($logoCandidates as $cand) {
             text-align: right;
             font-weight: 400;
             font-variant-numeric: tabular-nums;
+            font-family: 'Times New Roman', Times, Georgia, serif;
+            font-size: 13.5px;
         }
 
         .data-table tr.total-row td {
@@ -308,6 +311,12 @@ foreach ($logoCandidates as $cand) {
             color: #0f172a;
             padding-top: 10px;
             padding-bottom: 2px;
+        }
+
+        .data-table tr.total-row td.col-num {
+            font-family: 'Times New Roman', Times, Georgia, serif;
+            font-weight: 700;
+            font-size: 14px;
         }
 
         /* Benefits & CTC */
@@ -348,11 +357,12 @@ foreach ($logoCandidates as $cand) {
             border: 1.2px solid #1c3052;
             border-radius: 8px;
             padding: 8px 30px;
-            font-size: 21px;
+            font-size: 22px;
             font-weight: 700;
             color: #0f172a;
             min-width: 250px;
             text-align: center;
+            font-family: 'Times New Roman', Times, Georgia, serif;
         }
 
         .amount-in-words {

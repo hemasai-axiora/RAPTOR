@@ -85,10 +85,12 @@ class PayslipPdfService {
         // 2: Pages
         $pagesId = $addObj("<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
 
-        // Font Objects (Helvetica, Helvetica-Bold, Helvetica-Oblique)
+        // Font Objects (Helvetica, Helvetica-Bold, Helvetica-Oblique, Times-Roman, Times-Bold)
         $fontRegularId = $addObj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
         $fontBoldId = $addObj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
         $fontObliqueId = $addObj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>");
+        $fontTimesRegularId = $addObj("<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman /Encoding /WinAnsiEncoding >>");
+        $fontTimesBoldId = $addObj("<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold /Encoding /WinAnsiEncoding >>");
 
         // Embed Logo Image as Image XObject (JPEG)
         $logoObjId = null;
@@ -167,9 +169,12 @@ class PayslipPdfService {
             $stream .= "h f\nQ\n";
         };
 
-        // Helper to draw monetary amount with Rupee glyph
-        $drawAmount = function($x, $y, $numStr, $font = 'F1', $size = 8.5, $align = 'left', $r = 0.08, $g = 0.1, $b = 0.15) use ($drawRupee, $drawText) {
-            $charW = ($font === 'F2') ? 5.8 : 5.1;
+        // Helper to draw monetary amount with Rupee glyph and Times New Roman numbers
+        $drawAmount = function($x, $y, $numStr, $font = 'FT1', $size = 8.5, $align = 'left', $r = 0.08, $g = 0.1, $b = 0.15) use ($drawRupee, $drawText) {
+            if ($font === 'F1') $font = 'FT1';
+            if ($font === 'F2') $font = 'FT2';
+            $isBold = ($font === 'FT2' || $font === 'F2');
+            $charW = $isBold ? 5.2 : 4.6;
             $textW = strlen($numStr) * $charW * ($size / 10);
             $rupeeW = $size * 0.46;
             $gap = 1.0;
@@ -538,7 +543,7 @@ class PayslipPdfService {
         $contentObjId = $addObj("<< /Length {$streamLen} >>\nstream\n" . $stream . "\nendstream");
 
         $xobjEntry = ($logoObjId !== null) ? "/XObject << /ImLogo {$logoObjId} 0 R >>" : "";
-        $pageObj = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {$pageW} {$pageH}] /Contents {$contentObjId} 0 R /Resources << /Font << /F1 {$fontRegularId} 0 R /F2 {$fontBoldId} 0 R /F3 {$fontObliqueId} 0 R >> {$xobjEntry} >> >>";
+        $pageObj = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {$pageW} {$pageH}] /Contents {$contentObjId} 0 R /Resources << /Font << /F1 {$fontRegularId} 0 R /F2 {$fontBoldId} 0 R /F3 {$fontObliqueId} 0 R /FT1 {$fontTimesRegularId} 0 R /FT2 {$fontTimesBoldId} 0 R >> {$xobjEntry} >> >>";
         $objects[2] = $pageObj; // replace placeholder page object
 
         // Assemble Final PDF
