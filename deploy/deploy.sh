@@ -54,14 +54,14 @@ fi
 # 5. Execute Database Migrations
 echo "[5/7] Running database migrations..."
 if [ -f "bin/migrate.php" ]; then
-  if command -v docker &> /dev/null && docker ps | grep -q raptor-web; then
-    docker exec raptor-web php bin/migrate.php || echo "Warning: Docker migration completed."
-  elif command -v php &> /dev/null; then
+  if command -v php &> /dev/null; then
     php bin/migrate.php || {
       echo "Error: Database migration failed! Aborting release."
       rm -rf "${RELEASE_DIR}"
       exit 1
     }
+  elif command -v docker &> /dev/null && docker ps | grep -q raptor-web; then
+    docker exec raptor-web php bin/migrate.php || echo "Warning: Docker migration completed."
   fi
 fi
 
