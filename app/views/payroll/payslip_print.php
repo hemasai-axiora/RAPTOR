@@ -229,12 +229,13 @@ foreach ($logoCandidates as $cand) {
         }
 
         .gradient-card .amount {
-            font-size: 24px;
-            font-weight: 700;
+            font-size: 26px;
+            font-weight: 400;
             color: #0f172a;
-            letter-spacing: -0.3px;
+            letter-spacing: 0.2px;
             margin-bottom: 2px;
             font-family: 'Times New Roman', Times, Georgia, serif;
+            line-height: 1.15;
         }
 
         .gradient-card .subtitle {

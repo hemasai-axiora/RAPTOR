@@ -367,7 +367,7 @@ class PayslipPdfService {
         $drawGradientRoundedRect($netCardX, $netCardY, $netCardW, $netCardH, 8, 0.651, 0.757, 1.0, 0.890, 0.922, 1.0, $sR, $sG, $sB, 1.0, 0.52);
 
         // Large Net Pay amount centered without decimals or commas matching sample
-        $drawAmount($netCardX + ($netCardW / 2), $netCardY + 49, $fmt($netPay, 0), 'F2', 17.5, 'center', 0.06, 0.09, 0.16);
+        $drawAmount($netCardX + ($netCardW / 2), $netCardY + 49, $fmt($netPay, 0), 'FT1', 20, 'center', 0.06, 0.09, 0.16);
         $drawTextCenter($netCardX + ($netCardW / 2), $netCardY + 36, "Total Net Pay", 'F1', 8, 5.0, 0.25, 0.35, 0.48);
 
         // Paid Days & LOP Days stacked vertically with aligned colons inside card
@@ -502,7 +502,7 @@ class PayslipPdfService {
         $ctcCardY = $benBoxY + (($benBoxH - $ctcCardH) / 2);
         $drawGradientRoundedRect($ctcCardX, $ctcCardY, $ctcCardW, $ctcCardH, 8, 0.651, 0.757, 1.0, 0.890, 0.922, 1.0, $sR, $sG, $sB, 1.0, 0.52);
 
-        $drawAmount($ctcCardX + ($ctcCardW / 2), $ctcCardY + 31, $fmt($ctc, 0), 'F2', 17, 'center', 0.06, 0.09, 0.16);
+        $drawAmount($ctcCardX + ($ctcCardW / 2), $ctcCardY + 31, $fmt($ctc, 0), 'FT1', 19, 'center', 0.06, 0.09, 0.16);
         $drawTextCenter($ctcCardX + ($ctcCardW / 2), $ctcCardY + 16, "Effective Monthly CTC", 'F1', 8.2, 5.1, 0.25, 0.35, 0.48);
 
         // ==========================================
