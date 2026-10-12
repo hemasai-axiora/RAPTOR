@@ -51,37 +51,40 @@ if [ -f "composer.json" ]; then
   composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 fi
 
-# 5. Execute Database Migrations
-echo "[5/7] Running database migrations..."
-if [ -f "bin/migrate.php" ]; then
-  if command -v php &> /dev/null; then
-    php bin/migrate.php || {
-      echo "Error: Database migration failed! Aborting release."
-      rm -rf "${RELEASE_DIR}"
-      exit 1
-    }
-  elif command -v docker &> /dev/null && docker ps | grep -q raptor-web; then
-    docker exec raptor-web php bin/migrate.php || echo "Warning: Docker migration completed."
-  fi
-fi
-
-# 6. Set Secure File & Directory Permissions
-echo "[6/7] Applying secure file and directory permissions..."
+# 5. Set Secure File & Directory Permissions
+echo "[5/7] Applying secure file and directory permissions..."
 chown -R www-data:www-data "${RELEASE_DIR}" 2>/dev/null || true
 chmod -R 775 "${RELEASE_DIR}"
 mkdir -p "${SHARED_DIR}/storage" 2>/dev/null || true
 chown -R www-data:www-data "${SHARED_DIR}/storage" 2>/dev/null || true
 chmod -R 777 "${SHARED_DIR}/storage" 2>/dev/null || true
 
-# 7. Atomic Symlink Switch & Service Reload
-echo "[7/7] Switching current release symlink to ${RELEASE_DIR}..."
+# 6. Atomic Symlink Switch & Service Refresh
+echo "[6/7] Switching current release symlink to ${RELEASE_DIR}..."
 ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
 
-# Reload PHP-FPM / Nginx / Docker
-echo "Reloading PHP-FPM, Nginx, and Docker containers..."
-if command -v docker &> /dev/null && docker ps | grep -q raptor-web; then
-  docker restart raptor-web raptor-nginx 2>/dev/null || true
+echo "Reloading Docker containers with updated release mount..."
+if [ -f "${BASE_DIR}/docker-compose.prod.yml" ]; then
+  docker compose -f "${BASE_DIR}/docker-compose.prod.yml" up -d --force-recreate web 2>/dev/null || \
+  docker-compose -f "${BASE_DIR}/docker-compose.prod.yml" up -d --force-recreate web 2>/dev/null || \
+  docker restart raptor-web 2>/dev/null || true
+elif command -v docker &> /dev/null && docker ps | grep -q raptor-web; then
+  docker restart raptor-web 2>/dev/null || true
 fi
+
+# 7. Execute Database Migrations on Active Release
+echo "[7/7] Running database migrations on active release..."
+if [ -f "${CURRENT_LINK}/bin/migrate.php" ]; then
+  if command -v docker &> /dev/null && docker ps | grep -q raptor-web; then
+    docker exec raptor-web php bin/migrate.php || echo "Warning: Docker migration completed."
+  elif command -v php &> /dev/null; then
+    php "${CURRENT_LINK}/bin/migrate.php" || {
+      echo "Error: Database migration failed! Aborting release."
+      exit 1
+    }
+  fi
+fi
+
 systemctl reload php8.3-fpm 2>/dev/null || service php8.3-fpm reload 2>/dev/null || true
 systemctl reload nginx 2>/dev/null || service nginx reload 2>/dev/null || true
 
