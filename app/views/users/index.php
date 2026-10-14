@@ -971,13 +971,19 @@ $(document).ready(function() {
                 <form action="index.php?route=users/importCsv" method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                     <p class="text-secondary small mb-3">
-                        Upload a CSV file containing employee details to import them into the system.
+                        Upload a CSV file containing employee details. All information including personal details, bank accounts, and payroll compliance will be imported.
                     </p>
+                    <div class="p-2 mb-3 rounded" style="background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15);">
+                        <span class="small text-white-50 d-block mb-1"><strong><i class="fa-solid fa-check-double text-success me-1"></i>All 3 tabs imported automatically:</strong></span>
+                        <span class="badge bg-secondary text-light me-1 mb-1">1. Personal & Job</span>
+                        <span class="badge bg-secondary text-light me-1 mb-1">2. Bank Details</span>
+                        <span class="badge bg-secondary text-light me-1 mb-1">3. Payroll & Compliance</span>
+                    </div>
                     <div class="mb-3 p-3 rounded border border-secondary" style="background: var(--surface-soft) !important;">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <h6 class="mb-1 fw-bold text-white">Need a template?</h6>
-                                <span class="text-secondary small">Download our sample CSV template with standard employee fields.</span>
+                                <span class="text-secondary small">Download our sample CSV template with all 30 employee columns.</span>
                             </div>
                             <a href="index.php?route=users/downloadTemplate" class="btn btn-outline-info btn-sm px-3">
                                 <i class="fa-solid fa-download me-1"></i>Download Template
@@ -986,7 +992,17 @@ $(document).ready(function() {
                     </div>
                     <div class="mb-3">
                         <label for="csv_file" class="form-label text-secondary small fw-semibold">Select CSV File</label>
-                        <input type="file" name="csv_file" id="csv_file" class="form-control" accept=".csv" required>
+                        <input type="file" name="csv_file" id="csv_file" class="form-control bg-dark border-secondary text-white" accept=".csv" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small fw-semibold">If Employee Already Exists (Matched by Email or Emp ID):</label>
+                        <select name="duplicate_strategy" class="form-select bg-dark border-secondary text-white">
+                            <option value="update" selected>Overwrite / Update existing records with CSV data (Recommended)</option>
+                            <option value="skip">Skip existing records</option>
+                        </select>
+                        <div class="form-text text-secondary small">
+                            <i class="fa-solid fa-circle-info me-1"></i> "Update" updates personal info, bank details, and payroll compliance for existing employees.
+                        </div>
                     </div>
                     <div class="modal-footer border-0 px-0 pb-0">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>

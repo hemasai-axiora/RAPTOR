@@ -663,14 +663,15 @@ class UsersController extends Controller {
                 'table' => 'users',
                 'unique_key' => 'email',
                 'fields' => [
-                    'employee_code' => ['required' => false, 'type' => 'text', 'unique_in_file' => true],
-                    'first_name' => ['required' => true, 'type' => 'text'],
+                    'employee_code' => ['required' => false, 'type' => 'text'],
+                    'first_name' => ['required' => false, 'type' => 'text'],
                     'last_name' => ['required' => false, 'type' => 'text'],
+                    'name' => ['required' => false, 'type' => 'text'],
                     'email' => ['required' => true, 'type' => 'email', 'unique_in_file' => true],
                     'phone_number' => ['required' => false, 'type' => 'text'],
                     'department' => ['required' => false, 'type' => 'text'],
                     'job_title' => ['required' => false, 'type' => 'text'],
-                    'reporting_manager_email' => ['required' => false, 'type' => 'email'],
+                    'reporting_manager_email' => ['required' => false, 'type' => 'text'],
                     'date_of_joining' => ['required' => false, 'type' => 'date'],
                     'employment_type' => ['required' => false, 'type' => 'text'],
                     'status' => ['required' => false, 'type' => 'text'],
@@ -816,19 +817,35 @@ class UsersController extends Controller {
         $importCallback = function($row, $action, $duplicateStrategy) use ($db) {
             // 1. Resolve role_id
             $rawRole = strtolower(trim($row['role_in_system'] ?? ''));
-            if (in_array($rawRole, ['sales', 'sales person', 'sales_person', 'employee'], true)) {
-                $roleName = 'sales_person';
-            } else {
-                $roleName = $rawRole ?: 'employer';
+            $rolesStmt = $db->query("SELECT role_id, LOWER(role_name) AS rname FROM roles");
+            $rolesMap = [];
+            while ($r = $rolesStmt->fetch(PDO::FETCH_ASSOC)) {
+                $rolesMap[$r['rname']] = (int)$r['role_id'];
             }
-            $stmt = $db->prepare("SELECT role_id FROM roles WHERE LOWER(role_name) = :name OR LOWER(role_name) = LOWER(REPLACE(:name2, ' ', '_'))");
-            $stmt->execute([':name' => $roleName, ':name2' => $roleName]);
-            $role = $stmt->fetch(PDO::FETCH_ASSOC);
-            $role_id = $role ? (int)$role['role_id'] : 4; // fallback to employer
+            $defaultRoleId = $rolesMap['employee'] ?? ($rolesMap['sales_person'] ?? 10);
+            
+            $cleanRole = str_replace([' ', '-'], '_', $rawRole);
+            if (!empty($rawRole) && isset($rolesMap[$cleanRole])) {
+                $role_id = $rolesMap[$cleanRole];
+            } elseif (!empty($rawRole) && isset($rolesMap[$rawRole])) {
+                $role_id = $rolesMap[$rawRole];
+            } elseif (strpos($rawRole, 'sale') !== false) {
+                $role_id = $rolesMap['sales_person'] ?? $defaultRoleId;
+            } elseif (strpos($rawRole, 'manage') !== false) {
+                $role_id = $rolesMap['manager'] ?? $defaultRoleId;
+            } else {
+                $role_id = $defaultRoleId;
+            }
 
             // 2. Format name
-            $name = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
-            if (empty($name)) {
+            $firstName = trim($row['first_name'] ?? '');
+            $lastName = trim($row['last_name'] ?? '');
+            $fullName = trim($row['name'] ?? '');
+            if (!empty($firstName) || !empty($lastName)) {
+                $name = trim($firstName . ' ' . $lastName);
+            } elseif (!empty($fullName)) {
+                $name = $fullName;
+            } else {
                 $name = 'Imported User';
             }
 
@@ -837,13 +854,27 @@ class UsersController extends Controller {
 
             // 4. Resolve reporting manager
             $reportingManagerId = null;
-            if (!empty($row['reporting_manager_email'])) {
-                $stmt = $db->prepare("SELECT user_id FROM users WHERE email = :email");
-                $stmt->execute([':email' => $row['reporting_manager_email']]);
-                $mgr = $stmt->fetch(PDO::FETCH_ASSOC);
+            $mgrInput = trim($row['reporting_manager_email'] ?? '');
+            if (!empty($mgrInput)) {
+                $mgrStmt = $db->prepare("SELECT user_id FROM users WHERE LOWER(email) = :email LIMIT 1");
+                $mgrStmt->execute([':email' => strtolower($mgrInput)]);
+                $mgr = $mgrStmt->fetch(PDO::FETCH_ASSOC);
                 if ($mgr) {
                     $reportingManagerId = (int)$mgr['user_id'];
+                } else {
+                    $mgrStmt2 = $db->prepare("SELECT user_id FROM employees WHERE employee_code = :code LIMIT 1");
+                    $mgrStmt2->execute([':code' => $mgrInput]);
+                    $mgr2 = $mgrStmt2->fetch(PDO::FETCH_ASSOC);
+                    if ($mgr2) {
+                        $reportingManagerId = (int)$mgr2['user_id'];
+                    }
                 }
+            }
+
+            $salaryVal = preg_replace('/[^0-9.]/', '', $row['salary'] ?? '');
+            $cleanPhone = preg_replace('/[^0-9]/', '', $row['phone_number'] ?? '');
+            if (strlen($cleanPhone) === 12 && substr($cleanPhone, 0, 2) === '91') {
+                $cleanPhone = substr($cleanPhone, 2);
             }
 
             $data = [
@@ -853,31 +884,32 @@ class UsersController extends Controller {
                 'password' => $tempPassword,
                 'status' => strtolower($row['status'] ?: 'active'),
                 'employee_code' => $row['employee_code'] ?: 'EMP' . rand(10000, 99999),
-                'phone_number' => $row['phone_number'] ?: null,
-                'salary' => !empty($row['salary']) ? $row['salary'] : null,
+                'phone_number' => $cleanPhone ?: null,
+                'salary' => is_numeric($salaryVal) ? (float)$salaryVal : null,
                 'date_of_joining' => !empty($row['date_of_joining']) ? $row['date_of_joining'] : date('Y-m-d'),
                 'date_of_birth' => !empty($row['date_of_birth']) ? $row['date_of_birth'] : null,
-                'job_title' => $row['job_title'] ?: 'Sales Executive',
+                'job_title' => $row['job_title'] ?: 'Staff',
                 'department' => $row['department'] ?: 'Sales',
                 'employment_type' => $row['employment_type'] ?: 'Full-time',
                 'work_location' => $row['work_location'] ?: 'Office',
                 'bio' => $row['bio'] ?: null,
                 'emergency_contact' => $row['emergency_contact'] ?: null,
-                'pan_number' => $row['pan_number'] ?: null,
-                'aadhaar_number' => $row['aadhaar_number'] ?: null,
-                'uan' => $row['uan'] ?: null,
-                'pf_applicable' => (int)($row['pf_applicable'] ?? 0),
+                'pan_number' => !empty($row['pan_number']) ? strtoupper($row['pan_number']) : null,
+                'aadhaar_number' => !empty($row['aadhaar_number']) ? preg_replace('/[^0-9]/', '', $row['aadhaar_number']) : null,
+                'uan' => !empty($row['uan']) ? preg_replace('/[^0-9]/', '', $row['uan']) : null,
+                'pf_applicable' => in_array(strtolower($row['pf_applicable'] ?? ''), ['1', 'yes', 'true', 'y'], true) ? 1 : 0,
                 'esic_number' => $row['esic_number'] ?: null,
                 'pay_grade' => $row['pay_grade'] ?: null,
                 'force_password_reset' => 1,
+                'reporting_manager_id' => $reportingManagerId,
                 
                 // Bank Details
                 'account_holder_name' => $row['account_holder_name'] ?: $name,
                 'bank_name' => $row['bank_name'] ?: null,
                 'account_number' => $row['account_number'] ?: null,
-                'ifsc_code' => $row['ifsc_code'] ?: null,
+                'ifsc_code' => !empty($row['ifsc_code']) ? strtoupper($row['ifsc_code']) : null,
                 'branch_name' => $row['branch_name'] ?: null,
-                'account_type' => $row['account_type'] ?: 'Savings'
+                'account_type' => !empty($row['account_type']) ? $row['account_type'] : 'Savings'
             ];
 
             $userModel = $this->model('User');
@@ -1080,52 +1112,541 @@ class UsersController extends Controller {
     }
 
     public function importCsv() {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['csv_file']['tmp_name'])) {
-            $handle = fopen($_FILES['csv_file']['tmp_name'], 'r');
-            if ($handle) {
-                $headers = fgetcsv($handle);
-                $imported = 0;
-                $db = Database::getInstance()->getConnection();
+        $role = $_SESSION['user_role'] ?? '';
+        if (!in_array($role, ['admin', 'manager', 'hr', 'ceo'], true) && !$this->hasPermission('employees')) {
+            $this->requirePermission('employees', 'create');
+        }
 
-                while (($row = fgetcsv($handle)) !== false) {
-                    if (empty($row[0]) && empty($row[1]) && empty($row[3])) continue;
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_FILES['csv_file']['tmp_name'])) {
+            $_SESSION['user_error'] = "Please select a valid CSV file to upload.";
+            $this->redirect('index.php?route=users/index');
+            return;
+        }
 
-                    $email = trim($row[3] ?? $row[2] ?? '');
-                    if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                        $email = 'emp_' . rand(10000, 99999) . '@raptor.local';
-                    }
+        $file = $_FILES['csv_file'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if ($ext !== 'csv') {
+            $_SESSION['user_error'] = "Invalid file type. Only .csv files are supported.";
+            $this->redirect('index.php?route=users/index');
+            return;
+        }
 
-                    $name = trim(($row[1] ?? '') . ' ' . ($row[2] ?? ''));
-                    if (empty($name)) {
-                        $name = trim($row[0] ?? 'Imported Employee');
-                    }
-                    $empCode = trim($row[0] ?? ('EMP' . rand(1000, 9999)));
+        if ($file['size'] > 10 * 1024 * 1024) {
+            $_SESSION['user_error'] = "File size exceeds 10MB limit.";
+            $this->redirect('index.php?route=users/index');
+            return;
+        }
 
-                    // Check if email exists
-                    $stmt = $db->prepare("SELECT user_id FROM users WHERE email = :email");
-                    $stmt->execute([':email' => $email]);
-                    if ($stmt->fetch()) continue;
+        $duplicateStrategy = $_POST['duplicate_strategy'] ?? 'update';
 
-                    $roleStmt = $db->query("SELECT role_id FROM roles WHERE role_name = 'employee' LIMIT 1");
-                    $roleId = (int)($roleStmt->fetchColumn() ?: 10);
+        $filePath = $file['tmp_name'];
+        $handle = fopen($filePath, 'r');
+        if (!$handle) {
+            $_SESSION['user_error'] = "Unable to open uploaded CSV file.";
+            $this->redirect('index.php?route=users/index');
+            return;
+        }
 
-                    $hash = password_hash('Raptor@2026', PASSWORD_BCRYPT);
-                    $ins = $db->prepare("INSERT INTO users (role_id, name, email, password, status) VALUES (:r, :n, :e, :p, 'active')");
-                    if ($ins->execute([':r' => $roleId, ':n' => $name, ':e' => $email, ':p' => $hash])) {
-                        $uid = $db->lastInsertId();
-                        $dept = !empty($row[5]) ? trim($row[5]) : 'Sales';
-                        $job = !empty($row[6]) ? trim($row[6]) : 'Staff Member';
+        @ini_set('auto_detect_line_endings', true);
 
-                        $empIns = $db->prepare("INSERT INTO employees (user_id, employee_code, department, job_title, hire_date) VALUES (:u, :c, :d, :j, CURDATE())");
-                        $empIns->execute([':u' => $uid, ':c' => $empCode, ':d' => $dept, ':j' => $job]);
-                        $imported++;
+        // Auto-detect delimiter
+        $firstLine = fgets($handle);
+        rewind($handle);
+        $delimiter = ',';
+        if ($firstLine !== false) {
+            $commas = substr_count($firstLine, ',');
+            $semicolons = substr_count($firstLine, ';');
+            $tabs = substr_count($firstLine, "\t");
+            if ($semicolons > $commas && $semicolons > $tabs) {
+                $delimiter = ';';
+            } elseif ($tabs > $commas && $tabs > $semicolons) {
+                $delimiter = "\t";
+            }
+        }
+
+        // Read header
+        $rawHeaders = fgetcsv($handle, 4096, $delimiter);
+        if (!$rawHeaders) {
+            fclose($handle);
+            $_SESSION['user_error'] = "CSV file is empty or could not be read.";
+            $this->redirect('index.php?route=users/index');
+            return;
+        }
+
+        // Strip UTF-8 BOM if present
+        if (!empty($rawHeaders[0]) && strpos($rawHeaders[0], "\xEF\xBB\xBF") === 0) {
+            $rawHeaders[0] = substr($rawHeaders[0], 3);
+        }
+
+        // Normalize header strings
+        $normalizedHeaders = [];
+        foreach ($rawHeaders as $idx => $h) {
+            $cleanH = strtolower(trim($h));
+            $cleanH = preg_replace('/[^a-z0-9]+/', '_', $cleanH);
+            $cleanH = trim($cleanH, '_');
+            $normalizedHeaders[$idx] = $cleanH;
+        }
+
+        // Map column indices to canonical fields using alias dictionary
+        $aliasMap = [
+            'employee_code' => ['employee_code', 'employee_id', 'emp_code', 'emp_id', 'empid', 'code', 'id'],
+            'first_name' => ['first_name', 'firstname', 'first'],
+            'last_name' => ['last_name', 'lastname', 'last', 'surname'],
+            'name' => ['name', 'full_name', 'fullname', 'employee_name', 'employee'],
+            'email' => ['email', 'email_address', 'e_mail', 'mail'],
+            'phone_number' => ['phone_number', 'phone', 'phone_no', 'mobile', 'mobile_number', 'contact_number', 'contact'],
+            'department' => ['department', 'dept'],
+            'job_title' => ['job_title', 'job', 'title', 'designation', 'position', 'role_title'],
+            'reporting_manager_email' => ['reporting_manager_email', 'reporting_manager', 'reporting_id', 'reporting_to', 'manager_email', 'manager_id', 'manager', 'reports_to'],
+            'date_of_joining' => ['date_of_joining', 'joining_date', 'doj', 'hire_date', 'date_of_join', 'joining'],
+            'employment_type' => ['employment_type', 'employment', 'employmer', 'employmertype', 'type_of_employment'],
+            'status' => ['status', 'user_status', 'state', 'active_status'],
+            'work_location' => ['work_location', 'location', 'worklocation', 'work_place', 'workplace'],
+            'date_of_birth' => ['date_of_birth', 'birth_date', 'dob', 'date_of_birth_dd_mm_yyyy'],
+            'bio' => ['bio', 'notes', 'about', 'description', 'employee_bio'],
+            'emergency_contact' => ['emergency_contact', 'emergency', 'emergency_phone', 'emergency_contact_number', 'emergency_no'],
+            'account_holder_name' => ['account_holder_name', 'account_holder', 'holder_name', 'ac_holder_name', 'acc_holder_name'],
+            'bank_name' => ['bank_name', 'bank'],
+            'account_number' => ['account_number', 'account_no', 'acc_number', 'acc_no', 'ac_number', 'ac_no', 'bank_account_number'],
+            'ifsc_code' => ['ifsc_code', 'ifsc', 'ifsc_no'],
+            'branch_name' => ['branch_name', 'branch', 'branch_address', 'bank_branch'],
+            'account_type' => ['account_type', 'acct_type', 'acc_type', 'type_of_account'],
+            'pan_number' => ['pan_number', 'pan', 'pan_no', 'pancard', 'pan_card'],
+            'aadhaar_number' => ['aadhaar_number', 'aadhaar', 'aadhaar_no', 'aadhar_number', 'aadhar', 'aadhar_no', 'uidai'],
+            'uan' => ['uan', 'uan_number', 'uan_no', 'pf_uan'],
+            'esic_number' => ['esic_number', 'esic', 'esic_no', 'esi_number', 'esi', 'esi_no'],
+            'salary' => ['salary', 'ctc', 'salary_ctc', 'monthly_salary', 'basic_salary', 'gross_salary'],
+            'pay_grade' => ['pay_grade', 'pay_band', 'salary_band', 'grade', 'band'],
+            'pf_applicable' => ['pf_applicable', 'pf', 'is_pf_applicable', 'pf_eligible', 'provident_fund'],
+            'role_in_system' => ['role_in_system', 'system_role', 'role', 'user_role', 'system_role_name'],
+            'temp_password' => ['temp_password', 'temporary_password', 'password', 'new_password', 'pass'],
+            'force_password_reset' => ['force_password_reset', 'force_reset', 'reset_password_on_login']
+        ];
+
+        $colToField = [];
+        foreach ($normalizedHeaders as $idx => $nh) {
+            foreach ($aliasMap as $canonical => $aliases) {
+                if (in_array($nh, $aliases, true) || $nh === $canonical) {
+                    $colToField[$idx] = $canonical;
+                    break;
+                }
+            }
+        }
+
+        $db = Database::getInstance()->getConnection();
+
+        // Preload roles
+        $rolesStmt = $db->query("SELECT role_id, LOWER(role_name) AS rname FROM roles");
+        $rolesMap = [];
+        while ($r = $rolesStmt->fetch(PDO::FETCH_ASSOC)) {
+            $rolesMap[$r['rname']] = (int)$r['role_id'];
+        }
+        $defaultRoleId = $rolesMap['employee'] ?? ($rolesMap['sales_person'] ?? 10);
+
+        $imported = 0;
+        $updated = 0;
+        $skipped = 0;
+        $failed = 0;
+
+        // Helper function for flexible date parsing
+        $parseDate = function($val) {
+            if (empty(trim($val))) return null;
+            $clean = trim($val);
+            $clean = str_replace('/', '-', $clean);
+            $ts = strtotime($clean);
+            if ($ts && $ts > 0) {
+                return date('Y-m-d', $ts);
+            }
+            foreach (['d-m-Y', 'Y-m-d', 'm-d-Y', 'd.m.Y'] as $fmt) {
+                $d = DateTime::createFromFormat($fmt, $clean);
+                if ($d !== false) {
+                    return $d->format('Y-m-d');
+                }
+            }
+            return null;
+        };
+
+        while (($row = fgetcsv($handle, 4096, $delimiter)) !== false) {
+            if (empty(array_filter($row))) continue;
+
+            $rowData = [];
+            foreach ($row as $idx => $val) {
+                $val = trim($val);
+                // Prevent formula injection
+                if (strlen($val) > 0 && in_array($val[0], ['=', '+', '-', '@'], true)) {
+                    $val = ltrim($val, "=+-@ ");
+                }
+                if (isset($colToField[$idx])) {
+                    $rowData[$colToField[$idx]] = $val;
+                }
+            }
+
+            // Extract email
+            $email = strtolower(trim($rowData['email'] ?? ''));
+            if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $failed++;
+                continue;
+            }
+
+            // Extract Name
+            $firstName = trim($rowData['first_name'] ?? '');
+            $lastName = trim($rowData['last_name'] ?? '');
+            $fullName = trim($rowData['name'] ?? '');
+            if (!empty($firstName) || !empty($lastName)) {
+                $name = trim($firstName . ' ' . $lastName);
+            } elseif (!empty($fullName)) {
+                $name = $fullName;
+            } else {
+                $name = 'Imported User';
+            }
+
+            // Employee code
+            $empCode = trim($rowData['employee_code'] ?? '');
+            if (empty($empCode)) {
+                $empCode = 'EMP' . rand(10000, 99999);
+            }
+
+            // Phone
+            $phone = trim($rowData['phone_number'] ?? '');
+            if (!empty($phone)) {
+                $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+                if (strlen($cleanPhone) === 12 && substr($cleanPhone, 0, 2) === '91') {
+                    $cleanPhone = substr($cleanPhone, 2);
+                }
+                if (strlen($cleanPhone) === 10) {
+                    $phone = $cleanPhone;
+                }
+            }
+
+            // Department & Job Title
+            $dept = trim($rowData['department'] ?? 'Sales') ?: 'Sales';
+            $jobTitle = trim($rowData['job_title'] ?? 'Staff') ?: 'Staff';
+
+            // Dates
+            $doj = $parseDate($rowData['date_of_joining'] ?? '') ?: date('Y-m-d');
+            $dob = $parseDate($rowData['date_of_birth'] ?? '');
+
+            // Employment Type & Location
+            $rawEmpType = strtolower(trim($rowData['employment_type'] ?? ''));
+            $empType = 'Full-time';
+            if (strpos($rawEmpType, 'part') !== false) $empType = 'Part-time';
+            elseif (strpos($rawEmpType, 'contract') !== false) $empType = 'Contract';
+            elseif (strpos($rawEmpType, 'intern') !== false) $empType = 'Intern';
+
+            $rawLoc = strtolower(trim($rowData['work_location'] ?? ''));
+            $workLoc = 'Office';
+            if (strpos($rawLoc, 'remote') !== false) $workLoc = 'Remote';
+            elseif (strpos($rawLoc, 'hybrid') !== false) $workLoc = 'Hybrid';
+
+            // Status
+            $rawStatus = strtolower(trim($rowData['status'] ?? 'active'));
+            $status = in_array($rawStatus, ['active', 'inactive', 'suspended', 'terminated'], true) ? $rawStatus : 'active';
+
+            // Bio & Emergency contact
+            $bio = trim($rowData['bio'] ?? '') ?: null;
+            $emergencyContact = trim($rowData['emergency_contact'] ?? '') ?: null;
+
+            // Compliance
+            $pan = strtoupper(trim($rowData['pan_number'] ?? '')) ?: null;
+            $aadhaar = preg_replace('/[^0-9]/', '', $rowData['aadhaar_number'] ?? '') ?: null;
+            $uan = preg_replace('/[^0-9]/', '', $rowData['uan'] ?? '') ?: null;
+            $esic = trim($rowData['esic_number'] ?? '') ?: null;
+
+            $salaryVal = preg_replace('/[^0-9.]/', '', $rowData['salary'] ?? '');
+            $salary = is_numeric($salaryVal) ? (float)$salaryVal : null;
+
+            $payGrade = trim($rowData['pay_grade'] ?? '') ?: null;
+
+            $pfVal = strtolower(trim($rowData['pf_applicable'] ?? '0'));
+            $pfApplicable = in_array($pfVal, ['1', 'yes', 'true', 'y'], true) ? 1 : 0;
+
+            // Role
+            $rawRole = strtolower(trim($rowData['role_in_system'] ?? ''));
+            $roleId = $defaultRoleId;
+            if (!empty($rawRole)) {
+                $cleanRole = str_replace([' ', '-'], '_', $rawRole);
+                if (isset($rolesMap[$cleanRole])) {
+                    $roleId = $rolesMap[$cleanRole];
+                } elseif (isset($rolesMap[$rawRole])) {
+                    $roleId = $rolesMap[$rawRole];
+                } elseif (strpos($rawRole, 'sale') !== false) {
+                    $roleId = $rolesMap['sales_person'] ?? $defaultRoleId;
+                } elseif (strpos($rawRole, 'manage') !== false) {
+                    $roleId = $rolesMap['manager'] ?? $defaultRoleId;
+                }
+            }
+
+            // Reporting Manager
+            $managerId = null;
+            $mgrInput = trim($rowData['reporting_manager_email'] ?? '');
+            if (!empty($mgrInput)) {
+                $mgrStmt = $db->prepare("SELECT user_id FROM users WHERE LOWER(email) = :m_email LIMIT 1");
+                $mgrStmt->execute([':m_email' => strtolower($mgrInput)]);
+                $mgrFound = $mgrStmt->fetch(PDO::FETCH_ASSOC);
+                if ($mgrFound) {
+                    $managerId = (int)$mgrFound['user_id'];
+                } else {
+                    $mgrStmt2 = $db->prepare("SELECT user_id FROM employees WHERE employee_code = :m_code LIMIT 1");
+                    $mgrStmt2->execute([':m_code' => $mgrInput]);
+                    $mgrFound2 = $mgrStmt2->fetch(PDO::FETCH_ASSOC);
+                    if ($mgrFound2) {
+                        $managerId = (int)$mgrFound2['user_id'];
                     }
                 }
-                fclose($handle);
-                $_SESSION['user_success'] = "Bulk Upload Successful: $imported employee(s) imported into the system.";
-            } else {
-                $_SESSION['user_error'] = "Failed to parse uploaded CSV file.";
             }
+
+            // Bank details
+            $bankHolder = trim($rowData['account_holder_name'] ?? '') ?: $name;
+            $bankName = trim($rowData['bank_name'] ?? '') ?: null;
+            $accNumber = trim($rowData['account_number'] ?? '') ?: null;
+            $ifsc = strtoupper(trim($rowData['ifsc_code'] ?? '')) ?: null;
+            $branch = trim($rowData['branch_name'] ?? '') ?: null;
+            $rawAccType = strtolower(trim($rowData['account_type'] ?? 'savings'));
+            $accType = (strpos($rawAccType, 'current') !== false) ? 'Current' : 'Savings';
+            $hasBankData = (!empty($bankName) || !empty($accNumber) || !empty($ifsc));
+
+            // Password
+            $tempPass = trim($rowData['temp_password'] ?? '');
+            $hashPass = password_hash(!empty($tempPass) ? $tempPass : 'Raptor@2026', PASSWORD_BCRYPT);
+            $forceReset = isset($rowData['force_password_reset']) ? (int)$rowData['force_password_reset'] : 1;
+
+            // Check if user already exists
+            $stmt = $db->prepare("SELECT user_id FROM users WHERE LOWER(email) = :email");
+            $stmt->execute([':email' => $email]);
+            $existingUser = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$existingUser && !empty($empCode)) {
+                $stmt2 = $db->prepare("SELECT user_id FROM employees WHERE employee_code = :code");
+                $stmt2->execute([':code' => $empCode]);
+                $existingUser = $stmt2->fetch(PDO::FETCH_ASSOC);
+            }
+
+            if ($existingUser) {
+                // EXISTING USER FOUND
+                if ($duplicateStrategy === 'skip') {
+                    $skipped++;
+                    continue;
+                }
+
+                $uid = (int)$existingUser['user_id'];
+
+                // Update users table
+                if (!empty($tempPass)) {
+                    $upUser = $db->prepare("UPDATE users SET name = :name, status = :status, role_id = :role_id, password = :pass, force_password_reset = :force_reset WHERE user_id = :uid");
+                    $upUser->execute([
+                        ':name' => $name,
+                        ':status' => $status,
+                        ':role_id' => $roleId,
+                        ':pass' => $hashPass,
+                        ':force_reset' => $forceReset,
+                        ':uid' => $uid
+                    ]);
+                } else {
+                    $upUser = $db->prepare("UPDATE users SET name = :name, status = :status, role_id = :role_id, force_password_reset = :force_reset WHERE user_id = :uid");
+                    $upUser->execute([
+                        ':name' => $name,
+                        ':status' => $status,
+                        ':role_id' => $roleId,
+                        ':force_reset' => $forceReset,
+                        ':uid' => $uid
+                    ]);
+                }
+
+                // Check employee record
+                $empCheck = $db->prepare("SELECT employee_id FROM employees WHERE user_id = :uid");
+                $empCheck->execute([':uid' => $uid]);
+                $existingEmp = $empCheck->fetch(PDO::FETCH_ASSOC);
+
+                if ($existingEmp) {
+                    $empId = (int)$existingEmp['employee_id'];
+                    $upEmp = $db->prepare("
+                        UPDATE employees SET
+                            employee_code = :code,
+                            department = :dept,
+                            job_title = :job,
+                            hire_date = :hire_date,
+                            date_of_joining = :doj,
+                            phone_number = :phone,
+                            salary = :salary,
+                            date_of_birth = :dob,
+                            employment_type = :emp_type,
+                            work_location = :work_loc,
+                            bio = :bio,
+                            emergency_contact = :emergency,
+                            pan_number = :pan,
+                            aadhaar_number = :aadhaar,
+                            uan = :uan,
+                            pf_applicable = :pf,
+                            esic_number = :esic,
+                            pay_grade = :grade,
+                            reporting_manager_id = :mgr
+                        WHERE employee_id = :eid
+                    ");
+                    $upEmp->execute([
+                        ':code' => $empCode,
+                        ':dept' => $dept,
+                        ':job' => $jobTitle,
+                        ':hire_date' => $doj,
+                        ':doj' => $doj,
+                        ':phone' => $phone ?: null,
+                        ':salary' => $salary,
+                        ':dob' => $dob,
+                        ':emp_type' => $empType,
+                        ':work_loc' => $workLoc,
+                        ':bio' => $bio,
+                        ':emergency' => $emergencyContact,
+                        ':pan' => $pan,
+                        ':aadhaar' => $aadhaar,
+                        ':uan' => $uan,
+                        ':pf' => $pfApplicable,
+                        ':esic' => $esic,
+                        ':grade' => $payGrade,
+                        ':mgr' => $managerId,
+                        ':eid' => $empId
+                    ]);
+                } else {
+                    $insEmp = $db->prepare("
+                        INSERT INTO employees (user_id, employee_code, department, job_title, hire_date, date_of_joining, phone_number, salary, date_of_birth, employment_type, work_location, bio, emergency_contact, pan_number, aadhaar_number, uan, pf_applicable, esic_number, pay_grade, reporting_manager_id)
+                        VALUES (:uid, :code, :dept, :job, :hire_date, :doj, :phone, :salary, :dob, :emp_type, :work_loc, :bio, :emergency, :pan, :aadhaar, :uan, :pf, :esic, :grade, :mgr)
+                    ");
+                    $insEmp->execute([
+                        ':uid' => $uid,
+                        ':code' => $empCode,
+                        ':dept' => $dept,
+                        ':job' => $jobTitle,
+                        ':hire_date' => $doj,
+                        ':doj' => $doj,
+                        ':phone' => $phone ?: null,
+                        ':salary' => $salary,
+                        ':dob' => $dob,
+                        ':emp_type' => $empType,
+                        ':work_loc' => $workLoc,
+                        ':bio' => $bio,
+                        ':emergency' => $emergencyContact,
+                        ':pan' => $pan,
+                        ':aadhaar' => $aadhaar,
+                        ':uan' => $uan,
+                        ':pf' => $pfApplicable,
+                        ':esic' => $esic,
+                        ':grade' => $payGrade,
+                        ':mgr' => $managerId
+                    ]);
+                    $empId = (int)$db->lastInsertId();
+                }
+
+                // Update or Insert Bank Account
+                if ($empId) {
+                    $bankStmt = $db->prepare("SELECT bank_account_id FROM bank_accounts WHERE employee_id = :eid");
+                    $bankStmt->execute([':eid' => $empId]);
+                    $existingBank = $bankStmt->fetch(PDO::FETCH_ASSOC);
+
+                    if ($existingBank) {
+                        $upBank = $db->prepare("
+                            UPDATE bank_accounts SET
+                                account_holder_name = :holder,
+                                bank_name = :bank,
+                                account_number = :acc,
+                                ifsc_code = :ifsc,
+                                branch_name = :branch,
+                                account_type = :type
+                            WHERE employee_id = :eid
+                        ");
+                        $upBank->execute([
+                            ':holder' => $bankHolder,
+                            ':bank' => $bankName ?? '',
+                            ':acc' => $accNumber ?? '',
+                            ':ifsc' => $ifsc ?? '',
+                            ':branch' => $branch ?? '',
+                            ':type' => $accType,
+                            ':eid' => $empId
+                        ]);
+                    } elseif ($hasBankData) {
+                        $insBank = $db->prepare("
+                            INSERT INTO bank_accounts (employee_id, account_holder_name, bank_name, account_number, ifsc_code, branch_name, account_type)
+                            VALUES (:eid, :holder, :bank, :acc, :ifsc, :branch, :type)
+                        ");
+                        $insBank->execute([
+                            ':eid' => $empId,
+                            ':holder' => $bankHolder,
+                            ':bank' => $bankName ?? '',
+                            ':acc' => $accNumber ?? '',
+                            ':ifsc' => $ifsc ?? '',
+                            ':branch' => $branch ?? '',
+                            ':type' => $accType
+                        ]);
+                    }
+                }
+                $updated++;
+            } else {
+                // NEW USER INSERTION
+                $insUser = $db->prepare("
+                    INSERT INTO users (role_id, name, email, password, status, force_password_reset)
+                    VALUES (:role_id, :name, :email, :pass, :status, :force_reset)
+                ");
+                if ($insUser->execute([
+                    ':role_id' => $roleId,
+                    ':name' => $name,
+                    ':email' => $email,
+                    ':pass' => $hashPass,
+                    ':status' => $status,
+                    ':force_reset' => $forceReset
+                ])) {
+                    $newUid = (int)$db->lastInsertId();
+
+                    $insEmp = $db->prepare("
+                        INSERT INTO employees (user_id, employee_code, department, job_title, hire_date, date_of_joining, phone_number, salary, date_of_birth, employment_type, work_location, bio, emergency_contact, pan_number, aadhaar_number, uan, pf_applicable, esic_number, pay_grade, reporting_manager_id)
+                        VALUES (:uid, :code, :dept, :job, :hire_date, :doj, :phone, :salary, :dob, :emp_type, :work_loc, :bio, :emergency, :pan, :aadhaar, :uan, :pf, :esic, :grade, :mgr)
+                    ");
+                    $insEmp->execute([
+                        ':uid' => $newUid,
+                        ':code' => $empCode,
+                        ':dept' => $dept,
+                        ':job' => $jobTitle,
+                        ':hire_date' => $doj,
+                        ':doj' => $doj,
+                        ':phone' => $phone ?: null,
+                        ':salary' => $salary,
+                        ':dob' => $dob,
+                        ':emp_type' => $empType,
+                        ':work_loc' => $workLoc,
+                        ':bio' => $bio,
+                        ':emergency' => $emergencyContact,
+                        ':pan' => $pan,
+                        ':aadhaar' => $aadhaar,
+                        ':uan' => $uan,
+                        ':pf' => $pfApplicable,
+                        ':esic' => $esic,
+                        ':grade' => $payGrade,
+                        ':mgr' => $managerId
+                    ]);
+                    $newEmpId = (int)$db->lastInsertId();
+
+                    if ($newEmpId && $hasBankData) {
+                        $insBank = $db->prepare("
+                            INSERT INTO bank_accounts (employee_id, account_holder_name, bank_name, account_number, ifsc_code, branch_name, account_type)
+                            VALUES (:eid, :holder, :bank, :acc, :ifsc, :branch, :type)
+                        ");
+                        $insBank->execute([
+                            ':eid' => $newEmpId,
+                            ':holder' => $bankHolder,
+                            ':bank' => $bankName ?? '',
+                            ':acc' => $accNumber ?? '',
+                            ':ifsc' => $ifsc ?? '',
+                            ':branch' => $branch ?? '',
+                            ':type' => $accType
+                        ]);
+                    }
+                    $imported++;
+                } else {
+                    $failed++;
+                }
+            }
+        }
+        fclose($handle);
+
+        $_SESSION['user_success'] = "Bulk Upload Completed: {$imported} new employee(s) added, {$updated} existing record(s) updated with full Personal, Bank, and Payroll details.";
+        if ($failed > 0) {
+            $_SESSION['user_warning'] = "{$failed} row(s) had invalid data or missing emails and were skipped.";
         }
         $this->redirect('index.php?route=users/index');
     }

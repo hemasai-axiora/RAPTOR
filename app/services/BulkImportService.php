@@ -149,19 +149,69 @@ class BulkImportService {
             $action = 'create'; // default action
             $matchedUserId = null;
 
-            // Map keys of row to match config (case insensitive match)
+            $globalAliases = [
+                'employee_code' => ['employee_code', 'employee_id', 'emp_code', 'emp_id', 'empid', 'code', 'id'],
+                'first_name' => ['first_name', 'firstname', 'first'],
+                'last_name' => ['last_name', 'lastname', 'last', 'surname'],
+                'email' => ['email', 'email_address', 'e_mail', 'mail'],
+                'phone_number' => ['phone_number', 'phone', 'phone_no', 'mobile', 'mobile_number', 'contact_number', 'contact'],
+                'department' => ['department', 'dept'],
+                'job_title' => ['job_title', 'job', 'title', 'designation', 'position', 'role_title'],
+                'reporting_manager_email' => ['reporting_manager_email', 'reporting_manager', 'reporting_id', 'reporting_to', 'manager_email', 'manager_id', 'manager', 'reports_to'],
+                'date_of_joining' => ['date_of_joining', 'joining_date', 'doj', 'hire_date', 'date_of_join', 'joining'],
+                'employment_type' => ['employment_type', 'employment', 'employmer', 'employmertype', 'type_of_employment'],
+                'status' => ['status', 'user_status', 'state', 'active_status'],
+                'work_location' => ['work_location', 'location', 'worklocation', 'work_place', 'workplace'],
+                'date_of_birth' => ['date_of_birth', 'birth_date', 'dob', 'date_of_birth_dd_mm_yyyy'],
+                'bio' => ['bio', 'notes', 'about', 'description', 'employee_bio'],
+                'emergency_contact' => ['emergency_contact', 'emergency', 'emergency_phone', 'emergency_contact_number', 'emergency_no'],
+                'account_holder_name' => ['account_holder_name', 'account_holder', 'holder_name', 'ac_holder_name', 'acc_holder_name'],
+                'bank_name' => ['bank_name', 'bank'],
+                'account_number' => ['account_number', 'account_no', 'acc_number', 'acc_no', 'ac_number', 'ac_no', 'bank_account_number'],
+                'ifsc_code' => ['ifsc_code', 'ifsc', 'ifsc_no'],
+                'branch_name' => ['branch_name', 'branch', 'branch_address', 'bank_branch'],
+                'account_type' => ['account_type', 'acct_type', 'acc_type', 'type_of_account'],
+                'pan_number' => ['pan_number', 'pan', 'pan_no', 'pancard', 'pan_card'],
+                'aadhaar_number' => ['aadhaar_number', 'aadhaar', 'aadhaar_no', 'aadhar_number', 'aadhar', 'aadhar_no', 'uidai'],
+                'uan' => ['uan', 'uan_number', 'uan_no', 'pf_uan'],
+                'esic_number' => ['esic_number', 'esic', 'esic_no', 'esi_number', 'esi', 'esi_no'],
+                'salary' => ['salary', 'ctc', 'salary_ctc', 'monthly_salary', 'basic_salary', 'gross_salary'],
+                'pay_grade' => ['pay_grade', 'pay_band', 'salary_band', 'grade', 'band'],
+                'pf_applicable' => ['pf_applicable', 'pf', 'is_pf_applicable', 'pf_eligible', 'provident_fund'],
+                'role_in_system' => ['role_in_system', 'system_role', 'role', 'user_role', 'system_role_name'],
+                'temp_password' => ['temp_password', 'temporary_password', 'password', 'new_password', 'pass']
+            ];
+
+            // Map keys of row to match config (case insensitive match + aliases)
             $mappedRow = [];
             foreach ($config['fields'] as $fieldName => $fieldSpec) {
                 $foundKey = null;
-                // Try exact match, then try match replacing underscores/spaces
+                $aliases = $globalAliases[$fieldName] ?? [$fieldName];
                 foreach (array_keys($row) as $csvKey) {
-                    if (strtolower($csvKey) === strtolower($fieldName) || 
-                        str_replace([' ', '-'], '_', strtolower($csvKey)) === strtolower($fieldName)) {
+                    $cleanCsvKey = preg_replace('/[^a-z0-9]+/', '_', strtolower(trim($csvKey)));
+                    $cleanCsvKey = trim($cleanCsvKey, '_');
+                    if ($cleanCsvKey === strtolower($fieldName) || in_array($cleanCsvKey, $aliases, true)) {
                         $foundKey = $csvKey;
                         break;
                     }
                 }
                 $mappedRow[$fieldName] = ($foundKey !== null) ? trim($row[$foundKey]) : '';
+            }
+
+            // Fallback for single full name column if first_name is empty
+            if (empty($mappedRow['first_name'])) {
+                foreach (array_keys($row) as $csvKey) {
+                    $cleanCsvKey = preg_replace('/[^a-z0-9]+/', '_', strtolower(trim($csvKey)));
+                    $cleanCsvKey = trim($cleanCsvKey, '_');
+                    if (in_array($cleanCsvKey, ['name', 'full_name', 'fullname', 'employee_name'], true) && !empty(trim($row[$csvKey]))) {
+                        $parts = explode(' ', trim($row[$csvKey]), 2);
+                        $mappedRow['first_name'] = $parts[0];
+                        if (empty($mappedRow['last_name']) && isset($parts[1])) {
+                            $mappedRow['last_name'] = $parts[1];
+                        }
+                        break;
+                    }
+                }
             }
 
             // Perform field validations
@@ -187,21 +237,44 @@ class BulkImportService {
                         $errors[$fieldName] = "Invalid email format '$val'. Expected a valid email address.";
                     }
                 } elseif ($fieldSpec['type'] === 'date') {
-                    // Flexibly accept YYYY-MM-DD, DD-MM-YYYY, YYYY/MM/DD, DD/MM/YYYY
+                    // Flexibly accept YYYY-MM-DD, DD-MM-YYYY, YYYY/MM/DD, DD/MM/YYYY, etc.
                     $cleanDate = str_replace('/', '-', $val);
                     $ts = strtotime($cleanDate);
-                    if (!$ts) {
+                    $parsed = null;
+                    if ($ts && $ts > 0) {
+                        $parsed = date('Y-m-d', $ts);
+                    } else {
+                        foreach (['d-m-Y', 'Y-m-d', 'm-d-Y', 'd.m.Y'] as $fmt) {
+                            $d = DateTime::createFromFormat($fmt, $cleanDate);
+                            if ($d !== false) {
+                                $parsed = $d->format('Y-m-d');
+                                break;
+                            }
+                        }
+                    }
+                    if (!$parsed) {
                         $errors[$fieldName] = "Invalid date format. Expected DD-MM-YYYY or YYYY-MM-DD.";
                     } else {
-                        // Normalize it to YYYY-MM-DD for database query
-                        $mappedRow[$fieldName] = date('Y-m-d', $ts);
+                        $mappedRow[$fieldName] = $parsed;
                     }
                 } elseif ($fieldSpec['type'] === 'number') {
-                    if (!is_numeric($val)) {
+                    $cleanNum = str_replace([',', ' ', '$', '₹'], '', $val);
+                    if (!is_numeric($cleanNum)) {
                         $errors[$fieldName] = "Must be a number.";
+                    } else {
+                        $mappedRow[$fieldName] = $cleanNum;
                     }
                 } elseif ($fieldSpec['type'] === 'enum') {
                     $allowed = array_map('strtolower', $fieldSpec['allowed_values'] ?? []);
+                    // Convert yes/no or true/false to 1/0 for boolean-style enums
+                    if ($allowed === ['0', '1'] || $allowed === ['1', '0']) {
+                        if (in_array(strtolower($val), ['1', 'yes', 'true', 'y'], true)) {
+                            $val = '1';
+                        } elseif (in_array(strtolower($val), ['0', 'no', 'false', 'n'], true)) {
+                            $val = '0';
+                        }
+                        $mappedRow[$fieldName] = $val;
+                    }
                     if (!in_array(strtolower($val), $allowed)) {
                         $errors[$fieldName] = "Value must be one of: " . implode(', ', $fieldSpec['allowed_values']);
                     }
