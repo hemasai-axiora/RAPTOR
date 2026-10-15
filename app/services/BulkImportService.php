@@ -308,7 +308,15 @@ class BulkImportService {
                 }
             }
 
-            // 5. Database duplicate check (only if there are no parsing errors so far)
+            // 5. Custom row-level business rules
+            if (empty($errors) && isset($callbacks['validate_row']) && is_callable($callbacks['validate_row'])) {
+                $rowErrors = call_user_func($callbacks['validate_row'], $mappedRow);
+                if (!empty($rowErrors) && is_array($rowErrors)) {
+                    $errors = array_merge($errors, $rowErrors);
+                }
+            }
+
+            // 6. Database duplicate check (only if there are no parsing errors so far)
             if (empty($errors) && isset($callbacks['db_duplicate_check'])) {
                 $duplicateResult = call_user_func($callbacks['db_duplicate_check'], $mappedRow);
                 if ($duplicateResult) {

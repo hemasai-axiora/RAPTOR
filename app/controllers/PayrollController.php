@@ -55,6 +55,16 @@ class PayrollController extends Controller {
         $items = $this->payrollModel->getChecklistItems($checklist->checklist_id);
         $employees = $this->payrollModel->getAllEmployeesWithStatus();
         $activeEmployees = $this->payrollModel->getActiveEmployees();
+        $activeEmployees = array_values(array_filter($activeEmployees, function($emp) {
+            $isIntern = (stripos($emp->job_title ?? '', 'intern') !== false) || 
+                        (stripos($emp->employment_type ?? '', 'intern') !== false) || 
+                        (stripos($emp->role_name ?? '', 'intern') !== false);
+            $empSalary = (float)($emp->salary ?? 0);
+            if ($isIntern && $empSalary <= 0) {
+                return false;
+            }
+            return true;
+        }));
 
         // 1. Employee Status Summary
         $activeCount = 0;
@@ -499,6 +509,16 @@ class PayrollController extends Controller {
         $this->requirePermission('payroll', 'edit');
 
         $employees = $this->payrollModel->getActiveEmployees();
+        $employees = array_values(array_filter($employees, function($emp) {
+            $isIntern = (stripos($emp->job_title ?? '', 'intern') !== false) || 
+                        (stripos($emp->employment_type ?? '', 'intern') !== false) || 
+                        (stripos($emp->role_name ?? '', 'intern') !== false);
+            $empSalary = (float)($emp->salary ?? 0);
+            if ($isIntern && $empSalary <= 0) {
+                return false;
+            }
+            return true;
+        }));
 
         // Get salary structure and revision history for selected employee if any
         $selectedEmpId = (int)($_GET['employee_id'] ?? 0);
@@ -716,10 +736,26 @@ class PayrollController extends Controller {
                 continue;
             }
 
+            // Exclude Interns with salary 0 or employees with 0 salary from payroll processing
+            $isIntern = (stripos($emp->job_title ?? '', 'intern') !== false) || 
+                        (stripos($emp->employment_type ?? '', 'intern') !== false) || 
+                        (stripos($emp->role_name ?? '', 'intern') !== false);
+
             $struct = $this->payrollModel->getSalaryStructureByEmployeeId($emp->employee_id);
+            $empSalary = (float)($emp->salary ?? 0);
+            $basicSalaryVal = $struct ? (float)$struct->basic_salary : $empSalary;
+
+            // Business rule: Intern role with salary 0 must not process in payroll
+            if ($isIntern && $basicSalaryVal <= 0) {
+                continue;
+            }
+            // Skip any employee with 0 salary and no positive salary structure
+            if ($basicSalaryVal <= 0 && (!$struct || ((float)($struct->gross_salary ?? 0) <= 0))) {
+                continue;
+            }
 
             // Base structure components
-            $actualBasic = $struct ? (float)$struct->basic_salary : 25000.00;
+            $actualBasic = $basicSalaryVal > 0 ? $basicSalaryVal : 25000.00;
             $actualHra = $struct ? (float)$struct->hra : round($actualBasic * 0.40);
             $actualSpecial = $struct ? (float)$struct->special_allowance : 3000.00;
             $actualOther = $struct ? (float)($struct->other_allowance ?? 0.00) : 0.00;

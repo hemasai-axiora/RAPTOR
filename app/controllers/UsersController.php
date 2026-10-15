@@ -690,6 +690,26 @@ class UsersController extends Controller {
             'validate_field_reporting_manager_email' => function($val) {
                 return null;
             },
+            'validate_row' => function($mappedRow) {
+                $errors = [];
+                $role = strtolower(trim($mappedRow['role_in_system'] ?? ''));
+                $jobTitle = strtolower(trim($mappedRow['job_title'] ?? ''));
+                $empType = strtolower(trim($mappedRow['employment_type'] ?? ''));
+
+                $isIntern = (strpos($role, 'intern') !== false) || 
+                            (strpos($jobTitle, 'intern') !== false) || 
+                            (strpos($empType, 'intern') !== false);
+
+                $rawSalary = trim($mappedRow['salary'] ?? '');
+                $cleanSalary = preg_replace('/[^0-9.]/', '', $rawSalary);
+                $salaryVal = ($cleanSalary !== '') ? (float)$cleanSalary : 0.0;
+
+                if ($isIntern && $salaryVal <= 0) {
+                    $errors['salary'] = "Intern role with a salary of 0 cannot be processed.";
+                }
+
+                return $errors;
+            },
             'db_duplicate_check' => function($mappedRow) use ($db) {
                 // Check email duplicate
                 $email = strtolower(trim($mappedRow['email'] ?? ''));
@@ -733,6 +753,19 @@ class UsersController extends Controller {
         $defaultRoleId = $rolesMap['employee'] ?? ($rolesMap['sales_person'] ?? 10);
 
         return function($row, $action, $duplicateStrategy) use ($db, $userModel, $rolesMap, $defaultRoleId) {
+            // Guard: Intern role with salary 0 must not be processed
+            $rawRole = strtolower(trim($row['role_in_system'] ?? ''));
+            $rawJobTitle = strtolower(trim($row['job_title'] ?? ''));
+            $rawEmpType = strtolower(trim($row['employment_type'] ?? ''));
+            $isIntern = (strpos($rawRole, 'intern') !== false) || 
+                        (strpos($rawJobTitle, 'intern') !== false) || 
+                        (strpos($rawEmpType, 'intern') !== false);
+            $cleanSalary = preg_replace('/[^0-9.]/', '', $row['salary'] ?? '');
+            $salaryValNum = ($cleanSalary !== '') ? (float)$cleanSalary : 0.0;
+            if ($isIntern && $salaryValNum <= 0) {
+                throw new Exception("Intern role with a salary of 0 cannot be processed.");
+            }
+
             // 1. Resolve role_id
             $rawRole = strtolower(trim($row['role_in_system'] ?? ''));
             $cleanRole = str_replace([' ', '-'], '_', $rawRole);
