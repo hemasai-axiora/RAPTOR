@@ -35,22 +35,22 @@
 
     <!-- Filter Bar -->
     <div class="row g-2 mb-3 p-3 rounded-3" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1);">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="input-group">
                 <span class="input-group-text bg-dark border-secondary text-secondary"><i class="fa-solid fa-magnifying-glass"></i></span>
                 <input type="text" id="emp-search-input" class="form-control bg-dark border-secondary text-white" placeholder="Search Emp ID, Name, Email, Job Title...">
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <select id="emp-status-filter" class="form-select bg-dark border-secondary text-white">
-                <option value="">Filter by Status: All</option>
+                <option value="">Status: All</option>
                 <option value="Active">Active</option>
                 <option value="Inactive">Inactive</option>
             </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <select id="emp-location-filter" class="form-select bg-dark border-secondary text-white">
-                <option value="">Filter by Location: All</option>
+                <option value="">Location: All</option>
                 <option value="Office">Office</option>
                 <option value="Remote">Remote</option>
                 <option value="Hybrid">Hybrid</option>
@@ -59,11 +59,29 @@
         <div class="col-md-2">
             <select id="emp-dept-filter" class="form-select bg-dark border-secondary text-white">
                 <option value="">Dept: All</option>
-                <?php if (!empty($departments)): ?>
-                    <?php foreach ($departments as $dept): ?>
-                        <option value="<?php echo htmlspecialchars($dept); ?>"><?php echo htmlspecialchars($dept); ?></option>
-                    <?php endforeach; ?>
-                <?php endif; ?>
+                <?php 
+                $allDepts = !empty($departments) ? $departments : [];
+                if (!in_array('Intern', $allDepts, true)) {
+                    $allDepts[] = 'Intern';
+                    sort($allDepts);
+                }
+                ?>
+                <?php foreach ($allDepts as $dept): ?>
+                    <option value="<?php echo htmlspecialchars($dept); ?>"><?php echo htmlspecialchars($dept); ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select id="emp-title-filter" class="form-select bg-dark border-secondary text-white">
+                <option value="">Job Title / Role: All</option>
+                <option value="Intern">Intern</option>
+                <?php 
+                $allTitles = !empty($job_titles) ? $job_titles : (!empty($jobTitles) ? $jobTitles : []);
+                foreach ($allTitles as $jt): 
+                    if (strtolower(trim($jt)) === 'intern') continue;
+                ?>
+                    <option value="<?php echo htmlspecialchars($jt); ?>"><?php echo htmlspecialchars($jt); ?></option>
+                <?php endforeach; ?>
             </select>
         </div>
     </div>
@@ -87,7 +105,10 @@
                     <tr style="border-bottom: 1px solid var(--border-color);"
                         data-status="<?php echo (($user->status ?? 'active') === 'active') ? 'Active' : 'Inactive'; ?>"
                         data-location="<?php echo htmlspecialchars($user->work_location ?? 'Office'); ?>"
-                        data-department="<?php echo htmlspecialchars($user->department ?? 'Sales'); ?>">
+                        data-department="<?php echo htmlspecialchars($user->department ?? 'Sales'); ?>"
+                        data-job-title="<?php echo htmlspecialchars($user->job_title ?? ''); ?>"
+                        data-employment-type="<?php echo htmlspecialchars($user->employment_type ?? ''); ?>"
+                        data-role="<?php echo htmlspecialchars($user->role_name ?? ''); ?>">
                         <td class="text-white font-monospace"><?php echo htmlspecialchars($user->employee_code ?? 'SYS-ADMIN'); ?></td>
                         <td class="font-weight-bold">
                             <a href="index.php?route=hrms/profile/<?php echo $user->user_id; ?>" 
@@ -711,7 +732,7 @@ $(document).ready(function() {
             table.search(this.value).draw();
         });
 
-        // Custom Filters for Status, Location, Department
+        // Custom Filters for Status, Location, Department, and Job Title / Role
         $.fn.dataTable.ext.search.push(
             function(settings, data, dataIndex) {
                 if (settings.nTable.id !== 'users-table') return true;
@@ -719,6 +740,7 @@ $(document).ready(function() {
                 const selectedStatus = $('#emp-status-filter').val();
                 const selectedLocation = $('#emp-location-filter').val();
                 const selectedDept = $('#emp-dept-filter').val();
+                const selectedTitle = $('#emp-title-filter').val();
 
                 const row = table.row(dataIndex).node();
                 if (!row) return true;
@@ -726,16 +748,42 @@ $(document).ready(function() {
                 const rowStatus = $(row).attr('data-status') || '';
                 const rowLocation = $(row).attr('data-location') || '';
                 const rowDept = $(row).attr('data-department') || '';
+                const rowTitle = $(row).attr('data-job-title') || '';
+                const rowEmpType = $(row).attr('data-employment-type') || '';
+                const rowRole = $(row).attr('data-role') || '';
 
                 if (selectedStatus && rowStatus !== selectedStatus) return false;
                 if (selectedLocation && rowLocation !== selectedLocation) return false;
-                if (selectedDept && rowDept.toLowerCase() !== selectedDept.toLowerCase()) return false;
+
+                if (selectedDept) {
+                    if (selectedDept.toLowerCase() === 'intern') {
+                        const isIntern = (rowDept.toLowerCase() === 'intern') || 
+                                         (rowTitle.toLowerCase().indexOf('intern') !== -1) || 
+                                         (rowEmpType.toLowerCase().indexOf('intern') !== -1) ||
+                                         (rowRole.toLowerCase().indexOf('intern') !== -1);
+                        if (!isIntern) return false;
+                    } else if (rowDept.toLowerCase() !== selectedDept.toLowerCase()) {
+                        return false;
+                    }
+                }
+
+                if (selectedTitle) {
+                    if (selectedTitle.toLowerCase() === 'intern') {
+                        const isIntern = (rowTitle.toLowerCase().indexOf('intern') !== -1) || 
+                                         (rowEmpType.toLowerCase().indexOf('intern') !== -1) || 
+                                         (rowRole.toLowerCase().indexOf('intern') !== -1) ||
+                                         (rowDept.toLowerCase() === 'intern');
+                        if (!isIntern) return false;
+                    } else if (rowTitle.toLowerCase() !== selectedTitle.toLowerCase()) {
+                        return false;
+                    }
+                }
 
                 return true;
             }
         );
 
-        $('#emp-status-filter, #emp-location-filter, #emp-dept-filter').on('change', function() {
+        $('#emp-status-filter, #emp-location-filter, #emp-dept-filter, #emp-title-filter').on('change', function() {
             table.draw();
         });
     }
