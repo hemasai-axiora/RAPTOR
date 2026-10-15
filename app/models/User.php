@@ -124,6 +124,10 @@ class User extends Model {
             $this->db->beginTransaction();
         }
         try {
+            $rawStatus = strtolower($data['status'] ?? 'active');
+            $userStatus = in_array($rawStatus, ['active', 'inactive', 'suspended'], true) ? $rawStatus : ($rawStatus === 'terminated' ? 'inactive' : 'active');
+            $empStatus = in_array($rawStatus, ['active', 'suspended', 'terminated'], true) ? $rawStatus : ($rawStatus === 'inactive' ? 'suspended' : 'active');
+
             $this->query('INSERT INTO users (role_id, name, email, password, status, force_password_reset) 
                           VALUES (:rid, :name, :email, :pass, :status, :force_reset)');
             
@@ -133,7 +137,7 @@ class User extends Model {
             $this->bind(':name', $data['name']);
             $this->bind(':email', $data['email']);
             $this->bind(':pass', $hashed);
-            $this->bind(':status', $data['status']);
+            $this->bind(':status', $userStatus);
             $this->bind(':force_reset', $data['force_password_reset'] ?? 0);
 
             if (!$this->execute()) {
@@ -143,14 +147,14 @@ class User extends Model {
             $userId = $this->lastInsertId();
 
             // Insert into employees table
-            $this->query('INSERT INTO employees (user_id, employee_code, department, job_title, hire_date, date_of_joining, phone_number, salary, date_of_birth, employment_type, work_location, profile_photo, bio, emergency_contact, pan_number, aadhaar_number, uan, pf_applicable, esic_number, pay_grade, reporting_manager_id) 
-                          VALUES (:user_id, :employee_code, :department, :job_title, :hire_date, :date_of_joining, :phone_number, :salary, :date_of_birth, :employment_type, :work_location, :profile_photo, :bio, :emergency_contact, :pan_number, :aadhaar_number, :uan, :pf_applicable, :esic_number, :pay_grade, :reporting_manager_id)');
+            $this->query('INSERT INTO employees (user_id, employee_code, department, job_title, hire_date, date_of_joining, phone_number, salary, date_of_birth, employment_type, work_location, profile_photo, bio, emergency_contact, pan_number, aadhaar_number, uan, pf_applicable, esic_number, pay_grade, status, reporting_manager_id) 
+                          VALUES (:user_id, :employee_code, :department, :job_title, :hire_date, :date_of_joining, :phone_number, :salary, :date_of_birth, :employment_type, :work_location, :profile_photo, :bio, :emergency_contact, :pan_number, :aadhaar_number, :uan, :pf_applicable, :esic_number, :pay_grade, :emp_status, :reporting_manager_id)');
             
             $doj = !empty($data['date_of_joining']) ? $data['date_of_joining'] : date('Y-m-d');
             $this->bind(':user_id', $userId);
-            $this->bind(':employee_code', $data['employee_code']);
-            $this->bind(':department', $data['department'] ?? 'Sales');
-            $this->bind(':job_title', $data['job_title'] ?? 'Sales Executive');
+            $this->bind(':employee_code', $data['employee_code'] ?? ('EMP' . rand(10000, 99999)));
+            $this->bind(':department', !empty($data['department']) ? $data['department'] : 'Sales');
+            $this->bind(':job_title', !empty($data['job_title']) ? $data['job_title'] : 'Sales Executive');
             $this->bind(':hire_date', $doj);
             $this->bind(':date_of_joining', $doj);
             $this->bind(':phone_number', $data['phone_number'] ?? null);
@@ -167,6 +171,7 @@ class User extends Model {
             $this->bind(':pf_applicable', $data['pf_applicable'] ?? 0);
             $this->bind(':esic_number', $data['esic_number'] ?? null);
             $this->bind(':pay_grade', $data['pay_grade'] ?? null);
+            $this->bind(':emp_status', $empStatus);
             $this->bind(':reporting_manager_id', !empty($data['reporting_manager_id']) ? $data['reporting_manager_id'] : null);
 
             if (!$this->execute()) {
@@ -183,14 +188,14 @@ class User extends Model {
                 }
             }
 
-            // Insert bank details if provided
-            if ($employeeId && (!empty($data['bank_name']) || !empty($data['account_number']) || !empty($data['ifsc_code']))) {
+            // Insert bank details if both bank name and account number are provided
+            if ($employeeId && !empty($data['bank_name']) && !empty($data['account_number'])) {
                 $this->query('INSERT INTO bank_accounts (employee_id, account_holder_name, bank_name, account_number, ifsc_code, branch_name, account_type) 
                               VALUES (:employee_id, :holder, :bank, :acc, :ifsc, :branch, :type)');
                 $this->bind(':employee_id', $employeeId);
                 $this->bind(':holder', !empty($data['account_holder_name']) ? $data['account_holder_name'] : $data['name']);
-                $this->bind(':bank', $data['bank_name'] ?? '');
-                $this->bind(':acc', $data['account_number'] ?? '');
+                $this->bind(':bank', $data['bank_name']);
+                $this->bind(':acc', $data['account_number']);
                 $this->bind(':ifsc', $data['ifsc_code'] ?? '');
                 $this->bind(':branch', $data['branch_name'] ?? '');
                 $this->bind(':type', $data['account_type'] ?? 'Savings');
@@ -221,6 +226,10 @@ class User extends Model {
             $this->db->beginTransaction();
         }
         try {
+            $rawStatus = strtolower($data['status'] ?? 'active');
+            $userStatus = in_array($rawStatus, ['active', 'inactive', 'suspended'], true) ? $rawStatus : ($rawStatus === 'terminated' ? 'inactive' : 'active');
+            $empStatus = in_array($rawStatus, ['active', 'suspended', 'terminated'], true) ? $rawStatus : ($rawStatus === 'inactive' ? 'suspended' : 'active');
+
             if (!empty($data['password'])) {
                 $this->query('UPDATE users SET role_id = :rid, name = :name, email = :email, password = :pass, status = :status, force_password_reset = :force_reset WHERE user_id = :id');
                 $hashed = password_hash($data['password'], PASSWORD_BCRYPT, ['cost' => 10]);
@@ -232,7 +241,7 @@ class User extends Model {
             $this->bind(':rid', $data['role_id']);
             $this->bind(':name', $data['name']);
             $this->bind(':email', $data['email']);
-            $this->bind(':status', $data['status']);
+            $this->bind(':status', $userStatus);
             $this->bind(':force_reset', $data['force_password_reset'] ?? 0);
             $this->bind(':id', $data['user_id']);
 
@@ -241,13 +250,17 @@ class User extends Model {
             }
 
             // Update employees table
-            $this->query('SELECT employee_id, profile_photo FROM employees WHERE user_id = :uid');
+            $this->query('SELECT employee_id, profile_photo, hire_date, employee_code, department, job_title, reporting_manager_id FROM employees WHERE user_id = :uid');
             $this->bind(':uid', $data['user_id']);
             $emp = $this->single();
 
             if ($emp) {
                 $employeeId = $emp->employee_id;
-                $photo = $data['profile_photo'] ?: $emp->profile_photo;
+                $photo = !empty($data['profile_photo']) ? $data['profile_photo'] : $emp->profile_photo;
+                $empCode = !empty($data['employee_code']) ? $data['employee_code'] : ($emp->employee_code ?? ('EMP' . rand(10000, 99999)));
+                $doj = !empty($data['date_of_joining']) ? $data['date_of_joining'] : ($emp->hire_date ?? date('Y-m-d'));
+                $dept = !empty($data['department']) ? $data['department'] : ($emp->department ?? 'Sales');
+                $jobTitle = !empty($data['job_title']) ? $data['job_title'] : ($emp->job_title ?? 'Sales Executive');
 
                 $this->query('UPDATE employees SET 
                                 employee_code = :employee_code,
@@ -269,12 +282,12 @@ class User extends Model {
                                 pay_grade = :pay_grade,
                                 job_title = :job_title,
                                 department = :department,
+                                status = :emp_status,
                                 reporting_manager_id = :reporting_manager_id
                               WHERE employee_id = :employee_id');
                 
-                $doj = !empty($data['date_of_joining']) ? $data['date_of_joining'] : null;
-                $this->bind(':employee_code', $data['employee_code']);
-                $this->bind(':phone_number', $data['phone_number']);
+                $this->bind(':employee_code', $empCode);
+                $this->bind(':phone_number', $data['phone_number'] ?? null);
                 $this->bind(':salary', !empty($data['salary']) ? $data['salary'] : null);
                 $this->bind(':hire_date', $doj);
                 $this->bind(':date_of_joining', $doj);
@@ -282,16 +295,17 @@ class User extends Model {
                 $this->bind(':employment_type', $data['employment_type'] ?? 'Full-time');
                 $this->bind(':work_location', $data['work_location'] ?? 'Office');
                 $this->bind(':profile_photo', $photo);
-                $this->bind(':bio', $data['bio']);
-                $this->bind(':emergency_contact', $data['emergency_contact']);
-                $this->bind(':pan_number', $data['pan_number']);
-                $this->bind(':aadhaar_number', $data['aadhaar_number']);
-                $this->bind(':uan', $data['uan']);
+                $this->bind(':bio', $data['bio'] ?? null);
+                $this->bind(':emergency_contact', $data['emergency_contact'] ?? null);
+                $this->bind(':pan_number', $data['pan_number'] ?? null);
+                $this->bind(':aadhaar_number', $data['aadhaar_number'] ?? null);
+                $this->bind(':uan', $data['uan'] ?? null);
                 $this->bind(':pf_applicable', $data['pf_applicable'] ?? 0);
-                $this->bind(':esic_number', $data['esic_number']);
-                $this->bind(':pay_grade', $data['pay_grade']);
-                $this->bind(':job_title', $data['job_title'] ?? 'Sales Executive');
-                $this->bind(':department', $data['department'] ?? 'Sales');
+                $this->bind(':esic_number', $data['esic_number'] ?? null);
+                $this->bind(':pay_grade', $data['pay_grade'] ?? null);
+                $this->bind(':job_title', $jobTitle);
+                $this->bind(':department', $dept);
+                $this->bind(':emp_status', $empStatus);
                 $this->bind(':reporting_manager_id', array_key_exists('reporting_manager_id', $data) ? $data['reporting_manager_id'] : ($emp->reporting_manager_id ?? null));
                 $this->bind(':employee_id', $employeeId);
 
@@ -299,17 +313,18 @@ class User extends Model {
                     throw new Exception('Failed to update employee.');
                 }
             } else {
-                $this->query('INSERT INTO employees (user_id, employee_code, department, job_title, hire_date, phone_number, salary, date_of_joining, date_of_birth, employment_type, work_location, profile_photo, bio, emergency_contact, pan_number, aadhaar_number, uan, pf_applicable, esic_number, pay_grade, reporting_manager_id) 
-                              VALUES (:user_id, :employee_code, :department, :job_title, :hire_date, :phone_number, :salary, :date_of_joining, :date_of_birth, :employment_type, :work_location, :profile_photo, :bio, :emergency_contact, :pan_number, :aadhaar_number, :uan, :pf_applicable, :esic_number, :pay_grade, :reporting_manager_id)');
+                $doj = !empty($data['date_of_joining']) ? $data['date_of_joining'] : date('Y-m-d');
+                $this->query('INSERT INTO employees (user_id, employee_code, department, job_title, hire_date, phone_number, salary, date_of_joining, date_of_birth, employment_type, work_location, profile_photo, bio, emergency_contact, pan_number, aadhaar_number, uan, pf_applicable, esic_number, pay_grade, status, reporting_manager_id) 
+                              VALUES (:user_id, :employee_code, :department, :job_title, :hire_date, :phone_number, :salary, :date_of_joining, :date_of_birth, :employment_type, :work_location, :profile_photo, :bio, :emergency_contact, :pan_number, :aadhaar_number, :uan, :pf_applicable, :esic_number, :pay_grade, :emp_status, :reporting_manager_id)');
                 
                 $this->bind(':user_id', $data['user_id']);
-                $this->bind(':employee_code', $data['employee_code']);
-                $this->bind(':department', $data['department'] ?? 'Sales');
-                $this->bind(':job_title', $data['job_title'] ?? 'Sales Executive');
-                $this->bind(':hire_date', !empty($data['date_of_joining']) ? $data['date_of_joining'] : date('Y-m-d'));
+                $this->bind(':employee_code', $data['employee_code'] ?? ('EMP' . rand(10000, 99999)));
+                $this->bind(':department', !empty($data['department']) ? $data['department'] : 'Sales');
+                $this->bind(':job_title', !empty($data['job_title']) ? $data['job_title'] : 'Sales Executive');
+                $this->bind(':hire_date', $doj);
                 $this->bind(':phone_number', $data['phone_number'] ?? null);
                 $this->bind(':salary', !empty($data['salary']) ? $data['salary'] : null);
-                $this->bind(':date_of_joining', !empty($data['date_of_joining']) ? $data['date_of_joining'] : null);
+                $this->bind(':date_of_joining', $doj);
                 $this->bind(':date_of_birth', !empty($data['date_of_birth']) ? $data['date_of_birth'] : null);
                 $this->bind(':employment_type', $data['employment_type'] ?? 'Full-time');
                 $this->bind(':work_location', $data['work_location'] ?? 'Office');
@@ -322,6 +337,7 @@ class User extends Model {
                 $this->bind(':pf_applicable', $data['pf_applicable'] ?? 0);
                 $this->bind(':esic_number', $data['esic_number'] ?? null);
                 $this->bind(':pay_grade', $data['pay_grade'] ?? null);
+                $this->bind(':emp_status', $empStatus);
                 $this->bind(':reporting_manager_id', !empty($data['reporting_manager_id']) ? $data['reporting_manager_id'] : null);
 
                 if (!$this->execute()) {
@@ -338,44 +354,41 @@ class User extends Model {
                 }
             }
 
-            // Update bank details
-            $this->query('SELECT bank_account_id FROM bank_accounts WHERE employee_id = :emp_id');
-            $this->bind(':emp_id', $employeeId);
-            $bank = $this->single();
+            // Update bank details safely (never overwrite with blank strings if CSV omitted bank columns)
+            $hasIncomingBank = (!empty($data['bank_name']) && !empty($data['account_number']));
+            if ($employeeId && $hasIncomingBank) {
+                $this->query('SELECT * FROM bank_accounts WHERE employee_id = :emp_id');
+                $this->bind(':emp_id', $employeeId);
+                $bank = $this->single();
 
-            if ($bank) {
-                $this->query('UPDATE bank_accounts SET 
-                                account_holder_name = :holder,
-                                bank_name = :bank,
-                                account_number = :acc,
-                                ifsc_code = :ifsc,
-                                branch_name = :branch,
-                                account_type = :type
-                              WHERE bank_account_id = :bank_id');
-                $this->bind(':holder', !empty($data['account_holder_name']) ? $data['account_holder_name'] : $data['name']);
-                $this->bind(':bank', $data['bank_name'] ?? '');
-                $this->bind(':acc', $data['account_number'] ?? '');
-                $this->bind(':ifsc', $data['ifsc_code'] ?? '');
-                $this->bind(':branch', $data['branch_name'] ?? '');
-                $this->bind(':type', $data['account_type'] ?? 'Savings');
-                $this->bind(':bank_id', $bank->bank_account_id);
-                if (!$this->execute()) {
-                    throw new Exception('Failed to update bank account.');
-                }
-            } else {
-                if ($employeeId && (!empty($data['bank_name']) || !empty($data['account_number']) || !empty($data['ifsc_code']))) {
+                if ($bank) {
+                    $this->query('UPDATE bank_accounts SET 
+                                    account_holder_name = :holder,
+                                    bank_name = :bank,
+                                    account_number = :acc,
+                                    ifsc_code = :ifsc,
+                                    branch_name = :branch,
+                                    account_type = :type
+                                  WHERE bank_account_id = :bank_id');
+                    $this->bind(':holder', !empty($data['account_holder_name']) ? $data['account_holder_name'] : ($bank->account_holder_name ?? $data['name']));
+                    $this->bind(':bank', $data['bank_name']);
+                    $this->bind(':acc', $data['account_number']);
+                    $this->bind(':ifsc', !empty($data['ifsc_code']) ? $data['ifsc_code'] : ($bank->ifsc_code ?? ''));
+                    $this->bind(':branch', !empty($data['branch_name']) ? $data['branch_name'] : ($bank->branch_name ?? ''));
+                    $this->bind(':type', !empty($data['account_type']) ? $data['account_type'] : ($bank->account_type ?? 'Savings'));
+                    $this->bind(':bank_id', $bank->bank_account_id);
+                    $this->execute();
+                } else {
                     $this->query('INSERT INTO bank_accounts (employee_id, account_holder_name, bank_name, account_number, ifsc_code, branch_name, account_type) 
                                   VALUES (:employee_id, :holder, :bank, :acc, :ifsc, :branch, :type)');
                     $this->bind(':employee_id', $employeeId);
                     $this->bind(':holder', !empty($data['account_holder_name']) ? $data['account_holder_name'] : $data['name']);
-                    $this->bind(':bank', $data['bank_name'] ?? '');
-                    $this->bind(':acc', $data['account_number'] ?? '');
+                    $this->bind(':bank', $data['bank_name']);
+                    $this->bind(':acc', $data['account_number']);
                     $this->bind(':ifsc', $data['ifsc_code'] ?? '');
                     $this->bind(':branch', $data['branch_name'] ?? '');
                     $this->bind(':type', $data['account_type'] ?? 'Savings');
-                    if (!$this->execute()) {
-                        throw new Exception('Failed to insert bank account.');
-                    }
+                    $this->execute();
                 }
             }
 

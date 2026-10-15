@@ -98,10 +98,14 @@ class BulkImportService {
 
             $row = array_combine($headers, $data);
             
-            // CSV / Excel Formula Injection Prevention:
-            // Strip leading =, +, -, @ from all cells to prevent execution in spreadsheet viewers
+            // CSV / Excel Formula Injection Prevention & Scientific Notation Normalization:
             foreach ($row as $key => $val) {
                 $val = trim($val);
+                // Convert scientific notation e.g. 9.19877E+11 or 1.23457E+11 to standard integer digits
+                if (preg_match('/^[+-]?[0-9]*\.?[0-9]+[eE][+-]?[0-9]+$/', $val)) {
+                    $val = sprintf('%.0f', (float)$val);
+                }
+                // Strip leading =, +, -, @ from all cells to prevent execution in spreadsheet viewers
                 if (strlen($val) > 0 && in_array($val[0], ['=', '+', '-', '@'], true)) {
                     $val = ltrim($val, "=+-@ ");
                 }
@@ -237,23 +241,24 @@ class BulkImportService {
                         $errors[$fieldName] = "Invalid email format '$val'. Expected a valid email address.";
                     }
                 } elseif ($fieldSpec['type'] === 'date') {
-                    // Flexibly accept YYYY-MM-DD, DD-MM-YYYY, YYYY/MM/DD, DD/MM/YYYY, etc.
-                    $cleanDate = str_replace('/', '-', $val);
-                    $ts = strtotime($cleanDate);
+                    // Flexibly accept DD-MM-YYYY, YYYY-MM-DD, DD/MM/YYYY, YYYY/MM/DD, etc.
+                    $cleanDate = trim(str_replace('/', '-', $val));
                     $parsed = null;
-                    if ($ts && $ts > 0) {
-                        $parsed = date('Y-m-d', $ts);
-                    } else {
-                        foreach (['d-m-Y', 'Y-m-d', 'm-d-Y', 'd.m.Y'] as $fmt) {
-                            $d = DateTime::createFromFormat($fmt, $cleanDate);
-                            if ($d !== false) {
-                                $parsed = $d->format('Y-m-d');
-                                break;
-                            }
+                    foreach (['d-m-Y', 'Y-m-d', 'm-d-Y', 'd.m.Y', 'd-M-Y', 'd-m-y', 'Y/m/d', 'd/m/Y'] as $fmt) {
+                        $d = DateTime::createFromFormat($fmt, $cleanDate);
+                        if ($d !== false) {
+                            $parsed = $d->format('Y-m-d');
+                            break;
                         }
                     }
                     if (!$parsed) {
-                        $errors[$fieldName] = "Invalid date format. Expected DD-MM-YYYY or YYYY-MM-DD.";
+                        $ts = strtotime($cleanDate);
+                        if ($ts && $ts > 0) {
+                            $parsed = date('Y-m-d', $ts);
+                        }
+                    }
+                    if (!$parsed) {
+                        $errors[$fieldName] = "Invalid date format '$val'. Expected DD-MM-YYYY or YYYY-MM-DD.";
                     } else {
                         $mappedRow[$fieldName] = $parsed;
                     }
@@ -362,12 +367,17 @@ class BulkImportService {
                     // 'update' or 'create' (create anyway) are handled by the strategy setting passed to callback
                 }
 
+                $sp = 'sp_' . $row['index'];
+                $this->db->exec("SAVEPOINT $sp");
+
                 try {
                     // Call the custom module-specific import callback
                     $success = call_user_func($importCallback, $row['data'], $row['action'], $duplicateStrategy);
                     if ($success) {
+                        $this->db->exec("RELEASE SAVEPOINT $sp");
                         $imported++;
                     } else {
+                        $this->db->exec("ROLLBACK TO SAVEPOINT $sp");
                         $failed++;
                         $errors[] = [
                             'row' => $row['index'],
@@ -375,7 +385,8 @@ class BulkImportService {
                             'reason' => 'Database insert/update failed.'
                         ];
                     }
-                } catch (Exception $e) {
+                } catch (Throwable $e) {
+                    $this->db->exec("ROLLBACK TO SAVEPOINT $sp");
                     $failed++;
                     $errors[] = [
                         'row' => $row['index'],
@@ -387,9 +398,11 @@ class BulkImportService {
 
             // Commit transaction
             $this->db->commit();
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             // Rollback everything on general system transaction failures
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             throw new Exception("Transaction rolled back: " . $e->getMessage());
         }
 
