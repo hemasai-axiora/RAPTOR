@@ -16,6 +16,10 @@ class PayrollController extends Controller {
         $this->userModel = $this->model('User');
     }
 
+    public function index() {
+        $this->dashboard();
+    }
+
     // 1. Payroll Dashboard
     public function dashboard() {
         if (in_array($_SESSION['user_role'], ['analyst', 'employee', 'sales_person'], true)) {
