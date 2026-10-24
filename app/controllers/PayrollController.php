@@ -3,6 +3,8 @@
 
 require_once APPROOT . '/core/PayslipHelper.php';
 require_once APPROOT . '/core/PayslipPdfService.php';
+require_once APPROOT . '/services/BulkImportService.php';
+require_once APPROOT . '/services/EmailService.php';
 
 class PayrollController extends Controller {
     private $payrollModel;
@@ -639,6 +641,650 @@ class PayrollController extends Controller {
         exit();
     }
 
+    // ---------------- Bulk Upload Salary Structures ----------------
+
+    /**
+     * Download CSV template for salary structures.
+     * Optional ?blank=1 returns an empty template with 2 sample rows.
+     * Default includes all active employees with current compensation.
+     */
+    public function download_salary_template() {
+        if (in_array($_SESSION['user_role'], ['analyst', 'employee', 'sales_person'], true)) {
+            $this->redirect('index.php?route=dashboard/index');
+            return;
+        }
+        $this->requirePermission('payroll', 'view');
+
+        $isBlank = isset($_GET['blank']) && $_GET['blank'] == '1';
+        $filename = 'salary_structures_template_' . ($isBlank ? 'blank' : 'active_employees') . '_' . date('Ymd') . '.csv';
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=' . $filename);
+
+        $out = fopen('php://output', 'w');
+        // UTF-8 BOM for Microsoft Excel compatibility
+        fputs($out, "\xEF\xBB\xBF");
+
+        $headers = [
+            'Employee_Code',
+            'Employee_Name',
+            'Basic_Salary',
+            'HRA',
+            'Special_Allowance',
+            'Other_Allowance',
+            'Medical_Allowance',
+            'Travel_Allowance',
+            'Bonus',
+            'Other_Earnings',
+            'PF',
+            'Employer_PF',
+            'Gratuity',
+            'ESIC',
+            'Professional_Tax',
+            'TDS',
+            'Salary_Type',
+            'Effective_Date',
+            'Revision_Reason'
+        ];
+        fputcsv($out, $headers);
+
+        if ($isBlank) {
+            fputcsv($out, [
+                'EMP-2026-00001',
+                'Sample Employee One',
+                '35000',
+                '14000',
+                '7000',
+                '3000',
+                '1250',
+                '1600',
+                '0',
+                '0',
+                '4200',
+                '4200',
+                '1684',
+                '0',
+                '200',
+                '1500',
+                'Monthly',
+                date('Y-m-d'),
+                'Annual Appraisal Revision'
+            ]);
+            fputcsv($out, [
+                'EMP-2026-00002',
+                'Sample Employee Two',
+                '28000',
+                '11200',
+                '5600',
+                '2000',
+                '1250',
+                '1600',
+                '0',
+                '0',
+                '3360',
+                '3360',
+                '1347',
+                '0',
+                '200',
+                '0',
+                'Monthly',
+                date('Y-m-d'),
+                'Market Rate Adjustment'
+            ]);
+        } else {
+            $employees = $this->payrollModel->getActiveEmployees();
+            foreach ($employees as $emp) {
+                $struct = $this->payrollModel->getSalaryStructureByEmployeeId($emp->employee_id);
+                $currBasic = $struct ? (float)$struct->basic_salary : round((float)($emp->salary ?? 25000) * 0.50, 2);
+                $currHra = $struct ? (float)$struct->hra : round($currBasic * 0.40, 2);
+                $currSpecial = $struct ? (float)$struct->special_allowance : round($currBasic * 0.20, 2);
+                $currOther = $struct ? (float)($struct->other_allowance ?? 0) : 2000.00;
+                $currMed = $struct ? (float)$struct->medical_allowance : 1250.00;
+                $currTravel = $struct ? (float)$struct->travel_allowance : 1600.00;
+                $currBonus = $struct ? (float)$struct->bonus : 0.00;
+                $currOtherEarn = $struct ? (float)$struct->other_earnings : 0.00;
+                $currPf = $struct ? (float)$struct->pf : round($currBasic * 0.12, 2);
+                $currEmpPf = $struct ? (float)($struct->employer_pf ?? $currPf) : $currPf;
+                $currGratuity = $struct ? (float)($struct->gratuity ?? round($currBasic * 0.0481, 2)) : round($currBasic * 0.0481, 2);
+                $currEsic = $struct ? (float)$struct->esic : 0.00;
+                $currPt = $struct ? (float)$struct->professional_tax : 200.00;
+                $currTds = $struct ? (float)$struct->tds : 0.00;
+                $salaryType = $struct ? ($struct->salary_type ?? 'Monthly') : 'Monthly';
+
+                fputcsv($out, [
+                    $emp->employee_code,
+                    $emp->name,
+                    $currBasic > 0 ? $currBasic : '25000',
+                    $currHra,
+                    $currSpecial,
+                    $currOther,
+                    $currMed,
+                    $currTravel,
+                    $currBonus,
+                    $currOtherEarn,
+                    $currPf,
+                    $currEmpPf,
+                    $currGratuity,
+                    $currEsic,
+                    $currPt,
+                    $currTds,
+                    $salaryType,
+                    date('Y-m-d'),
+                    'Bulk Salary Structure Update'
+                ]);
+            }
+        }
+
+        fclose($out);
+        exit();
+    }
+
+    /**
+     * AJAX Validate CSV and return parsed preview.
+     */
+    public function validate_bulk_structures() {
+        if (in_array($_SESSION['user_role'], ['analyst', 'employee', 'sales_person'], true)) {
+            $this->jsonError('Access Denied.', 403);
+            return;
+        }
+        $this->requirePermission('payroll', 'edit');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->jsonError('Invalid request method.', 405);
+            return;
+        }
+
+        $csrf = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_GET['csrf_token'] ?? '';
+        if (!$this->validateCsrfToken($csrf)) {
+            $this->jsonError('Security Error: CSRF token validation failed.', 403);
+            return;
+        }
+
+        if (empty($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            $this->jsonError('No CSV file uploaded or an upload error occurred.');
+            return;
+        }
+
+        $file = $_FILES['csv_file'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if ($ext !== 'csv') {
+            $this->jsonError('Only CSV files are allowed.');
+            return;
+        }
+
+        $defaultEffectiveDate = !empty($_POST['effective_date']) ? trim($_POST['effective_date']) : date('Y-m-d');
+        $defaultReason = !empty($_POST['revision_reason']) ? trim($_POST['revision_reason']) : 'Bulk Salary Structure Upload';
+
+        try {
+            $importer = new BulkImportService();
+            $rawRows = $importer->parseCsv($file['tmp_name']);
+
+            if (empty($rawRows)) {
+                $this->jsonError('The uploaded CSV file is empty or contains only headers.');
+                return;
+            }
+
+            // Fetch active employees and create lookup indexes
+            $activeEmployees = $this->payrollModel->getActiveEmployees();
+            $codeMap = [];
+            $emailMap = [];
+            $idMap = [];
+
+            foreach ($activeEmployees as $emp) {
+                if (!empty($emp->employee_code)) {
+                    $codeMap[strtolower(trim($emp->employee_code))] = $emp;
+                }
+                if (!empty($emp->email)) {
+                    $emailMap[strtolower(trim($emp->email))] = $emp;
+                }
+                $idMap[(int)$emp->employee_id] = $emp;
+            }
+
+            $aliasMap = [
+                'employee_code' => ['employee_code', 'emp_code', 'emp_id', 'employee_id', 'code', 'id', 'empid'],
+                'email' => ['email', 'email_address', 'emp_email', 'employee_email', 'mail'],
+                'employee_name' => ['employee_name', 'name', 'full_name', 'emp_name'],
+                'basic_salary' => ['basic_salary', 'basic', 'basic_pay', 'basic_sal'],
+                'hra' => ['hra', 'house_rent_allowance', 'h_r_a'],
+                'special_allowance' => ['special_allowance', 'special', 'special_all', 'special_allow'],
+                'other_allowance' => ['other_allowance', 'other_allow', 'other_all', 'other_allowances'],
+                'medical_allowance' => ['medical_allowance', 'medical', 'med_allowance', 'med'],
+                'travel_allowance' => ['travel_allowance', 'travel', 'conveyance', 'conveyance_allowance', 'transport_allowance'],
+                'bonus' => ['bonus', 'statutory_bonus', 'annual_bonus', 'incentive'],
+                'other_earnings' => ['other_earnings', 'other_earning', 'additional_earnings'],
+                'pf' => ['pf', 'provident_fund', 'epf', 'employee_pf'],
+                'employer_pf' => ['employer_pf', 'company_pf', 'pf_employer'],
+                'gratuity' => ['gratuity', 'grat'],
+                'esic' => ['esic', 'esi', 'employee_esic'],
+                'professional_tax' => ['professional_tax', 'pt', 'prof_tax'],
+                'tds' => ['tds', 'tax', 'income_tax', 'tds_deduction'],
+                'salary_type' => ['salary_type', 'type', 'wage_type'],
+                'effective_date' => ['effective_date', 'rev_effective_date', 'date'],
+                'revision_reason' => ['revision_reason', 'reason', 'remarks', 'note']
+            ];
+
+            $processedRows = [];
+            $structuredErrors = [];
+            $validCount = 0;
+            $updateCount = 0;
+            $newCount = 0;
+            $errorCount = 0;
+            $seenInFile = [];
+
+            foreach ($rawRows as $idx => $r) {
+                $rowNumber = $idx + 2; // account for header line (1-indexed)
+                $mapped = [];
+
+                foreach ($aliasMap as $canonKey => $aliases) {
+                    $foundVal = null;
+                    foreach ($r as $colHeader => $cellVal) {
+                        $cleanCol = preg_replace('/[^a-z0-9]+/', '_', strtolower(trim($colHeader)));
+                        $cleanCol = trim($cleanCol, '_');
+                        if ($cleanCol === $canonKey || in_array($cleanCol, $aliases, true)) {
+                            $foundVal = trim($cellVal);
+                            break;
+                        }
+                    }
+                    $mapped[$canonKey] = $foundVal;
+                }
+
+                $errors = [];
+                $emp = null;
+
+                // 1. Identify Employee
+                $rawCode = $mapped['employee_code'] ?? '';
+                $rawEmail = $mapped['email'] ?? '';
+
+                if (!empty($rawCode) && isset($codeMap[strtolower($rawCode)])) {
+                    $emp = $codeMap[strtolower($rawCode)];
+                } elseif (!empty($rawEmail) && isset($emailMap[strtolower($rawEmail)])) {
+                    $emp = $emailMap[strtolower($rawEmail)];
+                } elseif (is_numeric($rawCode) && isset($idMap[(int)$rawCode])) {
+                    $emp = $idMap[(int)$rawCode];
+                }
+
+                if (!$emp) {
+                    $identifier = !empty($rawCode) ? $rawCode : (!empty($rawEmail) ? $rawEmail : "(Blank Identifier)");
+                    $errors['employee'] = "Employee '{$identifier}' not found in active employees directory.";
+                }
+
+                // Check duplicate inside file
+                if ($emp) {
+                    if (isset($seenInFile[$emp->employee_id])) {
+                        $errors['duplicate'] = "Duplicate entry: Employee {$emp->name} ({$emp->employee_code}) appears multiple times in this CSV file.";
+                    } else {
+                        $seenInFile[$emp->employee_id] = true;
+                    }
+                }
+
+                // 2. Validate Salary Numbers
+                $rawBasic = $mapped['basic_salary'];
+                if ($rawBasic === null || $rawBasic === '' || !is_numeric($rawBasic)) {
+                    $errors['basic_salary'] = "Basic salary is required and must be a numeric value.";
+                    $basic = 0.00;
+                } else {
+                    $basic = round((float)$rawBasic, 2);
+                    if ($basic <= 0) {
+                        $errors['basic_salary'] = "Basic salary must be greater than zero.";
+                    }
+                }
+
+                $hra = (isset($mapped['hra']) && $mapped['hra'] !== '' && is_numeric($mapped['hra']))
+                    ? round((float)$mapped['hra'], 2)
+                    : round($basic * 0.40, 2);
+
+                $special = (isset($mapped['special_allowance']) && $mapped['special_allowance'] !== '' && is_numeric($mapped['special_allowance']))
+                    ? round((float)$mapped['special_allowance'], 2)
+                    : 0.00;
+
+                $otherAll = (isset($mapped['other_allowance']) && $mapped['other_allowance'] !== '' && is_numeric($mapped['other_allowance']))
+                    ? round((float)$mapped['other_allowance'], 2)
+                    : 0.00;
+
+                $med = (isset($mapped['medical_allowance']) && $mapped['medical_allowance'] !== '' && is_numeric($mapped['medical_allowance']))
+                    ? round((float)$mapped['medical_allowance'], 2)
+                    : 0.00;
+
+                $travel = (isset($mapped['travel_allowance']) && $mapped['travel_allowance'] !== '' && is_numeric($mapped['travel_allowance']))
+                    ? round((float)$mapped['travel_allowance'], 2)
+                    : 0.00;
+
+                $bonus = (isset($mapped['bonus']) && $mapped['bonus'] !== '' && is_numeric($mapped['bonus']))
+                    ? round((float)$mapped['bonus'], 2)
+                    : 0.00;
+
+                $otherEarn = (isset($mapped['other_earnings']) && $mapped['other_earnings'] !== '' && is_numeric($mapped['other_earnings']))
+                    ? round((float)$mapped['other_earnings'], 2)
+                    : 0.00;
+
+                $gross = $basic + $hra + $special + $otherAll + $med + $travel + $bonus + $otherEarn;
+
+                $pf = (isset($mapped['pf']) && $mapped['pf'] !== '' && is_numeric($mapped['pf']))
+                    ? round((float)$mapped['pf'], 2)
+                    : round($basic * 0.12, 2);
+
+                $empPf = (isset($mapped['employer_pf']) && $mapped['employer_pf'] !== '' && is_numeric($mapped['employer_pf']))
+                    ? round((float)$mapped['employer_pf'], 2)
+                    : $pf;
+
+                $gratuity = (isset($mapped['gratuity']) && $mapped['gratuity'] !== '' && is_numeric($mapped['gratuity']))
+                    ? round((float)$mapped['gratuity'], 2)
+                    : round($basic * 0.0481, 2);
+
+                $esic = (isset($mapped['esic']) && $mapped['esic'] !== '' && is_numeric($mapped['esic']))
+                    ? round((float)$mapped['esic'], 2)
+                    : ($gross <= 21000 ? round($gross * 0.0075, 2) : 0.00);
+
+                $pt = (isset($mapped['professional_tax']) && $mapped['professional_tax'] !== '' && is_numeric($mapped['professional_tax']))
+                    ? round((float)$mapped['professional_tax'], 2)
+                    : 200.00;
+
+                $tds = (isset($mapped['tds']) && $mapped['tds'] !== '' && is_numeric($mapped['tds']))
+                    ? round((float)$mapped['tds'], 2)
+                    : 0.00;
+
+                $totalDeductions = $pf + $esic + $pt + $tds;
+                $netSalary = $gross - $totalDeductions;
+                $ctc = $gross + $empPf + $gratuity;
+
+                $salaryType = !empty($mapped['salary_type']) && in_array(ucfirst(strtolower($mapped['salary_type'])), ['Monthly', 'Hourly'], true)
+                    ? ucfirst(strtolower($mapped['salary_type']))
+                    : 'Monthly';
+
+                $effectiveDate = !empty($mapped['effective_date']) ? trim($mapped['effective_date']) : $defaultEffectiveDate;
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $effectiveDate)) {
+                    $effectiveDate = $defaultEffectiveDate;
+                }
+
+                $revisionReason = !empty($mapped['revision_reason']) ? trim($mapped['revision_reason']) : $defaultReason;
+
+                // Check existing structure
+                $existingStruct = $emp ? $this->payrollModel->getSalaryStructureByEmployeeId($emp->employee_id) : null;
+                $action = $existingStruct ? 'update' : 'create';
+
+                $prevGross = 0.00;
+                $prevCtc = 0.00;
+                if ($existingStruct) {
+                    $prevGross = (float)$existingStruct->basic_salary + (float)$existingStruct->hra + (float)$existingStruct->special_allowance + (float)($existingStruct->other_allowance ?? 0) + (float)$existingStruct->medical_allowance + (float)$existingStruct->travel_allowance + (float)$existingStruct->bonus + (float)$existingStruct->other_earnings;
+                    $prevCtc = $prevGross + (float)($existingStruct->employer_pf ?? $existingStruct->pf) + (float)($existingStruct->gratuity ?? round((float)$existingStruct->basic_salary * 0.0481, 2));
+                }
+
+                $status = empty($errors) ? 'valid' : 'error';
+                if ($status === 'valid') {
+                    $validCount++;
+                    if ($action === 'update') {
+                        $updateCount++;
+                    } else {
+                        $newCount++;
+                    }
+                } else {
+                    $errorCount++;
+                    foreach ($errors as $field => $msg) {
+                        $structuredErrors[] = [
+                            'row' => $rowNumber,
+                            'field' => $field,
+                            'message' => $msg
+                        ];
+                    }
+                }
+
+                $processedRows[] = [
+                    'row' => $rowNumber,
+                    'status' => $status,
+                    'action' => $action,
+                    'errors' => $errors,
+                    'employee_id' => $emp ? $emp->employee_id : null,
+                    'employee_code' => $emp ? $emp->employee_code : ($rawCode ?: 'N/A'),
+                    'employee_name' => $emp ? $emp->name : ($mapped['employee_name'] ?: 'Unknown'),
+                    'job_title' => $emp ? ($emp->job_title ?? '') : '',
+                    'department' => $emp ? ($emp->department ?? '') : '',
+                    'salary_type' => $salaryType,
+                    'basic_salary' => $basic,
+                    'hra' => $hra,
+                    'special_allowance' => $special,
+                    'other_allowance' => $otherAll,
+                    'medical_allowance' => $med,
+                    'travel_allowance' => $travel,
+                    'bonus' => $bonus,
+                    'other_earnings' => $otherEarn,
+                    'gross_salary' => $gross,
+                    'pf' => $pf,
+                    'employer_pf' => $empPf,
+                    'gratuity' => $gratuity,
+                    'esic' => $esic,
+                    'professional_tax' => $pt,
+                    'tds' => $tds,
+                    'total_deductions' => $totalDeductions,
+                    'net_salary' => $netSalary,
+                    'ctc' => $ctc,
+                    'previous_gross' => $prevGross,
+                    'previous_ctc' => $prevCtc,
+                    'effective_date' => $effectiveDate,
+                    'revision_reason' => $revisionReason
+                ];
+            }
+
+            // Save in session for import confirmation
+            $_SESSION['bulk_salary_rows'] = $processedRows;
+            $_SESSION['bulk_salary_meta'] = [
+                'filename' => htmlspecialchars($file['name']),
+                'total_rows' => count($processedRows),
+                'valid_count' => $validCount,
+                'uploaded_at' => time()
+            ];
+
+            $this->json([
+                'success' => true,
+                'total_rows' => count($processedRows),
+                'valid_count' => $validCount,
+                'update_count' => $updateCount,
+                'new_count' => $newCount,
+                'error_count' => $errorCount,
+                'rows' => $processedRows,
+                'structured_errors' => $structuredErrors
+            ]);
+        } catch (Exception $e) {
+            error_log("[Bulk Salary Structure Upload Error] " . $e->getMessage());
+            $this->jsonError($e->getMessage(), 400);
+        }
+    }
+
+    /**
+     * AJAX Execute bulk import after user confirmation.
+     */
+    public function bulk_import_structures() {
+        if (in_array($_SESSION['user_role'], ['analyst', 'employee', 'sales_person'], true)) {
+            $this->jsonError('Access Denied.', 403);
+            return;
+        }
+        $this->requirePermission('payroll', 'edit');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->jsonError('Invalid request method.', 405);
+            return;
+        }
+
+        $input = $this->jsonInput();
+        $csrf = $input['csrf_token'] ?? $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_GET['csrf_token'] ?? '';
+        if (!$this->validateCsrfToken($csrf)) {
+            $this->jsonError('Security Error: CSRF token validation failed.', 403);
+            return;
+        }
+
+        $duplicateStrategy = $input['duplicate_strategy'] ?? $_POST['duplicate_strategy'] ?? 'update';
+        $batchEffectiveDate = $input['batch_effective_date'] ?? $_POST['batch_effective_date'] ?? date('Y-m-d');
+        $batchReason = $input['batch_revision_reason'] ?? $_POST['batch_revision_reason'] ?? 'Bulk Salary Structure Upload';
+
+        if (empty($_SESSION['bulk_salary_rows'])) {
+            $this->jsonError('No validated upload data found in session. Please upload the CSV again.');
+            return;
+        }
+
+        $rows = $_SESSION['bulk_salary_rows'];
+        $validRows = array_filter($rows, function($r) {
+            return $r['status'] === 'valid' && !empty($r['employee_id']);
+        });
+
+        if (empty($validRows)) {
+            $this->jsonError('No valid salary structure rows found to import.');
+            return;
+        }
+
+        $imported = 0;
+        $updated = 0;
+        $skipped = 0;
+        $failed = 0;
+        $errors = [];
+
+        $db = Database::getInstance()->getConnection();
+        $empSalaryUpdateStmt = $db->prepare('UPDATE employees SET salary = :sal WHERE employee_id = :emp_id');
+
+        foreach ($validRows as $row) {
+            $empId = (int)$row['employee_id'];
+            $isUpdate = ($row['action'] === 'update');
+
+            if ($isUpdate && $duplicateStrategy === 'skip') {
+                $skipped++;
+                continue;
+            }
+
+            $effectiveDate = !empty($row['effective_date']) ? $row['effective_date'] : $batchEffectiveDate;
+            $reason = !empty($row['revision_reason']) ? $row['revision_reason'] : $batchReason;
+
+            $formData = [
+                'employee_id' => $empId,
+                'salary_type' => $row['salary_type'] ?? 'Monthly',
+                'basic_salary' => $row['basic_salary'],
+                'hra' => $row['hra'],
+                'special_allowance' => $row['special_allowance'],
+                'other_allowance' => $row['other_allowance'],
+                'medical_allowance' => $row['medical_allowance'],
+                'travel_allowance' => $row['travel_allowance'],
+                'bonus' => $row['bonus'],
+                'other_earnings' => $row['other_earnings'],
+                'pf' => $row['pf'],
+                'employer_pf' => $row['employer_pf'],
+                'gratuity' => $row['gratuity'],
+                'esic' => $row['esic'],
+                'professional_tax' => $row['professional_tax'],
+                'tds' => $row['tds']
+            ];
+
+            try {
+                if ($this->payrollModel->saveSalaryStructure($formData, $_SESSION['user_id'], $reason, $effectiveDate)) {
+                    // Sync salary field on employees table
+                    $empSalaryUpdateStmt->execute([
+                        ':sal' => $row['gross_salary'],
+                        ':emp_id' => $empId
+                    ]);
+
+                    if ($isUpdate) {
+                        $updated++;
+                    } else {
+                        $imported++;
+                    }
+                } else {
+                    $failed++;
+                    $errors[] = [
+                        'row' => $row['row'],
+                        'employee_code' => $row['employee_code'],
+                        'employee_name' => $row['employee_name'],
+                        'message' => 'Failed to save salary structure to database.',
+                        'basic_salary' => $row['basic_salary'],
+                        'gross_salary' => $row['gross_salary']
+                    ];
+                }
+            } catch (Exception $e) {
+                $failed++;
+                $errors[] = [
+                    'row' => $row['row'],
+                    'employee_code' => $row['employee_code'],
+                    'employee_name' => $row['employee_name'],
+                    'message' => $e->getMessage(),
+                    'basic_salary' => $row['basic_salary'],
+                    'gross_salary' => $row['gross_salary']
+                ];
+            }
+        }
+
+        // Store failed errors in session for error report download
+        $_SESSION['bulk_salary_errors'] = $errors;
+
+        // Log in import_logs
+        try {
+            $logStmt = $db->prepare('INSERT INTO import_logs (user_id, module, filename, rows_imported, rows_skipped, rows_failed) VALUES (:uid, :mod, :fn, :imp, :skip, :fail)');
+            $logStmt->execute([
+                ':uid' => $_SESSION['user_id'] ?? 0,
+                ':mod' => 'salary_structures',
+                ':fn' => $_SESSION['bulk_salary_meta']['filename'] ?? 'salary_structures_bulk.csv',
+                ':imp' => ($imported + $updated),
+                ':skip' => $skipped,
+                ':fail' => $failed
+            ]);
+        } catch (Exception $e) {
+            // Ignore logging failures
+        }
+
+        // Clean session rows
+        unset($_SESSION['bulk_salary_rows']);
+        unset($_SESSION['bulk_salary_meta']);
+
+        $this->json([
+            'success' => true,
+            'imported' => $imported,
+            'updated' => $updated,
+            'total_processed' => ($imported + $updated),
+            'skipped' => $skipped,
+            'failed' => $failed,
+            'errors' => $errors
+        ]);
+    }
+
+    /**
+     * Download CSV report of failed rows during salary structure import.
+     */
+    public function download_salary_import_errors() {
+        if (in_array($_SESSION['user_role'], ['analyst', 'employee', 'sales_person'], true)) {
+            $this->redirect('index.php?route=dashboard/index');
+            return;
+        }
+        $this->requirePermission('payroll', 'view');
+
+        $errors = $_SESSION['bulk_salary_errors'] ?? [];
+        if (empty($errors)) {
+            die("No error report available.");
+        }
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=salary_structure_failed_rows_' . date('Ymd_His') . '.csv');
+
+        $out = fopen('php://output', 'w');
+        fputs($out, "\xEF\xBB\xBF");
+
+        fputcsv($out, [
+            'Row_Number',
+            'Employee_Code',
+            'Employee_Name',
+            'Failure_Reason',
+            'Basic_Salary',
+            'Gross_Salary'
+        ]);
+
+        foreach ($errors as $err) {
+            fputcsv($out, [
+                $err['row'] ?? '',
+                $err['employee_code'] ?? '',
+                $err['employee_name'] ?? '',
+                $err['message'] ?? 'Import failed',
+                $err['basic_salary'] ?? '',
+                $err['gross_salary'] ?? ''
+            ]);
+        }
+
+        fclose($out);
+        exit();
+    }
+
     // 4. Process Payroll Runs
     public function processing() {
         if (in_array($_SESSION['user_role'], ['analyst', 'employee', 'sales_person'], true)) {
@@ -912,7 +1558,38 @@ class PayrollController extends Controller {
 
                 if ($runId) {
                     $this->recalculateRunForMonth($month);
-                    $_SESSION['payroll_success'] = "Payroll run for " . PayslipHelper::formatMonthYear($month) . " calculated and synchronized successfully.";
+
+                    // Email Integration: Automatically send payslips to employee emails upon generation
+                    $mailConfig = EmailService::getConfig();
+                    $formRequested = isset($_POST['send_email_on_generate']) ? ((int)$_POST['send_email_on_generate'] === 1) : null;
+                    $autoSendEnabled = ($formRequested !== null) ? $formRequested : ($mailConfig['auto_send'] === '1');
+
+                    $emailSummary = '';
+                    if ($autoSendEnabled) {
+                        $details = $this->payrollModel->getPayrollDetailsByRunId($runId);
+                        $sentCount = 0;
+                        $failedCount = 0;
+                        $lastError = '';
+                        foreach ($details as $slip) {
+                            $res = EmailService::sendPayslip($slip);
+                            if ($res['success']) {
+                                $this->payrollModel->updateEmailStatus($slip->payroll_detail_id, 'sent', null, $res['subject'], $res['body']);
+                                $sentCount++;
+                            } else {
+                                $lastError = $res['error'] ?? 'Mail dispatch error';
+                                $this->payrollModel->updateEmailStatus($slip->payroll_detail_id, 'failed', $lastError, $res['subject'], $res['body']);
+                                $failedCount++;
+                            }
+                        }
+                        if ($sentCount > 0) {
+                            $emailSummary = " Dispatched {$sentCount} salary slip email(s) with official PDF attachments.";
+                        }
+                        if ($failedCount > 0) {
+                            $emailSummary .= " ({$failedCount} email(s) pending/failed" . (!empty($lastError) ? ": " . htmlspecialchars($lastError) : "") . ").";
+                        }
+                    }
+
+                    $_SESSION['payroll_success'] = "Payroll run for " . PayslipHelper::formatMonthYear($month) . " calculated and synchronized successfully.{$emailSummary}";
                     $this->redirect('index.php?route=payroll/processing&run_id=' . $runId);
                     return;
                 }
@@ -956,7 +1633,33 @@ class PayrollController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($this->payrollModel->updateRunStatus($runId, 'released', 'released_by', $_SESSION['user_id'])) {
                 $this->payrollModel->markRunDetailsPaid($runId);
-                $_SESSION['payroll_success'] = 'Payroll has been released and payslips are now available to employees.';
+
+                $emailSummary = '';
+                if (!empty($_POST['send_email_on_release'])) {
+                    $details = $this->payrollModel->getPayrollDetailsByRunId($runId);
+                    $sentCount = 0;
+                    $failedCount = 0;
+                    $lastError = '';
+                    foreach ($details as $slip) {
+                        $res = EmailService::sendPayslip($slip);
+                        if ($res['success']) {
+                            $this->payrollModel->updateEmailStatus($slip->payroll_detail_id, 'sent', null, $res['subject'], $res['body']);
+                            $sentCount++;
+                        } else {
+                            $lastError = $res['error'] ?? 'Mail dispatch error';
+                            $this->payrollModel->updateEmailStatus($slip->payroll_detail_id, 'failed', $lastError, $res['subject'], $res['body']);
+                            $failedCount++;
+                        }
+                    }
+                    if ($sentCount > 0) {
+                        $emailSummary = " Dispatched {$sentCount} payslip email(s) with official PDF attachments to employees.";
+                    }
+                    if ($failedCount > 0) {
+                        $emailSummary .= " ({$failedCount} email(s) pending/failed" . (!empty($lastError) ? ": " . htmlspecialchars($lastError) : "") . ").";
+                    }
+                }
+
+                $_SESSION['payroll_success'] = 'Payroll has been released and payslips are now available to employees.' . (!empty($emailSummary) ? ' ' . $emailSummary : '');
             } else {
                 $_SESSION['payroll_error'] = 'Failed to release payroll.';
             }
@@ -1064,75 +1767,34 @@ class PayrollController extends Controller {
         if (empty($detail->email) || !filter_var($detail->email, FILTER_VALIDATE_EMAIL)) {
             $this->payrollModel->updateEmailStatus($detailId, 'failed', 'Invalid or missing email address');
             $_SESSION['payroll_error'] = "Employee has no valid registered email address.";
-            $this->redirect('index.php?route=payroll/payslips&run_id=' . $detail->payroll_run_id);
+            $redirect = !empty($_POST['redirect_to_processing']) ? 'payroll/processing' : 'payroll/payslips';
+            $this->redirect('index.php?route=' . $redirect . '&run_id=' . $detail->payroll_run_id);
             return;
         }
-
-        $monthYearFormatted = PayslipHelper::formatMonthYear($detail->month_year);
 
         // Custom subject & body from POST or defaults
         $customSubject = trim($_POST['email_subject'] ?? '');
         $customBody = trim($_POST['email_body'] ?? '');
         $customNotes = trim($_POST['email_notes'] ?? '');
 
-        if (!empty($customSubject)) {
-            $subject = str_replace(
-                ['{name}', '{employee_code}', '{month}', '{net_pay}', '{gross_pay}'],
-                [$detail->name, $detail->employee_code, $monthYearFormatted, number_format((float)$detail->net_salary, 2), number_format((float)$detail->gross_salary, 2)],
-                $customSubject
-            );
-        } else {
-            $subject = "Payslip for " . $detail->name . " - " . $monthYearFormatted;
-        }
-
-        if (!empty($customBody)) {
-            $body = str_replace(
-                ['{name}', '{employee_code}', '{month}', '{net_pay}', '{gross_pay}', '{deductions}'],
-                [$detail->name, $detail->employee_code, $monthYearFormatted, number_format((float)$detail->net_salary, 2), number_format((float)$detail->gross_salary, 2), number_format((float)$detail->total_deductions, 2)],
-                $customBody
-            );
-            if (!empty($customNotes)) {
-                $body .= "\n\nNote / Remarks:\n" . $customNotes;
-            }
-        } else {
-            $body = "Dear " . htmlspecialchars($detail->name) . ",\n\n" .
-                    "Please find attached your payslip for the month of " . $monthYearFormatted . ".\n\n" .
-                    "Payroll Summary:\n" .
-                    "----------------------------------------\n" .
-                    "Employee ID    : " . $detail->employee_code . "\n" .
-                    "Gross Earnings : Rs. " . number_format((float)$detail->gross_salary, 2) . "\n" .
-                    "Deductions     : Rs. " . number_format((float)$detail->total_deductions, 2) . "\n" .
-                    "Net Salary     : Rs. " . number_format((float)$detail->net_salary, 2) . "\n" .
-                    "----------------------------------------\n\n" .
-                    (!empty($customNotes) ? "Remarks / Record Note:\n" . $customNotes . "\n\n" : "") .
-                    "Please find your official detailed payslip attached as a PDF document.\n\n" .
-                    "Warm regards,\n" .
-                    "Accounts & Payroll Team\n" .
-                    "Axiora Global Solutions\n" .
-                    "accounts@axioraglobalsolutions.com";
-        }
-
-        $pdfBinary = PayslipPdfService::generatePdf($detail);
-        $pdfFilename = "Payslip_" . preg_replace('/[^A-Za-z0-9_-]/', '_', $detail->employee_code . '_' . $detail->month_year) . ".pdf";
-
-        $sent = $this->dispatchEmailWithAttachment(
-            $detail->email,
-            $detail->name,
-            $subject,
-            $body,
-            $pdfBinary,
-            $pdfFilename
+        $res = EmailService::sendPayslip(
+            $detail, 
+            !empty($customSubject) ? $customSubject : null, 
+            !empty($customBody) ? $customBody : null, 
+            !empty($customNotes) ? $customNotes : null
         );
 
-        if ($sent) {
-            $this->payrollModel->updateEmailStatus($detailId, 'sent', null, $subject, $body);
-            $_SESSION['payroll_success'] = "Payslip successfully emailed to " . htmlspecialchars($detail->name) . " (" . htmlspecialchars($detail->email) . ").";
+        if ($res['success']) {
+            $this->payrollModel->updateEmailStatus($detailId, 'sent', null, $res['subject'], $res['body']);
+            $_SESSION['payroll_success'] = "Payslip PDF successfully emailed to " . htmlspecialchars($detail->name) . " (" . htmlspecialchars($detail->email) . ").";
         } else {
-            $this->payrollModel->updateEmailStatus($detailId, 'failed', 'Mail dispatch failed (local SMTP simulation)', $subject, $body);
-            $_SESSION['payroll_error'] = "Failed to dispatch email (simulation recorded).";
+            $errMsg = $res['error'] ?? 'Mail dispatch failed';
+            $this->payrollModel->updateEmailStatus($detailId, 'failed', $errMsg, $res['subject'], $res['body']);
+            $_SESSION['payroll_error'] = "Failed to dispatch payslip email: " . htmlspecialchars($errMsg);
         }
 
-        $this->redirect('index.php?route=payroll/payslips&run_id=' . $detail->payroll_run_id);
+        $redirect = !empty($_POST['redirect_to_processing']) ? 'payroll/processing' : 'payroll/payslips';
+        $this->redirect('index.php?route=' . $redirect . '&run_id=' . $detail->payroll_run_id);
     }
 
     // Bulk Email Payslips to employees in a run with PDF attachments
@@ -1144,6 +1806,7 @@ class PayrollController extends Controller {
             $templateSubject = trim($_POST['email_subject'] ?? '');
             $templateBody = trim($_POST['email_body'] ?? '');
             $templateNotes = trim($_POST['email_notes'] ?? '');
+            $redirectTarget = !empty($_POST['redirect_to_processing']) ? 'payroll/processing' : 'payroll/payslips';
 
             if ($runId > 0) {
                 $run = $this->payrollModel->getPayrollRunById($runId);
@@ -1152,79 +1815,31 @@ class PayrollController extends Controller {
                     
                     $sentCount = 0;
                     $failedCount = 0;
-                    $monthYearFormatted = PayslipHelper::formatMonthYear($run->month_year);
+                    $lastError = '';
 
                     foreach ($details as $slip) {
-                        if (!empty($slip->email) && filter_var($slip->email, FILTER_VALIDATE_EMAIL)) {
-                            // Subject with placeholder interpolation
-                            if (!empty($templateSubject)) {
-                                $subject = str_replace(
-                                    ['{name}', '{employee_code}', '{month}', '{net_pay}', '{gross_pay}'],
-                                    [$slip->name, $slip->employee_code, $monthYearFormatted, number_format((float)$slip->net_salary, 2), number_format((float)$slip->gross_salary, 2)],
-                                    $templateSubject
-                                );
-                            } else {
-                                $subject = "Payslip for " . $slip->name . " - " . $monthYearFormatted;
-                            }
-                            
-                            // Body with placeholder interpolation
-                            if (!empty($templateBody)) {
-                                $body = str_replace(
-                                    ['{name}', '{employee_code}', '{month}', '{net_pay}', '{gross_pay}', '{deductions}'],
-                                    [$slip->name, $slip->employee_code, $monthYearFormatted, number_format((float)$slip->net_salary, 2), number_format((float)$slip->gross_salary, 2), number_format((float)$slip->total_deductions, 2)],
-                                    $templateBody
-                                );
-                                if (!empty($templateNotes)) {
-                                    $body .= "\n\nNote / Remarks:\n" . $templateNotes;
-                                }
-                            } else {
-                                $body = "Dear " . htmlspecialchars($slip->name) . ",\n\n" .
-                                        "Please find attached your payslip for the month of " . $monthYearFormatted . ".\n\n" .
-                                        "Payroll Summary:\n" .
-                                        "----------------------------------------\n" .
-                                        "Employee ID    : " . $slip->employee_code . "\n" .
-                                        "Gross Earnings : Rs. " . number_format((float)$slip->gross_salary, 2) . "\n" .
-                                        "Deductions     : Rs. " . number_format((float)$slip->total_deductions, 2) . "\n" .
-                                        "Net Salary     : Rs. " . number_format((float)$slip->net_salary, 2) . "\n" .
-                                        "----------------------------------------\n\n" .
-                                        (!empty($templateNotes) ? "Remarks / Record Note:\n" . $templateNotes . "\n\n" : "") .
-                                        "Please find your official detailed payslip attached as a PDF document.\n\n" .
-                                        "Warm regards,\n" .
-                                        "Accounts & Payroll Team\n" .
-                                        "Axiora Global Solutions\n" .
-                                        "accounts@axioraglobalsolutions.com";
-                            }
+                        $res = EmailService::sendPayslip(
+                            $slip,
+                            !empty($templateSubject) ? $templateSubject : null,
+                            !empty($templateBody) ? $templateBody : null,
+                            !empty($templateNotes) ? $templateNotes : null
+                        );
 
-                            $pdfBinary = PayslipPdfService::generatePdf($slip);
-                            $pdfFilename = "Payslip_" . preg_replace('/[^A-Za-z0-9_-]/', '_', $slip->employee_code . '_' . $run->month_year) . ".pdf";
-
-                            $sent = $this->dispatchEmailWithAttachment(
-                                $slip->email,
-                                $slip->name,
-                                $subject,
-                                $body,
-                                $pdfBinary,
-                                $pdfFilename
-                            );
-
-                            if ($sent) {
-                                $this->payrollModel->updateEmailStatus($slip->payroll_detail_id, 'sent', null, $subject, $body);
-                                $sentCount++;
-                            } else {
-                                $this->payrollModel->updateEmailStatus($slip->payroll_detail_id, 'failed', 'Mail dispatch error', $subject, $body);
-                                $failedCount++;
-                            }
+                        if ($res['success']) {
+                            $this->payrollModel->updateEmailStatus($slip->payroll_detail_id, 'sent', null, $res['subject'], $res['body']);
+                            $sentCount++;
                         } else {
-                            $this->payrollModel->updateEmailStatus($slip->payroll_detail_id, 'failed', 'No valid email address');
+                            $lastError = $res['error'] ?? 'Delivery failed';
+                            $this->payrollModel->updateEmailStatus($slip->payroll_detail_id, 'failed', $lastError, $res['subject'], $res['body']);
                             $failedCount++;
                         }
                     }
 
-                    $_SESSION['payroll_success'] = "Bulk email processed: {$sentCount} payslips emailed successfully." . ($failedCount > 0 ? " ({$failedCount} failed/skipped)" : "");
+                    $_SESSION['payroll_success'] = "Bulk email processed: {$sentCount} payslips emailed successfully." . ($failedCount > 0 ? " ({$failedCount} failed/skipped" . (!empty($lastError) ? ": " . htmlspecialchars($lastError) : "") . ")" : "");
                 } else {
                     $_SESSION['payroll_error'] = "Invalid payroll run.";
                 }
-                $this->redirect('index.php?route=payroll/payslips&run_id=' . $runId);
+                $this->redirect('index.php?route=' . $redirectTarget . '&run_id=' . $runId);
                 return;
             }
         }
@@ -1238,37 +1853,31 @@ class PayrollController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?: [];
             $runId = (int)($_POST['run_id'] ?? 0);
+            $redirectTarget = !empty($_POST['redirect_to_processing']) ? 'payroll/processing' : 'payroll/payslips';
 
             if ($runId > 0) {
                 $run = $this->payrollModel->getPayrollRunById($runId);
                 $details = $this->payrollModel->getPayrollDetailsByRunId($runId);
-                $monthYearFormatted = PayslipHelper::formatMonthYear($run->month_year);
 
                 $retriedCount = 0;
+                $failedCount = 0;
+                $lastError = '';
+
                 foreach ($details as $slip) {
                     if ($slip->email_status === 'failed' || $slip->email_status === 'pending') {
-                        if (!empty($slip->email) && filter_var($slip->email, FILTER_VALIDATE_EMAIL)) {
-                            $subject = "Payslip for " . $slip->name . " - " . $monthYearFormatted;
-                            $body = "Dear " . htmlspecialchars($slip->name) . ",\n\n" .
-                                    "Please find attached your payslip for the month of " . $monthYearFormatted . ".\n\n" .
-                                    "Summary:\n" .
-                                    "- Employee ID: " . $slip->employee_code . "\n" .
-                                    "- Net Salary: Rs. " . number_format((float)$slip->net_salary, 2) . "\n\n" .
-                                    "Best regards,\nAccounts & Payroll Team\nAxiora Global Solutions\naccounts@axioraglobalsolutions.com";
-
-                            $pdfBinary = PayslipPdfService::generatePdf($slip);
-                            $pdfFilename = "Payslip_" . preg_replace('/[^A-Za-z0-9_-]/', '_', $slip->employee_code . '_' . $run->month_year) . ".pdf";
-
-                            $sent = $this->dispatchEmailWithAttachment($slip->email, $slip->name, $subject, $body, $pdfBinary, $pdfFilename);
-                            if ($sent) {
-                                $this->payrollModel->updateEmailStatus($slip->payroll_detail_id, 'sent', null);
-                                $retriedCount++;
-                            }
+                        $res = EmailService::sendPayslip($slip);
+                        if ($res['success']) {
+                            $this->payrollModel->updateEmailStatus($slip->payroll_detail_id, 'sent', null, $res['subject'], $res['body']);
+                            $retriedCount++;
+                        } else {
+                            $lastError = $res['error'] ?? 'Delivery failed';
+                            $this->payrollModel->updateEmailStatus($slip->payroll_detail_id, 'failed', $lastError, $res['subject'], $res['body']);
+                            $failedCount++;
                         }
                     }
                 }
-                $_SESSION['payroll_success'] = "Retried sending emails: {$retriedCount} successfully delivered.";
-                $this->redirect('index.php?route=payroll/payslips&run_id=' . $runId);
+                $_SESSION['payroll_success'] = "Retried sending emails: {$retriedCount} delivered successfully." . ($failedCount > 0 ? " ({$failedCount} still failed" . (!empty($lastError) ? ": " . htmlspecialchars($lastError) : "") . ")" : "");
+                $this->redirect('index.php?route=' . $redirectTarget . '&run_id=' . $runId);
                 return;
             }
         }
@@ -1277,41 +1886,17 @@ class PayrollController extends Controller {
 
     // Helper to send email with PDF attachment
     private function dispatchEmailWithAttachment(string $toEmail, string $toName, string $subject, string $bodyText, string $pdfBinary, string $pdfFilename): bool {
-        $fromEmail = 'accounts@axioraglobalsolutions.com';
-        $fromName = 'Axiora Global Solutions';
-        $boundary = '==MP_BOUND_' . md5(uniqid(time()));
-
-        $headers = [
-            "From: {$fromName} <{$fromEmail}>",
-            "Reply-To: {$fromEmail}",
-            "MIME-Version: 1.0",
-            "Content-Type: multipart/mixed; boundary=\"{$boundary}\"",
-            "X-Mailer: PHP/" . phpversion()
-        ];
-
-        $message = "--{$boundary}\r\n";
-        $message .= "Content-Type: text/plain; charset=\"UTF-8\"\r\n";
-        $message .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
-        $message .= $bodyText . "\r\n\r\n";
-
+        $attachments = [];
         if (!empty($pdfBinary)) {
-            $attachment = chunk_split(base64_encode($pdfBinary));
-            $message .= "--{$boundary}\r\n";
-            $message .= "Content-Type: application/pdf; name=\"{$pdfFilename}\"\r\n";
-            $message .= "Content-Transfer-Encoding: base64\r\n";
-            $message .= "Content-Disposition: attachment; filename=\"{$pdfFilename}\"\r\n\r\n";
-            $message .= $attachment . "\r\n";
+            $attachments[] = [
+                'name'    => $pdfFilename,
+                'content' => $pdfBinary,
+                'type'    => 'application/pdf'
+            ];
         }
 
-        $message .= "--{$boundary}--";
-
-        $additionalParams = "-f" . $fromEmail;
-        
-        $sent = @mail($toEmail, $subject, $message, implode("\r\n", $headers), $additionalParams);
-        if (!$sent) {
-            $sent = @mail($toEmail, $subject, $message, implode("\r\n", $headers));
-        }
-        return true;
+        $res = EmailService::send($toEmail, $toName, $subject, nl2br(htmlspecialchars($bodyText)), $bodyText, $attachments);
+        return $res['success'];
     }
 
     // View Single Payslip (Print & PDF Download friendly)

@@ -59,6 +59,16 @@ define('STORAGE_PROVIDER', env('STORAGE_PROVIDER', 'local')); // 'local' or 's3'
 define('S3_BUCKET', env('S3_BUCKET', 'app-frontend-hosting-dev-847013096108'));
 define('S3_REGION', env('S3_REGION', 'us-east-1'));
 
+// Mail & SMTP Settings (Used for Automated Payslip PDF Emailing & System Alerts)
+define('MAIL_DRIVER', env('MAIL_DRIVER', 'smtp'));
+define('SMTP_HOST', env('SMTP_HOST', ''));
+define('SMTP_PORT', (int) env('SMTP_PORT', 587));
+define('SMTP_USER', env('SMTP_USER', ''));
+define('SMTP_PASS', env('SMTP_PASS', ''));
+define('SMTP_ENCRYPTION', env('SMTP_ENCRYPTION', 'tls'));
+define('SMTP_FROM_EMAIL', env('SMTP_FROM_EMAIL', 'accounts@axioraglobalsolutions.com'));
+define('SMTP_FROM_NAME', env('SMTP_FROM_NAME', 'Axiora Global Solutions'));
+
 // Error display driven by environment.
 error_reporting(E_ALL);
 ini_set('display_errors', '1');

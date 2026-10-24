@@ -94,7 +94,18 @@ class SettingsController extends Controller {
                 // Shift Roster Configurations
                 'attendance.roster_mode',
                 'attendance.roster_publish_lead_days',
-                'attendance.shift_templates_json'
+                'attendance.shift_templates_json',
+
+                // Email & SMTP Configurations (Payroll Payslips & Alerts)
+                'mail.driver',
+                'mail.host',
+                'mail.port',
+                'mail.username',
+                'mail.password',
+                'mail.encryption',
+                'mail.from_address',
+                'mail.from_name',
+                'mail.auto_send_on_generation'
             ];
 
             try {
@@ -112,7 +123,7 @@ class SettingsController extends Controller {
                         $value = isset($_POST[$key]) ? trim($_POST[$key]) : '';
                     }
 
-                    if (in_array($key, ['attendance.geofence_enabled', 'location.tracking_enabled', 'alerts.cron_enabled', 'alerts.web_push_enabled', 'alerts.email_enabled', 'reports.email_enabled', 'attendance.allow_week_off_override'], true)) {
+                    if (in_array($key, ['attendance.geofence_enabled', 'location.tracking_enabled', 'alerts.cron_enabled', 'alerts.web_push_enabled', 'alerts.email_enabled', 'reports.email_enabled', 'attendance.allow_week_off_override', 'mail.auto_send_on_generation'], true)) {
                         $value = isset($_POST[$key]) ? '1' : '0';
                     }
 
@@ -134,6 +145,54 @@ class SettingsController extends Controller {
 
             if (isset($_POST['alert_rules']) && is_array($_POST['alert_rules'])) {
                 $this->alertRuleModel->updateRules($_POST['alert_rules']);
+            }
+        }
+        $this->redirect('index.php?route=settings/index');
+    }
+
+    // Send diagnostic test email to verify SMTP configuration
+    public function test_email() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+                if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'error' => 'CSRF validation failed']);
+                    exit;
+                }
+                die('CSRF validation failed.');
+            }
+
+            require_once APPROOT . '/services/EmailService.php';
+
+            $recipient = trim($_POST['test_email_recipient'] ?? '');
+            if (empty($recipient)) {
+                $recipient = $_SESSION['user_email'] ?? 'admin@raptor.local';
+            }
+
+            $testConfig = [
+                'driver'       => trim($_POST['mail_driver'] ?? 'smtp'),
+                'host'         => trim($_POST['mail_host'] ?? ''),
+                'port'         => (int)($_POST['mail_port'] ?? 587),
+                'username'     => trim($_POST['mail_username'] ?? ''),
+                'password'     => $_POST['mail_password'] ?? '',
+                'encryption'   => trim($_POST['mail_encryption'] ?? 'tls'),
+                'from_address' => trim($_POST['mail_from_address'] ?? 'accounts@axioraglobalsolutions.com'),
+                'from_name'    => trim($_POST['mail_from_name'] ?? 'Axiora Global Solutions'),
+                'timeout'      => 10
+            ];
+
+            $result = EmailService::testConnection($recipient, $testConfig);
+
+            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                header('Content-Type: application/json');
+                echo json_encode($result);
+                exit;
+            }
+
+            if ($result['success']) {
+                $_SESSION['settings_success'] = "Test email sent successfully to {$recipient}!";
+            } else {
+                $_SESSION['settings_error'] = "Failed to send test email: " . ($result['error'] ?? 'Unknown error');
             }
         }
         $this->redirect('index.php?route=settings/index');

@@ -470,6 +470,91 @@
                     </div>
                 </div>
 
+                <hr class="border-secondary border-opacity-15 my-4">
+
+                <!-- 9. Email & SMTP Integration (Payroll Payslips & System Alerts) -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-white mb-0" style="font-size:1.05rem;">
+                        <i class="fa-solid fa-envelope-circle-check text-success me-2"></i>Email &amp; SMTP Integration
+                    </h5>
+                    <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#testEmailModal">
+                        <i class="fa-solid fa-paper-plane me-1"></i>Test SMTP Connection
+                    </button>
+                </div>
+                <p class="text-secondary small mb-3">
+                    Configure your corporate SMTP mail server (Gmail, Google Workspace, Microsoft 365, AWS SES, Brevo, SendGrid, or cPanel/Postfix) to automatically email vector PDF payslips to employees when salary slips are generated or released.
+                </p>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <label class="form-label text-secondary">Mail Protocol / Driver</label>
+                        <select name="mail.driver" id="mail_driver" class="form-select bg-dark text-white border-secondary">
+                            <option value="smtp" <?php echo (($settings['mail.driver'] ?? 'smtp') === 'smtp') ? 'selected' : ''; ?>>SMTP Socket (Recommended)</option>
+                            <option value="mail" <?php echo (($settings['mail.driver'] ?? '') === 'mail') ? 'selected' : ''; ?>>PHP Native mail()</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label text-secondary">SMTP Host</label>
+                        <input type="text" name="mail.host" id="mail_host" class="form-control bg-dark text-white border-secondary font-monospace"
+                               value="<?php echo htmlspecialchars($settings['mail.host'] ?? ''); ?>"
+                               placeholder="e.g. smtp.gmail.com or smtp.office365.com">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label text-secondary">SMTP Port</label>
+                        <input type="number" name="mail.port" id="mail_port" class="form-control bg-dark text-white border-secondary font-monospace"
+                               value="<?php echo htmlspecialchars($settings['mail.port'] ?? '587'); ?>"
+                               placeholder="587 / 465">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-secondary">Encryption Type</label>
+                        <select name="mail.encryption" id="mail_encryption" class="form-select bg-dark text-white border-secondary">
+                            <option value="tls" <?php echo (($settings['mail.encryption'] ?? 'tls') === 'tls') ? 'selected' : ''; ?>>TLS / STARTTLS (Port 587)</option>
+                            <option value="ssl" <?php echo (($settings['mail.encryption'] ?? '') === 'ssl') ? 'selected' : ''; ?>>SSL (Port 465)</option>
+                            <option value="none" <?php echo (($settings['mail.encryption'] ?? '') === 'none') ? 'selected' : ''; ?>>None / Plain (Port 25)</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label text-secondary">SMTP Username / Email</label>
+                        <input type="text" name="mail.username" id="mail_username" class="form-control bg-dark text-white border-secondary font-monospace"
+                               value="<?php echo htmlspecialchars($settings['mail.username'] ?? ''); ?>"
+                               placeholder="e.g. accounts@axioraglobalsolutions.com">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-secondary">SMTP Password / App Password</label>
+                        <div class="input-group">
+                            <input type="password" name="mail.password" id="mail_password" class="form-control bg-dark text-white border-secondary font-monospace"
+                                   value="<?php echo htmlspecialchars($settings['mail.password'] ?? ''); ?>"
+                                   placeholder="Enter SMTP password or Google App Password">
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassVisibility('mail_password')">
+                                <i class="fa-solid fa-eye" id="mail_password_icon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label text-secondary">Sender "From" Email</label>
+                        <input type="email" name="mail.from_address" id="mail_from_address" class="form-control bg-dark text-white border-secondary font-monospace"
+                               value="<?php echo htmlspecialchars($settings['mail.from_address'] ?? 'accounts@axioraglobalsolutions.com'); ?>"
+                               placeholder="accounts@axioraglobalsolutions.com">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label text-secondary">Sender "From" Name</label>
+                        <input type="text" name="mail.from_name" id="mail_from_name" class="form-control bg-dark text-white border-secondary"
+                               value="<?php echo htmlspecialchars($settings['mail.from_name'] ?? 'Axiora Global Solutions'); ?>"
+                               placeholder="Axiora Global Solutions - Payroll">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label text-secondary">Auto-Email Payslips</label>
+                        <div class="p-2 px-3 bg-dark border border-secondary rounded d-flex justify-content-between align-items-center" style="height:38px;">
+                            <span class="text-white small">Auto-send on slip generation</span>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" name="mail.auto_send_on_generation" id="mail_auto_send_on_generation" <?php echo (($settings['mail.auto_send_on_generation'] ?? '1') === '1') ? 'checked' : ''; ?>>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="d-flex justify-content-end gap-3 mt-4 border-top border-secondary border-opacity-10 pt-3">
                     <button type="submit" class="btn btn-primary px-4 py-2 fw-bold" style="background: var(--primary); border: none;">
                         <i class="fa-regular fa-floppy-disk me-2"></i>Save Configuration
@@ -480,8 +565,129 @@
     </div>
 </div>
 
+<!-- Test SMTP Connection Modal -->
+<div class="modal fade" id="testEmailModal" tabindex="-1" aria-labelledby="testEmailModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-white border-secondary shadow-lg" style="border-radius:12px;">
+            <div class="modal-header border-secondary py-3">
+                <h5 class="modal-title fs-6 d-flex align-items-center gap-2" id="testEmailModalLabel">
+                    <i class="fa-solid fa-paper-plane text-info"></i>
+                    <span>Test SMTP Email Delivery</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-secondary small mb-3">
+                    Send a live test verification email using the currently configured SMTP parameters to ensure payslips can be sent without delivery errors.
+                </p>
+
+                <div id="test-email-alert" class="d-none alert mb-3 small" role="alert"></div>
+
+                <div class="mb-3">
+                    <label class="form-label text-secondary small font-weight-bold">Recipient Test Email *</label>
+                    <input type="email" id="test_email_recipient" class="form-control bg-black bg-opacity-50 border-secondary text-white font-monospace" 
+                           value="<?php echo htmlspecialchars($_SESSION['user_email'] ?? 'admin@raptor.local'); ?>" placeholder="admin@yourdomain.com" required>
+                </div>
+
+                <div class="p-3 rounded bg-black bg-opacity-25 border border-secondary small text-secondary">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Configured Host:</span>
+                        <strong class="text-white font-monospace" id="lbl-test-host"><?php echo htmlspecialchars($settings['mail.host'] ?? 'Local/Empty'); ?></strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Port &amp; Protocol:</span>
+                        <strong class="text-white font-monospace" id="lbl-test-port"><?php echo htmlspecialchars($settings['mail.port'] ?? '587'); ?> (<?php echo strtoupper($settings['mail.encryption'] ?? 'TLS'); ?>)</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>From Address:</span>
+                        <strong class="text-white font-monospace"><?php echo htmlspecialchars($settings['mail.from_address'] ?? 'accounts@axioraglobalsolutions.com'); ?></strong>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary py-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary btn-sm px-3" id="btn-run-test-email" style="background: var(--primary); border: none;">
+                    <i class="fa-solid fa-paper-plane me-1"></i> <span id="btn-test-text">Dispatch Test Email</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+function togglePassVisibility(inputId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(inputId + '_icon');
+    if (!input) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        if (icon) { icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); }
+    } else {
+        input.type = 'password';
+        if (icon) { icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); }
+    }
+}
+
 $(document).ready(function() {
+    // Dynamic updates for test modal labels when inputs change
+    $('#mail_host').on('input', function() {
+        $('#lbl-test-host').text($(this).val() || 'Local/Empty');
+    });
+    $('#mail_port, #mail_encryption').on('input change', function() {
+        $('#lbl-test-port').text(($('#mail_port').val() || '587') + ' (' + ($('#mail_encryption').val() || 'TLS').toUpperCase() + ')');
+    });
+
+    // Test Email AJAX handler
+    $('#btn-run-test-email').on('click', function() {
+        const btn = $(this);
+        const alertBox = $('#test-email-alert');
+        const recipient = $('#test_email_recipient').val().trim();
+
+        if (!recipient) {
+            alertBox.removeClass('d-none alert-success').addClass('alert-danger').text('Please provide a valid recipient email.');
+            return;
+        }
+
+        btn.prop('disabled', true);
+        $('#btn-test-text').html('<i class="fa-solid fa-spinner fa-spin me-1"></i> Testing SMTP...');
+        alertBox.addClass('d-none');
+
+        const postData = {
+            csrf_token: $('input[name="csrf_token"]').val(),
+            test_email_recipient: recipient,
+            mail_driver: $('#mail_driver').val(),
+            mail_host: $('#mail_host').val(),
+            mail_port: $('#mail_port').val(),
+            mail_username: $('#mail_username').val(),
+            mail_password: $('#mail_password').val(),
+            mail_encryption: $('#mail_encryption').val(),
+            mail_from_address: $('#mail_from_address').val(),
+            mail_from_name: $('#mail_from_name').val()
+        };
+
+        $.ajax({
+            url: 'index.php?route=settings/test_email',
+            type: 'POST',
+            data: postData,
+            dataType: 'json',
+            success: function(resp) {
+                btn.prop('disabled', false);
+                $('#btn-test-text').html('<i class="fa-solid fa-paper-plane me-1"></i> Dispatch Test Email');
+                if (resp && resp.success) {
+                    alertBox.removeClass('d-none alert-danger').addClass('alert-success').html('<i class="fa-solid fa-circle-check me-1"></i> <strong>Success!</strong> Test email dispatched successfully to ' + recipient + '.');
+                } else {
+                    const err = (resp && resp.error) ? resp.error : 'Failed to connect to SMTP server.';
+                    alertBox.removeClass('d-none alert-success').addClass('alert-danger').html('<i class="fa-solid fa-circle-exmark me-1"></i> <strong>SMTP Error:</strong> ' + err);
+                }
+            },
+            error: function(xhr) {
+                btn.prop('disabled', false);
+                $('#btn-test-text').html('<i class="fa-solid fa-paper-plane me-1"></i> Dispatch Test Email');
+                alertBox.removeClass('d-none alert-success').addClass('alert-danger').html('<i class="fa-solid fa-triangle-exclamation me-1"></i> Request failed (HTTP ' + xhr.status + '). Check server logs.');
+            }
+        });
+    });
+
     // 1. Leave Types JSON Table Management
     let leaveTypes = [];
     try {

@@ -20,12 +20,26 @@ BACKUP_FILENAME="${DB_NAME}_backup_${TIMESTAMP}.sql.gz"
 BACKUP_PATH="${BACKUP_DIR}/${BACKUP_FILENAME}"
 
 echo "[1/3] Dumping database ${DB_NAME}..."
-if command -v docker &> /dev/null && docker ps | grep -q raptor-db; then
-  docker exec raptor-db mysqldump -u"${DB_USER}" -p"${DB_PASS}" --single-transaction --quick "${DB_NAME}" | gzip -9 > "${BACKUP_PATH}" || echo "Warning: Docker DB dump completed."
+DB_CONTAINER=$(docker ps --filter "name=raptor-db" --format '{{.Names}}' | head -n 1)
+if command -v docker &> /dev/null && [ -n "${DB_CONTAINER}" ]; then
+  docker exec "${DB_CONTAINER}" mysqldump -u"${DB_USER}" -p"${DB_PASS}" --single-transaction --quick "${DB_NAME}" | gzip -9 > "${BACKUP_PATH}"
 elif command -v mysqldump &> /dev/null; then
-  mysqldump -u"${DB_USER}" -p"${DB_PASS}" --single-transaction --quick --lock-tables=false "${DB_NAME}" | gzip -9 > "${BACKUP_PATH}" || echo "Warning: Native DB dump completed."
+  mysqldump -u"${DB_USER}" -p"${DB_PASS}" --single-transaction --quick --lock-tables=false "${DB_NAME}" | gzip -9 > "${BACKUP_PATH}"
 else
   echo "Neither docker nor mysqldump available; skipping local dump file creation."
+  exit 1
+fi
+
+# Validate backup integrity
+if ! gzip -t "${BACKUP_PATH}"; then
+  echo "ERROR: Backup gzip validation failed." >&2
+  exit 1
+fi
+
+BACKUP_SIZE=$(wc -c < "${BACKUP_PATH}")
+if [ "${BACKUP_SIZE}" -lt 1000 ]; then
+  echo "ERROR: Backup size too small (${BACKUP_SIZE} bytes), likely empty dump." >&2
+  exit 1
 fi
 
 echo "[2/3] Uploading database backup to S3 (${S3_BUCKET})..."

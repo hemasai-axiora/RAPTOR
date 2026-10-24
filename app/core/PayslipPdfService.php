@@ -3,6 +3,8 @@
  * Payslip PDF Generator Service
  * Generates exact vector PDF files for payslips matching Axiora Global Solutions reference layout.
  */
+require_once dirname(__FILE__) . '/PayslipHelper.php';
+
 class PayslipPdfService {
 
     /**

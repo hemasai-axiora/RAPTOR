@@ -12,10 +12,36 @@
         </div>
     <?php endif; ?>
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
             <h4 class="text-white mb-1"><i class="fa-solid fa-calculator me-2" style="color: var(--primary);"></i>Salary Structures & Revision Management</h4>
             <p class="text-secondary small mb-0">Configure salary components, statutory compliance, and maintain historical revision logs.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle btn-sm px-3 py-2 text-white" type="button" id="templateDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="border-color: rgba(255,255,255,0.2);">
+                    <i class="fa-solid fa-download me-1 text-info"></i> Download Template
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow" aria-labelledby="templateDropdown">
+                    <li><h6 class="dropdown-header text-uppercase small">CSV Spreadsheet Templates</h6></li>
+                    <li>
+                        <a class="dropdown-item py-2" href="index.php?route=payroll/download_salary_template">
+                            <i class="fa-solid fa-users me-2 text-primary"></i> Pre-filled with Active Employees
+                            <div class="text-muted small ps-4">Includes employee codes, names & current pay</div>
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider border-secondary"></li>
+                    <li>
+                        <a class="dropdown-item py-2" href="index.php?route=payroll/download_salary_template&blank=1">
+                            <i class="fa-solid fa-file-csv me-2 text-secondary"></i> Blank Template with Samples
+                            <div class="text-muted small ps-4">Empty template with instructional sample rows</div>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm px-3 py-2 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#bulkSalaryUploadModal" style="background: linear-gradient(135deg, #1F5FAE, #7c3aed); border: none;">
+                <i class="fa-solid fa-cloud-arrow-up me-2"></i>Bulk Upload Structures
+            </button>
         </div>
     </div>
 
@@ -386,9 +412,46 @@
         </div>
 
     <?php else: ?>
-        <div class="text-center py-5 text-secondary">
-            <i class="fa-solid fa-arrow-pointer mb-2 fs-3"></i>
-            <p>Please select an employee from the dropdown list to manage their salary structure and view revision history.</p>
+        <div class="row g-4 my-3">
+            <div class="col-md-6">
+                <div class="p-4 rounded h-100 border border-secondary" style="background: rgba(255,255,255,0.03);">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle p-3 me-3 text-primary" style="background: rgba(31, 95, 174, 0.15); width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-user-pen fs-5"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-white mb-0">Single Employee Configuration</h6>
+                            <span class="text-secondary small">Fine-tune custom components & view revision timeline</span>
+                        </div>
+                    </div>
+                    <p class="text-secondary small mb-3">Choose an individual employee from the dropdown selector above to edit components, statutory percentages, and view their complete revision audit trail.</p>
+                    <div class="text-muted small">
+                        <i class="fa-solid fa-circle-info me-1 text-info"></i> Supports automatic calculation of PF, Gratuity, ESIC & PT.
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="p-4 rounded h-100 border border-primary border-opacity-50" style="background: linear-gradient(145deg, rgba(31, 95, 174, 0.1), rgba(124, 58, 237, 0.08));">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle p-3 me-3 text-white" style="background: linear-gradient(135deg, #1F5FAE, #7c3aed); width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-cloud-arrow-up fs-5"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-white mb-0">Bulk Upload Salary Structures</h6>
+                            <span class="text-info small font-weight-bold">Configure entire organization via CSV spreadsheet</span>
+                        </div>
+                    </div>
+                    <p class="text-secondary small mb-3">Upload a CSV spreadsheet with Basic, HRA, Special Allowance, and other earnings for all employees. The system auto-validates each row, calculates statutory compliance, and logs revision history.</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-primary btn-sm px-3 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#bulkSalaryUploadModal" style="background: linear-gradient(135deg, #1F5FAE, #7c3aed); border: none;">
+                            <i class="fa-solid fa-cloud-arrow-up me-1"></i> Launch Bulk Upload
+                        </button>
+                        <a href="index.php?route=payroll/download_salary_template" class="btn btn-outline-light btn-sm px-3 py-2" style="border-color: rgba(255,255,255,0.25);">
+                            <i class="fa-solid fa-download me-1"></i> Pre-filled Template (CSV)
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     <?php endif; ?>
 </div>
@@ -554,4 +617,620 @@ function showRevisionModal(rev) {
     const modal = new bootstrap.Modal(document.getElementById('revisionDetailModal'));
     modal.show();
 }
+</script>
+
+<!-- Bulk Salary Structures Upload Modal -->
+<div class="modal fade" id="bulkSalaryUploadModal" tabindex="-1" aria-labelledby="bulkSalaryUploadModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content bg-dark border-secondary text-white shadow-lg" style="background: #141720 !important; border: 1px solid rgba(255,255,255,0.12) !important;">
+            <div class="modal-header border-secondary py-3 px-4" style="background: rgba(255,255,255,0.02);">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle p-2 me-3" style="background: linear-gradient(135deg, rgba(31,95,174,0.3), rgba(124,58,237,0.3)); border: 1px solid rgba(124,58,237,0.4);">
+                        <i class="fa-solid fa-cloud-arrow-up text-primary fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title text-white fw-bold mb-0" id="bulkSalaryUploadModalLabel">Bulk Upload Salary Structures</h5>
+                        <p class="text-secondary small mb-0">Configure, revise, and audit salary structures across your organization via CSV spreadsheet.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="bulk-modal-close-btn"></button>
+            </div>
+            
+            <div class="modal-body p-4">
+                <!-- STEP 1: Upload & Options -->
+                <div id="bulk-step-upload">
+                    <div class="row g-4">
+                        <!-- Dropzone Column -->
+                        <div class="col-lg-7">
+                            <div class="p-4 rounded border-2 border-dashed text-center" id="salary-dropzone" style="border: 2px dashed rgba(255,255,255,0.2); background: rgba(255,255,255,0.02); cursor: pointer; transition: all 0.3s ease;">
+                                <input type="file" id="salary_csv_input" accept=".csv" class="d-none">
+                                <div id="dropzone-idle-state">
+                                    <div class="mb-3">
+                                        <i class="fa-solid fa-file-csv fa-3x" style="color: var(--primary);"></i>
+                                    </div>
+                                    <h6 class="text-white mb-1">Drag and drop your salary CSV file here</h6>
+                                    <p class="text-secondary small mb-3">or <span class="text-primary text-decoration-underline fw-bold">browse your computer</span></p>
+                                    <div class="badge bg-dark border border-secondary text-secondary px-3 py-2">
+                                        <i class="fa-solid fa-shield-halved me-1"></i> Supports CSV format up to 10 MB
+                                    </div>
+                                </div>
+                                <div id="dropzone-selected-state" class="d-none">
+                                    <div class="p-3 rounded bg-dark border border-secondary d-flex align-items-center justify-content-between text-start">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fa-solid fa-file-lines fs-3 text-success me-3"></i>
+                                            <div>
+                                                <div class="text-white fw-bold mb-0" id="selected-file-name">filename.csv</div>
+                                                <div class="text-secondary small" id="selected-file-size">0 KB</div>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" id="btn-remove-selected-file" title="Remove file">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sample Template Download Callout -->
+                            <div class="mt-3 p-3 rounded border border-secondary d-flex justify-content-between align-items-center" style="background: rgba(255,255,255,0.03);">
+                                <div class="d-flex align-items-center">
+                                    <i class="fa-solid fa-table-list text-info fs-4 me-3"></i>
+                                    <div>
+                                        <div class="text-white small fw-bold">Need the correct column format?</div>
+                                        <div class="text-secondary small">Download our template with pre-filled employee codes & names.</div>
+                                    </div>
+                                </div>
+                                <div class="btn-group">
+                                    <a href="index.php?route=payroll/download_salary_template" class="btn btn-outline-info btn-sm px-3" title="Template with current employees">
+                                        <i class="fa-solid fa-download me-1"></i> Pre-filled CSV
+                                    </a>
+                                    <a href="index.php?route=payroll/download_salary_template&blank=1" class="btn btn-outline-secondary btn-sm" title="Blank Template">
+                                        <i class="fa-solid fa-file-csv"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Settings & Defaults Column -->
+                        <div class="col-lg-5">
+                            <div class="p-3 rounded bg-dark border border-secondary h-100 d-flex flex-column justify-content-between">
+                                <div>
+                                    <h6 class="text-white mb-3"><i class="fa-solid fa-sliders text-primary me-2"></i>Batch Settings</h6>
+                                    
+                                    <div class="mb-3">
+                                        <label for="bulk_effective_date" class="form-label text-secondary small fw-bold text-uppercase">Effective Date</label>
+                                        <input type="date" id="bulk_effective_date" class="form-control bg-dark border-secondary text-white" value="<?php echo date('Y-m-d'); ?>">
+                                        <div class="form-text text-secondary" style="font-size: 0.75rem;">Used if the CSV row does not specify an effective date.</div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="bulk_revision_reason" class="form-label text-secondary small fw-bold text-uppercase">Revision Reason / Remarks</label>
+                                        <input type="text" id="bulk_revision_reason" class="form-control bg-dark border-secondary text-white" value="Bulk Salary Structure Upload" placeholder="e.g. Annual Appraisal 2026, Revision">
+                                        <div class="form-text text-secondary" style="font-size: 0.75rem;">Logged into employee revision audit trail.</div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label text-secondary small fw-bold text-uppercase">Existing Structure Strategy</label>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="radio" name="duplicate_strategy" id="strat_update" value="update" checked>
+                                            <label class="form-check-label text-white small" for="strat_update">
+                                                <strong>Update & Record Revision History</strong>
+                                                <div class="text-secondary" style="font-size: 0.75rem;">Updates active structure and appends full change snapshot to revision logs.</div>
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="duplicate_strategy" id="strat_skip" value="skip">
+                                            <label class="form-check-label text-white small" for="strat_skip">
+                                                <strong>Skip Existing Structures</strong>
+                                                <div class="text-secondary" style="font-size: 0.75rem;">Only creates baseline for employees without any existing structure.</div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="pt-3 border-t border-secondary">
+                                    <button type="button" class="btn btn-primary w-100 py-2 fw-bold" id="btn-validate-upload" disabled style="background: linear-gradient(135deg, #1F5FAE, #7c3aed); border: none;">
+                                        <i class="fa-solid fa-magnifying-glass-chart me-2"></i>Analyze & Preview CSV
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Preview & Validation Results Table -->
+                <div id="bulk-step-preview" class="d-none">
+                    <!-- Metrics Row -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 rounded bg-dark border border-secondary text-center">
+                                <div class="text-secondary small fw-bold text-uppercase">Total Rows</div>
+                                <div class="fs-4 fw-bold text-white" id="stat-total-rows">0</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 rounded bg-dark border border-success border-opacity-50 text-center">
+                                <div class="text-success small fw-bold text-uppercase">Valid / Ready</div>
+                                <div class="fs-4 fw-bold text-success" id="stat-valid-rows">0</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 rounded bg-dark border border-info border-opacity-50 text-center">
+                                <div class="text-info small fw-bold text-uppercase">Revisions / Updates</div>
+                                <div class="fs-4 fw-bold text-info" id="stat-update-rows">0</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 rounded bg-dark border border-danger border-opacity-50 text-center">
+                                <div class="text-danger small fw-bold text-uppercase">Errors / Issues</div>
+                                <div class="fs-4 fw-bold text-danger" id="stat-error-rows">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Search & Filter Controls -->
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-secondary active preview-filter-btn" data-filter="all">All Rows (<span id="pill-all-count">0</span>)</button>
+                            <button type="button" class="btn btn-outline-success preview-filter-btn" data-filter="valid">Valid (<span id="pill-valid-count">0</span>)</button>
+                            <button type="button" class="btn btn-outline-info preview-filter-btn" data-filter="update">Revisions (<span id="pill-update-count">0</span>)</button>
+                            <button type="button" class="btn btn-outline-danger preview-filter-btn" data-filter="error">Errors (<span id="pill-error-count">0</span>)</button>
+                        </div>
+                        <div class="input-group input-group-sm" style="max-width: 280px;">
+                            <span class="input-group-text bg-dark border-secondary text-secondary"><i class="fa-solid fa-search"></i></span>
+                            <input type="text" id="preview-search-input" class="form-control bg-dark border-secondary text-white" placeholder="Search employee code or name...">
+                        </div>
+                    </div>
+
+                    <!-- Scrollable Table -->
+                    <div class="table-responsive rounded border border-secondary" style="max-height: 380px;">
+                        <table class="table table-dark table-hover table-striped align-middle small mb-0" id="preview-table">
+                            <thead class="table-dark text-secondary sticky-top border-secondary">
+                                <tr>
+                                    <th style="width: 50px;">Row</th>
+                                    <th>Status</th>
+                                    <th>Employee</th>
+                                    <th class="text-end">Basic (₹)</th>
+                                    <th class="text-end">HRA (₹)</th>
+                                    <th class="text-end">Allowances (₹)</th>
+                                    <th class="text-end">Gross (₹)</th>
+                                    <th class="text-end">Deductions (₹)</th>
+                                    <th class="text-end">Net Pay (₹)</th>
+                                    <th class="text-end">Monthly CTC (₹)</th>
+                                    <th>Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody id="preview-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Error Callout Banner if errors found -->
+                    <div id="preview-error-alert" class="alert alert-warning border-warning border-opacity-50 mt-3 d-none mb-0 small">
+                        <i class="fa-solid fa-triangle-exclamation me-2"></i>
+                        <span id="preview-error-text">Some rows have errors and will be skipped. You can proceed to import the valid rows, or go back to upload a revised file.</span>
+                    </div>
+                </div>
+
+                <!-- STEP 3: Progress State -->
+                <div id="bulk-step-progress" class="py-5 text-center d-none">
+                    <div class="spinner-border text-primary mb-3" style="width: 3.5rem; height: 3.5rem;" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h5 class="text-white fw-bold mb-1">Applying Salary Structures...</h5>
+                    <p class="text-secondary small mb-3">Updating employee compensation records, syncing directory salary scales, and recording revision audit histories.</p>
+                    <div class="progress bg-secondary bg-opacity-25 mx-auto" style="height: 6px; max-width: 450px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 100%"></div>
+                    </div>
+                </div>
+
+                <!-- STEP 4: Success / Results State -->
+                <div id="bulk-step-result" class="py-4 text-center d-none">
+                    <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 70px; height: 70px; background: rgba(25, 135, 84, 0.15); border: 2px solid #198754;">
+                        <i class="fa-solid fa-circle-check fs-2 text-success"></i>
+                    </div>
+                    <h4 class="text-white fw-bold mb-1">Bulk Upload Completed!</h4>
+                    <p class="text-secondary small mb-4" id="result-summary-text">Salary structures processed and revision histories updated successfully.</p>
+                    
+                    <div class="row g-3 justify-content-center mb-4">
+                        <div class="col-auto">
+                            <div class="px-4 py-3 rounded bg-dark border border-success border-opacity-50 text-center">
+                                <div class="text-secondary small text-uppercase">Processed / Updated</div>
+                                <div class="fs-4 fw-bold text-success" id="result-stat-processed">0</div>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <div class="px-4 py-3 rounded bg-dark border border-secondary text-center">
+                                <div class="text-secondary small text-uppercase">Skipped</div>
+                                <div class="fs-4 fw-bold text-secondary" id="result-stat-skipped">0</div>
+                            </div>
+                        </div>
+                        <div class="col-auto d-none" id="result-stat-failed-box">
+                            <div class="px-4 py-3 rounded bg-dark border border-danger border-opacity-50 text-center">
+                                <div class="text-danger small text-uppercase">Failed</div>
+                                <div class="fs-4 fw-bold text-danger" id="result-stat-failed">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-center gap-3">
+                        <a href="index.php?route=payroll/download_salary_import_errors" class="btn btn-outline-danger btn-sm px-3 d-none" id="btn-download-import-errors">
+                            <i class="fa-solid fa-file-arrow-down me-1"></i> Download Failed Rows CSV
+                        </a>
+                        <button type="button" class="btn btn-primary px-4" onclick="window.location.reload();" style="background: linear-gradient(135deg, #1F5FAE, #7c3aed); border: none;">
+                            <i class="fa-solid fa-check me-2"></i> Done & Refresh Page
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer border-secondary px-4 py-3" id="bulk-modal-footer">
+                <div id="footer-step-1" class="d-flex justify-content-between align-items-center w-100">
+                    <span class="text-secondary small"><i class="fa-solid fa-circle-info me-1 text-info"></i> Missing statutory values (PF, Gratuity, PT) will be auto-calculated.</span>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                </div>
+                <div id="footer-step-2" class="d-flex justify-content-between align-items-center w-100 d-none">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-step2-back">
+                        <i class="fa-solid fa-arrow-left me-1"></i> Choose Different File
+                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-success btn-sm px-4 fw-bold" id="btn-confirm-import">
+                            <i class="fa-solid fa-check-double me-1"></i> Confirm & Import Structures (<span id="btn-valid-count">0</span>)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Bulk Salary Structure Upload Logic
+(function() {
+    let uploadedFile = null;
+    let previewData = null;
+    let currentFilter = 'all';
+
+    const dropzone = document.getElementById('salary-dropzone');
+    const fileInput = document.getElementById('salary_csv_input');
+    const idleState = document.getElementById('dropzone-idle-state');
+    const selectedState = document.getElementById('dropzone-selected-state');
+    const fileNameDisplay = document.getElementById('selected-file-name');
+    const fileSizeDisplay = document.getElementById('selected-file-size');
+    const btnRemoveFile = document.getElementById('btn-remove-selected-file');
+    const btnValidate = document.getElementById('btn-validate-upload');
+
+    // Drag and drop event listeners
+    if (dropzone && fileInput) {
+        dropzone.addEventListener('click', function(e) {
+            if (e.target.closest('#btn-remove-selected-file')) return;
+            fileInput.click();
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.style.borderColor = '#1F5FAE';
+                dropzone.style.background = 'rgba(31, 95, 174, 0.08)';
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.style.borderColor = 'rgba(255,255,255,0.2)';
+                dropzone.style.background = 'rgba(255,255,255,0.02)';
+            });
+        });
+
+        dropzone.addEventListener('drop', function(e) {
+            const files = e.dataTransfer.files;
+            if (files && files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', function() {
+            if (fileInput.files && fileInput.files.length > 0) {
+                handleFileSelect(fileInput.files[0]);
+            }
+        });
+
+        if (btnRemoveFile) {
+            btnRemoveFile.addEventListener('click', function(e) {
+                e.stopPropagation();
+                resetFileInput();
+            });
+        }
+    }
+
+    function handleFileSelect(file) {
+        if (!file.name.toLowerCase().endsWith('.csv')) {
+            alert('Please select a valid CSV file.');
+            resetFileInput();
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File exceeds 10MB size limit.');
+            resetFileInput();
+            return;
+        }
+
+        uploadedFile = file;
+        fileNameDisplay.textContent = file.name;
+        fileSizeDisplay.textContent = (file.size / 1024).toFixed(1) + ' KB';
+        idleState.classList.add('d-none');
+        selectedState.classList.remove('d-none');
+        btnValidate.disabled = false;
+    }
+
+    function resetFileInput() {
+        uploadedFile = null;
+        if (fileInput) fileInput.value = '';
+        if (idleState) idleState.classList.remove('d-none');
+        if (selectedState) selectedState.classList.add('d-none');
+        if (btnValidate) btnValidate.disabled = true;
+    }
+
+    // Step 1 -> Step 2: Validate & Preview
+    $('#btn-validate-upload').on('click', function() {
+        if (!uploadedFile) return;
+
+        const formData = new FormData();
+        formData.append('csv_file', uploadedFile);
+        formData.append('csrf_token', '<?php echo $_SESSION['csrf_token'] ?? ''; ?>');
+        formData.append('effective_date', $('#bulk_effective_date').val() || '');
+        formData.append('revision_reason', $('#bulk_revision_reason').val() || '');
+
+        const $btn = $(this);
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Validating CSV...');
+
+        $.ajax({
+            url: 'index.php?route=payroll/validate_bulk_structures',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            success: function(res) {
+                $btn.prop('disabled', false).html('<i class="fa-solid fa-magnifying-glass-chart me-2"></i>Analyze & Preview CSV');
+                if (res.success) {
+                    previewData = res;
+                    renderPreviewTable(res);
+                    switchStep(2);
+                } else {
+                    alert(res.message || 'Validation failed.');
+                }
+            },
+            error: function(xhr) {
+                $btn.prop('disabled', false).html('<i class="fa-solid fa-magnifying-glass-chart me-2"></i>Analyze & Preview CSV');
+                let errMsg = 'Failed to analyze CSV.';
+                try {
+                    const parsed = JSON.parse(xhr.responseText);
+                    if (parsed.message) errMsg = parsed.message;
+                } catch(e) {}
+                alert(errMsg);
+            }
+        });
+    });
+
+    // Render Preview
+    function renderPreviewTable(data) {
+        $('#stat-total-rows').text(data.total_rows || 0);
+        $('#stat-valid-rows').text(data.valid_count || 0);
+        $('#stat-update-rows').text(data.update_count || 0);
+        $('#stat-error-rows').text(data.error_count || 0);
+
+        $('#pill-all-count').text(data.total_rows || 0);
+        $('#pill-valid-count').text(data.valid_count || 0);
+        $('#pill-update-count').text(data.update_count || 0);
+        $('#pill-error-count').text(data.error_count || 0);
+
+        $('#btn-valid-count').text(data.valid_count || 0);
+
+        if (data.valid_count > 0) {
+            $('#btn-confirm-import').prop('disabled', false);
+        } else {
+            $('#btn-confirm-import').prop('disabled', true);
+        }
+
+        if (data.error_count > 0) {
+            $('#preview-error-alert').removeClass('d-none');
+            $('#preview-error-text').text(`${data.error_count} row(s) contain validation errors and will be skipped. Only valid rows will be imported.`);
+        } else {
+            $('#preview-error-alert').addClass('d-none');
+        }
+
+        renderFilteredRows();
+    }
+
+    function renderFilteredRows() {
+        if (!previewData || !previewData.rows) return;
+
+        const searchTerm = ($('#preview-search-input').val() || '').toLowerCase().trim();
+        const tbody = $('#preview-table-body');
+        tbody.empty();
+
+        const filtered = previewData.rows.filter(r => {
+            // Filter by status pill
+            if (currentFilter === 'valid' && r.status !== 'valid') return false;
+            if (currentFilter === 'update' && (r.status !== 'valid' || r.action !== 'update')) return false;
+            if (currentFilter === 'error' && r.status !== 'error') return false;
+
+            // Search filter
+            if (searchTerm) {
+                const name = (r.employee_name || '').toLowerCase();
+                const code = (r.employee_code || '').toLowerCase();
+                if (!name.includes(searchTerm) && !code.includes(searchTerm)) {
+                    return false;
+                }
+            }
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            tbody.html('<tr><td colspan="11" class="text-center py-4 text-secondary">No rows match the selected filter.</td></tr>');
+            return;
+        }
+
+        filtered.forEach(r => {
+            let statusBadge = '';
+            if (r.status === 'valid') {
+                if (r.action === 'update') {
+                    statusBadge = '<span class="badge bg-info-subtle text-info border border-info-subtle"><i class="fa-solid fa-arrows-rotate me-1"></i>Revision</span>';
+                } else {
+                    statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="fa-solid fa-plus me-1"></i>New Baseline</span>';
+                }
+            } else {
+                statusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="fa-solid fa-triangle-exclamation me-1"></i>Error</span>';
+            }
+
+            let remarks = '';
+            if (r.status === 'error') {
+                const errList = Object.values(r.errors || {});
+                remarks = `<span class="text-danger small"><i class="fa-solid fa-circle-xmark me-1"></i>${errList.join('; ')}</span>`;
+            } else if (r.action === 'update') {
+                const diff = (r.gross_salary || 0) - (r.previous_gross || 0);
+                const diffSign = diff >= 0 ? '+' : '';
+                remarks = `<span class="text-info small">Prev Gross: ₹${Math.round(r.previous_gross).toLocaleString('en-IN')} (${diffSign}₹${Math.round(diff).toLocaleString('en-IN')})</span>`;
+            } else {
+                remarks = `<span class="text-success small">Initial configuration</span>`;
+            }
+
+            const allowTotal = (r.special_allowance || 0) + (r.other_allowance || 0) + (r.medical_allowance || 0) + (r.travel_allowance || 0);
+
+            const tr = `
+                <tr class="${r.status === 'error' ? 'table-danger bg-opacity-25' : ''}">
+                    <td class="text-secondary font-monospace">${r.row}</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        <div class="fw-bold text-white">${escapeHtml(r.employee_name)}</div>
+                        <div class="text-secondary font-monospace" style="font-size: 0.75rem;">${escapeHtml(r.employee_code)} ${r.job_title ? '• ' + escapeHtml(r.job_title) : ''}</div>
+                    </td>
+                    <td class="text-end font-monospace">₹${Math.round(r.basic_salary || 0).toLocaleString('en-IN')}</td>
+                    <td class="text-end font-monospace">₹${Math.round(r.hra || 0).toLocaleString('en-IN')}</td>
+                    <td class="text-end font-monospace">₹${Math.round(allowTotal).toLocaleString('en-IN')}</td>
+                    <td class="text-end font-monospace fw-bold text-white">₹${Math.round(r.gross_salary || 0).toLocaleString('en-IN')}</td>
+                    <td class="text-end font-monospace text-warning">₹${Math.round(r.total_deductions || 0).toLocaleString('en-IN')}</td>
+                    <td class="text-end font-monospace text-success fw-bold">₹${Math.round(r.net_salary || 0).toLocaleString('en-IN')}</td>
+                    <td class="text-end font-monospace text-primary fw-bold">₹${Math.round(r.ctc || 0).toLocaleString('en-IN')}</td>
+                    <td>${remarks}</td>
+                </tr>
+            `;
+            tbody.append(tr);
+        });
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.replace(/[&<>"']/g, function(m) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+        });
+    }
+
+    // Filter pills
+    $(document).on('click', '.preview-filter-btn', function() {
+        $('.preview-filter-btn').removeClass('active');
+        $(this).addClass('active');
+        currentFilter = $(this).data('filter');
+        renderFilteredRows();
+    });
+
+    // Search input
+    $('#preview-search-input').on('input', function() {
+        renderFilteredRows();
+    });
+
+    // Step navigation
+    function switchStep(step) {
+        $('#bulk-step-upload, #bulk-step-preview, #bulk-step-progress, #bulk-step-result').addClass('d-none');
+        $('#footer-step-1, #footer-step-2').addClass('d-none');
+
+        if (step === 1) {
+            $('#bulk-step-upload').removeClass('d-none');
+            $('#footer-step-1').removeClass('d-none');
+        } else if (step === 2) {
+            $('#bulk-step-preview').removeClass('d-none');
+            $('#footer-step-2').removeClass('d-none');
+        } else if (step === 3) {
+            $('#bulk-step-progress').removeClass('d-none');
+            $('#bulk-modal-close-btn').prop('disabled', true);
+        } else if (step === 4) {
+            $('#bulk-step-result').removeClass('d-none');
+            $('#bulk-modal-close-btn').prop('disabled', false);
+        }
+    }
+
+    $('#btn-step2-back').on('click', function() {
+        switchStep(1);
+    });
+
+    // Confirm & Execute Import
+    $('#btn-confirm-import').on('click', function() {
+        if (!previewData || previewData.valid_count === 0) return;
+
+        const strategy = $('input[name="duplicate_strategy"]:checked').val() || 'update';
+        const effectiveDate = $('#bulk_effective_date').val() || '';
+        const revisionReason = $('#bulk_revision_reason').val() || '';
+
+        switchStep(3);
+
+        $.ajax({
+            url: 'index.php?route=payroll/bulk_import_structures',
+            type: 'POST',
+            contentType: 'application/json',
+            headers: {
+                'X-CSRF-Token': '<?php echo $_SESSION['csrf_token'] ?? ''; ?>'
+            },
+            data: JSON.stringify({
+                csrf_token: '<?php echo $_SESSION['csrf_token'] ?? ''; ?>',
+                duplicate_strategy: strategy,
+                batch_effective_date: effectiveDate,
+                batch_revision_reason: revisionReason
+            }),
+            dataType: 'json',
+            success: function(res) {
+                if (res.success) {
+                    $('#result-stat-processed').text(res.total_processed || (res.imported + res.updated) || 0);
+                    $('#result-stat-skipped').text(res.skipped || 0);
+
+                    if (res.failed > 0) {
+                        $('#result-stat-failed').text(res.failed);
+                        $('#result-stat-failed-box').removeClass('d-none');
+                        $('#btn-download-import-errors').removeClass('d-none');
+                    } else {
+                        $('#result-stat-failed-box').addClass('d-none');
+                        $('#btn-download-import-errors').addClass('d-none');
+                    }
+
+                    switchStep(4);
+                } else {
+                    alert(res.message || 'Import failed.');
+                    switchStep(2);
+                }
+            },
+            error: function(xhr) {
+                let errMsg = 'An unexpected error occurred during import.';
+                try {
+                    const parsed = JSON.parse(xhr.responseText);
+                    if (parsed.message) errMsg = parsed.message;
+                } catch(e) {}
+                alert(errMsg);
+                switchStep(2);
+            }
+        });
+    });
+
+    // Reset when modal closed
+    $('#bulkSalaryUploadModal').on('hidden.bs.modal', function() {
+        switchStep(1);
+        resetFileInput();
+        previewData = null;
+        currentFilter = 'all';
+    });
+})();
 </script>

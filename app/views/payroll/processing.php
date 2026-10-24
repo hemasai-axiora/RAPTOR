@@ -16,6 +16,12 @@
                     <label class="form-label text-secondary small">Target Month/Year *</label>
                     <input type="month" name="month_year" class="form-control bg-dark border-secondary text-white" value="<?php echo date('Y-m'); ?>" required>
                 </div>
+                <div class="form-check form-switch mb-3 p-2 bg-dark bg-opacity-50 rounded border border-secondary">
+                    <input class="form-check-input ms-0 me-2" type="checkbox" name="send_email_on_generate" id="send_email_on_generate" value="1" checked>
+                    <label class="form-check-label text-white small" for="send_email_on_generate">
+                        <i class="fa-solid fa-envelope me-1 text-info"></i> Automatically email PDF payslips to employees upon generation
+                    </label>
+                </div>
                 <button type="submit" class="btn btn-primary btn-sm w-100" style="background: var(--primary); border: none;">
                     <i class="fa-solid fa-calculator me-1"></i>Generate & Compute Payroll
                 </button>
@@ -97,9 +103,22 @@
                         <?php if ($selected_run->status === 'locked' && in_array($role, ['admin', 'finance'], true)): ?>
                             <form action="index.php?route=payroll/run_release/<?php echo $selected_run->payroll_run_id; ?>" method="POST" class="d-inline">
                                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
-                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Release payslips to employees and complete runs?');"><i class="fa-solid fa-circle-check me-1"></i>Release Payslips</button>
+                                <input type="hidden" name="send_email_on_release" value="1">
+                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Release payslips and email PDF copies to all employees?');">
+                                    <i class="fa-solid fa-circle-check me-1"></i>Release &amp; Email Payslips
+                                </button>
                             </form>
                         <?php endif; ?>
+
+                        <!-- Quick Bulk Email Action -->
+                        <form action="index.php?route=payroll/bulk_email_payslips" method="POST" class="d-inline" onsubmit="return confirm('Dispatch official PDF payslips to all employees in this run via email?');">
+                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                            <input type="hidden" name="run_id" value="<?php echo $selected_run->payroll_run_id; ?>">
+                            <input type="hidden" name="redirect_to_processing" value="1">
+                            <button type="submit" class="btn btn-outline-success btn-sm" title="Email payslips with PDF attachments to all employees in this run">
+                                <i class="fa-solid fa-paper-plane me-1"></i>Email All Payslips
+                            </button>
+                        </form>
 
                         <?php if (in_array($selected_run->status, ['locked', 'released'], true) && in_array($role, ['admin', 'finance'], true)): ?>
                             <a href="index.php?route=payroll/export_bank_file/<?php echo $selected_run->payroll_run_id; ?>" class="btn btn-outline-info btn-sm">
@@ -107,11 +126,9 @@
                             </a>
                         <?php endif; ?>
 
-                        <?php if ($selected_run->status === 'released'): ?>
-                            <a href="index.php?route=payroll/payslips&run_id=<?php echo $selected_run->payroll_run_id; ?>" class="btn btn-outline-primary btn-sm">
-                                <i class="fa-solid fa-envelope me-1"></i>Manage Payslip Emails
-                            </a>
-                        <?php endif; ?>
+                        <a href="index.php?route=payroll/payslips&run_id=<?php echo $selected_run->payroll_run_id; ?>" class="btn btn-outline-primary btn-sm">
+                            <i class="fa-solid fa-envelope me-1"></i>Manage Payslip Emails
+                        </a>
                     </div>
                 </div>
 
@@ -125,7 +142,8 @@
                                 <th class="text-end">Gross</th>
                                 <th class="text-end">Deductions</th>
                                 <th class="text-end">Net Salary</th>
-                                <th class="text-center">Status</th>
+                                <th class="text-center">Email Status</th>
+                                <th class="text-center">Payment</th>
                                 <th class="text-end">Actions</th>
                             </tr>
                         </thead>
@@ -133,7 +151,10 @@
                             <?php foreach ($details as $row): ?>
                                 <tr>
                                     <td class="font-monospace text-secondary"><?php echo htmlspecialchars($row->employee_code); ?></td>
-                                    <td class="font-weight-bold text-white"><?php echo htmlspecialchars($row->name); ?></td>
+                                    <td>
+                                        <div class="font-weight-bold text-white"><?php echo htmlspecialchars($row->name); ?></div>
+                                        <div class="text-secondary font-monospace" style="font-size:0.75rem;"><?php echo htmlspecialchars($row->email ?: 'No email'); ?></div>
+                                    </td>
                                     <td>
                                         <div class="small">
                                             <strong><?php echo htmlspecialchars($row->bank_name ?: 'N/A'); ?></strong><br>
@@ -143,6 +164,21 @@
                                     <td class="text-end font-monospace">₹<?php echo number_format($row->gross_salary); ?></td>
                                     <td class="text-end font-monospace text-warning">₹<?php echo number_format($row->total_deductions); ?></td>
                                     <td class="text-end font-weight-bold text-success font-monospace">₹<?php echo number_format($row->net_salary); ?></td>
+                                    <td class="text-center">
+                                        <?php if (($row->email_status ?? 'pending') === 'sent'): ?>
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2" title="<?php echo !empty($row->email_sent_at) ? 'Dispatched at ' . $row->email_sent_at : 'Delivered'; ?>">
+                                                <i class="fa-solid fa-circle-check me-1"></i> Sent
+                                            </span>
+                                        <?php elseif (($row->email_status ?? 'pending') === 'failed'): ?>
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle py-1 px-2" title="<?php echo htmlspecialchars($row->email_error ?: 'Delivery error'); ?>">
+                                                <i class="fa-solid fa-triangle-exclamation me-1"></i> Failed
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle py-1 px-2">
+                                                <i class="fa-solid fa-clock me-1"></i> Pending
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td class="text-center">
                                         <span class="badge bg-<?php echo $row->payment_status === 'paid' ? 'success' : 'danger'; ?>-subtle text-<?php echo $row->payment_status === 'paid' ? 'success' : 'danger'; ?> border border-<?php echo $row->payment_status === 'paid' ? 'success' : 'danger'; ?>-subtle text-uppercase" style="font-size: 0.65rem;">
                                             <?php echo htmlspecialchars($row->payment_status); ?>
@@ -156,6 +192,14 @@
                                             <a href="index.php?route=payroll/payslip_view/<?php echo $row->payroll_detail_id; ?>&download=pdf" class="btn btn-outline-info py-0 px-2" title="Download PDF">
                                                 <i class="fa-solid fa-file-pdf"></i>
                                             </a>
+                                            <!-- Single Click Email Payslip Button -->
+                                            <form action="index.php?route=payroll/send_single_email/<?php echo $row->payroll_detail_id; ?>" method="POST" class="d-inline" onsubmit="return confirm('Send PDF payslip to <?php echo htmlspecialchars($row->email ?: $row->name); ?>?');">
+                                                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                                                <input type="hidden" name="redirect_to_processing" value="1">
+                                                <button type="submit" class="btn btn-outline-success py-0 px-2" title="Email PDF Payslip to <?php echo htmlspecialchars($row->name); ?>">
+                                                    <i class="fa-solid fa-paper-plane"></i>
+                                                </button>
+                                            </form>
                                         </div>
                                     </td>
                                 </tr>
