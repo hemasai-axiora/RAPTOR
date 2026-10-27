@@ -208,15 +208,30 @@ foreach ($rows as $r) {
 
     // 3. Insert or Update Bank Account
     if (!empty($bankAc) && !str_starts_with($bankAc, '=')) {
+        $bankPrefix = strtoupper(substr(trim($ifsc), 0, 4));
+        $bankNames = [
+            'FDRL' => 'Federal Bank',
+            'CNRB' => 'Canara Bank',
+            'SBIN' => 'State Bank of India',
+            'HDFC' => 'HDFC Bank',
+            'ICIC' => 'ICICI Bank',
+            'UTIB' => 'Axis Bank',
+            'KKBK' => 'Kotak Mahindra Bank',
+            'UBIN' => 'Union Bank of India',
+            'PUNB' => 'Punjab National Bank',
+            'BARB' => 'Bank of Baroda'
+        ];
+        $bankName = $bankNames[$bankPrefix] ?? ($bankPrefix . ' Bank');
         $db->prepare("DELETE FROM bank_accounts WHERE employee_id = :eid")->execute([':eid' => $empId]);
         $db->prepare("
-            INSERT INTO bank_accounts (employee_id, account_holder_name, account_number, ifsc_code, account_type)
-            VALUES (:eid, :hname, :ac, :ifsc, 'Savings')
+            INSERT INTO bank_accounts (employee_id, account_holder_name, account_number, ifsc_code, bank_name, account_type)
+            VALUES (:eid, :hname, :ac, :ifsc, :bname, 'Savings')
         ")->execute([
             ':eid' => $empId,
             ':hname' => $empName,
             ':ac' => $bankAc,
-            ':ifsc' => $ifsc
+            ':ifsc' => $ifsc,
+            ':bname' => $bankName
         ]);
     }
 
