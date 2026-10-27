@@ -672,6 +672,7 @@ class PayrollController extends Controller {
         $headers = [
             'Employee_Code',
             'Employee_Name',
+            'Monthly_CTC',
             'Basic_Salary',
             'HRA',
             'Special_Allowance',
@@ -694,40 +695,42 @@ class PayrollController extends Controller {
 
         if ($isBlank) {
             fputcsv($out, [
-                'EMP-2026-00001',
+                'AGS26010',
                 'Sample Employee One',
                 '35000',
-                '14000',
-                '7000',
-                '3000',
-                '1250',
+                '17500',
+                '8750',
                 '1600',
+                '4508',
                 '0',
                 '0',
-                '4200',
-                '4200',
-                '1684',
+                '0',
+                '0',
+                '1800',
+                '1800',
+                '842',
                 '0',
                 '200',
-                '1500',
+                '0',
                 'Monthly',
                 date('Y-m-d'),
                 'Annual Appraisal Revision'
             ]);
             fputcsv($out, [
-                'EMP-2026-00002',
+                'AGS26011',
                 'Sample Employee Two',
-                '28000',
-                '11200',
-                '5600',
-                '2000',
-                '1250',
+                '45000',
+                '22500',
+                '11250',
                 '1600',
+                '6768',
                 '0',
                 '0',
-                '3360',
-                '3360',
-                '1347',
+                '0',
+                '0',
+                '1800',
+                '1800',
+                '1082',
                 '0',
                 '200',
                 '0',
@@ -735,19 +738,40 @@ class PayrollController extends Controller {
                 date('Y-m-d'),
                 'Market Rate Adjustment'
             ]);
+            fputcsv($out, [
+                'AGS26019',
+                'Sample Employee Three',
+                '23000',
+                '11500',
+                '5750',
+                '1600',
+                '2217',
+                '0',
+                '0',
+                '0',
+                '0',
+                '1380',
+                '1380',
+                '553',
+                '0',
+                '200',
+                '0',
+                'Monthly',
+                date('Y-m-d'),
+                'New Joiner Baseline Structure'
+            ]);
         } else {
             $employees = $this->payrollModel->getActiveEmployees();
             foreach ($employees as $emp) {
                 $struct = $this->payrollModel->getSalaryStructureByEmployeeId($emp->employee_id);
-                $currBasic = $struct ? (float)$struct->basic_salary : round((float)($emp->salary ?? 25000) * 0.50, 2);
-                $currHra = $struct ? (float)$struct->hra : round($currBasic * 0.40, 2);
-                $currSpecial = $struct ? (float)$struct->special_allowance : round($currBasic * 0.20, 2);
-                $currOther = $struct ? (float)($struct->other_allowance ?? 0) : 2000.00;
-                $currMed = $struct ? (float)$struct->medical_allowance : 1250.00;
-                $currTravel = $struct ? (float)$struct->travel_allowance : 1600.00;
+                $currBasic = $struct ? (float)$struct->basic_salary : round((float)($emp->salary ?? 35000) * 0.50, 2);
+                $currHra = $struct ? (float)$struct->hra : round($currBasic * 0.50, 2);
+                $currSpecial = $struct ? (float)$struct->special_allowance : 1600.00;
+                $currMed = $struct ? (float)$struct->medical_allowance : 0.00;
+                $currTravel = $struct ? (float)$struct->travel_allowance : 0.00;
                 $currBonus = $struct ? (float)$struct->bonus : 0.00;
                 $currOtherEarn = $struct ? (float)$struct->other_earnings : 0.00;
-                $currPf = $struct ? (float)$struct->pf : round($currBasic * 0.12, 2);
+                $currPf = $struct ? (float)$struct->pf : (($currBasic >= 15000) ? 1800.00 : round($currBasic * 0.12, 2));
                 $currEmpPf = $struct ? (float)($struct->employer_pf ?? $currPf) : $currPf;
                 $currGratuity = $struct ? (float)($struct->gratuity ?? round($currBasic * 0.0481, 2)) : round($currBasic * 0.0481, 2);
                 $currEsic = $struct ? (float)$struct->esic : 0.00;
@@ -755,10 +779,15 @@ class PayrollController extends Controller {
                 $currTds = $struct ? (float)$struct->tds : 0.00;
                 $salaryType = $struct ? ($struct->salary_type ?? 'Monthly') : 'Monthly';
 
+                $currGross = $currBasic + $currHra + $currSpecial + (float)($struct->other_allowance ?? 0) + $currMed + $currTravel + $currBonus + $currOtherEarn;
+                $currCtc = round($currGross + $currEmpPf + $currGratuity);
+                $currOther = $struct ? (float)($struct->other_allowance ?? 0) : max(0, round($currCtc - ($currBasic + $currHra + $currSpecial + $currEmpPf + $currGratuity)));
+
                 fputcsv($out, [
                     $emp->employee_code,
                     $emp->name,
-                    $currBasic > 0 ? $currBasic : '25000',
+                    $currCtc,
+                    $currBasic > 0 ? $currBasic : '17500',
                     $currHra,
                     $currSpecial,
                     $currOther,
@@ -848,22 +877,23 @@ class PayrollController extends Controller {
                 'employee_code' => ['employee_code', 'emp_code', 'emp_id', 'employee_id', 'code', 'id', 'empid'],
                 'email' => ['email', 'email_address', 'emp_email', 'employee_email', 'mail'],
                 'employee_name' => ['employee_name', 'name', 'full_name', 'emp_name'],
-                'basic_salary' => ['basic_salary', 'basic', 'basic_pay', 'basic_sal'],
-                'hra' => ['hra', 'house_rent_allowance', 'h_r_a'],
-                'special_allowance' => ['special_allowance', 'special', 'special_all', 'special_allow'],
-                'other_allowance' => ['other_allowance', 'other_allow', 'other_all', 'other_allowances'],
+                'ctc' => ['ctc', 'monthly_ctc', 'cost_to_company', 'monthly_cost_to_company'],
+                'basic_salary' => ['basic_salary', 'basic', 'basic_pay', 'basic_sal', 'abasic', 'actual_basic'],
+                'hra' => ['hra', 'house_rent_allowance', 'h_r_a', 'ahra', 'actual_hra'],
+                'special_allowance' => ['special_allowance', 'special', 'special_all', 'special_allow', 'asa', 'special_al'],
+                'other_allowance' => ['other_allowance', 'other_allow', 'other_all', 'other_allowances', 'spec_allo', 'other_al'],
                 'medical_allowance' => ['medical_allowance', 'medical', 'med_allowance', 'med'],
                 'travel_allowance' => ['travel_allowance', 'travel', 'conveyance', 'conveyance_allowance', 'transport_allowance'],
                 'bonus' => ['bonus', 'statutory_bonus', 'annual_bonus', 'incentive'],
                 'other_earnings' => ['other_earnings', 'other_earning', 'additional_earnings'],
                 'pf' => ['pf', 'provident_fund', 'epf', 'employee_pf'],
-                'employer_pf' => ['employer_pf', 'company_pf', 'pf_employer'],
+                'employer_pf' => ['employer_pf', 'company_pf', 'pf_employer', 'erpf', 'er_pf'],
                 'gratuity' => ['gratuity', 'grat'],
                 'esic' => ['esic', 'esi', 'employee_esic'],
                 'professional_tax' => ['professional_tax', 'pt', 'prof_tax'],
                 'tds' => ['tds', 'tax', 'income_tax', 'tds_deduction'],
                 'salary_type' => ['salary_type', 'type', 'wage_type'],
-                'effective_date' => ['effective_date', 'rev_effective_date', 'date'],
+                'effective_date' => ['effective_date', 'rev_effective_date', 'date', 'pay_date'],
                 'revision_reason' => ['revision_reason', 'reason', 'remarks', 'note']
             ];
 
@@ -921,29 +951,39 @@ class PayrollController extends Controller {
                     }
                 }
 
-                // 2. Validate Salary Numbers
+                // 2. Validate Salary Numbers (Supports Monthly CTC or Component breakdown)
+                $rawCtc = (isset($mapped['ctc']) && $mapped['ctc'] !== '' && is_numeric($mapped['ctc'])) ? (float)$mapped['ctc'] : 0.00;
                 $rawBasic = $mapped['basic_salary'];
-                if ($rawBasic === null || $rawBasic === '' || !is_numeric($rawBasic)) {
-                    $errors['basic_salary'] = "Basic salary is required and must be a numeric value.";
-                    $basic = 0.00;
-                } else {
+
+                if (($rawBasic === null || $rawBasic === '' || !is_numeric($rawBasic)) && $rawCtc > 0) {
+                    // Derive Basic as 50% of CTC
+                    $basic = round($rawCtc * 0.50, 2);
+                } elseif ($rawBasic !== null && $rawBasic !== '' && is_numeric($rawBasic)) {
                     $basic = round((float)$rawBasic, 2);
-                    if ($basic <= 0) {
+                    if ($basic <= 0 && $rawCtc <= 0) {
                         $errors['basic_salary'] = "Basic salary must be greater than zero.";
                     }
+                } else {
+                    $errors['basic_salary'] = "Basic salary or Monthly CTC is required and must be a numeric value.";
+                    $basic = 0.00;
                 }
 
+                // Standard Axiora formulas: HRA = 50% Basic, Special = 1600
                 $hra = (isset($mapped['hra']) && $mapped['hra'] !== '' && is_numeric($mapped['hra']))
                     ? round((float)$mapped['hra'], 2)
-                    : round($basic * 0.40, 2);
+                    : round($basic * 0.50, 2);
 
                 $special = (isset($mapped['special_allowance']) && $mapped['special_allowance'] !== '' && is_numeric($mapped['special_allowance']))
                     ? round((float)$mapped['special_allowance'], 2)
-                    : 0.00;
+                    : 1600.00;
 
-                $otherAll = (isset($mapped['other_allowance']) && $mapped['other_allowance'] !== '' && is_numeric($mapped['other_allowance']))
-                    ? round((float)$mapped['other_allowance'], 2)
-                    : 0.00;
+                $empPf = (isset($mapped['employer_pf']) && $mapped['employer_pf'] !== '' && is_numeric($mapped['employer_pf']))
+                    ? round((float)$mapped['employer_pf'], 2)
+                    : (($basic >= 15000) ? 1800.00 : round($basic * 0.12, 2));
+
+                $gratuity = (isset($mapped['gratuity']) && $mapped['gratuity'] !== '' && is_numeric($mapped['gratuity']))
+                    ? round((float)$mapped['gratuity'], 2)
+                    : round($basic * 0.0481, 2);
 
                 $med = (isset($mapped['medical_allowance']) && $mapped['medical_allowance'] !== '' && is_numeric($mapped['medical_allowance']))
                     ? round((float)$mapped['medical_allowance'], 2)
@@ -961,27 +1001,28 @@ class PayrollController extends Controller {
                     ? round((float)$mapped['other_earnings'], 2)
                     : 0.00;
 
+                // Other Allowance: If provided in file use it; if CTC provided compute balancing figure
+                if (isset($mapped['other_allowance']) && $mapped['other_allowance'] !== '' && is_numeric($mapped['other_allowance'])) {
+                    $otherAll = round((float)$mapped['other_allowance'], 2);
+                } elseif ($rawCtc > 0) {
+                    $otherAll = max(0, round($rawCtc - ($basic + $hra + $special + $med + $travel + $bonus + $otherEarn + $empPf + $gratuity), 2));
+                } else {
+                    $otherAll = 0.00;
+                }
+
                 $gross = $basic + $hra + $special + $otherAll + $med + $travel + $bonus + $otherEarn;
 
                 $pf = (isset($mapped['pf']) && $mapped['pf'] !== '' && is_numeric($mapped['pf']))
                     ? round((float)$mapped['pf'], 2)
-                    : round($basic * 0.12, 2);
-
-                $empPf = (isset($mapped['employer_pf']) && $mapped['employer_pf'] !== '' && is_numeric($mapped['employer_pf']))
-                    ? round((float)$mapped['employer_pf'], 2)
-                    : $pf;
-
-                $gratuity = (isset($mapped['gratuity']) && $mapped['gratuity'] !== '' && is_numeric($mapped['gratuity']))
-                    ? round((float)$mapped['gratuity'], 2)
-                    : round($basic * 0.0481, 2);
+                    : $empPf;
 
                 $esic = (isset($mapped['esic']) && $mapped['esic'] !== '' && is_numeric($mapped['esic']))
                     ? round((float)$mapped['esic'], 2)
-                    : ($gross <= 21000 ? round($gross * 0.0075, 2) : 0.00);
+                    : 0.00;
 
                 $pt = (isset($mapped['professional_tax']) && $mapped['professional_tax'] !== '' && is_numeric($mapped['professional_tax']))
                     ? round((float)$mapped['professional_tax'], 2)
-                    : 200.00;
+                    : ($gross > 20000 ? 200.00 : ($gross > 15000 ? 150.00 : 0.00));
 
                 $tds = (isset($mapped['tds']) && $mapped['tds'] !== '' && is_numeric($mapped['tds']))
                     ? round((float)$mapped['tds'], 2)
@@ -1406,11 +1447,11 @@ class PayrollController extends Controller {
 
             // Base structure components
             $actualBasic = $basicSalaryVal > 0 ? $basicSalaryVal : 25000.00;
-            $actualHra = $struct ? (float)$struct->hra : round($actualBasic * 0.40);
-            $actualSpecial = $struct ? (float)$struct->special_allowance : 3000.00;
+            $actualHra = $struct ? (float)$struct->hra : round($actualBasic * 0.50);
+            $actualSpecial = $struct ? (float)$struct->special_allowance : 1600.00;
             $actualOther = $struct ? (float)($struct->other_allowance ?? 0.00) : 0.00;
-            $med = $struct ? (float)$struct->medical_allowance : 1250.00;
-            $travel = $struct ? (float)$struct->travel_allowance : 1600.00;
+            $med = $struct ? (float)$struct->medical_allowance : 0.00;
+            $travel = $struct ? (float)$struct->travel_allowance : 0.00;
             $bonus = $struct ? (float)$struct->bonus : 0.00;
             $otherEarn = $struct ? (float)$struct->other_earnings : 0.00;
 
@@ -1437,7 +1478,7 @@ class PayrollController extends Controller {
             }
 
             // Attendance logs
-            $presentDays = 22;
+            $presentDays = 30;
             $absentDays = 0;
             try {
                 $attStmt = $db->prepare("SELECT COUNT(*) FROM attendance WHERE user_id = :uid AND status = 'present' AND date_stamp LIKE :month");
@@ -1466,11 +1507,11 @@ class PayrollController extends Controller {
             $travel = round($travel * $proRateFactor);
 
             // Statutory & Other Deductions
-            $pf = $struct ? round((float)$struct->pf) : round($basic * 0.12);
-            $employerPf = $struct ? round((float)($struct->employer_pf ?? $pf)) : round($basic * 0.12);
-            $gratuity = $struct ? round((float)($struct->gratuity ?? round($basic * 0.0481))) : round($basic * 0.0481);
-            $esic = $struct ? round((float)$struct->esic) : round($basic * 0.0075);
-            $pt = $struct ? round((float)$struct->professional_tax) : 200;
+            $pf = $struct ? round((float)$struct->pf) : (($basic >= 15000) ? 1800 : round($basic * 0.12));
+            $employerPf = $struct ? round((float)($struct->employer_pf ?? $pf)) : (($actualBasic >= 15000) ? 1800 : round($actualBasic * 0.12));
+            $gratuity = $struct ? round((float)($struct->gratuity ?? round($actualBasic * 0.0481))) : round($actualBasic * 0.0481);
+            $esic = $struct ? round((float)$struct->esic) : 0;
+            $pt = $struct ? round((float)$struct->professional_tax) : (($actualBasic + $actualHra + $actualSpecial + $actualOther > 20000) ? 200 : 150);
             $tds = $struct ? round((float)$struct->tds) : 0;
             $empOtherDeduct = round((float)($otherDeductionsByEmp[$emp->employee_id] ?? 0.00));
 

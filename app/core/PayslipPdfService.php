@@ -111,6 +111,23 @@ class PayslipPdfService {
             }
         }
 
+        // Embed Zoho Payroll Footer Logo as Image XObject (JPEG)
+        $zohoLogoObjId = null;
+        $zohoCandidates = [
+            (defined('APPROOT') ? dirname(APPROOT) . '/public/zoho_payroll_logo.jpg' : ''),
+            dirname(__DIR__, 2) . '/public/zoho_payroll_logo.jpg',
+            '/var/www/html/public/zoho_payroll_logo.jpg',
+            __DIR__ . '/../../public/zoho_payroll_logo.jpg'
+        ];
+        foreach ($zohoCandidates as $zcand) {
+            if (!empty($zcand) && file_exists($zcand)) {
+                $zData = file_get_contents($zcand);
+                $zLen = strlen($zData);
+                $zohoLogoObjId = $addObj("<< /Type /XObject /Subtype /Image /Width 199 /Height 65 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {$zLen} >>\nstream\n" . $zData . "\nendstream");
+                break;
+            }
+        }
+
         // Content Stream
         $stream = "";
         
@@ -536,15 +553,27 @@ class PayslipPdfService {
         $drawTextCenter($pageW / 2, $wordsY, $wordsText, 'F1', 8, 4.8, 0.2, 0.25, 0.35);
 
         // ==========================================
-        // 6. Footer (System-generated notice only, removed Zoho branding as requested)
+        // 6. Footer (Exact matching Zoho Payroll reference)
         // ==========================================
-        $drawTextCenter($pageW / 2, 45, "-- This is a system-generated document. --", 'F3', 7.5, 4.5, 0.45, 0.5, 0.55);
+        $drawTextCenter($pageW / 2, 82, "-- This is a system-generated document. --", 'F3', 7.5, 4.5, 0.45, 0.5, 0.55);
+
+        // Powered by Zoho Payroll
+        $footerY = 22;
+        $drawText(112, $footerY + 4, "Powered by", 'F1', 8.5, 0.45, 0.5, 0.55);
+        if ($zohoLogoObjId !== null) {
+            $stream .= sprintf("q 65.25 0 0 21.20 %.2f %.2f cm /ImZoho Do Q\n", 168.0, $footerY - 2.5);
+        }
+        $drawText(242, $footerY + 4, "Simplify payroll and compliance. Visit", 'F1', 8.2, 0.45, 0.5, 0.55);
+        $drawText(384, $footerY + 4, "zoho.com/payroll", 'F1', 8.2, 0.15, 0.38, 0.92);
 
         // 3: Page Object
         $streamLen = strlen($stream);
         $contentObjId = $addObj("<< /Length {$streamLen} >>\nstream\n" . $stream . "\nendstream");
 
-        $xobjEntry = ($logoObjId !== null) ? "/XObject << /ImLogo {$logoObjId} 0 R >>" : "";
+        $xobjParts = [];
+        if ($logoObjId !== null) $xobjParts[] = "/ImLogo {$logoObjId} 0 R";
+        if ($zohoLogoObjId !== null) $xobjParts[] = "/ImZoho {$zohoLogoObjId} 0 R";
+        $xobjEntry = !empty($xobjParts) ? "/XObject << " . implode(' ', $xobjParts) . " >>" : "";
         $pageObj = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {$pageW} {$pageH}] /Contents {$contentObjId} 0 R /Resources << /Font << /F1 {$fontRegularId} 0 R /F2 {$fontBoldId} 0 R /F3 {$fontObliqueId} 0 R /FT1 {$fontTimesRegularId} 0 R /FT2 {$fontTimesBoldId} 0 R >> {$xobjEntry} >> >>";
         $objects[2] = $pageObj; // replace placeholder page object
 

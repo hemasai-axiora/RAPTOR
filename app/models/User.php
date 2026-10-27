@@ -117,6 +117,20 @@ class User extends Model {
         return $row && ((int) $row->count) > 0;
     }
 
+    // Check if email already exists
+    public function isEmailExists($email, $excludeUserId = null) {
+        if (empty($email)) return false;
+        if ($excludeUserId) {
+            $this->query('SELECT COUNT(*) as count FROM users WHERE LOWER(email) = LOWER(:email) AND user_id != :uid');
+            $this->bind(':uid', $excludeUserId);
+        } else {
+            $this->query('SELECT COUNT(*) as count FROM users WHERE LOWER(email) = LOWER(:email)');
+        }
+        $this->bind(':email', trim($email));
+        $row = $this->single();
+        return $row && ((int) $row->count) > 0;
+    }
+
     // Add user
     public function addUser($data) {
         $inTx = $this->db->inTransaction();

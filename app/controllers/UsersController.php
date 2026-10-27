@@ -102,6 +102,11 @@ class UsersController extends Controller {
                 $this->redirect('index.php?route=users/index');
                 return;
             }
+            if ($this->userModel->isEmailExists($data['email'])) {
+                $_SESSION['user_error'] = 'An account with this email address already exists (' . htmlspecialchars($data['email']) . ').';
+                $this->redirect('index.php?route=users/index');
+                return;
+            }
             if (!empty($data['employee_code']) && !Validation::validateHasAlphanumeric($data['employee_code'])) {
                 $_SESSION['user_error'] = 'Employee ID must contain alphanumeric characters.';
                 $this->redirect('index.php?route=users/index');
@@ -289,6 +294,11 @@ class UsersController extends Controller {
                 $this->redirect('index.php?route=users/index');
                 return;
             }
+            if ($this->userModel->isEmailExists($data['email'], $data['user_id'])) {
+                $_SESSION['user_error'] = 'This email address (' . htmlspecialchars($data['email']) . ') is already registered to another employee. Each employee must have a unique email address.';
+                $this->redirect('index.php?route=users/index');
+                return;
+            }
 
             // Handle Profile Photo Upload
             if (!empty($_FILES['profile_photo']['name'])) {
@@ -417,7 +427,9 @@ class UsersController extends Controller {
                     $this->redirect('index.php?route=users/index');
                     return;
                 } else {
-                    die('Something went wrong.');
+                    $_SESSION['user_error'] = 'Failed to update employee details. Please ensure the email address is not already registered.';
+                    $this->redirect('index.php?route=users/index');
+                    return;
                 }
             }
         }

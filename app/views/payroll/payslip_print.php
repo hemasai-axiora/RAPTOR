@@ -67,6 +67,21 @@ foreach ($logoCandidates as $cand) {
         break;
     }
 }
+
+$zohoCandidates = [
+    (defined('APPROOT') ? dirname(APPROOT) . '/public/zoho_payroll_logo.jpg' : ''),
+    dirname(__DIR__, 3) . '/public/zoho_payroll_logo.jpg',
+    dirname(__DIR__, 2) . '/public/zoho_payroll_logo.jpg',
+    '/var/www/html/public/zoho_payroll_logo.jpg',
+    __DIR__ . '/../../../public/zoho_payroll_logo.jpg'
+];
+$zohoLogoBase64 = '';
+foreach ($zohoCandidates as $zcand) {
+    if (!empty($zcand) && file_exists($zcand)) {
+        $zohoLogoBase64 = base64_encode(file_get_contents($zcand));
+        break;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -722,9 +737,18 @@ foreach ($logoCandidates as $cand) {
             Amount In Words: Indian Rupee <?php echo htmlspecialchars($inWords); ?> Only
         </div>
 
-        <!-- 6. Footer (System-generated notice only, removed Zoho branding as requested) -->
+        <!-- 6. Footer (Exact matching Zoho Payroll reference) -->
         <div class="payslip-footer">
-            <div class="system-gen">-- This is a system-generated document. --</div>
+            <div class="system-gen" style="margin-bottom: 24px;">-- This is a system-generated document. --</div>
+            <div class="zoho-footer" style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 11px; color: #64748b;">
+                <span>Powered by</span>
+                <?php if (!empty($zohoLogoBase64)): ?>
+                    <img src="data:image/jpeg;base64,<?php echo $zohoLogoBase64; ?>" alt="Zoho Payroll" style="height: 22px; width: auto; vertical-align: middle;">
+                <?php else: ?>
+                    <img src="public/zoho_payroll_logo.jpg" alt="Zoho Payroll" style="height: 22px; width: auto; vertical-align: middle;">
+                <?php endif; ?>
+                <span style="margin-left: 6px;">Simplify payroll and compliance. Visit <a href="https://zoho.com/payroll" target="_blank" style="color: #2563eb; text-decoration: none;">zoho.com/payroll</a></span>
+            </div>
         </div>
     </div>
 

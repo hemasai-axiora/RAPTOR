@@ -128,6 +128,46 @@
                             <input type="text" name="revision_reason" class="form-control bg-dark border-secondary text-white" placeholder="e.g. Annual Appraisal 2026, Promotion" value="Salary Structure Update" required>
                         </div>
 
+                        <!-- Quick CTC Structure Setup -->
+                        <div class="col-12">
+                            <div class="p-3 rounded border border-primary border-opacity-50" style="background: linear-gradient(135deg, rgba(31,95,174,0.15), rgba(124,58,237,0.15));">
+                                <div class="row align-items-center g-3">
+                                    <div class="col-lg-4 col-md-5">
+                                        <label class="form-label text-white fw-bold small text-uppercase mb-1">
+                                            <i class="fa-solid fa-calculator text-info me-1"></i> Quick Setup by Monthly CTC
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-dark border-secondary text-primary fw-bold">₹</span>
+                                            <input type="number" step="1" id="quick_monthly_ctc" class="form-control bg-dark border-secondary text-white fw-bold" placeholder="e.g. 35000, 45000" value="<?php 
+                                                if ($structure) {
+                                                    $b = (float)$structure->basic_salary;
+                                                    $h = (float)$structure->hra;
+                                                    $s = (float)$structure->special_allowance;
+                                                    $o = (float)($structure->other_allowance ?? 0);
+                                                    $ep = (float)($structure->employer_pf ?? $structure->pf);
+                                                    $g = (float)($structure->gratuity ?? round($b * 0.0481));
+                                                    echo round($b + $h + $s + $o + (float)$structure->medical_allowance + (float)$structure->travel_allowance + $ep + $g);
+                                                } else {
+                                                    echo round((float)($selected_employee->salary ?? 35000));
+                                                }
+                                            ?>">
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-5 col-md-4">
+                                        <div class="text-secondary small">
+                                            <span class="text-white fw-bold">Standard Axiora Structure Rules:</span><br>
+                                            Basic (50% CTC) • HRA (50% Basic) • Special Allowance (₹1,600) • EPF (12% max ₹1,800) • Gratuity (4.81% Basic) • Other Allowance (balancing)
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-3 col-md-3 text-end">
+                                        <button type="button" class="btn btn-primary w-100 fw-bold py-2 shadow-sm" id="btn-apply-ctc-structure" style="background: linear-gradient(135deg, #1F5FAE, #7c3aed); border: none;">
+                                            <i class="fa-solid fa-wand-magic-sparkles me-2"></i>Auto-Populate Structure
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- 1. Earnings Components -->
                         <div class="col-12 mt-4">
                             <h5 class="text-white border-bottom border-secondary pb-2 mb-3">
@@ -494,49 +534,91 @@ $(document).ready(function() {
     $('input.calc-gross, input.calc-ded, input.calc-ben').on('input change', recalcSummary);
     recalcSummary();
 
-    $('#btn-auto-calc').on('click', function() {
-        const basic = Math.round(parseFloat($('#basic_salary').val()) || 0);
-        if (basic > 0) {
-            const hra = Math.round(basic * 0.40);
-            const pf = Math.round(basic * 0.12);
-            const empPf = pf;
-            const gratuity = Math.round(basic * 0.0481);
+    function applyExactStructure(ctc) {
+        if (!ctc || ctc <= 0) return;
+        ctc = Math.round(ctc);
 
-            $('#hra').val(hra);
-            $('#pf').val(pf);
-            $('#employer_pf').val(empPf);
-            $('#gratuity').val(gratuity);
-            $('#professional_tax').val('200');
-            recalcSummary();
-        }
-    });
+        // 1. Basic = 50% of CTC
+        const basic = Math.round(ctc * 0.50);
 
-    $('#btn-random-salary').on('click', function() {
-        const basic = Math.floor(Math.random() * (45000 - 20000 + 1)) + 20000;
-        const hra = Math.round(basic * 0.40);
-        const special = Math.round(basic * 0.20);
-        const otherAll = Math.round(basic * 0.10);
-        const pf = Math.round(basic * 0.12);
-        const empPf = pf;
+        // 2. HRA = 50% of Basic (25% of CTC)
+        const hra = Math.round(basic * 0.50);
+
+        // 3. Special Allowance = 1600 fixed across all employees
+        const special = 1600;
+
+        // 4. Employer EPF = 12% of basic capped at 1800
+        const employerPf = (basic >= 15000) ? 1800 : Math.round(basic * 0.12);
+
+        // 5. Gratuity = 4.81% of basic
         const gratuity = Math.round(basic * 0.0481);
+
+        // 6. Total Benefits
+        const benefits = employerPf + gratuity;
+
+        // 7. Gross Earnings = CTC - Benefits
+        const gross = ctc - benefits;
+
+        // 8. Other Allowance = Gross - (Basic + HRA + Special)
+        const otherAll = Math.max(0, gross - (basic + hra + special));
+
+        // Employee Deductions: EPF matches employer PF, PT based on Telangana slabs
+        const pf = employerPf;
+        const pt = (gross > 20000) ? 200 : (gross > 15000 ? 150 : 0);
 
         $('#basic_salary').val(basic);
         $('#hra').val(hra);
         $('#special_allowance').val(special);
         $('#other_allowance').val(otherAll);
-        $('#medical_allowance').val('1250');
-        $('#travel_allowance').val('1600');
-        $('#bonus').val('0');
-        $('#other_earnings').val('0');
+        $('#medical_allowance').val(0);
+        $('#travel_allowance').val(0);
+        $('#bonus').val(0);
+        $('#other_earnings').val(0);
 
         $('#pf').val(pf);
-        $('#employer_pf').val(empPf);
+        $('#employer_pf').val(employerPf);
         $('#gratuity').val(gratuity);
-        $('#professional_tax').val('200');
-        $('#esic').val('0');
-        $('#tds').val('0');
+        $('#professional_tax').val(pt);
+        $('#esic').val(0);
+        $('#tds').val(0);
 
         recalcSummary();
+    }
+
+    $('#btn-apply-ctc-structure').on('click', function() {
+        const ctc = parseFloat($('#quick_monthly_ctc').val()) || 0;
+        if (ctc > 0) {
+            applyExactStructure(ctc);
+        } else {
+            alert('Please enter a valid Monthly CTC amount greater than zero.');
+        }
+    });
+
+    $('#quick_monthly_ctc').on('keypress', function(e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            $('#btn-apply-ctc-structure').click();
+        }
+    });
+
+    $('#btn-auto-calc').on('click', function() {
+        const basic = Math.round(parseFloat($('#basic_salary').val()) || 0);
+        if (basic > 0) {
+            // Apply exact structure based on Basic * 2 as CTC
+            applyExactStructure(basic * 2);
+            $('#quick_monthly_ctc').val(basic * 2);
+        } else {
+            const ctc = parseFloat($('#quick_monthly_ctc').val()) || 35000;
+            applyExactStructure(ctc);
+        }
+    });
+
+    $('#btn-random-salary').on('click', function() {
+        // Choose from actual Axiora salary scale tiers
+        const tiers = [15000, 17000, 17500, 23000, 25000, 30000, 35000, 45000, 50000, 100000];
+        const chosenCtc = tiers[Math.floor(Math.random() * tiers.length)];
+        $('#quick_monthly_ctc').val(chosenCtc);
+        applyExactStructure(chosenCtc);
     });
 });
 

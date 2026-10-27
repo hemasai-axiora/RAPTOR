@@ -49,7 +49,11 @@ class PayslipHelper {
                 $parts[] = self::twoDigitToWords($hundreds, $words) . ' Hundred';
             }
             if ($remainder > 0) {
-                $parts[] = self::twoDigitToWords($remainder, $words);
+                if ($hundreds > 0) {
+                    $parts[] = 'and ' . self::twoDigitToWords($remainder, $words);
+                } else {
+                    $parts[] = self::twoDigitToWords($remainder, $words);
+                }
             }
 
             $rupeesWords = implode(' ', array_filter($parts));

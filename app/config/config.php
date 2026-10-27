@@ -6,6 +6,25 @@
 // Docker defaults. Never commit real production credentials — set them in the
 // server environment. See config.sample.php for the full list.
 
+// Automatically load .env if present
+$envFile = dirname(dirname(__DIR__)) . '/.env';
+if (file_exists($envFile)) {
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#')) continue;
+        if (strpos($line, '=') !== false) {
+            list($envKey, $envVal) = explode('=', $line, 2);
+            $envKey = trim($envKey);
+            $envVal = trim($envVal, " \t\n\r\0\x0B\"'");
+            if (getenv($envKey) === false) {
+                putenv("{$envKey}={$envVal}");
+                $_ENV[$envKey] = $envVal;
+            }
+        }
+    }
+}
+
 if (!function_exists('env')) {
     /** Read an env var with a default. */
     function env(string $key, $default = null) {
@@ -15,7 +34,11 @@ if (!function_exists('env')) {
 }
 
 // Database Settings
-define('DB_HOST', env('DB_HOST', 'db'));
+$configuredDbHost = env('DB_HOST', 'db');
+if ($configuredDbHost === 'db' && gethostbyname('db') === 'db') {
+    $configuredDbHost = '127.0.0.1';
+}
+define('DB_HOST', $configuredDbHost);
 define('DB_USER', env('DB_USER', 'raptor_user'));
 define('DB_PASS', env('DB_PASS', 'RaptorProd@2026!'));
 define('DB_NAME', env('DB_NAME', 'raptor_crm_db'));
