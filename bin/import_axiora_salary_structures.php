@@ -67,8 +67,8 @@ $stmtRun->execute();
 $runId = (int)$stmtRun->fetchColumn();
 
 if (!$runId) {
-    $db->prepare("INSERT INTO payroll_runs (month_year, status, processed_by, approved_by, locked_by, released_by, created_at)
-                  VALUES ('2026-09', 'released', 1, 1, 1, 1, '2026-10-01 10:00:00')")->execute();
+    $db->prepare("INSERT INTO payroll_runs (month_year, status, created_by, approved_by, released_by, created_at)
+                  VALUES ('2026-09', 'released', 1, 1, 1, '2026-10-01 10:00:00')")->execute();
     $runId = (int)$db->lastInsertId();
     echo "Created Payroll Run for 2026-09 (Run ID: {$runId})\n";
 } else {
