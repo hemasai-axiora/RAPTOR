@@ -167,9 +167,9 @@ foreach ($rows as $r) {
     if (!$empId) {
         $stmtInsEmp = $db->prepare("
             INSERT INTO employees 
-            (user_id, employee_code, department, job_title, salary, date_of_joining, work_location, uan, status, pf_applicable)
+            (user_id, employee_code, department, job_title, salary, date_of_joining, hire_date, work_location, uan, status, pf_applicable)
             VALUES 
-            (:uid, :code, :dept, :desig, :salary, :doj, :loc, :uan, 'active', 1)
+            (:uid, :code, :dept, :desig, :salary, :doj, :hire_date, :loc, :uan, 'active', 1)
         ");
         $stmtInsEmp->execute([
             ':uid' => $userId,
@@ -178,6 +178,7 @@ foreach ($rows as $r) {
             ':desig' => $desig,
             ':salary' => $ctc,
             ':doj' => $doj,
+            ':hire_date' => $doj,
             ':loc' => $location,
             ':uan' => $uan
         ]);
@@ -190,6 +191,7 @@ foreach ($rows as $r) {
                 job_title = :desig,
                 salary = :salary,
                 date_of_joining = :doj,
+                hire_date = :hire_date,
                 work_location = :loc,
                 uan = :uan,
                 status = 'active'
@@ -200,6 +202,7 @@ foreach ($rows as $r) {
             ':desig' => $desig,
             ':salary' => $ctc,
             ':doj' => $doj,
+            ':hire_date' => $doj,
             ':loc' => $location,
             ':uan' => $uan,
             ':eid' => $empId
