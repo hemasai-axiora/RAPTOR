@@ -136,6 +136,13 @@ foreach ($rows as $r) {
     }
 
     if (!$userId) {
+        // Also check by normalized name match
+        $stmtByName = $db->prepare("SELECT user_id FROM users WHERE LOWER(REPLACE(name, ' ', '')) = LOWER(REPLACE(:name, ' ', '')) LIMIT 1");
+        $stmtByName->execute([':name' => $empName]);
+        $userId = (int)$stmtByName->fetchColumn();
+    }
+
+    if (!$userId) {
         $hash = password_hash('Password@2026', PASSWORD_DEFAULT);
         $stmtInsUser = $db->prepare("
             INSERT INTO users (role_id, name, email, password, status, created_at)

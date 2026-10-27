@@ -621,14 +621,26 @@ class Payroll extends Model {
     }
 
     public function getPayrollDetailsByEmployee($employeeId) {
-        $this->query('SELECT d.*, r.month_year, r.status as run_status
+        return $this->getPayrollDetailsByEmployeeIds([(int)$employeeId]);
+    }
+
+    public function getPayrollDetailsByEmployeeIds(array $employeeIds) {
+        if (empty($employeeIds)) {
+            return [];
+        }
+        $cleanIds = array_map('intval', $employeeIds);
+        $inSql = implode(',', $cleanIds);
+        $this->query("SELECT d.*, r.month_year, r.status as run_status, e.employee_code,
+                             COALESCE(e.date_of_joining, e.hire_date) as date_of_joining,
+                             u.name, u.email
                       FROM payroll_details d
                       JOIN payroll_runs r ON d.payroll_run_id = r.payroll_run_id
-                      WHERE d.employee_id = :emp_id AND r.status = "released" AND r.month_year <= :current_month
-                      ORDER BY r.month_year DESC');
-        $this->bind(':emp_id', $employeeId);
-        $this->bind(':current_month', date('Y-m'));
-        return $this->resultSet();
+                      JOIN employees e ON d.employee_id = e.employee_id
+                      JOIN users u ON e.user_id = u.user_id
+                      WHERE d.employee_id IN ($inSql) 
+                        AND r.status IN ('generated', 'submitted', 'approved', 'locked', 'released')
+                      ORDER BY r.month_year DESC, d.payroll_detail_id DESC");
+        return $this->resultSet() ?: [];
     }
 
     public function savePayrollDetails($data) {
@@ -838,9 +850,50 @@ class Payroll extends Model {
     }
 
     public function getEmployeeByUserId($userId) {
-        $this->query('SELECT e.*, u.name, u.email FROM employees e JOIN users u ON e.user_id = u.user_id WHERE e.user_id = :uid');
+        // 1. Direct match by user_id prioritizing official AGS employee codes
+        $this->query('SELECT e.*, u.name, u.email 
+                      FROM employees e 
+                      JOIN users u ON e.user_id = u.user_id 
+                      WHERE e.user_id = :uid 
+                      ORDER BY (e.employee_code LIKE "AGS%") DESC, e.employee_id DESC 
+                      LIMIT 1');
         $this->bind(':uid', $userId);
+        $emp = $this->single();
+        if ($emp) {
+            return $emp;
+        }
+
+        // 2. Secondary fallback: match if employee is associated with an identical email or clean name
+        $this->query('SELECT e.*, u.name, u.email 
+                      FROM employees e 
+                      JOIN users u ON e.user_id = u.user_id 
+                      WHERE (
+                          LOWER(TRIM(u.email)) = (SELECT LOWER(TRIM(email)) FROM users WHERE user_id = :uid2 LIMIT 1)
+                          OR LOWER(REPLACE(u.name, " ", "")) = (SELECT LOWER(REPLACE(name, " ", "")) FROM users WHERE user_id = :uid3 LIMIT 1)
+                      )
+                      ORDER BY (e.employee_code LIKE "AGS%") DESC, e.employee_id DESC 
+                      LIMIT 1');
+        $this->bind(':uid2', $userId);
+        $this->bind(':uid3', $userId);
         return $this->single();
+    }
+
+    public function getEmployeeIdsByUserId($userId) {
+        $this->query('SELECT DISTINCT e.employee_id 
+                      FROM employees e 
+                      JOIN users u ON e.user_id = u.user_id 
+                      WHERE e.user_id = :uid 
+                         OR LOWER(TRIM(u.email)) = (SELECT LOWER(TRIM(email)) FROM users WHERE user_id = :uid2 LIMIT 1)
+                         OR LOWER(REPLACE(u.name, " ", "")) = (SELECT LOWER(REPLACE(name, " ", "")) FROM users WHERE user_id = :uid3 LIMIT 1)');
+        $this->bind(':uid', $userId);
+        $this->bind(':uid2', $userId);
+        $this->bind(':uid3', $userId);
+        $rows = $this->resultSet() ?: [];
+        $ids = [];
+        foreach ($rows as $r) {
+            $ids[] = (int)$r->employee_id;
+        }
+        return array_values(array_unique($ids));
     }
 
     public function getEmployeeById($employeeId) {

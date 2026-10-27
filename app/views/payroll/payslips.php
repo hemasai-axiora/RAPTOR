@@ -306,14 +306,19 @@ accounts@axioraglobalsolutions.com</textarea>
                 <tbody>
                     <?php if (empty($my_payslips)): ?>
                         <tr>
-                            <td colspan="8" class="text-center py-5 text-secondary">No payslips have been released for your account yet.</td>
+                            <td colspan="8" class="text-center py-5 text-secondary">No payslips have been generated or released for your account yet.</td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($my_payslips as $slip): ?>
                             <tr>
                                 <td class="font-weight-bold text-white font-monospace">
                                     <?php echo htmlspecialchars(PayslipHelper::formatMonthYear($slip->month_year)); ?>
-                                    <span class="text-secondary small d-block"><?php echo htmlspecialchars($slip->month_year); ?></span>
+                                    <div class="d-flex align-items-center gap-1 mt-1">
+                                        <span class="text-secondary small font-monospace"><?php echo htmlspecialchars($slip->month_year); ?></span>
+                                        <?php if (!empty($slip->employee_code)): ?>
+                                            <span class="badge bg-black bg-opacity-50 text-info border border-secondary" style="font-size: 0.65rem;"><?php echo htmlspecialchars($slip->employee_code); ?></span>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                                 <td><?php echo htmlspecialchars($slip->working_days); ?></td>
                                 <td><?php echo htmlspecialchars($slip->present_days); ?></td>
@@ -321,9 +326,19 @@ accounts@axioraglobalsolutions.com</textarea>
                                 <td class="text-end font-monospace text-warning">₹<?php echo number_format($slip->total_deductions); ?></td>
                                 <td class="text-end font-weight-bold text-success font-monospace">₹<?php echo number_format($slip->net_salary); ?></td>
                                 <td class="text-center">
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle text-uppercase" style="font-size: 0.65rem;">
-                                        <?php echo htmlspecialchars($slip->payment_status); ?>
-                                    </span>
+                                    <?php if ($slip->run_status === 'released'): ?>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle text-uppercase px-2 py-1" style="font-size: 0.7rem;">
+                                            <i class="fa-solid fa-circle-check me-1"></i><?php echo $slip->payment_status === 'paid' ? 'PAID & RELEASED' : 'RELEASED'; ?>
+                                        </span>
+                                    <?php elseif ($slip->run_status === 'approved'): ?>
+                                        <span class="badge bg-info-subtle text-info border border-info-subtle text-uppercase px-2 py-1" style="font-size: 0.7rem;">
+                                            <i class="fa-solid fa-check me-1"></i>APPROVED
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle text-uppercase px-2 py-1" style="font-size: 0.7rem;">
+                                            <i class="fa-solid fa-calculator me-1"></i>GENERATED
+                                        </span>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="text-end">
                                     <div class="btn-group btn-group-sm">

@@ -1750,13 +1750,18 @@ class PayrollController extends Controller {
 
     // 5. Employee Payslips Directory
     public function payslips() {
-        $emp = $this->payrollModel->getEmployeeByUserId($_SESSION['user_id'] ?? 0);
+        $userId = (int)($_SESSION['user_id'] ?? 0);
+        $emp = $this->payrollModel->getEmployeeByUserId($userId);
         
         $myPayslips = [];
         $allPayslips = [];
 
         if ($emp) {
-            $myPayslips = $this->payrollModel->getPayrollDetailsByEmployee($emp->employee_id);
+            $empIds = $this->payrollModel->getEmployeeIdsByUserId($userId);
+            if (empty($empIds)) {
+                $empIds = [(int)$emp->employee_id];
+            }
+            $myPayslips = $this->payrollModel->getPayrollDetailsByEmployeeIds($empIds);
         }
 
         $role = $_SESSION['user_role'] ?? $_SESSION['role_name'] ?? '';
@@ -1767,7 +1772,7 @@ class PayrollController extends Controller {
             $runs = $this->payrollModel->getPayrollRuns();
             if ($runId === 0 && !empty($runs)) {
                 foreach ($runs as $r) {
-                    if ($r->status === 'released') {
+                    if (in_array($r->status, ['released', 'approved', 'generated'], true)) {
                         $runId = (int)$r->payroll_run_id;
                         break;
                     }
@@ -1954,10 +1959,10 @@ class PayrollController extends Controller {
         }
 
         // Enforce employee security bounds: standard employee can only view their own payslip
-        $role = $_SESSION['user_role'];
+        $role = $_SESSION['user_role'] ?? '';
         if ($role === 'employee' || $role === 'sales_person') {
-            $emp = $this->payrollModel->getEmployeeByUserId($_SESSION['user_id']);
-            if (!$emp || (int)$emp->employee_id !== (int)$detail->employee_id) {
+            $allowedEmpIds = $this->payrollModel->getEmployeeIdsByUserId($_SESSION['user_id'] ?? 0);
+            if (!in_array((int)$detail->employee_id, $allowedEmpIds, true)) {
                 $this->redirect('index.php?route=payroll/payslips');
                 return;
             }
