@@ -22,8 +22,12 @@ try {
     $db->exec("ALTER TABLE payroll_details ADD COLUMN other_deductions DECIMAL(10,2) DEFAULT 0.00 AFTER tds");
 } catch (Exception $e) {}
 
-// Use Python to extract all rows cleanly into JSON
-$pyScript = "
+// Load extracted JSON directly if present, else fallback to python extraction
+$jsonAssetPath = __DIR__ . '/axiora_employees_data.json';
+if (file_exists($jsonAssetPath)) {
+    $rows = json_decode(file_get_contents($jsonAssetPath), true);
+} else {
+    $pyScript = "
 import openpyxl, json, sys
 sys.stdout.reconfigure(encoding='utf-8')
 wb = openpyxl.load_workbook(r'{$excelPath}', data_only=True)
@@ -37,12 +41,13 @@ for r in range(2, sheet.max_row+1):
 print(json.dumps(rows, default=str))
 ";
 
-$tmpPy = __DIR__ . '/_temp_extract.py';
-file_put_contents($tmpPy, $pyScript);
-$output = shell_exec("python \"" . $tmpPy . "\"");
-@unlink($tmpPy);
+    $tmpPy = __DIR__ . '/_temp_extract.py';
+    file_put_contents($tmpPy, $pyScript);
+    $output = shell_exec("python \"" . $tmpPy . "\"");
+    @unlink($tmpPy);
+    $rows = json_decode($output, true);
+}
 
-$rows = json_decode($output, true);
 if (empty($rows)) {
     die("Error: Failed to parse rows from Excel.\n");
 }
