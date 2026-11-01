@@ -1419,6 +1419,16 @@ class PayrollController extends Controller {
                 continue;
             }
 
+            // Exclude employees who haven't joined yet by this month
+            $dojVal = !empty($emp->date_of_joining) ? $emp->date_of_joining : (!empty($emp->hire_date) ? $emp->hire_date : '');
+            if (!empty($dojVal)) {
+                $dojTime = strtotime($dojVal);
+                $monthEndTime = strtotime($month . '-' . $calendarDays . ' 23:59:59');
+                if ($dojTime > $monthEndTime) {
+                    continue;
+                }
+            }
+
             // Exclude Interns with salary 0 or employees with 0 salary from payroll processing
             $isIntern = (stripos($emp->job_title ?? '', 'intern') !== false) || 
                         (stripos($emp->employment_type ?? '', 'intern') !== false) || 
@@ -1515,6 +1525,16 @@ class PayrollController extends Controller {
 
             // Attendance logs & LOP calculation
             // Base: employee is paid for all calendar days unless explicit LOP or unexcused absences occur
+            // For mid-month joiners, calendar days prior to date of joining are unpaid
+            $preJoinDays = 0;
+            if (!empty($dojVal)) {
+                $dojMonth = date('Y-m', strtotime($dojVal));
+                if ($dojMonth === $month) {
+                    $joinDay = (int)date('j', strtotime($dojVal));
+                    $preJoinDays = max(0, $joinDay - 1);
+                }
+            }
+
             $manualLop = (float)($lopsByEmp[$emp->employee_id] ?? 0);
             $attLop = 0.0;
             try {
@@ -1533,7 +1553,7 @@ class PayrollController extends Controller {
                 }
             } catch (Exception $e) {}
 
-            $absentDays = max($manualLop, $attLop);
+            $absentDays = $preJoinDays + max($manualLop, $attLop);
             $presentDays = max(0, $calendarDays - $absentDays);
 
             // Pro-rate earned amounts if any loss of pay (absent days)
