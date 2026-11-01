@@ -6,7 +6,11 @@ class Database {
     private $dbh;
     private $error;
 
-    private function __construct() {
+    private function __construct($skipConnect = false) {
+        if ($skipConnect) {
+            return;
+        }
+
         // Set DSN
         $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
         $options = [
@@ -31,6 +35,13 @@ class Database {
             self::$instance = new Database();
         }
         return self::$instance;
+    }
+
+    public static function setMockConnection(PDO $pdo): void {
+        if (self::$instance == null) {
+            self::$instance = new Database(true);
+        }
+        self::$instance->dbh = $pdo;
     }
 
     public function getConnection() {

@@ -41,6 +41,12 @@ try {
     header('Referrer-Policy: strict-origin-when-cross-origin');
     header('Permissions-Policy: camera=(self), geolocation=(self), microphone=()');
 
+    // Composer autoloader (PSR-4 libraries like PHPMailer / Symfony Mailer)
+    $composerAutoload = dirname(dirname(__FILE__)) . '/vendor/autoload.php';
+    if (file_exists($composerAutoload)) {
+        require_once $composerAutoload;
+    }
+
     // Simple autoloader for core classes
     spl_autoload_register(function ($className) {
         $corePath = APPROOT . '/core/' . $className . '.php';

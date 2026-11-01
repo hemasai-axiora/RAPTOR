@@ -1151,6 +1151,39 @@
                 </li>
                 <?php endif; ?>
 
+                <!-- Email Campaigns & Mass Mailing Accordion Group -->
+                <?php if (in_array($role ?? '', ['admin', 'ceo', 'manager', 'hr'], true) || (class_exists('Policy') && Policy::can('email_campaigns', 'view'))): ?>
+                <li class="menu-section" data-section="email_campaigns">
+                    <div class="menu-section-header" title="Email Campaigns">
+                        <i class="fa-solid fa-paper-plane section-icon"></i>
+                        <span class="section-text">Email Campaigns</span>
+                        <i class="fa-solid fa-chevron-right section-arrow"></i>
+                    </div>
+                    <ul class="menu-section-items">
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_contacts') ? 'active' : ''; ?>">
+                            <a href="index.php?route=email_campaigns/contacts">
+                                <i class="fa-solid fa-users"></i><span>Contacts & Audiences</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_lists') ? 'active' : ''; ?>">
+                            <a href="index.php?route=email_campaigns/lists">
+                                <i class="fa-solid fa-list-check"></i><span>Lists & Payroll Sync</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_segments') ? 'active' : ''; ?>">
+                            <a href="index.php?route=email_campaigns/segments">
+                                <i class="fa-solid fa-filter"></i><span>Audience Segments</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_suppressions') ? 'active' : ''; ?>">
+                            <a href="index.php?route=email_campaigns/suppressions">
+                                <i class="fa-solid fa-ban text-danger"></i><span>Global Suppression</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <?php endif; ?>
+
                 <!-- 4. Marketing Accordion Group -->
                 <?php if (isset($_SESSION['user_role'])): ?>
                 <li class="menu-section" data-section="marketing">

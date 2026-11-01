@@ -1,0 +1,14 @@
+{
+    "name": "raptor/crm",
+    "description": "Raptor CRM Enterprise Platform",
+    "type": "project",
+    "require": {
+        "phpmailer/phpmailer": "^6.9"
+    },
+    "authors": [
+        {
+            "name": "Ax-Tr",
+            "email": "trainings@axioraglobalsolutions.com"
+        }
+    ]
+}
