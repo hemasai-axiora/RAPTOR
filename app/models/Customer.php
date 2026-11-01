@@ -128,7 +128,9 @@ class Customer extends Model {
 
         if ($this->execute()) {
             $db = Database::getInstance()->getConnection();
-            return (int)$db->lastInsertId();
+            $customerId = (int)$db->lastInsertId();
+            try { $this->syncToCustomer360($customerId, $data); } catch (Throwable $e) {}
+            return $customerId;
         }
         return false;
     }
@@ -174,5 +176,33 @@ class Customer extends Model {
         $this->bind(':notes', $data['notes'] ?? null);
 
         return $this->execute();
+    }
+
+    public function syncToCustomer360(int $customerId, array $data): ?int {
+        try {
+            if (!class_exists('Contact')) {
+                require_once APPROOT . '/models/Contact.php';
+            }
+            $contactModel = new Contact();
+            $channel = !empty($data['email']) ? 'email' : (!empty($data['phone']) ? 'phone' : null);
+            $val = !empty($data['email']) ? $data['email'] : ($data['phone'] ?? null);
+            if (!$channel || !$val) return null;
+
+            $contact = $contactModel->findOrCreateByIdentity($channel, $val, [
+                'first_name' => $data['first_name'] ?? null,
+                'company_name' => $data['company_name'] ?? null,
+                'email' => $data['email'] ?? null,
+                'phone' => $data['phone'] ?? null,
+                'lifecycle_stage' => 'customer',
+                'source' => 'crm_customer'
+            ]);
+
+            if ($contact && !empty($contact->contact_id)) {
+                $db = Database::getInstance()->getConnection();
+                $db->prepare("UPDATE customers SET contact_id = ? WHERE customer_id = ?")->execute([(int)$contact->contact_id, $customerId]);
+                return (int)$contact->contact_id;
+            }
+        } catch (Throwable $e) {}
+        return null;
     }
 }

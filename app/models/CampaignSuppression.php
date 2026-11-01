@@ -102,6 +102,19 @@ class CampaignSuppression extends Model {
                 }
             }
 
+            // 4. Cross-bridge to Customer 360 contacts & CRM leads
+            try {
+                $nowAt = date('Y-m-d H:i:s');
+                $c360Stmt = $db->prepare('UPDATE contacts SET is_suppressed = 1, suppression_reason = :reason, suppressed_at = :at WHERE primary_email = :email');
+                $c360Stmt->execute([':reason' => $reason, ':at' => $nowAt, ':email' => $cleanEmail]);
+
+                // Update CRM leads to 'unsubscribed' if not already converted
+                $leadStmt = $db->prepare("UPDATE leads SET status = 'unsubscribed' WHERE LOWER(email) = :email AND status != 'converted'");
+                $leadStmt->execute([':email' => $cleanEmail]);
+            } catch (Throwable $e) {
+                // Table might not exist during early migration
+            }
+
             return true;
         } catch (Throwable $e) {
             error_log('CampaignSuppression::suppress error: ' . $e->getMessage());

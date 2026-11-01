@@ -183,6 +183,7 @@ class Lead extends Model {
                 $this->logAssignment($leadId, null, (int) $data['assigned_to_user_id'], $data['changed_by_user_id'] ?? null, 'Initial assignment');
             }
             $this->logJourneyForStatus($leadId, null, $data['status']);
+            try { $this->syncToCustomer360($leadId, $data); } catch (Throwable $e) {}
             return $leadId;
         }
         return false;
@@ -243,6 +244,7 @@ class Lead extends Model {
                     $data['assignment_note'] ?? null
                 );
             }
+            try { $this->syncToCustomer360((int)$data['lead_id'], $data); } catch (Throwable $e) {}
             return true;
         }
         return false;
@@ -485,5 +487,36 @@ class Lead extends Model {
         $this->bind(':from_stage_id', $fromStageId);
         $this->bind(':to_stage_id', $toStageId);
         $this->execute();
+    }
+
+    public function syncToCustomer360(int $leadId, array $data): ?int {
+        try {
+            if (!class_exists('Contact')) {
+                require_once APPROOT . '/models/Contact.php';
+            }
+            $contactModel = new Contact();
+            $channel = !empty($data['email']) ? 'email' : (!empty($data['phone']) ? 'phone' : null);
+            $val = !empty($data['email']) ? $data['email'] : ($data['phone'] ?? null);
+            if (!$channel || !$val) return null;
+
+            $contact = $contactModel->findOrCreateByIdentity($channel, $val, [
+                'first_name' => $data['first_name'] ?? null,
+                'last_name' => $data['last_name'] ?? null,
+                'company_name' => $data['company_name'] ?? null,
+                'email' => $data['email'] ?? null,
+                'phone' => $data['phone'] ?? null,
+                'lifecycle_stage' => (($data['status'] ?? '') === 'converted') ? 'customer' : ((($data['status'] ?? '') === 'qualified' || ($data['status'] ?? '') === 'proposal') ? 'sql' : 'lead'),
+                'lead_quality' => in_array($data['lead_quality'] ?? '', ['hot', 'warm', 'cold']) ? $data['lead_quality'] : 'warm',
+                'source' => $data['lead_source'] ?? 'crm_lead',
+                'assigned_user_id' => $data['assigned_to_user_id'] ?? null
+            ]);
+
+            if ($contact && !empty($contact->contact_id)) {
+                $db = Database::getInstance()->getConnection();
+                $db->prepare("UPDATE leads SET contact_id = ? WHERE lead_id = ?")->execute([(int)$contact->contact_id, $leadId]);
+                return (int)$contact->contact_id;
+            }
+        } catch (Throwable $e) {}
+        return null;
     }
 }
