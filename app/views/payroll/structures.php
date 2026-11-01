@@ -128,6 +128,18 @@
                             <input type="text" name="revision_reason" class="form-control bg-dark border-secondary text-white" placeholder="e.g. Annual Appraisal 2026, Promotion" value="Salary Structure Update" required>
                         </div>
 
+<?php
+    $isPfApplicable = false;
+    if ($structure) {
+        $isPfApplicable = ((float)$structure->pf > 0 || (float)($structure->employer_pf ?? 0) > 0);
+    } elseif ($selected_employee) {
+        $isPfApplicable = !empty($selected_employee->pf_applicable);
+    }
+    
+    $defaultCtc = $selected_employee ? (float)($selected_employee->salary ?? 35000) : 35000;
+    if ($defaultCtc <= 0) $defaultCtc = 35000;
+    $derived = Payroll::deriveComponentsFromCtc($defaultCtc, $isPfApplicable);
+?>
                         <!-- Quick CTC Structure Setup -->
                         <div class="col-12">
                             <div class="p-3 rounded border border-primary border-opacity-50" style="background: linear-gradient(135deg, rgba(31,95,174,0.15), rgba(124,58,237,0.15));">
@@ -136,7 +148,7 @@
                                         <label class="form-label text-white fw-bold small text-uppercase mb-1">
                                             <i class="fa-solid fa-calculator text-info me-1"></i> Quick Setup by Monthly CTC
                                         </label>
-                                        <div class="input-group">
+                                        <div class="input-group mb-2">
                                             <span class="input-group-text bg-dark border-secondary text-primary fw-bold">₹</span>
                                             <input type="number" step="1" id="quick_monthly_ctc" class="form-control bg-dark border-secondary text-white fw-bold" placeholder="e.g. 35000, 45000" value="<?php 
                                                 if ($structure) {
@@ -148,15 +160,23 @@
                                                     $g = (float)($structure->gratuity ?? round($b * 0.0481));
                                                     echo round($b + $h + $s + $o + (float)$structure->medical_allowance + (float)$structure->travel_allowance + $ep + $g);
                                                 } else {
-                                                    echo round((float)($selected_employee->salary ?? 35000));
+                                                    echo round($defaultCtc);
                                                 }
                                             ?>">
+                                        </div>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="quick_pf_applicable" <?php echo $isPfApplicable ? 'checked' : ''; ?>>
+                                            <label class="form-check-label text-white small fw-bold" for="quick_pf_applicable">
+                                                <i class="fa-solid fa-shield-halved text-warning me-1"></i> Statutory EPF Applicable (12%)
+                                            </label>
                                         </div>
                                     </div>
                                     <div class="col-lg-5 col-md-4">
                                         <div class="text-secondary small">
-                                            <span class="text-white fw-bold">Standard Axiora Structure Rules:</span><br>
-                                            Basic (50% CTC) • HRA (50% Basic) • Special Allowance (₹1,600) • EPF (12% max ₹1,800) • Gratuity (4.81% Basic) • Other Allowance (balancing)
+                                            <span class="text-white fw-bold">Data-Driven Band Rules:</span><br>
+                                            • Basic (50% CTC) • HRA (50% Basic) • Special Allowance (₹1,600)<br>
+                                            • EPF (12% capped at ₹1,800 if enabled; ₹0 if Non-PF)<br>
+                                            • Gratuity (4.81% Basic) • Other Allowance (balancing figure)
                                         </div>
                                     </div>
                                     <div class="col-lg-3 col-md-3 text-end">
@@ -179,7 +199,7 @@
                             <label class="form-label text-secondary small">Basic Salary *</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-dark border-secondary text-secondary">₹</span>
-                                <input type="number" step="1" name="basic_salary" id="basic_salary" class="form-control bg-dark border-secondary text-white calc-gross" value="<?php echo $structure ? round((float)$structure->basic_salary) : '25000'; ?>" required>
+                                <input type="number" step="1" name="basic_salary" id="basic_salary" class="form-control bg-dark border-secondary text-white calc-gross" value="<?php echo $structure ? round((float)$structure->basic_salary) : $derived['basic_salary']; ?>" required>
                             </div>
                         </div>
 
@@ -187,7 +207,7 @@
                             <label class="form-label text-secondary small">House Rent Allowance (HRA)</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-dark border-secondary text-secondary">₹</span>
-                                <input type="number" step="1" name="hra" id="hra" class="form-control bg-dark border-secondary text-white calc-gross" value="<?php echo $structure ? round((float)$structure->hra) : '10000'; ?>">
+                                <input type="number" step="1" name="hra" id="hra" class="form-control bg-dark border-secondary text-white calc-gross" value="<?php echo $structure ? round((float)$structure->hra) : $derived['hra']; ?>">
                             </div>
                         </div>
 
@@ -195,7 +215,7 @@
                             <label class="form-label text-secondary small">Special Allowance</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-dark border-secondary text-secondary">₹</span>
-                                <input type="number" step="1" name="special_allowance" id="special_allowance" class="form-control bg-dark border-secondary text-white calc-gross" value="<?php echo $structure ? round((float)$structure->special_allowance) : '5000'; ?>">
+                                <input type="number" step="1" name="special_allowance" id="special_allowance" class="form-control bg-dark border-secondary text-white calc-gross" value="<?php echo $structure ? round((float)$structure->special_allowance) : $derived['special_allowance']; ?>">
                             </div>
                         </div>
 
@@ -203,7 +223,7 @@
                             <label class="form-label text-secondary small">Other Allowance</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-dark border-secondary text-secondary">₹</span>
-                                <input type="number" step="1" name="other_allowance" id="other_allowance" class="form-control bg-dark border-secondary text-white calc-gross" value="<?php echo $structure ? round((float)($structure->other_allowance ?? 0)) : '3000'; ?>">
+                                <input type="number" step="1" name="other_allowance" id="other_allowance" class="form-control bg-dark border-secondary text-white calc-gross" value="<?php echo $structure ? round((float)($structure->other_allowance ?? 0)) : $derived['other_allowance']; ?>">
                             </div>
                         </div>
 
@@ -211,7 +231,7 @@
                             <label class="form-label text-secondary small">Medical Allowance</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-dark border-secondary text-secondary">₹</span>
-                                <input type="number" step="1" name="medical_allowance" id="medical_allowance" class="form-control bg-dark border-secondary text-white calc-gross" value="<?php echo $structure ? round((float)$structure->medical_allowance) : '1250'; ?>">
+                                <input type="number" step="1" name="medical_allowance" id="medical_allowance" class="form-control bg-dark border-secondary text-white calc-gross" value="<?php echo $structure ? round((float)$structure->medical_allowance) : '0'; ?>">
                             </div>
                         </div>
 
@@ -219,7 +239,7 @@
                             <label class="form-label text-secondary small">Travel / Conveyance Allowance</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-dark border-secondary text-secondary">₹</span>
-                                <input type="number" step="1" name="travel_allowance" id="travel_allowance" class="form-control bg-dark border-secondary text-white calc-gross" value="<?php echo $structure ? round((float)$structure->travel_allowance) : '1600'; ?>">
+                                <input type="number" step="1" name="travel_allowance" id="travel_allowance" class="form-control bg-dark border-secondary text-white calc-gross" value="<?php echo $structure ? round((float)$structure->travel_allowance) : '0'; ?>">
                             </div>
                         </div>
 
@@ -250,7 +270,7 @@
                             <label class="form-label text-secondary small">EPF Contribution (Employee 12%)</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-dark border-secondary text-secondary">₹</span>
-                                <input type="number" step="1" name="pf" id="pf" class="form-control bg-dark border-secondary text-white calc-ded" value="<?php echo $structure ? round((float)$structure->pf) : '3000'; ?>">
+                                <input type="number" step="1" name="pf" id="pf" class="form-control bg-dark border-secondary text-white calc-ded" value="<?php echo $structure ? round((float)$structure->pf) : $derived['pf']; ?>">
                             </div>
                         </div>
 
@@ -258,7 +278,7 @@
                             <label class="form-label text-secondary small">Professional Tax (PT)</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-dark border-secondary text-secondary">₹</span>
-                                <input type="number" step="1" name="professional_tax" id="professional_tax" class="form-control bg-dark border-secondary text-white calc-ded" value="<?php echo $structure ? round((float)$structure->professional_tax) : '200'; ?>">
+                                <input type="number" step="1" name="professional_tax" id="professional_tax" class="form-control bg-dark border-secondary text-white calc-ded" value="<?php echo $structure ? round((float)$structure->professional_tax) : $derived['professional_tax']; ?>">
                             </div>
                         </div>
 
@@ -289,7 +309,7 @@
                             <label class="form-label text-secondary small">Employer EPF Contribution (12%)</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-dark border-secondary text-secondary">₹</span>
-                                <input type="number" step="1" name="employer_pf" id="employer_pf" class="form-control bg-dark border-secondary text-white calc-ben" value="<?php echo $structure ? round((float)($structure->employer_pf ?? $structure->pf)) : '3000'; ?>">
+                                <input type="number" step="1" name="employer_pf" id="employer_pf" class="form-control bg-dark border-secondary text-white calc-ben" value="<?php echo $structure ? round((float)($structure->employer_pf ?? $structure->pf)) : $derived['employer_pf']; ?>">
                             </div>
                         </div>
 
@@ -297,7 +317,7 @@
                             <label class="form-label text-secondary small">Gratuity (4.81% of Basic)</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-dark border-secondary text-secondary">₹</span>
-                                <input type="number" step="1" name="gratuity" id="gratuity" class="form-control bg-dark border-secondary text-white calc-ben" value="<?php echo $structure ? round((float)($structure->gratuity ?? (((float)$structure->basic_salary)*0.0481))) : '1203'; ?>">
+                                <input type="number" step="1" name="gratuity" id="gratuity" class="form-control bg-dark border-secondary text-white calc-ben" value="<?php echo $structure ? round((float)($structure->gratuity ?? (((float)$structure->basic_salary)*0.0481))) : $derived['gratuity']; ?>">
                             </div>
                         </div>
 
@@ -534,9 +554,13 @@ $(document).ready(function() {
     $('input.calc-gross, input.calc-ded, input.calc-ben').on('input change', recalcSummary);
     recalcSummary();
 
-    function applyExactStructure(ctc) {
+    function applyExactStructure(ctc, isPfApplicable) {
         if (!ctc || ctc <= 0) return;
         ctc = Math.round(ctc);
+
+        if (isPfApplicable === undefined) {
+            isPfApplicable = $('#quick_pf_applicable').is(':checked');
+        }
 
         // 1. Basic = 50% of CTC
         const basic = Math.round(ctc * 0.50);
@@ -547,8 +571,12 @@ $(document).ready(function() {
         // 3. Special Allowance = 1600 fixed across all employees
         const special = 1600;
 
-        // 4. Employer EPF = 12% of basic capped at 1800
-        const employerPf = (basic >= 15000) ? 1800 : Math.round(basic * 0.12);
+        // 4. Employer EPF & Employee EPF (Statutory Compliance)
+        let employerPf = 0;
+        if (isPfApplicable) {
+            employerPf = (basic >= 15000) ? 1800 : Math.round(basic * 0.12);
+        }
+        const pf = employerPf;
 
         // 5. Gratuity = 4.81% of basic
         const gratuity = Math.round(basic * 0.0481);
@@ -557,14 +585,13 @@ $(document).ready(function() {
         const benefits = employerPf + gratuity;
 
         // 7. Gross Earnings = CTC - Benefits
-        const gross = ctc - benefits;
+        const gross = Math.max(0, ctc - benefits);
 
         // 8. Other Allowance = Gross - (Basic + HRA + Special)
         const otherAll = Math.max(0, gross - (basic + hra + special));
 
-        // Employee Deductions: EPF matches employer PF, PT based on Telangana slabs
-        const pf = employerPf;
-        const pt = (gross > 20000) ? 200 : (gross > 15000 ? 150 : 0);
+        // 9. Employee Deductions: PT based on verified Telangana slabs
+        const pt = (gross >= 15000) ? 200 : (gross >= 10000 ? 150 : 0);
 
         $('#basic_salary').val(basic);
         $('#hra').val(hra);
@@ -587,10 +614,18 @@ $(document).ready(function() {
 
     $('#btn-apply-ctc-structure').on('click', function() {
         const ctc = parseFloat($('#quick_monthly_ctc').val()) || 0;
+        const isPf = $('#quick_pf_applicable').is(':checked');
         if (ctc > 0) {
-            applyExactStructure(ctc);
+            applyExactStructure(ctc, isPf);
         } else {
             alert('Please enter a valid Monthly CTC amount greater than zero.');
+        }
+    });
+
+    $('#quick_pf_applicable').on('change', function() {
+        const ctc = parseFloat($('#quick_monthly_ctc').val()) || 0;
+        if (ctc > 0) {
+            applyExactStructure(ctc, $(this).is(':checked'));
         }
     });
 
@@ -603,22 +638,23 @@ $(document).ready(function() {
 
     $('#btn-auto-calc').on('click', function() {
         const basic = Math.round(parseFloat($('#basic_salary').val()) || 0);
+        const isPf = $('#quick_pf_applicable').is(':checked');
         if (basic > 0) {
-            // Apply exact structure based on Basic * 2 as CTC
-            applyExactStructure(basic * 2);
+            applyExactStructure(basic * 2, isPf);
             $('#quick_monthly_ctc').val(basic * 2);
         } else {
             const ctc = parseFloat($('#quick_monthly_ctc').val()) || 35000;
-            applyExactStructure(ctc);
+            applyExactStructure(ctc, isPf);
         }
     });
 
     $('#btn-random-salary').on('click', function() {
         // Choose from actual Axiora salary scale tiers
-        const tiers = [15000, 17000, 17500, 23000, 25000, 30000, 35000, 45000, 50000, 100000];
+        const tiers = [12296, 15000, 15370, 17500, 18444, 23000, 25000, 30000, 35000, 45000, 50000, 100000];
         const chosenCtc = tiers[Math.floor(Math.random() * tiers.length)];
         $('#quick_monthly_ctc').val(chosenCtc);
-        applyExactStructure(chosenCtc);
+        const isPf = $('#quick_pf_applicable').is(':checked');
+        applyExactStructure(chosenCtc, isPf);
     });
 });
 
