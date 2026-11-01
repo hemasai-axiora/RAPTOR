@@ -23,6 +23,7 @@ $suites = [
     'Sprint 4: Shared Omnichannel Inbox'    => 'bin/test_shared_inbox_sprint4.php',
     'Sprint 5: Automation & Lead Scoring'   => 'bin/test_automation_sprint5.php',
     'Sprint 6: Telephony & Call Mgmt'       => 'bin/test_telephony_sprint6.php',
+    'Sprint 8: Social Publishing & Lead Ads' => 'bin/test_social_sprint8.php',
     'Phase 2: Contacts & Suppression'  => 'bin/test_email_campaigns_phase2.php',
     'Phase 3: Templates & Pre-Send Gate' => 'bin/test_email_campaigns_phase3.php',
     'Phase 4: Queue & Provider Adapters' => 'bin/test_email_campaigns_phase4.php',
