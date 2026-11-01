@@ -1390,7 +1390,12 @@ class PayrollController extends Controller {
             $otherDeductionsByEmp[$d->employee_id] = ($otherDeductionsByEmp[$d->employee_id] ?? 0) + (float)$d->amount;
         }
 
-        $workingDays = 22;
+        // Calendar days of the month (e.g. 30 for Sep, 31 for Oct)
+        $calendarDays = (int)date('t', strtotime($month . '-01'));
+        if ($calendarDays <= 0) {
+            $calendarDays = 30;
+        }
+        $workingDays = $calendarDays;
 
         if ($targetEmpId !== null && (int)$targetEmpId > 0) {
             $delStmt = $db->prepare("DELETE FROM payroll_details WHERE payroll_run_id = :rid AND employee_id = :eid");
@@ -1419,28 +1424,72 @@ class PayrollController extends Controller {
                         (stripos($emp->employment_type ?? '', 'intern') !== false) || 
                         (stripos($emp->role_name ?? '', 'intern') !== false);
 
-            $struct = $this->payrollModel->getSalaryStructureByEmployeeId($emp->employee_id);
             $empSalary = (float)($emp->salary ?? 0);
-            $basicSalaryVal = $struct ? (float)$struct->basic_salary : $empSalary;
+            $isPfApplicable = (bool)($emp->pf_applicable ?? 0);
+            $struct = $this->payrollModel->getSalaryStructureByEmployeeId($emp->employee_id);
 
-            // Business rule: Intern role with salary 0 must not process in payroll
-            if ($isIntern && $basicSalaryVal <= 0) {
-                continue;
-            }
             // Skip any employee with 0 salary and no positive salary structure
-            if ($basicSalaryVal <= 0 && (!$struct || ((float)($struct->gross_salary ?? 0) <= 0))) {
+            if ($empSalary <= 0 && (!$struct || ((float)($struct->basic_salary ?? 0) <= 0))) {
+                continue;
+            }
+            if ($isIntern && $empSalary <= 0 && (!$struct || (float)($struct->basic_salary ?? 0) <= 0)) {
                 continue;
             }
 
-            // Base structure components
-            $actualBasic = $basicSalaryVal > 0 ? $basicSalaryVal : 25000.00;
-            $actualHra = $struct ? (float)$struct->hra : round($actualBasic * 0.50);
-            $actualSpecial = $struct ? (float)$struct->special_allowance : 1600.00;
-            $actualOther = $struct ? (float)($struct->other_allowance ?? 0.00) : 0.00;
-            $med = $struct ? (float)$struct->medical_allowance : 0.00;
-            $travel = $struct ? (float)$struct->travel_allowance : 0.00;
-            $bonus = $struct ? (float)$struct->bonus : 0.00;
-            $otherEarn = $struct ? (float)$struct->other_earnings : 0.00;
+            // Derive or load salary components
+            if ($struct && (float)$struct->basic_salary > 0) {
+                $actualBasic = (float)$struct->basic_salary;
+                $actualHra = (float)$struct->hra;
+                $actualSpecial = (float)$struct->special_allowance;
+                $actualOther = (float)($struct->other_allowance ?? 0.00);
+                $med = (float)($struct->medical_allowance ?? 0.00);
+                $travel = (float)($struct->travel_allowance ?? 0.00);
+                $bonus = (float)($struct->bonus ?? 0.00);
+                $otherEarn = (float)($struct->other_earnings ?? 0.00);
+
+                if (!$isPfApplicable) {
+                    $pf = 0.0;
+                    $employerPf = 0.0;
+                } else {
+                    $pf = (float)$struct->pf;
+                    if ($pf <= 0) {
+                        $pf = (float)min(1800, round($actualBasic * 0.12));
+                    }
+                    $employerPf = (float)($struct->employer_pf ?? $pf);
+                    if ($employerPf <= 0) {
+                        $employerPf = $pf;
+                    }
+                }
+                $gratuity = (float)($struct->gratuity ?? round($actualBasic * 0.0481));
+                if ($gratuity <= 0) {
+                    $gratuity = (float)round($actualBasic * 0.0481);
+                }
+                $esic = (float)($struct->esic ?? 0.00);
+                $pt = (float)($struct->professional_tax ?? 0.00);
+                $tds = (float)($struct->tds ?? 0.00);
+            } else {
+                // No structure exists: dynamically derive exact band components from Monthly CTC
+                $derived = Payroll::deriveComponentsFromCtc($empSalary, $isPfApplicable);
+                $actualBasic = (float)$derived['basic_salary'];
+                $actualHra = (float)$derived['hra'];
+                $actualSpecial = (float)$derived['special_allowance'];
+                $actualOther = (float)$derived['other_allowance'];
+                $med = 0.00;
+                $travel = 0.00;
+                $bonus = 0.00;
+                $otherEarn = 0.00;
+                $pf = (float)$derived['pf'];
+                $employerPf = (float)$derived['employer_pf'];
+                $gratuity = (float)$derived['gratuity'];
+                $esic = (float)$derived['esic'];
+                $pt = (float)$derived['professional_tax'];
+                $tds = 0.00;
+
+                // Persist into database to maintain synchronization
+                try {
+                    Payroll::syncSalaryStructureFromCtc($emp->employee_id, $empSalary, $isPfApplicable);
+                } catch (Exception $e) {}
+            }
 
             // Include approved bonuses from bonuses table for this month
             try {
@@ -1464,28 +1513,31 @@ class PayrollController extends Controller {
                 $otherEarn += (float)$arrearsByEmp[$emp->employee_id];
             }
 
-            // Attendance logs
-            $presentDays = 30;
-            $absentDays = 0;
+            // Attendance logs & LOP calculation
+            // Base: employee is paid for all calendar days unless explicit LOP or unexcused absences occur
+            $manualLop = (float)($lopsByEmp[$emp->employee_id] ?? 0);
+            $attLop = 0.0;
             try {
-                $attStmt = $db->prepare("SELECT COUNT(*) FROM attendance WHERE user_id = :uid AND status = 'present' AND date_stamp LIKE :month");
+                $attStmt = $db->prepare("SELECT 
+                    SUM(CASE 
+                        WHEN status = 'absent' THEN 1.0 
+                        WHEN status = 'half_day' THEN 0.5 
+                        ELSE 0.0 
+                    END) AS att_lop
+                    FROM attendance 
+                    WHERE user_id = :uid AND work_date LIKE :month");
                 $attStmt->execute([':uid' => $emp->user_id, ':month' => $month . '-%']);
-                $presentCount = (int)$attStmt->fetchColumn();
-                if ($presentCount > 0) {
-                    $presentDays = min($presentCount, $workingDays);
-                    $absentDays = max(0, $workingDays - $presentDays);
+                $val = $attStmt->fetchColumn();
+                if ($val !== false && $val !== null) {
+                    $attLop = (float)$val;
                 }
             } catch (Exception $e) {}
 
-            // Apply manual Loss of Pay (LOP) days if configured
-            if (isset($lopsByEmp[$emp->employee_id])) {
-                $manualLop = (float)$lopsByEmp[$emp->employee_id];
-                $absentDays = max($absentDays, $manualLop);
-                $presentDays = max(0, $workingDays - $absentDays);
-            }
+            $absentDays = max($manualLop, $attLop);
+            $presentDays = max(0, $calendarDays - $absentDays);
 
             // Pro-rate earned amounts if any loss of pay (absent days)
-            $proRateFactor = ($workingDays > 0) ? ($presentDays / $workingDays) : 1.0;
+            $proRateFactor = ($calendarDays > 0) ? (($calendarDays - $absentDays) / $calendarDays) : 1.0;
             $basic = round($actualBasic * $proRateFactor);
             $hra = round($actualHra * $proRateFactor);
             $special = round($actualSpecial * $proRateFactor);
@@ -1493,19 +1545,37 @@ class PayrollController extends Controller {
             $med = round($med * $proRateFactor);
             $travel = round($travel * $proRateFactor);
 
-            // Statutory & Other Deductions
-            $pf = $struct ? round((float)$struct->pf) : (($basic >= 15000) ? 1800 : round($basic * 0.12));
-            $employerPf = $struct ? round((float)($struct->employer_pf ?? $pf)) : (($actualBasic >= 15000) ? 1800 : round($actualBasic * 0.12));
-            $gratuity = $struct ? round((float)($struct->gratuity ?? round($actualBasic * 0.0481))) : round($actualBasic * 0.0481);
-            $esic = $struct ? round((float)$struct->esic) : 0;
-            $pt = $struct ? round((float)$struct->professional_tax) : (($actualBasic + $actualHra + $actualSpecial + $actualOther > 20000) ? 200 : 150);
-            $tds = $struct ? round((float)$struct->tds) : 0;
-            $empOtherDeduct = round((float)($otherDeductionsByEmp[$emp->employee_id] ?? 0.00));
+            // Statutory deductions recalculation under LOP / actual earnings
+            if (!$isPfApplicable) {
+                $pf = 0.0;
+                $employerPf = 0.0;
+            } else {
+                if ($proRateFactor < 1.0) {
+                    $pf = (float)min(1800, round($basic * 0.12));
+                    $employerPf = $pf;
+                }
+            }
 
-            // Gross & Net & CTC computations (rounded whole numbers, no decimals)
+            // Gratuity remains anchored to standard actualBasic (statutory provision)
+            $gratuity = round($gratuity);
+
+            // Professional Tax based on earned gross
             $bonus = round($bonus);
             $otherEarn = round($otherEarn);
             $gross = round($basic + $hra + $special + $otherAll + $med + $travel + $bonus + $otherEarn);
+
+            if ($proRateFactor < 1.0 || $pt <= 0) {
+                $pt = ($gross >= 15000) ? 200.0 : (($gross >= 10000) ? 150.0 : 0.0);
+            }
+
+            $pf = round($pf);
+            $employerPf = round($employerPf);
+            $esic = round($esic);
+            $pt = round($pt);
+            $tds = round($tds);
+            $empOtherDeduct = round((float)($otherDeductionsByEmp[$emp->employee_id] ?? 0.00));
+
+            // Gross & Net & CTC computations (rounded whole numbers, no decimals)
             $deductions = round($pf + $esic + $pt + $tds + $empOtherDeduct);
             $net = round($gross - $deductions);
             $benefits = round($employerPf + $gratuity);
