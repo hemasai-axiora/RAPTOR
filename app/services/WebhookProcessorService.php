@@ -173,3 +173,4 @@ class WebhookProcessorService {
         return hash_equals($expected, $signature);
     }
 }
+

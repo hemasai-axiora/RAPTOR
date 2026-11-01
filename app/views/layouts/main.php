@@ -1167,7 +1167,12 @@
                         </li>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_analytics') ? 'active' : ''; ?>">
                             <a href="index.php?route=email_campaigns/analytics">
-                                <i class="fa-solid fa-chart-pie"></i><span>Analytics & Health</span>
+                                <i class="fa-solid fa-chart-pie"></i><span>Analytics & Stats</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && in_array($active_tab, ['email_campaigns_domains', 'email_campaigns_guidance', 'email_campaigns_health'], true)) ? 'active' : ''; ?>">
+                            <a href="index.php?route=email_campaigns/domains">
+                                <i class="fa-solid fa-shield-halved"></i><span>Domains & DNS</span>
                             </a>
                         </li>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_templates') ? 'active' : ''; ?>">

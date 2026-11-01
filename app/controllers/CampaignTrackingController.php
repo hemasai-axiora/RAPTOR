@@ -157,3 +157,4 @@ class CampaignTrackingController extends Controller {
         exit();
     }
 }
+

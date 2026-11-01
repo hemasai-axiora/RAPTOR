@@ -16,6 +16,7 @@ class EmailCampaignsController extends Controller {
     private CampaignSuppression $suppressionModel;
     private CampaignTemplate $templateModel;
     private CampaignBroadcast $campaignModel;
+    private CampaignDomain $domainModel;
 
     public function __construct() {
         $this->requireAuth();
@@ -38,6 +39,7 @@ class EmailCampaignsController extends Controller {
         $this->suppressionModel = new CampaignSuppression();
         $this->templateModel = new CampaignTemplate();
         $this->campaignModel = new CampaignBroadcast();
+        $this->domainModel = new CampaignDomain();
 
         // Ensure default prebuilt templates exist
         try {
@@ -112,6 +114,143 @@ class EmailCampaignsController extends Controller {
 
         $_SESSION['flash_success'] = sprintf('Re-engagement cleanup complete: %d inactive subscribers (no opens/clicks in %d days) have been flagged and excluded from regular sends.', $count, $days);
         $this->redirect('index.php?route=email_campaigns/analytics');
+    }
+
+    // =========================================================================
+    // DOMAINS, DNS AUTHENTICATION & DELIVERABILITY HEALTH (PHASE 6)
+    // =========================================================================
+
+    public function domains() {
+        $domains = $this->domainModel->getAllDomains();
+
+        $data = [
+            'title' => 'Sending Domains & DNS Authentication | Raptor CRM',
+            'active_tab' => 'email_campaigns_domains',
+            'domains' => $domains
+        ];
+
+        $this->viewWithLayout('email_campaigns/domains/index', 'main', $data);
+    }
+
+    public function domainCreate() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('index.php?route=email_campaigns/domains');
+            return;
+        }
+
+        $domainName = trim($_POST['domain_name'] ?? '');
+        $selector = trim($_POST['dkim_selector'] ?? 'raptor');
+        $isDefault = !empty($_POST['is_default']);
+
+        try {
+            $domainId = $this->domainModel->createDomain($domainName, $selector, $isDefault);
+            $_SESSION['flash_success'] = "Sending domain '{$domainName}' created with 2048-bit DKIM keys! Please configure the DNS records below.";
+            $this->redirect("index.php?route=email_campaigns/domainShow&id={$domainId}");
+        } catch (Throwable $e) {
+            $_SESSION['flash_error'] = 'Failed to create domain: ' . $e->getMessage();
+            $this->redirect('index.php?route=email_campaigns/domains');
+        }
+    }
+
+    public function domainShow() {
+        $id = (int)($_GET['id'] ?? 0);
+        $domain = $this->domainModel->getById($id);
+
+        if (!$domain) {
+            $_SESSION['flash_error'] = 'Sending domain not found.';
+            $this->redirect('index.php?route=email_campaigns/domains');
+            return;
+        }
+
+        $records = DomainVerificationService::getRequiredDnsRecords($domain);
+        $blacklist = BlacklistMonitorService::checkDomain($domain->domain_name);
+
+        $data = [
+            'title' => "Domain Setup: {$domain->domain_name} | Raptor CRM",
+            'active_tab' => 'email_campaigns_domains',
+            'domain' => $domain,
+            'records' => $records,
+            'blacklist' => $blacklist
+        ];
+
+        $this->viewWithLayout('email_campaigns/domains/show', 'main', $data);
+    }
+
+    public function domainVerify() {
+        $id = (int)($_GET['id'] ?? 0);
+        $domain = $this->domainModel->getById($id);
+
+        if (!$domain) {
+            $_SESSION['flash_error'] = 'Sending domain not found.';
+            $this->redirect('index.php?route=email_campaigns/domains');
+            return;
+        }
+
+        $res = DomainVerificationService::verifyDomain($domain);
+
+        if ($res['all_passed']) {
+            $_SESSION['flash_success'] = "Domain '{$domain->domain_name}' passed all live DNS checks (SPF, DKIM, DMARC, MX)! Ready for production sending.";
+        } else {
+            $_SESSION['flash_warning'] = "DNS verification updated. Some records are still unverified or propagating. Please review red/yellow items.";
+        }
+
+        $this->redirect("index.php?route=email_campaigns/domainShow&id={$id}");
+    }
+
+    public function domainDelete() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('index.php?route=email_campaigns/domains');
+            return;
+        }
+
+        $id = (int)($_POST['domain_id'] ?? 0);
+        $this->domainModel->deleteDomain($id);
+        $_SESSION['flash_success'] = 'Sending domain deleted.';
+        $this->redirect('index.php?route=email_campaigns/domains');
+    }
+
+    public function deliverabilityGuidance() {
+        $data = [
+            'title' => 'Deliverability Tooling & Reputation Guidance | Raptor CRM',
+            'active_tab' => 'email_campaigns_guidance'
+        ];
+
+        $this->viewWithLayout('email_campaigns/domains/guidance', 'main', $data);
+    }
+
+    public function healthReport() {
+        $healthData = DeliverabilityHealthReportService::collectHealthData();
+
+        $data = [
+            'title' => 'Deliverability Health Report | Raptor CRM',
+            'active_tab' => 'email_campaigns_health',
+            'health' => $healthData
+        ];
+
+        $this->viewWithLayout('email_campaigns/domains/health', 'main', $data);
+    }
+
+    public function healthReportSendTest() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('index.php?route=email_campaigns/healthReport');
+            return;
+        }
+
+        $email = trim($_POST['email'] ?? ($_SESSION['user_email'] ?? ''));
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $_SESSION['flash_error'] = 'Invalid email address provided.';
+            $this->redirect('index.php?route=email_campaigns/healthReport');
+            return;
+        }
+
+        $sent = DeliverabilityHealthReportService::dispatchReport($email);
+        if ($sent) {
+            $_SESSION['flash_success'] = "Daily health report successfully dispatched to {$email}.";
+        } else {
+            $_SESSION['flash_error'] = "Failed to dispatch test health report. Check mailer adapter configuration.";
+        }
+
+        $this->redirect('index.php?route=email_campaigns/healthReport');
     }
 
     // =========================================================================
