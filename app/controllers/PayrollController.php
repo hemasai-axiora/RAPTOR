@@ -304,36 +304,21 @@ class PayrollController extends Controller {
             if ($empId > 0 && $newGross > 0 && !empty($reason)) {
                 $current = $this->payrollModel->getSalaryStructureByEmployeeId($empId);
 
-                $basic = round($newGross * 0.50);
-                $hra = round($newGross * 0.30);
-                $special = round($newGross - ($basic + $hra));
-                $pf = round($basic * 0.12);
-                $employerPf = round($basic * 0.12);
-                $gratuity = round($basic * 0.0481);
-
-                $formData = [
-                    'employee_id' => $empId,
-                    'salary_type' => 'Monthly',
-                    'basic_salary' => $basic,
-                    'hra' => $hra,
-                    'special_allowance' => $special,
-                    'other_allowance' => 0.00,
-                    'medical_allowance' => 0.00,
-                    'travel_allowance' => 0.00,
-                    'bonus' => 0.00,
-                    'other_earnings' => 0.00,
-                    'pf' => $pf,
-                    'employer_pf' => $employerPf,
-                    'gratuity' => $gratuity,
-                    'esic' => 0.00,
-                    'professional_tax' => 200.00,
-                    'tds' => $current ? (float)$current->tds : 0.00
-                ];
+                $empRow = $this->payrollModel->getEmployeeById($empId);
+                $isPf = $empRow ? (bool)($empRow->pf_applicable ?? 0) : true;
+                $formData = Payroll::deriveComponentsFromCtc((float)$newGross, $isPf);
+                $formData['employee_id'] = $empId;
+                $formData['salary_type'] = 'Monthly';
+                $formData['tds'] = $current ? (float)$current->tds : 0.00;
 
                 if ($this->payrollModel->saveSalaryStructure($formData, $_SESSION['user_id'], $reason, $effectiveDate)) {
                     $db = Database::getInstance()->getConnection();
-                    $stmt = $db->prepare('UPDATE employees SET salary = :sal WHERE employee_id = :emp_id');
-                    $stmt->execute([':sal' => $newGross, ':emp_id' => $empId]);
+                    $stmt = $db->prepare('UPDATE employees SET salary = :sal, pf_applicable = :pf_app WHERE employee_id = :emp_id');
+                    $stmt->execute([
+                        ':sal' => $formData['ctc'],
+                        ':pf_app' => ($formData['employer_pf'] > 0 || $formData['pf'] > 0) ? 1 : 0,
+                        ':emp_id' => $empId
+                    ]);
 
                     $this->recalculateRunForMonth($monthYear, $empId);
                     $_SESSION['payroll_success'] = 'Salary revision recorded successfully and payroll run synchronized.';
@@ -605,12 +590,14 @@ class PayrollController extends Controller {
                 $revisionReason = !empty($_POST['revision_reason']) ? trim($_POST['revision_reason']) : 'Salary Structure Update';
 
                 if ($this->payrollModel->saveSalaryStructure($formData, $_SESSION['user_id'], $revisionReason, $effectiveDate)) {
-                    // Update salary field on employees table as well
+                    // Maintain employees.salary strictly as Monthly CTC and sync compliance
                     $db = Database::getInstance()->getConnection();
-                    $stmt = $db->prepare('UPDATE employees SET salary = :sal WHERE employee_id = :emp_id');
+                    $stmt = $db->prepare('UPDATE employees SET salary = :sal, pf_applicable = :pf_app WHERE employee_id = :emp_id');
                     $grossSal = $basic + $hra + $special + $otherAll + $med + $travel + $otherEarn;
+                    $monthlyCtc = $grossSal + $employerPf + $gratuity;
                     $stmt->execute([
-                        ':sal' => $grossSal,
+                        ':sal' => $monthlyCtc,
+                        ':pf_app' => ($employerPf > 0 || $pf > 0) ? 1 : 0,
                         ':emp_id' => $empId
                     ]);
 
@@ -1217,9 +1204,9 @@ class PayrollController extends Controller {
 
             try {
                 if ($this->payrollModel->saveSalaryStructure($formData, $_SESSION['user_id'], $reason, $effectiveDate)) {
-                    // Sync salary field on employees table
+                    // Sync salary field on employees table as Monthly CTC
                     $empSalaryUpdateStmt->execute([
-                        ':sal' => $row['gross_salary'],
+                        ':sal' => $row['ctc'],
                         ':emp_id' => $empId
                     ]);
 

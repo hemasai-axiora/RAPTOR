@@ -219,6 +219,34 @@ class User extends Model {
                 }
             }
 
+            // Auto-generate salary structure from Monthly CTC & compliance
+            if ($employeeId && !empty($data['salary']) && (float)$data['salary'] > 0) {
+                try {
+                    require_once APPROOT . '/models/Payroll.php';
+                    $payrollModel = new Payroll();
+                    $isPf = !empty($data['pf_applicable']) ? (bool)$data['pf_applicable'] : false;
+                    $payrollModel->syncSalaryStructureFromCtc($employeeId, (float)$data['salary'], $isPf, $userId, 'Initial Employee Setup');
+                } catch (Exception $e) {
+                    error_log('Failed to auto-generate salary structure for employee ' . $employeeId . ': ' . $e->getMessage());
+                }
+            }
+
+            // Sync salary structure when salary or compliance changes or when structure is missing
+            if (!empty($employeeId) && !empty($data['salary']) && (float)$data['salary'] > 0) {
+                try {
+                    require_once APPROOT . '/models/Payroll.php';
+                    $payrollModel = new Payroll();
+                    $isPf = !empty($data['pf_applicable']) ? (bool)$data['pf_applicable'] : false;
+                    $existingStruct = $payrollModel->getSalaryStructureByEmployeeId($employeeId);
+                    
+                    if (!$existingStruct || abs((float)($emp->salary ?? 0) - (float)$data['salary']) >= 1 || (int)($emp->pf_applicable ?? 0) !== ($isPf ? 1 : 0)) {
+                        $payrollModel->syncSalaryStructureFromCtc($employeeId, (float)$data['salary'], $isPf, $data['user_id'] ?? null, 'Employee Profile Salary Update');
+                    }
+                } catch (Exception $e) {
+                    error_log('Failed to sync salary structure on update for employee ' . $employeeId . ': ' . $e->getMessage());
+                }
+            }
+
             if (!$inTx) {
                 $this->db->commit();
             }

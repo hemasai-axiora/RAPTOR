@@ -317,6 +317,121 @@ class Payroll extends Model {
     }
 
     // ---------------- Salary Structures ----------------
+
+    /**
+     * Data-driven Axiora standard band calculation.
+     * Computes exact salary components given Monthly CTC and statutory PF compliance flag.
+     */
+    public static function deriveComponentsFromCtc(float $ctc, bool $isPfApplicable): array {
+        $ctc = round($ctc);
+        if ($ctc <= 0) {
+            return [
+                'basic_salary' => 0.0,
+                'hra' => 0.0,
+                'special_allowance' => 0.0,
+                'other_allowance' => 0.0,
+                'medical_allowance' => 0.0,
+                'travel_allowance' => 0.0,
+                'bonus' => 0.0,
+                'other_earnings' => 0.0,
+                'pf' => 0.0,
+                'employer_pf' => 0.0,
+                'gratuity' => 0.0,
+                'esic' => 0.0,
+                'professional_tax' => 0.0,
+                'tds' => 0.0,
+                'gross_salary' => 0.0,
+                'total_benefits' => 0.0,
+                'net_salary' => 0.0,
+                'ctc' => 0.0
+            ];
+        }
+
+        // 1. Basic = 50% of CTC
+        $basic = round($ctc * 0.50);
+
+        // 2. HRA = 50% of Basic (25% of CTC)
+        $hra = round($basic * 0.50);
+
+        // 3. Special Allowance = 1600 fixed standard
+        $special = 1600.0;
+
+        // 4. Employer EPF & Employee EPF (Statutory Compliance)
+        if ($isPfApplicable) {
+            $employerPf = ($basic >= 15000) ? 1800.0 : round($basic * 0.12);
+            $pf = $employerPf;
+        } else {
+            $employerPf = 0.0;
+            $pf = 0.0;
+        }
+
+        // 5. Gratuity = 4.81% of Basic
+        $gratuity = round($basic * 0.0481);
+
+        // 6. Total Benefits
+        $totalBenefits = $employerPf + $gratuity;
+
+        // 7. Gross Salary = CTC - Total Benefits
+        $gross = max(0.0, $ctc - $totalBenefits);
+
+        // 8. Other Allowance = Gross - (Basic + HRA + Special)
+        $other = max(0.0, $gross - ($basic + $hra + $special));
+
+        // 9. Professional Tax (PT)
+        if ($gross >= 15000) {
+            $pt = 200.0;
+        } elseif ($gross >= 10000) {
+            $pt = 150.0;
+        } else {
+            $pt = 0.0;
+        }
+
+        $deductions = $pf + $pt;
+        $net = $gross - $deductions;
+
+        return [
+            'basic_salary' => $basic,
+            'hra' => $hra,
+            'special_allowance' => $special,
+            'other_allowance' => $other,
+            'medical_allowance' => 0.0,
+            'travel_allowance' => 0.0,
+            'bonus' => 0.0,
+            'other_earnings' => 0.0,
+            'pf' => $pf,
+            'employer_pf' => $employerPf,
+            'gratuity' => $gratuity,
+            'esic' => 0.0,
+            'professional_tax' => $pt,
+            'tds' => 0.0,
+            'gross_salary' => $gross,
+            'total_benefits' => $totalBenefits,
+            'net_salary' => $net,
+            'ctc' => $ctc
+        ];
+    }
+
+    /**
+     * Synchronize employee salary structure from Monthly CTC & Compliance status.
+     */
+    public function syncSalaryStructureFromCtc($employeeId, $ctc, $isPfApplicable, $revisedBy = null, $reason = '', $effectiveDate = null) {
+        $employeeId = (int)$employeeId;
+        $ctc = (float)$ctc;
+        if ($employeeId <= 0 || $ctc <= 0) {
+            return false;
+        }
+
+        $components = self::deriveComponentsFromCtc($ctc, (bool)$isPfApplicable);
+        $components['employee_id'] = $employeeId;
+        $components['salary_type'] = 'Monthly';
+
+        return $this->saveSalaryStructure(
+            $components,
+            $revisedBy,
+            !empty($reason) ? $reason : 'Automatic CTC & Compliance Sync',
+            $effectiveDate
+        );
+    }
     
     public function getSalaryStructureByEmployeeId($employeeId) {
         $this->query('SELECT * FROM salary_structures WHERE employee_id = :emp_id');
