@@ -95,7 +95,7 @@ foreach ($zohoCandidates as $zcand) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payslip - <?php echo htmlspecialchars($empName); ?> - <?php echo htmlspecialchars($monthYearFormatted); ?></title>
     <!-- Inter Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
@@ -107,11 +107,15 @@ foreach ($zohoCandidates as $zcand) {
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            color: #0f172a;
+            font-family: 'Times New Roman', Times, 'Tinos', 'Nimbus Roman No9 L', Georgia, serif;
+            color: #000000;
             background-color: #f1f5f9;
             padding: 2.5rem 1rem;
             -webkit-font-smoothing: antialiased;
+        }
+
+        .payslip-page, .payslip-page * {
+            font-family: 'Times New Roman', Times, 'Tinos', 'Nimbus Roman No9 L', Georgia, serif;
         }
 
         .payslip-page {
@@ -155,17 +159,17 @@ foreach ($zohoCandidates as $zcand) {
         }
 
         .company-info h1 {
-            font-size: 21px;
+            font-size: 15pt;
             font-weight: 700;
-            color: #0f172a;
+            color: #333333;
             margin-bottom: 4px;
             letter-spacing: -0.2px;
         }
 
         .company-info p {
-            font-size: 11.5px;
-            color: #475569;
-            line-height: 1.45;
+            font-size: 10pt;
+            color: #666666;
+            line-height: 1.4;
         }
 
         .payslip-period-badge {
@@ -174,16 +178,16 @@ foreach ($zohoCandidates as $zcand) {
         }
 
         .payslip-period-badge .label {
-            font-size: 12px;
-            color: #64748b;
+            font-size: 9pt;
+            color: #666666;
             margin-bottom: 4px;
             display: block;
         }
 
         .payslip-period-badge .period-month {
-            font-size: 18px;
+            font-size: 11pt;
             font-weight: 700;
-            color: #0f172a;
+            color: #000000;
         }
 
         /* Outlined Box Base */
@@ -196,12 +200,12 @@ foreach ($zohoCandidates as $zcand) {
         }
 
         .box-title {
-            font-size: 12px;
+            font-size: 11pt;
             font-weight: 700;
-            color: #0f172a;
+            color: #000000;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 14px;
+            margin-bottom: 12px;
         }
 
         /* Employee Summary Layout */
@@ -217,26 +221,26 @@ foreach ($zohoCandidates as $zcand) {
         }
 
         .kv-table td {
-            padding: 3.5px 0;
-            font-size: 12px;
+            padding: 2.8px 0;
+            font-size: 11pt;
             vertical-align: middle;
         }
 
         .kv-table td.key {
-            color: #334155;
+            color: #000000;
             font-weight: 400;
-            width: 120px;
+            width: 125px;
         }
 
         .kv-table td.colon {
             width: 15px;
-            color: #334155;
+            color: #000000;
             font-weight: 400;
         }
 
         .kv-table td.val {
-            color: #0f172a;
-            font-weight: 700;
+            color: #000000;
+            font-weight: 400;
         }
 
         /* Gradient Highlight Cards */
@@ -249,26 +253,26 @@ foreach ($zohoCandidates as $zcand) {
         }
 
         .gradient-card .amount {
-            font-size: 26px;
+            font-size: 19.5pt;
             font-weight: 400;
-            color: #0f172a;
+            color: #000000;
             letter-spacing: 0.2px;
             margin-bottom: 2px;
-            font-family: 'Times New Roman', Times, Georgia, serif;
+            font-family: 'Times New Roman', Times, 'Tinos', serif;
             line-height: 1.15;
         }
 
         .gradient-card .subtitle {
-            font-size: 11.5px;
-            color: #334155;
+            font-size: 11pt;
+            color: #000000;
             font-weight: 400;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .card-meta-list {
-            margin-top: 6px;
-            font-size: 11.5px;
-            color: #1e293b;
+            margin-top: 4px;
+            font-size: 11pt;
+            color: #000000;
             text-align: left;
             display: inline-block;
         }
@@ -301,18 +305,18 @@ foreach ($zohoCandidates as $zcand) {
         }
 
         .data-table th {
-            font-size: 11.5px;
+            font-size: 11pt;
             font-weight: 700;
-            color: #0f172a;
+            color: #333333;
             text-transform: uppercase;
-            padding-bottom: 8px;
+            padding-bottom: 6px;
             border-bottom: none;
         }
 
         .data-table td {
-            font-size: 12px;
-            padding: 4px 0;
-            color: #1e293b;
+            font-size: 11pt;
+            padding: 2.8px 0;
+            color: #000000;
         }
 
         .data-table td.col-name {
@@ -323,21 +327,21 @@ foreach ($zohoCandidates as $zcand) {
             text-align: right;
             font-weight: 400;
             font-variant-numeric: tabular-nums;
-            font-family: 'Times New Roman', Times, Georgia, serif;
-            font-size: 13.5px;
+            font-family: 'Times New Roman', Times, 'Tinos', serif;
+            font-size: 11pt;
         }
 
         .data-table tr.total-row td {
             font-weight: 700;
-            color: #0f172a;
-            padding-top: 10px;
+            color: #000000;
+            padding-top: 8px;
             padding-bottom: 2px;
         }
 
         .data-table tr.total-row td.col-num {
-            font-family: 'Times New Roman', Times, Georgia, serif;
+            font-family: 'Times New Roman', Times, 'Tinos', serif;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 11pt;
         }
 
         /* Benefits & CTC */
@@ -361,48 +365,48 @@ foreach ($zohoCandidates as $zcand) {
         }
 
         .payable-banner .label-pane .main-label {
-            font-size: 12.5px;
+            font-size: 11pt;
             font-weight: 700;
-            color: #0f172a;
+            color: #000000;
             text-transform: uppercase;
             letter-spacing: 0.3px;
         }
 
         .payable-banner .label-pane .sub-label {
-            font-size: 11.5px;
-            color: #64748b;
+            font-size: 9.5pt;
+            color: #000000;
         }
 
         .payable-banner .amount-box {
             background: linear-gradient(180deg, #a6c1ff 0%, #c4d7fc 45%, #dfe8ff 100%);
             border: 1.2px solid #1c3052;
             border-radius: 8px;
-            padding: 8px 30px;
-            font-size: 22px;
+            padding: 6px 26px;
+            font-size: 14pt;
             font-weight: 700;
-            color: #0f172a;
-            min-width: 250px;
+            color: #000000;
+            min-width: 230px;
             text-align: center;
-            font-family: 'Times New Roman', Times, Georgia, serif;
+            font-family: 'Times New Roman', Times, 'Tinos', serif;
         }
 
         .amount-in-words {
             text-align: center;
-            font-size: 11.5px;
-            color: #334155;
-            margin-bottom: 30px;
+            font-size: 9pt;
+            color: #000000;
+            margin-bottom: 24px;
             margin-top: 6px;
         }
 
         /* Footer */
         .payslip-footer {
-            margin-top: 35px;
+            margin-top: 30px;
             text-align: center;
         }
 
         .payslip-footer .system-gen {
-            font-size: 11px;
-            color: #64748b;
+            font-size: 9pt;
+            color: #666666;
             margin-bottom: 8px;
         }
 
@@ -422,6 +426,7 @@ foreach ($zohoCandidates as $zcand) {
             gap: 8px;
             background: #1e3a8a;
             color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
             font-weight: 600;
             font-size: 14px;
             padding: 12px 22px;

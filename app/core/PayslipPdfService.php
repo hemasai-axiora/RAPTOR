@@ -91,12 +91,13 @@ class PayslipPdfService {
         // 2: Pages
         $pagesId = $addObj("<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
 
-        // Font Objects (Helvetica, Helvetica-Bold, Helvetica-Oblique, Times-Roman, Times-Bold)
-        $fontRegularId = $addObj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
-        $fontBoldId = $addObj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
-        $fontObliqueId = $addObj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>");
+        // Font Objects: Standard Type 1 PostScript fonts (Times-Roman, Times-Bold, Times-Italic matching Word DOCX reference)
         $fontTimesRegularId = $addObj("<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman /Encoding /WinAnsiEncoding >>");
         $fontTimesBoldId = $addObj("<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold /Encoding /WinAnsiEncoding >>");
+        $fontTimesItalicId = $addObj("<< /Type /Font /Subtype /Type1 /BaseFont /Times-Italic /Encoding /WinAnsiEncoding >>");
+        $fontRegularId = $fontTimesRegularId;
+        $fontBoldId = $fontTimesBoldId;
+        $fontObliqueId = $fontTimesItalicId;
 
         // Embed Logo Image as Image XObject (JPEG)
         $logoObjId = null;
@@ -142,14 +143,14 @@ class PayslipPdfService {
                 $font, $size, $r, $g, $b, $x, $y, $safeText);
         };
 
-        // Helper to draw right-aligned text
-        $drawTextRight = function($x, $y, $text, $font = 'F1', $size = 10, $charWidthApprox = 5.2, $r = 0.08, $g = 0.1, $b = 0.15) use (&$stream, $drawText) {
+        // Helper to draw right-aligned text (Times-Roman character width approx ~4.6 for size 10)
+        $drawTextRight = function($x, $y, $text, $font = 'F1', $size = 10, $charWidthApprox = 4.6, $r = 0.08, $g = 0.1, $b = 0.15) use (&$stream, $drawText) {
             $width = strlen($text) * $charWidthApprox * ($size / 10);
             $drawText($x - $width, $y, $text, $font, $size, $r, $g, $b);
         };
 
-        // Helper to draw centered text
-        $drawTextCenter = function($centerX, $y, $text, $font = 'F1', $size = 10, $charWidthApprox = 5.2, $r = 0.08, $g = 0.1, $b = 0.15) use (&$stream, $drawText) {
+        // Helper to draw centered text (Times-Roman character width approx ~4.6 for size 10)
+        $drawTextCenter = function($centerX, $y, $text, $font = 'F1', $size = 10, $charWidthApprox = 4.6, $r = 0.08, $g = 0.1, $b = 0.15) use (&$stream, $drawText) {
             $width = strlen($text) * $charWidthApprox * ($size / 10);
             $drawText($centerX - ($width / 2), $y, $text, $font, $size, $r, $g, $b);
         };
@@ -193,11 +194,11 @@ class PayslipPdfService {
         };
 
         // Helper to draw monetary amount with Rupee glyph and Times New Roman numbers
-        $drawAmount = function($x, $y, $numStr, $font = 'FT1', $size = 8.5, $align = 'left', $r = 0.08, $g = 0.1, $b = 0.15) use ($drawRupee, $drawText) {
+        $drawAmount = function($x, $y, $numStr, $font = 'FT1', $size = 8.5, $align = 'left', $r = 0.0, $g = 0.0, $b = 0.0) use ($drawRupee, $drawText) {
             if ($font === 'F1') $font = 'FT1';
             if ($font === 'F2') $font = 'FT2';
             $isBold = ($font === 'FT2' || $font === 'F2');
-            $charW = $isBold ? 5.2 : 4.6;
+            $charW = $isBold ? 5.0 : 4.5;
             $textW = strlen($numStr) * $charW * ($size / 10);
             $rupeeW = $size * 0.46;
             $gap = 1.0;
@@ -339,14 +340,14 @@ class PayslipPdfService {
             $drawRoundedRect($left, $topY - 45, 48, 48, 6, null, null, null, 0, $fR, $fG, $fB);
         }
 
-        // Company Name & Address
-        $drawText($left + 58, $topY - 13, "Axiora Global Solutions", 'F2', 14.5, 0.08, 0.12, 0.2);
-        $drawText($left + 58, $topY - 26, "3rd Floor, Pranava Business Park, beside Harsha Toyota showroom", 'F1', 8, 0.35, 0.4, 0.48);
-        $drawText($left + 58, $topY - 38, "Kothaguda, Kondapur, Hyderabad, Telangana 500084 India.", 'F1', 8, 0.35, 0.4, 0.48);
+        // Company Name & Address (Matching DOCX sz:30 / 15pt bold, #333333; sz:20 / 10pt regular, #666666)
+        $drawText($left + 58, $topY - 13, "Axiora Global Solutions", 'F2', 15, 0.2, 0.2, 0.2);
+        $drawText($left + 58, $topY - 26, "3rd Floor, Pranava Business Park, beside Harsha Toyota showroom", 'F1', 9.5, 0.4, 0.4, 0.4);
+        $drawText($left + 58, $topY - 38, "Kothaguda, Kondapur, Hyderabad, Telangana 500084 India.", 'F1', 9.5, 0.4, 0.4, 0.4);
 
-        // Header Right: Payslip for Month
-        $drawTextRight($right, $topY - 16, "Payslip For the Month", 'F1', 8.5, 5.0, 0.45, 0.5, 0.58);
-        $drawTextRight($right, $topY - 32, $monthYear, 'F2', 13, 6.4, 0.06, 0.09, 0.15);
+        // Header Right: Payslip for Month (DOCX sz:18 / 9pt regular, #666666; Month sz:22 / 11pt bold, #000000)
+        $drawTextRight($right, $topY - 16, "Payslip For the Month", 'F1', 9, 4.6, 0.4, 0.4, 0.4);
+        $drawTextRight($right, $topY - 32, $monthYear, 'F2', 11, 5.2, 0.0, 0.0, 0.0);
 
         // ==========================================
         // 2. Employee Summary Box
@@ -355,12 +356,12 @@ class PayslipPdfService {
         $sumBoxH = 146;
         $drawRoundedRect($left, $sumBoxY, $boxW, $sumBoxH, 8, $sR, $sG, $sB, 1.0);
 
-        $drawText($left + 16, $sumBoxY + $sumBoxH - 18, "EMPLOYEE SUMMARY", 'F2', 9.5, 0.06, 0.09, 0.16);
+        $drawText($left + 16, $sumBoxY + $sumBoxH - 18, "EMPLOYEE SUMMARY", 'F2', 10.5, 0.0, 0.0, 0.0);
 
-        // Left Key-Value Details
+        // Left Key-Value Details (DOCX sz:22 / 11pt, #000000)
         $kvLeftX = $left + 16;
-        $kvColonX = $left + 98;
-        $kvValX = $left + 106;
+        $kvColonX = $left + 104;
+        $kvValX = $left + 112;
         $kvStartY = $sumBoxY + $sumBoxH - 33;
         $kvLineH = 13.8;
 
@@ -377,9 +378,9 @@ class PayslipPdfService {
 
         foreach ($fields as $idx => $f) {
             $currY = $kvStartY - ($idx * $kvLineH);
-            $drawText($kvLeftX, $currY, $f[0], 'F1', 8.2, 0.2, 0.25, 0.33);
-            $drawText($kvColonX, $currY, ":", 'F1', 8.2, 0.2, 0.25, 0.33);
-            $drawText($kvValX, $currY, $f[1], 'F2', 8.2, 0.06, 0.09, 0.16);
+            $drawText($kvLeftX, $currY, $f[0], 'F1', 9, 0.0, 0.0, 0.0);
+            $drawText($kvColonX, $currY, ":", 'F1', 9, 0.0, 0.0, 0.0);
+            $drawText($kvValX, $currY, $f[1], 'F2', 9, 0.0, 0.0, 0.0);
         }
 
         // Right side: Net Pay Card with Paid Days / LOP Days
@@ -389,32 +390,32 @@ class PayslipPdfService {
         $netCardY = $sumBoxY + $sumBoxH - $netCardH - 12;
         $drawGradientRoundedRect($netCardX, $netCardY, $netCardW, $netCardH, 8, 0.651, 0.757, 1.0, 0.890, 0.922, 1.0, $sR, $sG, $sB, 1.0, 0.52);
 
-        // Large Net Pay amount centered without decimals or commas matching sample
-        $drawAmount($netCardX + ($netCardW / 2), $netCardY + 49, $fmt($netPay, 0), 'FT1', 20, 'center', 0.06, 0.09, 0.16);
-        $drawTextCenter($netCardX + ($netCardW / 2), $netCardY + 36, "Total Net Pay", 'F1', 8, 5.0, 0.25, 0.35, 0.48);
+        // Large Net Pay amount centered without decimals or commas matching sample (DOCX sz:39 / 19.5pt)
+        $drawAmount($netCardX + ($netCardW / 2), $netCardY + 49, $fmt($netPay, 0), 'FT1', 19.5, 'center', 0.0, 0.0, 0.0);
+        $drawTextCenter($netCardX + ($netCardW / 2), $netCardY + 36, "Total Net Pay", 'F1', 9, 4.6, 0.0, 0.0, 0.0);
 
         // Paid Days & LOP Days stacked vertically with aligned colons inside card
-        $drawText($netCardX + 32, $netCardY + 20, "Paid Days", 'F1', 8, 0.2, 0.25, 0.33);
-        $drawText($netCardX + 80, $netCardY + 20, ":", 'F1', 8, 0.2, 0.25, 0.33);
-        $drawText($netCardX + 110, $netCardY + 20, (string)$paidDays, 'F2', 8, 0.06, 0.09, 0.16);
+        $drawText($netCardX + 32, $netCardY + 20, "Paid Days", 'F1', 8.5, 0.0, 0.0, 0.0);
+        $drawText($netCardX + 80, $netCardY + 20, ":", 'F1', 8.5, 0.0, 0.0, 0.0);
+        $drawText($netCardX + 110, $netCardY + 20, (string)$paidDays, 'F2', 8.5, 0.0, 0.0, 0.0);
 
-        $drawText($netCardX + 32, $netCardY + 8, "LOP Days", 'F1', 8, 0.2, 0.25, 0.33);
-        $drawText($netCardX + 80, $netCardY + 8, ":", 'F1', 8, 0.2, 0.25, 0.33);
-        $drawText($netCardX + 110, $netCardY + 8, (string)$lopDays, 'F2', 8, 0.06, 0.09, 0.16);
+        $drawText($netCardX + 32, $netCardY + 8, "LOP Days", 'F1', 8.5, 0.0, 0.0, 0.0);
+        $drawText($netCardX + 80, $netCardY + 8, ":", 'F1', 8.5, 0.0, 0.0, 0.0);
+        $drawText($netCardX + 110, $netCardY + 8, (string)$lopDays, 'F2', 8.5, 0.0, 0.0, 0.0);
 
         // Bank details below net pay card
         $bankY = $netCardY - 14;
-        $drawText($netCardX, $bankY, "Bank A/C Number", 'F1', 8.2, 0.2, 0.25, 0.33);
-        $drawText($netCardX + 80, $bankY, ":", 'F1', 8.2, 0.2, 0.25, 0.33);
-        $drawText($netCardX + 88, $bankY, $bankAc, 'F2', 8.2, 0.06, 0.09, 0.16);
+        $drawText($netCardX, $bankY, "Bank A/C Number", 'F1', 8.5, 0.0, 0.0, 0.0);
+        $drawText($netCardX + 80, $bankY, ":", 'F1', 8.5, 0.0, 0.0, 0.0);
+        $drawText($netCardX + 88, $bankY, $bankAc, 'F2', 8.5, 0.0, 0.0, 0.0);
 
-        $drawText($netCardX, $bankY - 13.5, "IFSC Code", 'F1', 8.2, 0.2, 0.25, 0.33);
-        $drawText($netCardX + 80, $bankY - 13.5, ":", 'F1', 8.2, 0.2, 0.25, 0.33);
-        $drawText($netCardX + 88, $bankY - 13.5, $ifsc, 'F2', 8.2, 0.06, 0.09, 0.16);
+        $drawText($netCardX, $bankY - 13.5, "IFSC Code", 'F1', 8.5, 0.0, 0.0, 0.0);
+        $drawText($netCardX + 80, $bankY - 13.5, ":", 'F1', 8.5, 0.0, 0.0, 0.0);
+        $drawText($netCardX + 88, $bankY - 13.5, $ifsc, 'F2', 8.5, 0.0, 0.0, 0.0);
 
-        $drawText($netCardX, $bankY - 27, "UAN Number", 'F1', 8.2, 0.2, 0.25, 0.33);
-        $drawText($netCardX + 80, $bankY - 27, ":", 'F1', 8.2, 0.2, 0.25, 0.33);
-        $drawText($netCardX + 88, $bankY - 27, $uan, 'F2', 8.2, 0.06, 0.09, 0.16);
+        $drawText($netCardX, $bankY - 27, "UAN Number", 'F1', 8.5, 0.0, 0.0, 0.0);
+        $drawText($netCardX + 80, $bankY - 27, ":", 'F1', 8.5, 0.0, 0.0, 0.0);
+        $drawText($netCardX + 88, $bankY - 27, $uan, 'F2', 8.5, 0.0, 0.0, 0.0);
 
         // ==========================================
         // 3. Earnings & Deductions Box
@@ -461,36 +462,36 @@ class PayslipPdfService {
 
         $earnHeadY = $earnBoxY + $earnBoxH - 18;
 
-        // Headers
-        $drawText($colEarnName, $earnHeadY, "EARNINGS", 'F2', 8.8, 0.06, 0.09, 0.16);
-        $drawTextRight($colEarnActual, $earnHeadY, "ACTUAL", 'F2', 8.8, 5.8, 0.06, 0.09, 0.16);
-        $drawTextRight($colEarnAmount, $earnHeadY, "AMOUNT", 'F2', 8.8, 5.8, 0.06, 0.09, 0.16);
+        // Headers (DOCX sz:22 / 11pt bold, #333333)
+        $drawText($colEarnName, $earnHeadY, "EARNINGS", 'F2', 9.5, 0.2, 0.2, 0.2);
+        $drawTextRight($colEarnActual, $earnHeadY, "ACTUAL", 'F2', 9.5, 5.0, 0.2, 0.2, 0.2);
+        $drawTextRight($colEarnAmount, $earnHeadY, "AMOUNT", 'F2', 9.5, 5.0, 0.2, 0.2, 0.2);
 
-        $drawText($colDedName, $earnHeadY, "DEDUCTIONS", 'F2', 8.8, 0.06, 0.09, 0.16);
-        $drawTextRight($colDedAmount, $earnHeadY, "AMOUNT", 'F2', 8.8, 5.8, 0.06, 0.09, 0.16);
+        $drawText($colDedName, $earnHeadY, "DEDUCTIONS", 'F2', 9.5, 0.2, 0.2, 0.2);
+        $drawTextRight($colDedAmount, $earnHeadY, "AMOUNT", 'F2', 9.5, 5.0, 0.2, 0.2, 0.2);
 
-        // Rows
+        // Rows (DOCX sz:22 / 11pt, #000000)
         for ($i = 0; $i < $maxRows; $i++) {
             $rY = $earnHeadY - 17 - ($i * $earnRowH);
             if (isset($earnRows[$i])) {
-                $drawText($colEarnName, $rY, $earnRows[$i][0], 'F1', 8.2, 0.2, 0.25, 0.33);
-                $drawAmount($colEarnActual, $rY, $earnRows[$i][1], 'F1', 8.2, 'right', 0.1, 0.15, 0.22);
-                $drawAmount($colEarnAmount, $rY, $earnRows[$i][2], 'F1', 8.2, 'right', 0.1, 0.15, 0.22);
+                $drawText($colEarnName, $rY, $earnRows[$i][0], 'F1', 9, 0.0, 0.0, 0.0);
+                $drawAmount($colEarnActual, $rY, $earnRows[$i][1], 'F1', 9, 'right', 0.0, 0.0, 0.0);
+                $drawAmount($colEarnAmount, $rY, $earnRows[$i][2], 'F1', 9, 'right', 0.0, 0.0, 0.0);
             }
             if (isset($dedRows[$i])) {
-                $drawText($colDedName, $rY, $dedRows[$i][0], 'F1', 8.2, 0.2, 0.25, 0.33);
-                $drawAmount($colDedAmount, $rY, $dedRows[$i][1], 'F1', 8.2, 'right', 0.1, 0.15, 0.22);
+                $drawText($colDedName, $rY, $dedRows[$i][0], 'F1', 9, 0.0, 0.0, 0.0);
+                $drawAmount($colDedAmount, $rY, $dedRows[$i][1], 'F1', 9, 'right', 0.0, 0.0, 0.0);
             }
         }
 
-        // Totals Row
+        // Totals Row (DOCX sz:22 / 11pt bold, #000000)
         $totEarnY = $earnBoxY + 12;
-        $drawText($colEarnName, $totEarnY, "Gross Earnings", 'F2', 8.8, 0.06, 0.09, 0.16);
-        $drawAmount($colEarnActual, $totEarnY, $fmt($grossActual), 'F2', 8.8, 'right', 0.06, 0.09, 0.16);
-        $drawAmount($colEarnAmount, $totEarnY, $fmt($gross), 'F2', 8.8, 'right', 0.06, 0.09, 0.16);
+        $drawText($colEarnName, $totEarnY, "Gross Earnings", 'F2', 9.5, 0.0, 0.0, 0.0);
+        $drawAmount($colEarnActual, $totEarnY, $fmt($grossActual), 'F2', 9.5, 'right', 0.0, 0.0, 0.0);
+        $drawAmount($colEarnAmount, $totEarnY, $fmt($gross), 'F2', 9.5, 'right', 0.0, 0.0, 0.0);
 
-        $drawText($colDedName, $totEarnY, "Total Deductions", 'F2', 8.8, 0.06, 0.09, 0.16);
-        $drawAmount($colDedAmount, $totEarnY, $fmt($deductions), 'F2', 8.8, 'right', 0.06, 0.09, 0.16);
+        $drawText($colDedName, $totEarnY, "Total Deductions", 'F2', 9.5, 0.0, 0.0, 0.0);
+        $drawAmount($colDedAmount, $totEarnY, $fmt($deductions), 'F2', 9.5, 'right', 0.0, 0.0, 0.0);
 
         // ==========================================
         // 4. Employee Benefits & CTC Box
@@ -500,8 +501,8 @@ class PayslipPdfService {
         $drawRoundedRect($left, $benBoxY, $boxW, $benBoxH, 8, $sR, $sG, $sB, 1.0);
 
         $benHeadY = $benBoxY + $benBoxH - 16;
-        $drawText($colEarnName, $benHeadY, "Employee Benefits", 'F2', 8.8, 0.06, 0.09, 0.16);
-        $drawTextRight($colEarnAmount, $benHeadY, "AMOUNT", 'F2', 8.8, 5.8, 0.06, 0.09, 0.16);
+        $drawText($colEarnName, $benHeadY, "Employee Benefits", 'F2', 9.5, 0.2, 0.2, 0.2);
+        $drawTextRight($colEarnAmount, $benHeadY, "AMOUNT", 'F2', 9.5, 5.0, 0.2, 0.2, 0.2);
 
         $benRows = [
             ['Employer EPF Contribution', $fmt($employerPf)],
@@ -510,23 +511,23 @@ class PayslipPdfService {
 
         foreach ($benRows as $i => $b) {
             $bY = $benHeadY - 14 - ($i * 13.5);
-            $drawText($colEarnName, $bY, $b[0], 'F1', 8.2, 0.2, 0.25, 0.33);
-            $drawAmount($colEarnAmount, $bY, $b[1], 'F1', 8.2, 'right', 0.1, 0.15, 0.22);
+            $drawText($colEarnName, $bY, $b[0], 'F1', 9, 0.0, 0.0, 0.0);
+            $drawAmount($colEarnAmount, $bY, $b[1], 'F1', 9, 'right', 0.0, 0.0, 0.0);
         }
 
         $totBenY = $benBoxY + 10;
-        $drawText($colEarnName, $totBenY, "Gross Earnings", 'F2', 8.8, 0.06, 0.09, 0.16);
-        $drawAmount($colEarnAmount, $totBenY, $fmt($totalBenefits), 'F2', 8.8, 'right', 0.06, 0.09, 0.16);
+        $drawText($colEarnName, $totBenY, "Gross Earnings", 'F2', 9.5, 0.0, 0.0, 0.0);
+        $drawAmount($colEarnAmount, $totBenY, $fmt($totalBenefits), 'F2', 9.5, 'right', 0.0, 0.0, 0.0);
 
-        // Right side: Effective Monthly CTC card without decimals or commas
+        // Right side: Effective Monthly CTC card without decimals or commas (DOCX sz:39 / 19.5pt)
         $ctcCardW = 168;
         $ctcCardH = 54;
         $ctcCardX = $right - $ctcCardW - 14;
         $ctcCardY = $benBoxY + (($benBoxH - $ctcCardH) / 2);
         $drawGradientRoundedRect($ctcCardX, $ctcCardY, $ctcCardW, $ctcCardH, 8, 0.651, 0.757, 1.0, 0.890, 0.922, 1.0, $sR, $sG, $sB, 1.0, 0.52);
 
-        $drawAmount($ctcCardX + ($ctcCardW / 2), $ctcCardY + 31, $fmt($ctc, 0), 'FT1', 19, 'center', 0.06, 0.09, 0.16);
-        $drawTextCenter($ctcCardX + ($ctcCardW / 2), $ctcCardY + 16, "Effective Monthly CTC", 'F1', 8.2, 5.1, 0.25, 0.35, 0.48);
+        $drawAmount($ctcCardX + ($ctcCardW / 2), $ctcCardY + 31, $fmt($ctc, 0), 'FT1', 19.5, 'center', 0.0, 0.0, 0.0);
+        $drawTextCenter($ctcCardX + ($ctcCardW / 2), $ctcCardY + 16, "Effective Monthly CTC", 'F1', 9, 4.6, 0.0, 0.0, 0.0);
 
         // ==========================================
         // 5. TOTAL NET PAYABLE Banner
@@ -537,9 +538,9 @@ class PayslipPdfService {
         // Outer rounded card
         $drawRoundedRect($left, $payBarY, $boxW, $payBarH, 8, $sR, $sG, $sB, 1.0, 1, 1, 1);
 
-        // Left pane text
-        $drawText($left + 16, $payBarY + 23, "TOTAL NET PAYABLE", 'F2', 9.5, 0.06, 0.09, 0.16);
-        $drawText($left + 16, $payBarY + 10, "Gross Earnings - Total Deductions", 'F1', 8, 0.35, 0.4, 0.48);
+        // Left pane text (DOCX sz:22 / 11pt bold, #000000)
+        $drawText($left + 16, $payBarY + 23, "TOTAL NET PAYABLE", 'F2', 10.5, 0.0, 0.0, 0.0);
+        $drawText($left + 16, $payBarY + 10, "Gross Earnings - Total Deductions", 'F1', 8.5, 0.2, 0.2, 0.2);
 
         // Right side inner rounded card matching sample layout
         $payCardW = 240;
@@ -548,18 +549,18 @@ class PayslipPdfService {
         $payCardY = $payBarY + 4;
         $drawGradientRoundedRect($payCardX, $payCardY, $payCardW, $payCardH, 6, 0.651, 0.757, 1.0, 0.875, 0.910, 1.0, $sR, $sG, $sB, 0.9, 1.0);
 
-        // Right pane amount with decimals (.00) matching sample
-        $drawAmount($payCardX + ($payCardW / 2), $payCardY + 11, $fmt($netPay), 'F2', 15.5, 'center', 0.06, 0.09, 0.16);
+        // Right pane amount with decimals (.00) matching sample (DOCX sz:28 / 14pt bold)
+        $drawAmount($payCardX + ($payCardW / 2), $payCardY + 10, $fmt($netPay), 'F2', 14, 'center', 0.0, 0.0, 0.0);
 
-        // Amount In Words below banner (centered)
+        // Amount In Words below banner (centered, DOCX sz:18 / 9pt)
         $wordsY = $payBarY - 14;
         $wordsText = "Amount In Words: Indian Rupee " . $inWords . " Only";
-        $drawTextCenter($pageW / 2, $wordsY, $wordsText, 'F1', 8, 4.8, 0.2, 0.25, 0.35);
+        $drawTextCenter($pageW / 2, $wordsY, $wordsText, 'F1', 8.5, 4.4, 0.1, 0.1, 0.1);
 
         // ==========================================
-        // 6. Footer (Exact matching Zoho Payroll reference)
+        // 6. Footer (Exact matching Zoho Payroll reference, DOCX sz:18 / 9pt)
         // ==========================================
-        $drawTextCenter($pageW / 2, 82, "-- This is a system-generated document. --", 'F3', 7.5, 4.5, 0.45, 0.5, 0.55);
+        $drawTextCenter($pageW / 2, 82, "-- This is a system-generated document. --", 'F3', 8.5, 4.4, 0.4, 0.4, 0.4);
 
         // Powered by Zoho Payroll
         $footerY = 22;
@@ -578,7 +579,7 @@ class PayslipPdfService {
         if ($logoObjId !== null) $xobjParts[] = "/ImLogo {$logoObjId} 0 R";
         if ($zohoLogoObjId !== null) $xobjParts[] = "/ImZoho {$zohoLogoObjId} 0 R";
         $xobjEntry = !empty($xobjParts) ? "/XObject << " . implode(' ', $xobjParts) . " >>" : "";
-        $pageObj = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {$pageW} {$pageH}] /Contents {$contentObjId} 0 R /Resources << /Font << /F1 {$fontRegularId} 0 R /F2 {$fontBoldId} 0 R /F3 {$fontObliqueId} 0 R /FT1 {$fontTimesRegularId} 0 R /FT2 {$fontTimesBoldId} 0 R >> {$xobjEntry} >> >>";
+        $pageObj = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {$pageW} {$pageH}] /Contents {$contentObjId} 0 R /Resources << /Font << /F1 {$fontTimesRegularId} 0 R /F2 {$fontTimesBoldId} 0 R /F3 {$fontTimesItalicId} 0 R /FT1 {$fontTimesRegularId} 0 R /FT2 {$fontTimesBoldId} 0 R >> {$xobjEntry} >> >>";
         $objects[2] = $pageObj; // replace placeholder page object
 
         // Assemble Final PDF
