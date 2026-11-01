@@ -73,3 +73,4 @@ class InboundWebhook extends Model {
         return $this->resultSet() ?: [];
     }
 }
+

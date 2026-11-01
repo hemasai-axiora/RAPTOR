@@ -364,3 +364,4 @@ class ApiLeadCaptureController extends Controller {
         exit();
     }
 }
+

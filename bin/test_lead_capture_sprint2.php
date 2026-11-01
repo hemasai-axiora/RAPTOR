@@ -461,3 +461,4 @@ printf("SUMMARY: %d PASSED, %d FAILED\n", $passed, $failed);
 echo "====================================================================\n";
 
 exit($failed > 0 ? 1 : 0);
+

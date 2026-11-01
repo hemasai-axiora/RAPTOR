@@ -217,3 +217,4 @@ if ($driver === 'sqlite') {
 }
 
 echo "  + Marketing Forms & Inbound Lead Capture tables ensured successfully.\n";
+

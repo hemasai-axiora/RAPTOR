@@ -70,3 +70,4 @@ class FormSubmission extends Model {
         return $this->resultSet() ?: [];
     }
 }
+

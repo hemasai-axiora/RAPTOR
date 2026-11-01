@@ -139,3 +139,4 @@ class ApiTrackingController extends Controller {
         return substr($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1', 0, 45);
     }
 }
+
