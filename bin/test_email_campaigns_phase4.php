@@ -98,6 +98,8 @@ if ($isSqlite) {
             template_id INTEGER,
             html_content TEXT NOT NULL,
             plain_text_content TEXT NOT NULL,
+            track_opens INTEGER DEFAULT 1,
+            track_clicks INTEGER DEFAULT 1,
             status TEXT DEFAULT "draft",
             scheduled_at DATETIME,
             started_at DATETIME,
@@ -204,6 +206,7 @@ require_once __DIR__ . '/../app/models/CampaignList.php';
 require_once __DIR__ . '/../app/models/CampaignSuppression.php';
 require_once __DIR__ . '/../app/services/ContactImportService.php';
 require_once __DIR__ . '/../app/services/UnsubscribeService.php';
+require_once __DIR__ . '/../app/services/TrackingService.php';
 require_once __DIR__ . '/../app/services/WarmupScheduleService.php';
 require_once __DIR__ . '/../app/services/mailers/MailerSendResult.php';
 require_once __DIR__ . '/../app/services/mailers/MailerAdapterInterface.php';

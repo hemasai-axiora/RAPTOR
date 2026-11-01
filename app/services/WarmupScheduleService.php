@@ -144,3 +144,4 @@ class WarmupScheduleService {
         return 1;
     }
 }
+

@@ -102,3 +102,4 @@ do {
 
 echo "[" . date('Y-m-d H:i:s') . "] Queue Worker finished successfully.\n";
 exit(0);
+

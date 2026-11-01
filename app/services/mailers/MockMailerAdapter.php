@@ -45,3 +45,4 @@ class MockMailerAdapter implements MailerAdapterInterface {
         return MailerSendResult::success($messageId);
     }
 }
+

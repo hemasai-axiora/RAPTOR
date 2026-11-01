@@ -50,6 +50,8 @@ class EmailQueueService {
                        c.reply_to,
                        c.html_content,
                        c.plain_text_content,
+                       c.track_opens,
+                       c.track_clicks,
                        c.status as campaign_status,
                        c.bounced_count,
                        c.complained_count,
@@ -158,6 +160,13 @@ class EmailQueueService {
             $renderedHtml = CampaignTemplate::renderMergeTags($item->html_content, $contactData, $context);
             $renderedPlain = CampaignTemplate::renderMergeTags($item->plain_text_content, $contactData, $context);
             $renderedSubject = CampaignTemplate::renderMergeTags($subject, $contactData, $context);
+
+            // Inject open tracking pixel and click tracking links if enabled
+            $trackOpens = isset($item->track_opens) ? (bool)$item->track_opens : true;
+            $trackClicks = isset($item->track_clicks) ? (bool)$item->track_clicks : true;
+            if ($trackOpens || $trackClicks) {
+                $renderedHtml = TrackingService::injectTracking($renderedHtml, $unsubToken, $trackOpens, $trackClicks);
+            }
 
             // Construct RFC 8058 & anti-spam deliverability headers
             $headers = [
@@ -367,3 +376,4 @@ class EmailQueueService {
         } catch (Throwable $e) {}
     }
 }
+

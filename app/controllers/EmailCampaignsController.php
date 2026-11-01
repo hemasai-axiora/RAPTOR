@@ -53,6 +53,68 @@ class EmailCampaignsController extends Controller {
     }
 
     // =========================================================================
+    // ANALYTICS & DELIVERABILITY REPORTING (PHASE 5)
+    // =========================================================================
+
+    public function analytics() {
+        $campaignId = !empty($_GET['campaign_id']) ? (int)$_GET['campaign_id'] : null;
+        $campaigns = $this->campaignModel->getAllCampaigns([], 100, 0);
+
+        $metrics = CampaignAnalyticsService::getSummaryMetrics($campaignId);
+        $domainBreakdown = CampaignAnalyticsService::getDomainBreakdown($campaignId);
+        $topLinks = CampaignAnalyticsService::getTopClickedLinks($campaignId, 10);
+
+        $selectedCampaign = null;
+        if ($campaignId > 0) {
+            $selectedCampaign = $this->campaignModel->getById($campaignId);
+        }
+
+        $data = [
+            'title' => 'Campaign Analytics & Deliverability Health | Raptor CRM',
+            'active_tab' => 'email_campaigns_analytics',
+            'campaigns' => $campaigns,
+            'campaign_id' => $campaignId,
+            'selected_campaign' => $selectedCampaign,
+            'metrics' => $metrics,
+            'domain_breakdown' => $domainBreakdown,
+            'top_links' => $topLinks
+        ];
+
+        $this->viewWithLayout('email_campaigns/analytics/index', 'main', $data);
+    }
+
+    public function analyticsExport() {
+        $campaignId = !empty($_GET['campaign_id']) ? (int)$_GET['campaign_id'] : null;
+        $csv = CampaignAnalyticsService::exportAnalyticsCsv($campaignId);
+
+        $filename = 'campaign_analytics_' . ($campaignId ? "camp_{$campaignId}_" : 'global_') . date('Ymd_His') . '.csv';
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        echo $csv;
+        exit();
+    }
+
+    public function reengageInactive() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('index.php?route=email_campaigns/analytics');
+            return;
+        }
+
+        $days = max(30, (int)($_POST['inactive_days'] ?? 90));
+        $count = CampaignAnalyticsService::flagInactiveContacts($days);
+
+        if (class_exists('CampaignAudit')) {
+            CampaignAudit::log((int)($_SESSION['user_id'] ?? 0), 'contacts.reengagement_flagged', 'contacts', null, [
+                'inactivity_days' => $days,
+                'flagged_count' => $count
+            ]);
+        }
+
+        $_SESSION['flash_success'] = sprintf('Re-engagement cleanup complete: %d inactive subscribers (no opens/clicks in %d days) have been flagged and excluded from regular sends.', $count, $days);
+        $this->redirect('index.php?route=email_campaigns/analytics');
+    }
+
+    // =========================================================================
     // 1. CAMPAIGNS MANAGEMENT & BUILDER (PHASE 3)
     // =========================================================================
 

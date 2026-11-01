@@ -74,3 +74,4 @@ class MailgunAdapter implements MailerAdapterInterface {
         return MailerSendResult::failure($msg, (string)$httpCode, $isTransient);
     }
 }
+

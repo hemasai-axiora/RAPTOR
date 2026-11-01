@@ -32,3 +32,4 @@ interface MailerAdapterInterface {
      */
     public function getName(): string;
 }
+

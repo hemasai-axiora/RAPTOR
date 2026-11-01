@@ -97,3 +97,4 @@ class SmtpAdapter implements MailerAdapterInterface {
         }
     }
 }
+

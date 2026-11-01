@@ -78,3 +78,4 @@ class PostmarkAdapter implements MailerAdapterInterface {
         return MailerSendResult::failure($msg, (string)($data['ErrorCode'] ?? $httpCode), $isTransient);
     }
 }
+

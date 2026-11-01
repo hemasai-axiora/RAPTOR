@@ -53,3 +53,4 @@ class MailerSendResult {
         return $this->isTransient;
     }
 }
+

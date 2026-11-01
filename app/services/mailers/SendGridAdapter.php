@@ -93,3 +93,4 @@ class SendGridAdapter implements MailerAdapterInterface {
         return MailerSendResult::failure("SendGrid HTTP {$httpCode}: {$bodyText}", (string)$httpCode, $isTransient);
     }
 }
+

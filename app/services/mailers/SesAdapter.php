@@ -45,3 +45,4 @@ class SesAdapter implements MailerAdapterInterface {
         return $smtp->send($message);
     }
 }
+

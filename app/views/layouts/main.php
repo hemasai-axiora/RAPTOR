@@ -1165,6 +1165,11 @@
                                 <i class="fa-solid fa-paper-plane"></i><span>Campaign Broadcasts</span>
                             </a>
                         </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_analytics') ? 'active' : ''; ?>">
+                            <a href="index.php?route=email_campaigns/analytics">
+                                <i class="fa-solid fa-chart-pie"></i><span>Analytics & Health</span>
+                            </a>
+                        </li>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_templates') ? 'active' : ''; ?>">
                             <a href="index.php?route=email_campaigns/templates">
                                 <i class="fa-solid fa-file-code"></i><span>Email Templates</span>
