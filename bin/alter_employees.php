@@ -45,6 +45,7 @@ if ($httpCode === 200 && !empty($zipData)) {
 
 try {
     $db = Database::getInstance()->getConnection();
+try { $db->exec("ALTER TABLE employees MODIFY COLUMN pay_grade VARCHAR(150) NULL"); } catch (Exception $e) {}
     echo "=== RAPTOR CRM LIVE DB DIAGNOSTIC & PERMISSION SEED ===\n\n";
 
     // 1. Check Table Existence

