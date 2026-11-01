@@ -34,13 +34,16 @@ $actualOther = round((float)(isset($detail->actual_other_allowance) && (float)$d
 $grossActual = round($actualBasic + $actualHra + $actualSpecial + $actualOther);
 $gross = round((float)($detail->gross_salary ?? ($basic + $hra + $special + $otherAll + $bonus + $otherEarnings)));
 
-$epf = round((float)($detail->pf ?? ($basic * 0.12)));
-$pt = round((float)($detail->professional_tax ?? 200.00));
+// Compliance & statutory deductions: strictly data-driven
+$isPfApplicable = isset($detail->pf_applicable) ? ((int)$detail->pf_applicable === 1) : ((float)($detail->pf ?? 0) > 0 || (float)($detail->employer_pf ?? 0) > 0);
+
+$epf = $isPfApplicable ? round((float)($detail->pf ?? 0)) : 0;
+$pt = round((float)(isset($detail->professional_tax) && is_numeric($detail->professional_tax) ? $detail->professional_tax : (($gross >= 15000) ? 200 : (($gross >= 10000) ? 150 : 0))));
 $otherDeductions = round((float)($detail->other_deductions ?? 0.00));
 $deductions = round((float)($detail->total_deductions ?? ($epf + $pt + $otherDeductions)));
 
-$employerPf = round((float)(isset($detail->employer_pf) && (float)$detail->employer_pf > 0 ? $detail->employer_pf : $epf));
-$gratuity = round((float)(isset($detail->gratuity) && (float)$detail->gratuity > 0 ? $detail->gratuity : round($basic * 0.0481)));
+$employerPf = $isPfApplicable ? round((float)(isset($detail->employer_pf) && is_numeric($detail->employer_pf) ? $detail->employer_pf : $epf)) : 0;
+$gratuity = round((float)(isset($detail->gratuity) && (float)$detail->gratuity > 0 ? $detail->gratuity : round($actualBasic * 0.0481)));
 $totalBenefits = round($employerPf + $gratuity);
 
 $ctc = round((float)(isset($detail->ctc) && (float)$detail->ctc > 0 ? $detail->ctc : ($gross + $totalBenefits)));

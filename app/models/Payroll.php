@@ -702,7 +702,7 @@ class Payroll extends Model {
     // ---------------- Payroll Details ----------------
 
     public function getPayrollDetailsByRunId($runId) {
-        $this->query('SELECT d.*, e.employee_code, e.job_title, e.department, 
+        $this->query('SELECT d.*, e.employee_code, e.job_title, e.department, e.pf_applicable, e.salary as employee_ctc, 
                              COALESCE(e.date_of_joining, e.hire_date) as date_of_joining, 
                              e.hire_date, e.work_location, e.uan, e.pan_number,
                              u.name, u.email,
@@ -720,7 +720,7 @@ class Payroll extends Model {
     }
 
     public function getPayrollDetailById($detailId) {
-        $this->query('SELECT d.*, e.employee_code, e.job_title, e.department, 
+        $this->query('SELECT d.*, e.employee_code, e.job_title, e.department, e.pf_applicable, e.salary as employee_ctc, 
                              COALESCE(e.date_of_joining, e.hire_date) as date_of_joining, 
                              e.hire_date, e.work_location, e.uan, e.pan_number,
                              u.name, u.email, r.month_year, r.status as run_status,
