@@ -18,6 +18,7 @@ $startTime = microtime(true);
 
 $suites = [
     'Sprint 1: Customer 360 & Foundations' => 'bin/test_customer_360_sprint1.php',
+    'Sprint 2: Lead Ingestion & Tracking'   => 'bin/test_lead_capture_sprint2.php',
     'Phase 2: Contacts & Suppression'  => 'bin/test_email_campaigns_phase2.php',
     'Phase 3: Templates & Pre-Send Gate' => 'bin/test_email_campaigns_phase3.php',
     'Phase 4: Queue & Provider Adapters' => 'bin/test_email_campaigns_phase4.php',

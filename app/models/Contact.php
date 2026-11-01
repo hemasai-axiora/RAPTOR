@@ -513,3 +513,4 @@ class Contact extends Model {
         );
     }
 }
+

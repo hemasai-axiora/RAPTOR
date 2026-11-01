@@ -170,3 +170,4 @@ class ContactsController extends Controller {
         $this->redirect('index.php?route=contacts/index');
     }
 }
+
