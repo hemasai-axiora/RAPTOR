@@ -189,3 +189,4 @@ class DomainVerificationService {
         return !empty($records);
     }
 }
+

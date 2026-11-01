@@ -119,6 +119,7 @@ class TrackingService {
      */
     public static function isAppleMpp(?string $userAgent): bool {
         if (empty($userAgent)) return false;
+        if (stripos($userAgent, 'Apple-Mail-Privacy-Proxy') !== false) return true;
         // Apple Mail Privacy Protection fetches images via cloud proxies with specific UA signatures
         return (stripos($userAgent, 'AppleWebKit') !== false && 
                 (stripos($userAgent, 'Mozilla/5.0') !== false) &&

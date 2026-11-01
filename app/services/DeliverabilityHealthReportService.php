@@ -283,3 +283,4 @@ class DeliverabilityHealthReportService {
         return $result->isSuccess();
     }
 }
+
