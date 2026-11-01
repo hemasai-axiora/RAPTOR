@@ -6,6 +6,7 @@
  * 2. Structure sync behavior
  * 3. Vector PDF generator with PF and Non-PF mock details
  * 4. LOP calendar proration logic
+ * 5. Global payroll settings override behavior
  */
 
 require_once __DIR__ . '/../app/config/config.php';
@@ -209,6 +210,31 @@ $hasZeroEpf = strpos($htmlOutput, 'EPF Contribution') !== false && strpos($htmlO
 assertEquiv($hasCorrectNet, true, "HTML contains correct Net Pay Rs. 14,489", $testsPassed, $testsFailed);
 assertEquiv($hasZeroEpf, true, "HTML contains zero EPF for Non-PF", $testsPassed, $testsFailed);
 echo "✓ HTML Print View output verified successfully.\n\n";
+
+// -------------------------------------------------------------
+// Test 5: Global Payroll Configuration Overrides
+// -------------------------------------------------------------
+echo "[TEST 5] Verifying Global Payroll Configuration Overrides...\n";
+
+// Test custom configuration parameter overrides
+$customConfig = [
+    'epf_wage_ceiling' => 20000.0, // Raised ceiling: max EPF = 2400
+    'gratuity_pct' => 5.0,         // 5% Gratuity
+    'special_allowance_fixed' => 2000.0,
+    'pt_enabled' => false          // PT disabled
+];
+
+$overrideRes = Payroll::deriveComponentsFromCtc(50000, true, $customConfig);
+// Basic = 25000. Under ceiling 20000: EPF = 2400. Gratuity = 25000 * 5% = 1250.
+// Gross = 50000 - (2400 + 1250) = 46350.
+// HRA = 12500, Special = 2000. Other = 46350 - (25000 + 12500 + 2000) = 6850.
+// PT = 0 (disabled). Net Pay = 46350 - 2400 = 43950.
+assertEquiv($overrideRes['employer_pf'], 2400, "Override EPF ceiling 20k -> 2400", $testsPassed, $testsFailed);
+assertEquiv($overrideRes['gratuity'], 1250, "Override Gratuity 5% -> 1250", $testsPassed, $testsFailed);
+assertEquiv($overrideRes['special_allowance'], 2000, "Override Special Allowance -> 2000", $testsPassed, $testsFailed);
+assertEquiv($overrideRes['professional_tax'], 0, "Override PT disabled -> 0", $testsPassed, $testsFailed);
+assertEquiv($overrideRes['net_salary'], 43950, "Override Net Pay -> 43950", $testsPassed, $testsFailed);
+echo "✓ Global Payroll Configuration overrides verified successfully.\n\n";
 
 echo "=================================================================\n";
 echo "  FINAL RESULT: All $testsPassed assertions PASSED ($testsFailed failures)! \n";

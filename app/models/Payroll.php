@@ -322,7 +322,67 @@ class Payroll extends Model {
      * Data-driven Axiora standard band calculation.
      * Computes exact salary components given Monthly CTC and statutory PF compliance flag.
      */
-    public static function deriveComponentsFromCtc(float $ctc, bool $isPfApplicable): array {
+    /**
+     * Retrieve global payroll lifecycle & calculation configurations from settings table.
+     */
+    public static function getPayrollConfig(): array {
+        static $cachedCfg = null;
+        if ($cachedCfg !== null) {
+            return $cachedCfg;
+        }
+
+        $cfg = [
+            'cycle_type' => 'calendar_month',
+            'cycle_start_day' => 1,
+            'pay_date_day' => 1,
+            'proration_method' => 'calendar_days',
+            'epf_wage_ceiling' => 15000.0,
+            'gratuity_pct' => 4.81,
+            'special_allowance_fixed' => 1600.0,
+            'pt_enabled' => true,
+            'auto_email_payslips' => true,
+        ];
+
+        try {
+            $host = defined('DB_HOST') ? DB_HOST : '127.0.0.1';
+            $dbName = defined('DB_NAME') ? DB_NAME : 'raptor_crm_db';
+            $user = defined('DB_USER') ? DB_USER : 'root';
+            $pass = defined('DB_PASS') ? DB_PASS : '';
+            $dsn = 'mysql:host=' . $host . ';dbname=' . $dbName . ';charset=utf8mb4';
+
+            $pdo = new PDO($dsn, $user, $pass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_TIMEOUT => 1
+            ]);
+            $stmt = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'payroll.%'");
+            while ($row = $stmt->fetch(PDO::FETCH_OBJ)) {
+                $k = str_replace('payroll.', '', $row->setting_key);
+                if ($k === 'cycle_start_day' || $k === 'pay_date_day') {
+                    $cfg[$k] = max(1, min(28, (int)$row->setting_value));
+                } elseif ($k === 'epf_wage_ceiling' || $k === 'gratuity_pct' || $k === 'special_allowance_fixed') {
+                    $cfg[$k] = (float)$row->setting_value;
+                } elseif ($k === 'pt_enabled' || $k === 'auto_email_payslips') {
+                    $cfg[$k] = ((string)$row->setting_value === '1');
+                } else {
+                    $cfg[$k] = $row->setting_value;
+                }
+            }
+        } catch (Throwable $e) {
+            // Safe fallback to defaults
+        }
+
+        $cachedCfg = $cfg;
+        return $cfg;
+    }
+
+    public static function deriveComponentsFromCtc(float $ctc, bool $isPfApplicable = true, ?array $customCfg = null): array {
+        $cfg = $customCfg ?? self::getPayrollConfig();
+
+        $epfCeiling = (float)($cfg['epf_wage_ceiling'] ?? 15000.0);
+        $gratPct = (float)($cfg['gratuity_pct'] ?? 4.81);
+        $specFixed = (float)($cfg['special_allowance_fixed'] ?? 1600.0);
+        $ptEnabled = (bool)($cfg['pt_enabled'] ?? true);
+
         $ctc = round($ctc);
         if ($ctc <= 0) {
             return [
@@ -353,20 +413,21 @@ class Payroll extends Model {
         // 2. HRA = 50% of Basic (25% of CTC)
         $hra = round($basic * 0.50);
 
-        // 3. Special Allowance = 1600 fixed standard
-        $special = 1600.0;
+        // 3. Special Allowance = fixed standard
+        $special = $specFixed;
 
         // 4. Employer EPF & Employee EPF (Statutory Compliance)
+        $maxPf = round($epfCeiling * 0.12);
         if ($isPfApplicable) {
-            $employerPf = ($basic >= 15000) ? 1800.0 : round($basic * 0.12);
+            $employerPf = ($basic >= $epfCeiling) ? (float)$maxPf : (float)round($basic * 0.12);
             $pf = $employerPf;
         } else {
             $employerPf = 0.0;
             $pf = 0.0;
         }
 
-        // 5. Gratuity = 4.81% of Basic
-        $gratuity = (float)round($basic * 0.0481, 0, PHP_ROUND_HALF_DOWN);
+        // 5. Gratuity = gratuity_pct % of Basic
+        $gratuity = (float)round($basic * ($gratPct / 100), 0, PHP_ROUND_HALF_DOWN);
 
         // 6. Total Benefits
         $totalBenefits = $employerPf + $gratuity;
@@ -378,10 +439,14 @@ class Payroll extends Model {
         $other = max(0.0, $gross - ($basic + $hra + $special));
 
         // 9. Professional Tax (PT)
-        if ($gross >= 15000) {
-            $pt = 200.0;
-        } elseif ($gross >= 10000) {
-            $pt = 150.0;
+        if ($ptEnabled) {
+            if ($gross >= 15000) {
+                $pt = 200.0;
+            } elseif ($gross >= 10000) {
+                $pt = 150.0;
+            } else {
+                $pt = 0.0;
+            }
         } else {
             $pt = 0.0;
         }

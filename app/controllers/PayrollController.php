@@ -1390,12 +1390,20 @@ class PayrollController extends Controller {
             $otherDeductionsByEmp[$d->employee_id] = ($otherDeductionsByEmp[$d->employee_id] ?? 0) + (float)$d->amount;
         }
 
-        // Calendar days of the month (e.g. 30 for Sep, 31 for Oct)
-        $calendarDays = (int)date('t', strtotime($month . '-01'));
-        if ($calendarDays <= 0) {
+        $payrollCfg = Payroll::getPayrollConfig();
+        $prorationMethod = $payrollCfg['proration_method'] ?? 'calendar_days';
+
+        if ($prorationMethod === 'fixed_30') {
             $calendarDays = 30;
+            $workingDays = 30;
+        } else {
+            // Calendar days of the month (e.g. 30 for Sep, 31 for Oct)
+            $calendarDays = (int)date('t', strtotime($month . '-01'));
+            if ($calendarDays <= 0) {
+                $calendarDays = 30;
+            }
+            $workingDays = $calendarDays;
         }
-        $workingDays = $calendarDays;
 
         if ($targetEmpId !== null && (int)$targetEmpId > 0) {
             $delStmt = $db->prepare("DELETE FROM payroll_details WHERE payroll_run_id = :rid AND employee_id = :eid");

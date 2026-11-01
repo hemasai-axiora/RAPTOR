@@ -555,6 +555,100 @@
                     </div>
                 </div>
 
+                <hr class="border-secondary border-opacity-15 my-4">
+
+                <!-- 8. Payroll Lifecycle & Calculation Rules -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-white mb-0" style="font-size:1.05rem;">
+                        <i class="fa-solid fa-money-bill-wave text-success me-2"></i>Payroll Lifecycle &amp; Calculation Rules
+                    </h5>
+                    <span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25 px-2 py-1" style="font-size:0.75rem;">
+                        <i class="fa-solid fa-check-double me-1"></i>Data-Driven Core
+                    </span>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <!-- Pay Cycle Type -->
+                    <div class="col-md-4">
+                        <label class="form-label text-secondary">Pay Cycle Type</label>
+                        <select name="payroll.cycle_type" id="payroll_cycle_type" class="form-select bg-dark text-white border-secondary">
+                            <option value="calendar_month" <?php echo (($settings['payroll.cycle_type'] ?? 'calendar_month') === 'calendar_month') ? 'selected' : ''; ?>>
+                                Standard Calendar Month (1st to Month End)
+                            </option>
+                            <option value="custom_cutoff" <?php echo (($settings['payroll.cycle_type'] ?? '') === 'custom_cutoff') ? 'selected' : ''; ?>>
+                                Custom Cut-off Window (e.g. 26th to 25th)
+                            </option>
+                        </select>
+                        <div class="form-text text-secondary-emphasis" style="font-size:0.75rem;">Defines the start and end boundary for calculating attendance, LOPs, and allowances.</div>
+                    </div>
+
+                    <!-- Cycle Start Day -->
+                    <div class="col-md-2">
+                        <label class="form-label text-secondary">Cycle Start Day</label>
+                        <input type="number" min="1" max="28" name="payroll.cycle_start_day" id="payroll_cycle_start_day" class="form-control bg-dark text-white border-secondary"
+                               value="<?php echo htmlspecialchars($settings['payroll.cycle_start_day'] ?? '1'); ?>">
+                        <div class="form-text text-secondary-emphasis" style="font-size:0.75rem;">Day of month (1 = 1st).</div>
+                    </div>
+
+                    <!-- Scheduled Payout Day -->
+                    <div class="col-md-2">
+                        <label class="form-label text-secondary">Pay Date (Day)</label>
+                        <input type="number" min="1" max="28" name="payroll.pay_date_day" id="payroll_pay_date_day" class="form-control bg-dark text-white border-secondary"
+                               value="<?php echo htmlspecialchars($settings['payroll.pay_date_day'] ?? '1'); ?>">
+                        <div class="form-text text-secondary-emphasis" style="font-size:0.75rem;">Day of following month.</div>
+                    </div>
+
+                    <!-- Proration Method -->
+                    <div class="col-md-4">
+                        <label class="form-label text-secondary">Working Days Divisor (Proration)</label>
+                        <select name="payroll.proration_method" id="payroll_proration_method" class="form-select bg-dark text-white border-secondary">
+                            <option value="calendar_days" <?php echo (($settings['payroll.proration_method'] ?? 'calendar_days') === 'calendar_days') ? 'selected' : ''; ?>>
+                                Actual Calendar Days (30 / 31 / 28) - Recommended
+                            </option>
+                            <option value="fixed_30" <?php echo (($settings['payroll.proration_method'] ?? '') === 'fixed_30') ? 'selected' : ''; ?>>
+                                Fixed 30 Days Every Month
+                            </option>
+                            <option value="working_days_only" <?php echo (($settings['payroll.proration_method'] ?? '') === 'working_days_only') ? 'selected' : ''; ?>>
+                                Working Days Only (Excluding Weekends/Holidays)
+                            </option>
+                        </select>
+                        <div class="form-text text-secondary-emphasis" style="font-size:0.75rem;">Divisor used for Loss of Pay (LOP) and mid-month joiner deductions.</div>
+                    </div>
+
+                    <!-- Statutory & Component Thresholds -->
+                    <div class="col-md-3">
+                        <label class="form-label text-secondary">EPF Wage Ceiling (₹)</label>
+                        <input type="number" min="0" step="500" name="payroll.epf_wage_ceiling" class="form-control bg-dark text-white border-secondary"
+                               value="<?php echo htmlspecialchars($settings['payroll.epf_wage_ceiling'] ?? '15000'); ?>">
+                        <div class="form-text text-secondary-emphasis" style="font-size:0.75rem;">Standard cap ₹15,000 (₹1,800 max EPF).</div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label text-secondary">Gratuity Accrual (%)</label>
+                        <input type="number" min="0" max="15" step="0.01" name="payroll.gratuity_pct" class="form-control bg-dark text-white border-secondary"
+                               value="<?php echo htmlspecialchars($settings['payroll.gratuity_pct'] ?? '4.81'); ?>">
+                        <div class="form-text text-secondary-emphasis" style="font-size:0.75rem;">Standard 4.81% of Basic (15/26/12).</div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label text-secondary">Fixed Special Allowance (₹)</label>
+                        <input type="number" min="0" step="100" name="payroll.special_allowance_fixed" class="form-control bg-dark text-white border-secondary"
+                               value="<?php echo htmlspecialchars($settings['payroll.special_allowance_fixed'] ?? '1600'); ?>">
+                        <div class="form-text text-secondary-emphasis" style="font-size:0.75rem;">Standard company baseline ₹1,600.</div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label text-secondary">Professional Tax (PT)</label>
+                        <div class="p-2 px-3 bg-dark border border-secondary rounded d-flex justify-content-between align-items-center" style="height:38px;">
+                            <span class="text-white small">Auto PT Slabs</span>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" name="payroll.pt_enabled" id="payroll_pt_enabled" <?php echo (($settings['payroll.pt_enabled'] ?? '1') === '1') ? 'checked' : ''; ?>>
+                            </div>
+                        </div>
+                        <div class="form-text text-secondary-emphasis" style="font-size:0.75rem;">₹200 (≥₹15k) / ₹150 (≥₹10k) slab.</div>
+                    </div>
+                </div>
+
                 <div class="d-flex justify-content-end gap-3 mt-4 border-top border-secondary border-opacity-10 pt-3">
                     <button type="submit" class="btn btn-primary px-4 py-2 fw-bold" style="background: var(--primary); border: none;">
                         <i class="fa-regular fa-floppy-disk me-2"></i>Save Configuration

@@ -105,7 +105,18 @@ class SettingsController extends Controller {
                 'mail.encryption',
                 'mail.from_address',
                 'mail.from_name',
-                'mail.auto_send_on_generation'
+                'mail.auto_send_on_generation',
+
+                // Payroll Lifecycle & Calculation Configurations
+                'payroll.cycle_type',
+                'payroll.cycle_start_day',
+                'payroll.pay_date_day',
+                'payroll.proration_method',
+                'payroll.epf_wage_ceiling',
+                'payroll.pt_enabled',
+                'payroll.gratuity_pct',
+                'payroll.special_allowance_fixed',
+                'payroll.auto_email_payslips'
             ];
 
             try {
@@ -123,7 +134,7 @@ class SettingsController extends Controller {
                         $value = isset($_POST[$key]) ? trim($_POST[$key]) : '';
                     }
 
-                    if (in_array($key, ['attendance.geofence_enabled', 'location.tracking_enabled', 'alerts.cron_enabled', 'alerts.web_push_enabled', 'alerts.email_enabled', 'reports.email_enabled', 'attendance.allow_week_off_override', 'mail.auto_send_on_generation'], true)) {
+                    if (in_array($key, ['attendance.geofence_enabled', 'location.tracking_enabled', 'alerts.cron_enabled', 'alerts.web_push_enabled', 'alerts.email_enabled', 'reports.email_enabled', 'attendance.allow_week_off_override', 'mail.auto_send_on_generation', 'payroll.pt_enabled', 'payroll.auto_email_payslips'], true)) {
                         $value = isset($_POST[$key]) ? '1' : '0';
                     }
 

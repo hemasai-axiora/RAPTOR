@@ -2,7 +2,9 @@
 $rawMonth = $detail->month_year ?? date('Y-m');
 $monthYearFormatted = date('F Y', strtotime($rawMonth . '-01'));
 $payPeriod = date('F Y', strtotime($rawMonth . '-01'));
-$payDate = date('j F Y', strtotime($rawMonth . '-01 +1 month'));
+$payrollCfg = class_exists('Payroll') ? Payroll::getPayrollConfig() : [];
+$payDateDay = (int)($payrollCfg['pay_date_day'] ?? 1);
+$payDate = date($payDateDay . ' F Y', strtotime($rawMonth . '-01 +1 month'));
 
 $empName = !empty($detail->name) ? $detail->name : 'Employee';
 $empCode = !empty($detail->employee_code) ? $detail->employee_code : '-';
