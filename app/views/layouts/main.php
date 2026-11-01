@@ -1160,6 +1160,16 @@
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
                     </div>
                     <ul class="menu-section-items">
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_broadcasts') ? 'active' : ''; ?>">
+                            <a href="index.php?route=email_campaigns/campaigns">
+                                <i class="fa-solid fa-paper-plane"></i><span>Campaign Broadcasts</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_templates') ? 'active' : ''; ?>">
+                            <a href="index.php?route=email_campaigns/templates">
+                                <i class="fa-solid fa-file-code"></i><span>Email Templates</span>
+                            </a>
+                        </li>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_contacts') ? 'active' : ''; ?>">
                             <a href="index.php?route=email_campaigns/contacts">
                                 <i class="fa-solid fa-users"></i><span>Contacts & Audiences</span>

@@ -71,3 +71,4 @@ class CampaignList extends Model {
         return $this->execute();
     }
 }
+

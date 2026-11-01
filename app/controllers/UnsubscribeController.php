@@ -98,3 +98,4 @@ class UnsubscribeController extends Controller {
         exit();
     }
 }
+

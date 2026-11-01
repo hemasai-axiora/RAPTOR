@@ -1,0 +1,377 @@
+<?php
+/**
+ * Raptor CRM - Campaign Broadcast Model
+ * 
+ * Manages email campaign records, A/B test variations, pre-send checklist enforcement,
+ * target recipient resolution, and queue seeding.
+ */
+
+class CampaignBroadcast extends Model {
+
+    public const STATUS_DRAFT = 'draft';
+    public const STATUS_SCHEDULED = 'scheduled';
+    public const STATUS_QUEUED = 'queued';
+    public const STATUS_SENDING = 'sending';
+    public const STATUS_PAUSED = 'paused';
+    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_CANCELLED = 'cancelled';
+
+    public function getAllCampaigns(array $filters = [], int $limit = 25, int $offset = 0): array {
+        $sql = 'SELECT c.*, 
+                       l.name as list_name, 
+                       s.name as segment_name, 
+                       t.name as template_name,
+                       u.name as creator_name
+                FROM campaigns_broadcast c
+                LEFT JOIN campaign_lists l ON c.list_id = l.list_id
+                LEFT JOIN campaign_segments s ON c.segment_id = s.segment_id
+                LEFT JOIN campaign_templates t ON c.template_id = t.template_id
+                LEFT JOIN users u ON c.created_by = u.user_id
+                WHERE 1=1 ';
+        $params = [];
+
+        if (!empty($filters['status'])) {
+            $sql .= 'AND c.status = :status ';
+            $params[':status'] = $filters['status'];
+        }
+
+        if (!empty($filters['search'])) {
+            $sql .= 'AND (c.name LIKE :s OR c.subject_a LIKE :s OR c.campaign_code LIKE :s) ';
+            $params[':s'] = '%' . trim($filters['search']) . '%';
+        }
+
+        $sql .= 'ORDER BY c.created_at DESC LIMIT ' . (int)$limit . ' OFFSET ' . (int)$offset;
+
+        $this->query($sql);
+        foreach ($params as $k => $v) {
+            $this->bind($k, $v);
+        }
+        return $this->resultSet() ?: [];
+    }
+
+    public function countCampaigns(array $filters = []): int {
+        $sql = 'SELECT COUNT(*) FROM campaigns_broadcast WHERE 1=1 ';
+        $params = [];
+
+        if (!empty($filters['status'])) {
+            $sql .= 'AND status = :status ';
+            $params[':status'] = $filters['status'];
+        }
+
+        if (!empty($filters['search'])) {
+            $sql .= 'AND (name LIKE :s OR subject_a LIKE :s OR campaign_code LIKE :s) ';
+            $params[':s'] = '%' . trim($filters['search']) . '%';
+        }
+
+        $this->query($sql);
+        foreach ($params as $k => $v) {
+            $this->bind($k, $v);
+        }
+        $row = $this->single();
+        return (int)($row ? current((array)$row) : 0);
+    }
+
+    public function getById(int $campaignId) {
+        $this->query('SELECT c.*, 
+                             l.name as list_name, 
+                             s.name as segment_name, 
+                             t.name as template_name,
+                             u.name as creator_name
+                      FROM campaigns_broadcast c
+                      LEFT JOIN campaign_lists l ON c.list_id = l.list_id
+                      LEFT JOIN campaign_segments s ON c.segment_id = s.segment_id
+                      LEFT JOIN campaign_templates t ON c.template_id = t.template_id
+                      LEFT JOIN users u ON c.created_by = u.user_id
+                      WHERE c.campaign_id = :id');
+        $this->bind(':id', $campaignId);
+        $camp = $this->single();
+        if ($camp && !empty($camp->pre_send_checklist_json)) {
+            $camp->checklist = json_decode($camp->pre_send_checklist_json, true) ?: [];
+        } elseif ($camp) {
+            $camp->checklist = [];
+        }
+        return $camp;
+    }
+
+    public function saveCampaign(array $data, ?int $userId = null): int {
+        $name = trim($data['name'] ?? '');
+        $subjectA = trim($data['subject_a'] ?? '');
+        $subjectB = trim($data['subject_b'] ?? '');
+        $abSplit = max(0, min(50, (int)($data['ab_split_percent'] ?? 0)));
+        $abWinnerMetric = in_array($data['ab_winner_metric'] ?? '', ['opens', 'clicks'], true) ? $data['ab_winner_metric'] : 'opens';
+        $preheader = trim($data['preheader'] ?? '');
+        $fromName = trim($data['from_name'] ?? 'Axiora Global');
+        $fromEmail = strtolower(trim($data['from_email'] ?? 'noreply@axiora.in'));
+        $replyTo = trim($data['reply_to'] ?? '');
+        $listId = !empty($data['list_id']) ? (int)$data['list_id'] : null;
+        $segmentId = !empty($data['segment_id']) ? (int)$data['segment_id'] : null;
+        $templateId = !empty($data['template_id']) ? (int)$data['template_id'] : null;
+        $htmlContent = $data['html_content'] ?? '';
+        $plainTextContent = $data['plain_text_content'] ?? '';
+
+        if (empty($name)) {
+            throw new InvalidArgumentException('Campaign name is required');
+        }
+        if (empty($subjectA)) {
+            throw new InvalidArgumentException('Primary subject line (Subject A) is required');
+        }
+
+        // Auto-generate plain-text alternative if missing
+        if (empty(trim($plainTextContent))) {
+            $plainTextContent = CampaignTemplate::htmlToPlainText($htmlContent);
+        }
+
+        // Sanitize HTML
+        $htmlContent = CampaignTemplate::sanitizeHtml($htmlContent);
+
+        $campaignId = (int)($data['campaign_id'] ?? 0);
+        if ($campaignId > 0) {
+            $this->query('UPDATE campaigns_broadcast 
+                          SET name = :name, subject_a = :sub_a, subject_b = :sub_b, ab_split_percent = :ab_split,
+                              ab_winner_metric = :ab_metric, preheader = :preheader, from_name = :from_name,
+                              from_email = :from_email, reply_to = :reply_to, list_id = :list_id,
+                              segment_id = :segment_id, template_id = :template_id, html_content = :html,
+                              plain_text_content = :plain, updated_at = CURRENT_TIMESTAMP
+                          WHERE campaign_id = :id');
+            $this->bind(':name', $name);
+            $this->bind(':sub_a', $subjectA);
+            $this->bind(':sub_b', $subjectB ?: null);
+            $this->bind(':ab_split', $abSplit);
+            $this->bind(':ab_metric', $abWinnerMetric);
+            $this->bind(':preheader', $preheader ?: null);
+            $this->bind(':from_name', $fromName);
+            $this->bind(':from_email', $fromEmail);
+            $this->bind(':reply_to', $replyTo ?: null);
+            $this->bind(':list_id', $listId);
+            $this->bind(':segment_id', $segmentId);
+            $this->bind(':template_id', $templateId);
+            $this->bind(':html', $htmlContent);
+            $this->bind(':plain', $plainTextContent);
+            $this->bind(':id', $campaignId);
+            $this->execute();
+            return $campaignId;
+        }
+
+        // Generate clean campaign code
+        $campaignCode = 'CAMP-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
+
+        $this->query('INSERT INTO campaigns_broadcast 
+                      (campaign_code, name, subject_a, subject_b, ab_split_percent, ab_winner_metric,
+                       preheader, from_name, from_email, reply_to, list_id, segment_id, template_id,
+                       html_content, plain_text_content, status, created_by)
+                      VALUES 
+                      (:code, :name, :sub_a, :sub_b, :ab_split, :ab_metric, :preheader, :from_name,
+                       :from_email, :reply_to, :list_id, :segment_id, :template_id, :html, :plain, "draft", :uid)');
+        $this->bind(':code', $campaignCode);
+        $this->bind(':name', $name);
+        $this->bind(':sub_a', $subjectA);
+        $this->bind(':sub_b', $subjectB ?: null);
+        $this->bind(':ab_split', $abSplit);
+        $this->bind(':ab_metric', $abWinnerMetric);
+        $this->bind(':preheader', $preheader ?: null);
+        $this->bind(':from_name', $fromName);
+        $this->bind(':from_email', $fromEmail);
+        $this->bind(':reply_to', $replyTo ?: null);
+        $this->bind(':list_id', $listId);
+        $this->bind(':segment_id', $segmentId);
+        $this->bind(':template_id', $templateId);
+        $this->bind(':html', $htmlContent);
+        $this->bind(':plain', $plainTextContent);
+        $this->bind(':uid', $userId);
+        $this->execute();
+
+        return (int)$this->lastInsertId();
+    }
+
+    public function deleteCampaign(int $campaignId): bool {
+        $this->query('DELETE FROM campaigns_broadcast WHERE campaign_id = :id AND status IN ("draft", "cancelled")');
+        $this->bind(':id', $campaignId);
+        return $this->execute();
+    }
+
+    /**
+     * Resolve eligible recipients for a campaign, strictly excluding global suppressions.
+     * 
+     * @param int $campaignId
+     * @return array [total_subscribers => int, reachable_count => int, suppressed_count => int, contacts => array]
+     */
+    public function resolveEligibleRecipients(int $campaignId): array {
+        $camp = $this->getById($campaignId);
+        if (!$camp) {
+            return ['reachable_count' => 0, 'suppressed_count' => 0, 'contacts' => []];
+        }
+
+        $db = Database::getInstance()->getConnection();
+
+        // 1. Get raw subscriber contacts from assigned list or segment
+        $contacts = [];
+        if (!empty($camp->segment_id)) {
+            $segmentModel = new CampaignSegment();
+            $seg = $segmentModel->getById((int)$camp->segment_id);
+            if ($seg) {
+                $compiled = $segmentModel->compileSegmentSql($seg->rules, $seg->match_type ?? 'all');
+                $sql = "SELECT c.contact_id, c.email, c.first_name, c.last_name, c.company_name, c.custom_fields, c.status
+                        FROM campaign_contacts c
+                        WHERE c.status = 'subscribed' AND " . $compiled['where'];
+                $stmt = $db->prepare($sql);
+                foreach ($compiled['params'] as $k => $v) {
+                    $stmt->bindValue($k, $v);
+                }
+                $stmt->execute();
+                $contacts = $stmt->fetchAll(PDO::FETCH_OBJ);
+            }
+        } elseif (!empty($camp->list_id)) {
+            $stmt = $db->prepare('SELECT c.contact_id, c.email, c.first_name, c.last_name, c.company_name, c.custom_fields, c.status
+                                  FROM campaign_contacts c
+                                  JOIN campaign_list_contacts lc ON c.contact_id = lc.contact_id
+                                  WHERE lc.list_id = :lid AND lc.status = "active" AND c.status = "subscribed"');
+            $stmt->execute([':lid' => (int)$camp->list_id]);
+            $contacts = $stmt->fetchAll(PDO::FETCH_OBJ);
+        }
+
+        // 2. Cross-reference against Global Suppression List
+        $suppressionModel = new CampaignSuppression();
+        $reachable = [];
+        $suppressedCount = 0;
+
+        foreach ($contacts as $c) {
+            $cleanEmail = strtolower(trim($c->email));
+            if ($suppressionModel->isSuppressed($cleanEmail)) {
+                $suppressedCount++;
+                continue;
+            }
+            $reachable[] = $c;
+        }
+
+        return [
+            'total_subscribers' => count($contacts),
+            'reachable_count' => count($reachable),
+            'suppressed_count' => $suppressedCount,
+            'contacts' => $reachable
+        ];
+    }
+
+    /**
+     * Launch Campaign: Enforces Pre-Send Quality Gate & Seeds Queue
+     */
+    public function launchCampaign(int $campaignId, ?int $userId = null): array {
+        $camp = $this->getById($campaignId);
+        if (!$camp) {
+            return ['success' => false, 'error' => 'Campaign not found'];
+        }
+
+        if ($camp->status !== self::STATUS_DRAFT && $camp->status !== self::STATUS_SCHEDULED) {
+            return ['success' => false, 'error' => 'Campaign is not in a launchable state (status: ' . $camp->status . ')'];
+        }
+
+        // 1. Run Pre-Send Deliverability & Compliance Checklist
+        $checklistResult = PreSendChecklistService::run((array)$camp);
+        
+        $db = Database::getInstance()->getConnection();
+        $cStmt = $db->prepare('UPDATE campaigns_broadcast 
+                               SET pre_send_checklist_passed = :passed, 
+                                   pre_send_checklist_json = :json 
+                               WHERE campaign_id = :id');
+        $cStmt->execute([
+            ':passed' => $checklistResult['passed'] ? 1 : 0,
+            ':json' => json_encode($checklistResult, JSON_UNESCAPED_UNICODE),
+            ':id' => $campaignId
+        ]);
+
+        if (!$checklistResult['passed']) {
+            return [
+                'success' => false,
+                'error' => 'Pre-Send Deliverability Checklist Failed. Resolve blockers before launch.',
+                'blockers' => $checklistResult['blockers']
+            ];
+        }
+
+        // 2. Resolve eligible recipients
+        $recipientData = $this->resolveEligibleRecipients($campaignId);
+        $recipients = $recipientData['contacts'];
+
+        if (empty($recipients)) {
+            return [
+                'success' => false,
+                'error' => 'Target audience has 0 reachable subscribers (all either empty, unsubscribed, or globally suppressed).'
+            ];
+        }
+
+        // 3. Seed campaign_recipients & campaign_email_queue in transaction
+        try {
+            $db->beginTransaction();
+
+            $rIns = $db->prepare('INSERT INTO campaign_recipients 
+                                  (campaign_id, contact_id, email, subject_variant, status, unsubscribe_token)
+                                  VALUES (:cid, :cntid, :email, :variant, "queued", :token)');
+
+            $qIns = $db->prepare('INSERT INTO campaign_email_queue 
+                                  (campaign_id, recipient_id, status, priority, scheduled_at)
+                                  VALUES (:cid, :rid, "pending", 10, CURRENT_TIMESTAMP)');
+
+            $hasAb = (!empty($camp->subject_b) && $camp->ab_split_percent > 0);
+            $abSplitCount = $hasAb ? (int)ceil(count($recipients) * ($camp->ab_split_percent / 100)) : 0;
+            $seededCount = 0;
+
+            foreach ($recipients as $idx => $r) {
+                $cleanEmail = strtolower(trim($r->email));
+
+                // A/B test subject split
+                $variant = 'A';
+                if ($hasAb && $idx < $abSplitCount) {
+                    $variant = ($idx % 2 === 0) ? 'A' : 'B';
+                }
+
+                // Generate secure HMAC unsubscribe token
+                $unsubToken = UnsubscribeService::generateToken($campaignId, (int)$r->contact_id, $cleanEmail);
+
+                $rIns->execute([
+                    ':cid' => $campaignId,
+                    ':cntid' => (int)$r->contact_id,
+                    ':email' => $cleanEmail,
+                    ':variant' => $variant,
+                    ':token' => $unsubToken
+                ]);
+
+                $recipientId = (int)$db->lastInsertId();
+
+                $qIns->execute([
+                    ':cid' => $campaignId,
+                    ':rid' => $recipientId
+                ]);
+
+                $seededCount++;
+            }
+
+            // Update campaign status to queued
+            $uStmt = $db->prepare('UPDATE campaigns_broadcast 
+                                   SET status = "queued", total_recipients = :total, started_at = CURRENT_TIMESTAMP 
+                                   WHERE campaign_id = :id');
+            $uStmt->execute([':total' => $seededCount, ':id' => $campaignId]);
+
+            $db->commit();
+
+            if (class_exists('CampaignAudit')) {
+                CampaignAudit::log($userId, 'campaign.launched', 'campaign', $campaignId, [
+                    'name' => $camp->name,
+                    'total_queued' => $seededCount,
+                    'ab_test' => $hasAb
+                ]);
+            }
+
+            return [
+                'success' => true,
+                'queued_count' => $seededCount,
+                'message' => "Campaign successfully validated and {$seededCount} recipient messages queued for worker dispatch."
+            ];
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            return [
+                'success' => false,
+                'error' => 'Failed to queue campaign: ' . $e->getMessage()
+            ];
+        }
+    }
+}

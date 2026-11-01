@@ -40,3 +40,4 @@ class CampaignTag extends Model {
         return $this->execute();
     }
 }
+
