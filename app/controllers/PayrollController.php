@@ -1460,9 +1460,9 @@ class PayrollController extends Controller {
                         $employerPf = $pf;
                     }
                 }
-                $gratuity = (float)($struct->gratuity ?? round($actualBasic * 0.0481));
+                $gratuity = (float)($struct->gratuity ?? round($actualBasic * 0.0481, 0, PHP_ROUND_HALF_DOWN));
                 if ($gratuity <= 0) {
-                    $gratuity = (float)round($actualBasic * 0.0481);
+                    $gratuity = (float)round($actualBasic * 0.0481, 0, PHP_ROUND_HALF_DOWN);
                 }
                 $esic = (float)($struct->esic ?? 0.00);
                 $pt = (float)($struct->professional_tax ?? 0.00);

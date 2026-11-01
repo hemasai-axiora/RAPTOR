@@ -58,7 +58,7 @@ class PayslipPdfService {
         $deductions = round((float)($detail->total_deductions ?? ($epf + $pt + $otherDeductions)));
         
         $employerPf = $isPfApplicable ? round((float)(isset($detail->employer_pf) && is_numeric($detail->employer_pf) ? $detail->employer_pf : $epf)) : 0;
-        $gratuity = round((float)(isset($detail->gratuity) && (float)$detail->gratuity > 0 ? $detail->gratuity : round($actualBasic * 0.0481)));
+        $gratuity = round((float)(isset($detail->gratuity) && (float)$detail->gratuity > 0 ? $detail->gratuity : round($actualBasic * 0.0481, 0, PHP_ROUND_HALF_DOWN)));
         $totalBenefits = round($employerPf + $gratuity);
         
         $ctc = round((float)($detail->ctc > 0 ? $detail->ctc : ($gross + $totalBenefits)));

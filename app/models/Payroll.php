@@ -366,7 +366,7 @@ class Payroll extends Model {
         }
 
         // 5. Gratuity = 4.81% of Basic
-        $gratuity = round($basic * 0.0481);
+        $gratuity = (float)round($basic * 0.0481, 0, PHP_ROUND_HALF_DOWN);
 
         // 6. Total Benefits
         $totalBenefits = $employerPf + $gratuity;
@@ -461,7 +461,7 @@ class Payroll extends Model {
         $tds = round((float)($data['tds'] ?? 0));
         
         $employerPf = round((float)($data['employer_pf'] ?? $pf));
-        $gratuity = round((float)($data['gratuity'] ?? round($basic * 0.0481)));
+        $gratuity = round((float)($data['gratuity'] ?? round($basic * 0.0481, 0, PHP_ROUND_HALF_DOWN)));
         
         $newGross = round($basic + $hra + $special + $otherAll + $med + $travel + $bonus + $otherEarn);
         $newBenefits = round($employerPf + $gratuity);
@@ -475,7 +475,7 @@ class Payroll extends Model {
             $prevOther = round((float)($existing->other_allowance ?? $existing->other_earnings ?? 0));
             $prevGross = round($prevBasic + $prevHra + $prevSpecial + $prevOther + (float)$existing->medical_allowance + (float)$existing->travel_allowance + (float)$existing->bonus);
             $prevEmpPf = round((float)($existing->employer_pf ?? $existing->pf));
-            $prevGrat = round((float)($existing->gratuity ?? round($prevBasic * 0.0481)));
+            $prevGrat = round((float)($existing->gratuity ?? round($prevBasic * 0.0481, 0, PHP_ROUND_HALF_DOWN)));
             $prevCtc = round($prevGross + $prevEmpPf + $prevGrat);
 
             // Check if any value changed or explicit revision reason given

@@ -43,7 +43,7 @@ $otherDeductions = round((float)($detail->other_deductions ?? 0.00));
 $deductions = round((float)($detail->total_deductions ?? ($epf + $pt + $otherDeductions)));
 
 $employerPf = $isPfApplicable ? round((float)(isset($detail->employer_pf) && is_numeric($detail->employer_pf) ? $detail->employer_pf : $epf)) : 0;
-$gratuity = round((float)(isset($detail->gratuity) && (float)$detail->gratuity > 0 ? $detail->gratuity : round($actualBasic * 0.0481)));
+$gratuity = round((float)(isset($detail->gratuity) && (float)$detail->gratuity > 0 ? $detail->gratuity : round($actualBasic * 0.0481, 0, PHP_ROUND_HALF_DOWN)));
 $totalBenefits = round($employerPf + $gratuity);
 
 $ctc = round((float)(isset($detail->ctc) && (float)$detail->ctc > 0 ? $detail->ctc : ($gross + $totalBenefits)));
@@ -478,7 +478,7 @@ foreach ($zohoCandidates as $zcand) {
 
     <!-- Floating Actions -->
     <div class="floating-action-bar">
-        <a href="index.php?route=payroll/payslip_view/<?php echo $detail->payroll_detail_id; ?>&download=pdf" class="btn-action">
+        <a href="index.php?route=payroll/payslip_view/<?php echo (int)($detail->payroll_detail_id ?? 0); ?>&download=pdf" class="btn-action">
             <i class="fa-solid fa-file-pdf"></i> Download PDF
         </a>
         <button onclick="window.print()" class="btn-action btn-secondary-action">
