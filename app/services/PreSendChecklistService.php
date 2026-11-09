@@ -172,12 +172,60 @@ class PreSendChecklistService {
                 : 'Notice: Sending a test email to yourself is recommended before bulk launch.'
         ];
 
+        // ---------------------------------------------------------------------
+        // Deliverability Intelligence Preflight Engine Execution (Rules D-001 - D-020)
+        // ---------------------------------------------------------------------
+        $preflightResult = null;
+        if (class_exists('PreflightEngine')) {
+            $context = new PreflightContext(
+                campaign: $campaign,
+                communicationIntent: $campaign['communication_intent'] ?? 'promotional',
+                domain: $domainAuth['details'] ?? []
+            );
+            $engine = new PreflightEngine();
+            $preflightResult = $engine->evaluate($context);
+
+            // Incorporate Preflight BLOCK findings into blockers
+            foreach ($preflightResult['findings'] as $finding) {
+                if ($finding['severity'] === 'BLOCK') {
+                    $blockers[] = "[{$finding['rule_id']}] {$finding['message']}";
+                }
+            }
+
+            // Sync to Alert Center and Preflight Runs if campaign ID exists
+            $campId = (int)($campaign['campaign_id'] ?? 0);
+            if ($campId > 0) {
+                if (class_exists('AlertService')) {
+                    AlertService::syncFindingsToAlerts('campaign', $campId, $preflightResult['findings']);
+                }
+
+                try {
+                    $db = Database::getInstance()->getConnection();
+                    $pStmt = $db->prepare('INSERT INTO marketing_preflight_runs 
+                                          (campaign_id, run_id, artifact_sha256, policy_version, status, summary_json, findings_json, evaluated_at)
+                                          VALUES 
+                                          (:cid, :rid, :hash, :pver, :status, :sum, :find, :ev)');
+                    $pStmt->execute([
+                        ':cid' => $campId,
+                        ':rid' => $preflightResult['run_id'],
+                        ':hash' => $preflightResult['artifact_sha256'],
+                        ':pver' => $preflightResult['policy_version'],
+                        ':status' => $preflightResult['status'],
+                        ':sum' => json_encode($preflightResult['summary'], JSON_UNESCAPED_UNICODE),
+                        ':find' => json_encode($preflightResult['findings'], JSON_UNESCAPED_UNICODE),
+                        ':ev' => $preflightResult['evaluated_at']
+                    ]);
+                } catch (Throwable $t) {}
+            }
+        }
+
         $passed = empty($blockers);
 
         return [
             'passed' => $passed,
-            'blockers' => $blockers,
+            'blockers' => array_unique($blockers),
             'checks' => $checks,
+            'preflight' => $preflightResult,
             'evaluated_at' => date('Y-m-d H:i:s')
         ];
     }

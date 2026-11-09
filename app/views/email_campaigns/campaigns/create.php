@@ -39,9 +39,24 @@
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
-                            <div class="col-md-12">
+                            <div class="col-md-8">
                                 <label class="form-label small fw-semibold">Internal Campaign Name <span class="text-danger">*</span></label>
                                 <input type="text" name="name" class="form-control" placeholder="e.g. Q4 Product Release Announcement" value="<?php echo htmlspecialchars($campaign->name ?? ''); ?>" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Communication Intent <span class="badge bg-secondary-subtle text-secondary">Guidance Only</span></label>
+                                <select name="communication_intent" class="form-select" id="communication_intent">
+                                    <option value="promotional" <?php echo (($campaign->communication_intent ?? 'promotional') === 'promotional') ? 'selected' : ''; ?>>Promotional / Marketing</option>
+                                    <option value="personal_style" <?php echo (($campaign->communication_intent ?? '') === 'personal_style') ? 'selected' : ''; ?>>Personal-Style Correspondence</option>
+                                    <option value="operational" <?php echo (($campaign->communication_intent ?? '') === 'operational') ? 'selected' : ''; ?>>Operational / Transactional</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <div class="p-2 bg-light rounded small text-muted border-start border-3 border-info">
+                                    <i class="fa-solid fa-circle-info text-info me-1"></i>
+                                    <strong>Intent Guidance:</strong> Communication intent guides preflight rule checklists (D-001–D-020).
+                                    Observed results are sample-specific; inbox tab and spam-folder placement are not guaranteed by any email sender.
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold">From Name <span class="text-danger">*</span></label>
@@ -196,18 +211,29 @@
             <div class="col-lg-4">
                 <!-- Quality Gate Action Card -->
                 <div class="card border-0 shadow-sm mb-4 border-start border-4 border-primary">
-                    <div class="card-header bg-white py-3">
-                        <h6 class="fw-bold mb-0 text-primary"><i class="fa-solid fa-shield-halved me-2"></i>Deliverability Quality Gate</h6>
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold mb-0 text-primary"><i class="fa-solid fa-shield-halved me-2"></i>Deliverability Intelligence</h6>
+                        <a href="index.php?route=email_campaigns/alerts" class="badge bg-warning text-dark text-decoration-none">Alert Center</a>
                     </div>
                     <div class="card-body">
+                        <?php if ($campaign && !empty($campaign->approved_snapshot_hash)): ?>
+                            <div class="alert alert-success py-2 mb-3 small d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-lock text-success fs-5"></i>
+                                <div>
+                                    <strong>Campaign Approved & Snapshot Locked</strong><br>
+                                    <code class="text-dark small">SHA-256: <?php echo substr($campaign->approved_snapshot_hash, 0, 16); ?>...</code>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
                         <p class="small text-muted mb-3">
-                            Campaign sending is protected by an automated quality gate. All 8 critical deliverability checks must pass before launch.
+                            Deliverability rule engine evaluates 20 preflight policies (D-001 through D-020). Blockers prevent launch; warnings offer actionable guidance.
                         </p>
 
                         <?php if ($campaign): ?>
                             <div class="d-grid gap-2 mb-3">
                                 <button type="button" class="btn btn-outline-primary btn-sm" id="btn-run-audit" data-campaign-id="<?php echo $campaign->campaign_id; ?>">
-                                    <i class="fa-solid fa-stethoscope me-1"></i>Run Pre-Send Audit Now
+                                    <i class="fa-solid fa-stethoscope me-1"></i>Run Preflight Engine (D-001 - D-020)
                                 </button>
                                 <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#testSendModal">
                                     <i class="fa-solid fa-paper-plane me-1"></i>Send Test Email to Self
@@ -215,7 +241,7 @@
                             </div>
 
                             <div id="audit-results-card" style="display: none;" class="p-3 bg-light rounded border mb-3">
-                                <h6 class="fw-bold small mb-2" id="audit-status-heading">Audit Status</h6>
+                                <h6 class="fw-bold small mb-2" id="audit-status-heading">Preflight Status</h6>
                                 <div id="audit-checklist-items" class="small"></div>
                             </div>
                         <?php else: ?>
@@ -226,7 +252,14 @@
 
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary shadow-sm"><i class="fa-solid fa-floppy-disk me-2"></i>Save Draft</button>
-                            <?php if ($campaign && in_array($campaign->status, ['draft', 'scheduled'])): ?>
+
+                            <?php if ($campaign && in_array($campaign->status, ['draft', 'needs_review'])): ?>
+                                <button type="button" class="btn btn-outline-success shadow-sm" id="btn-approve-snapshot" data-campaign-id="<?php echo $campaign->campaign_id; ?>">
+                                    <i class="fa-solid fa-stamp me-2"></i>Approve Campaign Snapshot
+                                </button>
+                            <?php endif; ?>
+
+                            <?php if ($campaign && in_array($campaign->status, ['draft', 'approved', 'scheduled'])): ?>
                                 <button type="button" class="btn btn-success shadow-sm" id="btn-launch-campaign" data-campaign-id="<?php echo $campaign->campaign_id; ?>">
                                     <i class="fa-solid fa-rocket me-2"></i>Verify & Launch Campaign
                                 </button>
@@ -278,8 +311,11 @@
     </div>
 </div>
 
-<!-- Modal: Launch Campaign Confirmation -->
+<!-- Forms: Launch and Approve Campaign Confirmation -->
 <form method="POST" action="index.php?route=email_campaigns/campaignLaunch" id="launch-form">
+    <input type="hidden" name="campaign_id" value="<?php echo $campaign->campaign_id; ?>">
+</form>
+<form method="POST" action="index.php?route=email_campaigns/campaignApprove" id="approve-form">
     <input type="hidden" name="campaign_id" value="<?php echo $campaign->campaign_id; ?>">
 </form>
 <?php endif; ?>
@@ -386,13 +422,22 @@ document.addEventListener('DOMContentLoaded', function() {
                         heading.innerHTML = '<span class="text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>Launch Blocked: ' + cl.blockers.length + ' Issue(s)</span>';
                     }
 
-                    let html = '<ul class="list-unstyled mb-0">';
+                    let html = '<ul class="list-unstyled mb-2">';
                     for (const key in cl.checks) {
                         const check = cl.checks[key];
                         const icon = check.passed ? '<i class="fa-solid fa-check text-success me-1"></i>' : (check.critical ? '<i class="fa-solid fa-xmark text-danger me-1"></i>' : '<i class="fa-solid fa-triangle-exclamation text-warning me-1"></i>');
                         html += '<li class="mb-1">' + icon + '<strong>' + check.name + ':</strong> <span class="text-secondary">' + check.message + '</span></li>';
                     }
                     html += '</ul>';
+
+                    if (cl.preflight && cl.preflight.findings && cl.preflight.findings.length > 0) {
+                        html += '<div class="mt-2 pt-2 border-top"><div class="fw-bold small mb-1 text-primary"><i class="fa-solid fa-satellite-dish me-1"></i>Deliverability Rule Findings:</div>';
+                        cl.preflight.findings.forEach(f => {
+                            const badgeClass = f.severity === 'BLOCK' ? 'bg-danger' : (f.severity === 'HIGH' ? 'bg-warning text-dark' : 'bg-info text-dark');
+                            html += '<div class="p-1 mb-1 rounded bg-white border small"><span class="badge ' + badgeClass + ' me-1">' + f.severity + '</span> <code>' + f.rule_id + '</code> ' + f.message + '<div class="text-muted" style="font-size: 0.75rem;">Fix: ' + f.remediation + '</div></div>';
+                        });
+                        html += '</div>';
+                    }
                     items.innerHTML = html;
                 })
                 .catch(() => {
@@ -433,6 +478,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 btnDispatchTest.disabled = false;
                 fb.innerHTML = '<div class="alert alert-danger py-2 mb-0 mt-2">Error dispatching test send.</div>';
             });
+        });
+    }
+
+    // Approve Campaign Snapshot Trigger
+    const btnApprove = document.getElementById('btn-approve-snapshot');
+    if (btnApprove) {
+        btnApprove.addEventListener('click', function() {
+            if (confirm('Approve campaign snapshot? This will freeze the content hash and record maker-checker compliance signoff.')) {
+                document.getElementById('approve-form').submit();
+            }
         });
     }
 

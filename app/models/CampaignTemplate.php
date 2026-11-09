@@ -24,6 +24,33 @@ class CampaignTemplate extends Model {
         '{{current_date}}' => 'Current Formatted Date'
     ];
 
+    private function hasTemplateColumn(string $column): bool {
+        static $cols = null;
+        if ($cols === null) {
+            $cols = [];
+            try {
+                $db = Database::getInstance()->getConnection();
+                $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+                if ($driver === 'sqlite') {
+                    $stmt = $db->query("PRAGMA table_info(campaign_templates)");
+                    if ($stmt) {
+                        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                            $cols[$row['name']] = true;
+                        }
+                    }
+                } else {
+                    $stmt = $db->query("SHOW COLUMNS FROM campaign_templates");
+                    if ($stmt) {
+                        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                            $cols[$row['Field']] = true;
+                        }
+                    }
+                }
+            } catch (Throwable $e) {}
+        }
+        return isset($cols[$column]);
+    }
+
     public function getAllTemplates(): array {
         $this->query('SELECT t.*, u.name as creator_name 
                       FROM campaign_templates t
@@ -57,31 +84,74 @@ class CampaignTemplate extends Model {
             $rawPlain = self::htmlToPlainText($cleanHtml);
         }
 
+        $communicationIntent = in_array($data['communication_intent'] ?? '', ['personal_style', 'promotional', 'operational'], true) ? $data['communication_intent'] : 'promotional';
+        $contentHash = hash('sha256', (string)json_encode([
+            'name' => $name,
+            'category' => $category,
+            'subject' => $subjectDefault,
+            'html' => $cleanHtml,
+            'plain' => $rawPlain,
+            'intent' => $communicationIntent
+        ]));
+
+        $hasIntent = $this->hasTemplateColumn('communication_intent');
+        $hasCHash = $this->hasTemplateColumn('content_sha256');
+
         $templateId = (int)($data['template_id'] ?? 0);
         if ($templateId > 0) {
-            $this->query('UPDATE campaign_templates 
-                          SET name = :name, category = :cat, subject_default = :subj, 
-                              html_content = :html, plain_text_content = :plain, updated_at = CURRENT_TIMESTAMP
-                          WHERE template_id = :id');
+            $sql = 'UPDATE campaign_templates 
+                    SET name = :name, category = :cat, subject_default = :subj, 
+                        html_content = :html, plain_text_content = :plain';
+            if ($hasIntent) {
+                $sql .= ', communication_intent = :intent';
+            }
+            if ($hasCHash) {
+                $sql .= ', content_sha256 = :chash';
+            }
+            $sql .= ', updated_at = CURRENT_TIMESTAMP WHERE template_id = :id';
+
+            $this->query($sql);
             $this->bind(':name', $name);
             $this->bind(':cat', $category);
             $this->bind(':subj', $subjectDefault ?: null);
             $this->bind(':html', $cleanHtml);
             $this->bind(':plain', $rawPlain);
+            if ($hasIntent) {
+                $this->bind(':intent', $communicationIntent);
+            }
+            if ($hasCHash) {
+                $this->bind(':chash', $contentHash);
+            }
             $this->bind(':id', $templateId);
             $this->execute();
             return $templateId;
         }
 
-        $this->query('INSERT INTO campaign_templates 
-                      (name, category, subject_default, html_content, plain_text_content, is_prebuilt, created_by)
-                      VALUES 
-                      (:name, :cat, :subj, :html, :plain, 0, :uid)');
+        $insCols = 'name, category, subject_default, html_content, plain_text_content';
+        $insVals = ':name, :cat, :subj, :html, :plain';
+        if ($hasIntent) {
+            $insCols .= ', communication_intent';
+            $insVals .= ', :intent';
+        }
+        if ($hasCHash) {
+            $insCols .= ', content_sha256';
+            $insVals .= ', :chash';
+        }
+        $insCols .= ', is_prebuilt, created_by';
+        $insVals .= ', 0, :uid';
+
+        $this->query("INSERT INTO campaign_templates ({$insCols}) VALUES ({$insVals})");
         $this->bind(':name', $name);
         $this->bind(':cat', $category);
         $this->bind(':subj', $subjectDefault ?: null);
         $this->bind(':html', $cleanHtml);
         $this->bind(':plain', $rawPlain);
+        if ($hasIntent) {
+            $this->bind(':intent', $communicationIntent);
+        }
+        if ($hasCHash) {
+            $this->bind(':chash', $contentHash);
+        }
         $this->bind(':uid', $userId);
         $this->execute();
         return (int)$this->lastInsertId();

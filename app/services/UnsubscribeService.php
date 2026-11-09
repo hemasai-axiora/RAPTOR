@@ -129,6 +129,11 @@ class UnsubscribeService {
             // Globally suppress
             $suppressionModel->suppress($email, 'unsubscribe', 'One-Click Unsubscribe from Campaign #' . $campaignId, $campaignId);
 
+            // Record in Consent Ledger if contact exists
+            if ($contactId > 0 && class_exists('ConsentService')) {
+                ConsentService::revoke($contactId, ConsentService::PURPOSE_MARKETING, 'RFC 8058 One-Click / Web Unsubscribe');
+            }
+
             // Log event
             self::logEvent($campaignId, $recipientId, $contactId, 'unsubscribe', [
                 'scope' => 'global',

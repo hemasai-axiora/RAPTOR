@@ -27,7 +27,7 @@
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body p-3">
                 <div class="row g-3">
-                    <div class="col-md-5">
+                    <div class="col-md-4">
                         <label class="form-label small fw-semibold">Template Name <span class="text-danger">*</span></label>
                         <input type="text" name="name" class="form-control form-control-sm" placeholder="e.g. Monthly Newsletter 2026" value="<?php echo htmlspecialchars($template->name ?? ''); ?>" required>
                     </div>
@@ -41,7 +41,15 @@
                             <option value="general" <?php echo (($template->category ?? 'general') === 'general') ? 'selected' : ''; ?>>General</option>
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">Intent</label>
+                        <select name="communication_intent" class="form-select form-select-sm">
+                            <option value="promotional" <?php echo (($template->communication_intent ?? 'promotional') === 'promotional') ? 'selected' : ''; ?>>Promotional</option>
+                            <option value="personal_style" <?php echo (($template->communication_intent ?? '') === 'personal_style') ? 'selected' : ''; ?>>Personal-Style</option>
+                            <option value="operational" <?php echo (($template->communication_intent ?? '') === 'operational') ? 'selected' : ''; ?>>Operational</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
                         <label class="form-label small fw-semibold">Default Subject Line</label>
                         <input type="text" name="subject_default" class="form-control form-control-sm" placeholder="Subject for this template" value="<?php echo htmlspecialchars($template->subject_default ?? ''); ?>">
                     </div>

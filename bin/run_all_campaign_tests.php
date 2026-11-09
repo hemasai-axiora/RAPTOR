@@ -30,6 +30,7 @@ $suites = [
     'Phase 5: Webhooks, Tracking & Stats' => 'bin/test_email_campaigns_phase5.php',
     'Phase 6: Domains, DNS & Health Report' => 'bin/test_email_campaigns_phase6.php',
     'Phase 7: End-to-End Lifecycle Suite' => 'bin/test_email_campaigns_e2e.php',
+    'Phase 8: Deliverability Intelligence (D-001–D-020 & UAT-01–32)' => 'bin/test_deliverability_intelligence.php',
     'Regression: Payroll Calculations'   => 'bin/test_payroll_pipeline.php'
 ];
 

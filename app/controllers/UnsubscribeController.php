@@ -11,7 +11,12 @@ class UnsubscribeController extends Controller {
     /**
      * Browser view for unsubscribe confirmation and preference center.
      */
-    public function view() {
+    public function view($view = null, $data = []) {
+        if ($view !== null && is_string($view)) {
+            parent::view($view, $data);
+            return;
+        }
+
         $token = trim($_GET['token'] ?? '');
         $campaignId = (int)($_GET['c'] ?? 0);
         $listId = (int)($_GET['l'] ?? 0);
@@ -33,7 +38,7 @@ class UnsubscribeController extends Controller {
             die('Unsubscribe link is invalid or has expired.');
         }
 
-        $data = [
+        $viewData = [
             'token' => $token,
             'email' => $recip->email,
             'campaign_name' => $recip->campaign_name ?? 'Email Broadcast',
@@ -42,7 +47,7 @@ class UnsubscribeController extends Controller {
         ];
 
         // Standalone clean view without main admin sidebar layout
-        $this->view('email_campaigns/public/unsubscribe', $data);
+        parent::view('email_campaigns/public/unsubscribe', $viewData);
     }
 
     /**
@@ -73,9 +78,34 @@ class UnsubscribeController extends Controller {
      * RFC 8058 One-Click HTTP POST Endpoint.
      * Standard mail user agents (e.g. Gmail / Yahoo / Apple Mail) send POST request with:
      * Body: List-Unsubscribe=One-Click
+     * 
+     * RFC 8058 requires:
+     * 1. GET requests must NOT change state (prevents automated link scanner opt-outs).
+     * 2. POST requests execute single-action opt-out without login or confirmation.
+     * 3. Return HTTP 200/204 response.
      */
     public function rfc8058() {
         $token = trim($_GET['token'] ?? ($_POST['token'] ?? ''));
+
+        // If GET request, redirect to safe preview/view page instead of executing state change
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+            if (!empty($token)) {
+                $this->redirect('index.php?route=unsubscribe/view&token=' . urlencode($token));
+                return;
+            }
+            http_response_code(400);
+            header('Content-Type: text/plain');
+            echo 'RFC 8058: GET requests must not modify subscription state. Use POST to unsubscribe.';
+            exit();
+        }
+
+        if (empty($token)) {
+            // Also check for token in raw body or query string
+            $rawBody = file_get_contents('php://input');
+            if (preg_match('/token=([^&]+)/', $rawBody, $m)) {
+                $token = urldecode($m[1]);
+            }
+        }
 
         if (empty($token)) {
             http_response_code(400);
@@ -89,7 +119,7 @@ class UnsubscribeController extends Controller {
         if ($res['success']) {
             http_response_code(200);
             header('Content-Type: text/plain');
-            echo 'Successfully unsubscribed';
+            echo 'Successfully unsubscribed via RFC 8058 One-Click';
         } else {
             http_response_code(400);
             header('Content-Type: text/plain');

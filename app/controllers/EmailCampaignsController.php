@@ -24,8 +24,14 @@ class EmailCampaignsController extends Controller {
         // RBAC check: admin, ceo, manager, hr, or users with email_campaigns permission
         $role = $_SESSION['user_role'] ?? '';
         $allowedRoles = ['admin', 'ceo', 'manager', 'hr'];
-        if (!in_array($role, $allowedRoles, true)) {
-            if (class_exists('Policy') && !Policy::can('email_campaigns', 'view')) {
+        if ($role === 'hr_only' || !in_array($role, $allowedRoles, true)) {
+            if ($role === 'hr_only' || (class_exists('Policy') && !Policy::can('email_campaigns', 'view'))) {
+                http_response_code(403);
+                if (isset($_SERVER['HTTP_ACCEPT']) && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json')) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['error' => 'Forbidden: HR-only role has no access to Marketing Workspace', 'code' => 403]);
+                    exit();
+                }
                 $_SESSION['flash_error'] = 'Access denied. You do not have permission to access Email Campaigns.';
                 $this->redirect('index.php?route=home');
                 exit();
@@ -514,6 +520,137 @@ class EmailCampaignsController extends Controller {
             $_SESSION['flash_error'] = 'Launch Blocked: ' . ($res['error'] ?? 'Unknown error');
             $this->redirect('index.php?route=email_campaigns/campaignEdit&id=' . $campaignId);
         }
+    }
+
+    /**
+     * Maker-Checker Campaign Approval Endpoint
+     */
+    public function campaignApprove() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('index.php?route=email_campaigns/campaigns');
+            return;
+        }
+
+        $campaignId = (int)($_POST['campaign_id'] ?? 0);
+        $campaign = $this->campaignModel->getById($campaignId);
+        if (!$campaign) {
+            $_SESSION['flash_error'] = 'Campaign not found.';
+            $this->redirect('index.php?route=email_campaigns/campaigns');
+            return;
+        }
+
+        $userId = (int)($_SESSION['user_id'] ?? 0);
+
+        // Run preflight
+        $domainAuth = PreSendChecklistService::checkDomainAuthStatus($campaign->from_email ?? '');
+        $context = new PreflightContext(
+            campaign: (array)$campaign,
+            communicationIntent: $campaign->communication_intent ?? 'promotional',
+            domain: $domainAuth['details'] ?? []
+        );
+        $engine = new PreflightEngine();
+        $preflight = $engine->evaluate($context);
+
+        if ($preflight['status'] === 'blocked') {
+            $_SESSION['flash_error'] = 'Campaign cannot be approved: Preflight engine identified release-blocking findings.';
+            $this->redirect('index.php?route=email_campaigns/campaignEdit&id=' . $campaignId);
+            return;
+        }
+
+        // Create immutable cryptographic snapshot
+        $hash = CampaignSnapshotService::createSnapshot($campaignId, $userId, (array)$campaign);
+
+        // Update campaign status to approved
+        $db = Database::getInstance()->getConnection();
+        $db->prepare('UPDATE campaigns_broadcast 
+                      SET status = "approved", approved_by = :uid, approved_at = NOW(), 
+                          approved_snapshot_hash = :hash, content_sha256 = :hash 
+                      WHERE campaign_id = :cid')
+           ->execute([':uid' => $userId, ':hash' => $hash, ':cid' => $campaignId]);
+
+        $_SESSION['flash_success'] = 'Campaign approved successfully with immutable cryptographic snapshot (' . substr($hash, 0, 12) . '...). Ready to queue or schedule.';
+        $this->redirect('index.php?route=email_campaigns/campaignEdit&id=' . $campaignId);
+    }
+
+    /**
+     * Preflight Evaluation Endpoint (JSON API)
+     */
+    public function preflightAjax() {
+        $campaignId = (int)($_GET['campaign_id'] ?? ($_POST['campaign_id'] ?? 0));
+        $camp = $campaignId > 0 ? (array)$this->campaignModel->getById($campaignId) : $_POST;
+
+        $domainAuth = PreSendChecklistService::checkDomainAuthStatus($camp['from_email'] ?? '');
+        $context = new PreflightContext(
+            campaign: $camp,
+            communicationIntent: $camp['communication_intent'] ?? 'promotional',
+            domain: $domainAuth['details'] ?? []
+        );
+
+        $engine = new PreflightEngine();
+        $res = $engine->evaluate($context);
+
+        if ($campaignId > 0 && class_exists('AlertService')) {
+            AlertService::syncFindingsToAlerts('campaign', $campaignId, $res['findings']);
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode($res);
+        exit();
+    }
+
+    /**
+     * Alert Center View
+     */
+    public function alerts() {
+        $severity = !empty($_GET['severity']) ? trim($_GET['severity']) : null;
+        $alerts = class_exists('AlertService') ? AlertService::getActiveAlerts(100, $severity) : [];
+        $counts = class_exists('AlertService') ? AlertService::countActiveAlerts() : ['block' => 0, 'high' => 0, 'warning' => 0, 'info' => 0, 'total' => 0];
+
+        $data = [
+            'title' => 'Deliverability Alerts Center | Raptor CRM',
+            'active_tab' => 'email_campaigns_alerts',
+            'alerts' => $alerts,
+            'counts' => $counts,
+            'current_severity' => $severity
+        ];
+
+        $this->viewWithLayout('email_campaigns/alerts/index', 'main', $data);
+    }
+
+    /**
+     * Alert Action (Acknowledge, Resolve, Waive)
+     */
+    public function alertAction() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('index.php?route=email_campaigns/alerts');
+            return;
+        }
+
+        $alertId = (int)($_POST['alert_id'] ?? 0);
+        $action = trim($_POST['action'] ?? '');
+        $userId = (int)($_SESSION['user_id'] ?? 0);
+
+        if ($alertId > 0 && class_exists('AlertService')) {
+            if ($action === 'acknowledge') {
+                AlertService::acknowledgeAlert($alertId, $userId);
+                $_SESSION['flash_success'] = "Alert #{$alertId} acknowledged.";
+            } elseif ($action === 'resolve') {
+                $note = trim($_POST['resolution_note'] ?? 'Resolved by operator');
+                AlertService::resolveAlert($alertId, $userId, $note);
+                $_SESSION['flash_success'] = "Alert #{$alertId} marked as resolved.";
+            } elseif ($action === 'waive') {
+                $reason = trim($_POST['waiver_reason'] ?? 'Approved policy exception');
+                $expiry = trim($_POST['waiver_expiry'] ?? date('Y-m-d H:i:s', strtotime('+7 days')));
+                $ok = AlertService::waiveAlert($alertId, $userId, $reason, $expiry);
+                if ($ok) {
+                    $_SESSION['flash_success'] = "Alert #{$alertId} waived until {$expiry}.";
+                } else {
+                    $_SESSION['flash_error'] = "Cannot waive BLOCK severity alert. The underlying issue must be resolved.";
+                }
+            }
+        }
+
+        $this->redirect('index.php?route=email_campaigns/alerts');
     }
 
     // =========================================================================

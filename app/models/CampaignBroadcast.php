@@ -16,6 +16,33 @@ class CampaignBroadcast extends Model {
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_CANCELLED = 'cancelled';
 
+    private function hasCampaignColumn(string $column): bool {
+        static $cols = null;
+        if ($cols === null) {
+            $cols = [];
+            try {
+                $db = Database::getInstance()->getConnection();
+                $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+                if ($driver === 'sqlite') {
+                    $stmt = $db->query("PRAGMA table_info(campaigns_broadcast)");
+                    if ($stmt) {
+                        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                            $cols[$row['name']] = true;
+                        }
+                    }
+                } else {
+                    $stmt = $db->query("SHOW COLUMNS FROM campaigns_broadcast");
+                    if ($stmt) {
+                        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                            $cols[$row['Field']] = true;
+                        }
+                    }
+                }
+            } catch (Throwable $e) {}
+        }
+        return isset($cols[$column]);
+    }
+
     public function getAllCampaigns(array $filters = [], int $limit = 25, int $offset = 0): array {
         $sql = 'SELECT c.*, 
                        l.name as list_name, 
@@ -106,6 +133,7 @@ class CampaignBroadcast extends Model {
         $listId = !empty($data['list_id']) ? (int)$data['list_id'] : null;
         $segmentId = !empty($data['segment_id']) ? (int)$data['segment_id'] : null;
         $templateId = !empty($data['template_id']) ? (int)$data['template_id'] : null;
+        $communicationIntent = in_array($data['communication_intent'] ?? '', ['personal_style', 'promotional', 'operational'], true) ? $data['communication_intent'] : 'promotional';
         $htmlContent = $data['html_content'] ?? '';
         $plainTextContent = $data['plain_text_content'] ?? '';
 
@@ -124,15 +152,37 @@ class CampaignBroadcast extends Model {
         // Sanitize HTML
         $htmlContent = CampaignTemplate::sanitizeHtml($htmlContent);
 
+        // Compute content hash
+        $contentHash = hash('sha256', (string)json_encode([
+            'name' => $name,
+            'subject_a' => $subjectA,
+            'subject_b' => $subjectB,
+            'html' => $htmlContent,
+            'plain' => $plainTextContent,
+            'from_email' => $fromEmail,
+            'intent' => $communicationIntent
+        ]));
+
+        $hasIntent = $this->hasCampaignColumn('communication_intent');
+        $hasCHash = $this->hasCampaignColumn('content_sha256');
+
         $campaignId = (int)($data['campaign_id'] ?? 0);
         if ($campaignId > 0) {
-            $this->query('UPDATE campaigns_broadcast 
-                          SET name = :name, subject_a = :sub_a, subject_b = :sub_b, ab_split_percent = :ab_split,
-                              ab_winner_metric = :ab_metric, preheader = :preheader, from_name = :from_name,
-                              from_email = :from_email, reply_to = :reply_to, list_id = :list_id,
-                              segment_id = :segment_id, template_id = :template_id, html_content = :html,
-                              plain_text_content = :plain, updated_at = CURRENT_TIMESTAMP
-                          WHERE campaign_id = :id');
+            $sql = 'UPDATE campaigns_broadcast 
+                    SET name = :name, subject_a = :sub_a, subject_b = :sub_b, ab_split_percent = :ab_split,
+                        ab_winner_metric = :ab_metric, preheader = :preheader, from_name = :from_name,
+                        from_email = :from_email, reply_to = :reply_to, list_id = :list_id,
+                        segment_id = :segment_id, template_id = :template_id, html_content = :html,
+                        plain_text_content = :plain';
+            if ($hasIntent) {
+                $sql .= ', communication_intent = :intent';
+            }
+            if ($hasCHash) {
+                $sql .= ', content_sha256 = :chash, approved_snapshot_hash = NULL';
+            }
+            $sql .= ', updated_at = CURRENT_TIMESTAMP WHERE campaign_id = :id';
+
+            $this->query($sql);
             $this->bind(':name', $name);
             $this->bind(':sub_a', $subjectA);
             $this->bind(':sub_b', $subjectB ?: null);
@@ -147,6 +197,12 @@ class CampaignBroadcast extends Model {
             $this->bind(':template_id', $templateId);
             $this->bind(':html', $htmlContent);
             $this->bind(':plain', $plainTextContent);
+            if ($hasIntent) {
+                $this->bind(':intent', $communicationIntent);
+            }
+            if ($hasCHash) {
+                $this->bind(':chash', $contentHash);
+            }
             $this->bind(':id', $campaignId);
             $this->execute();
             return $campaignId;
@@ -155,13 +211,25 @@ class CampaignBroadcast extends Model {
         // Generate clean campaign code
         $campaignCode = 'CAMP-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
 
-        $this->query('INSERT INTO campaigns_broadcast 
-                      (campaign_code, name, subject_a, subject_b, ab_split_percent, ab_winner_metric,
-                       preheader, from_name, from_email, reply_to, list_id, segment_id, template_id,
-                       html_content, plain_text_content, status, created_by)
-                      VALUES 
-                      (:code, :name, :sub_a, :sub_b, :ab_split, :ab_metric, :preheader, :from_name,
-                       :from_email, :reply_to, :list_id, :segment_id, :template_id, :html, :plain, "draft", :uid)');
+        $insCols = 'campaign_code, name, subject_a, subject_b, ab_split_percent, ab_winner_metric,
+                    preheader, from_name, from_email, reply_to, list_id, segment_id, template_id,
+                    html_content, plain_text_content';
+        $insVals = ':code, :name, :sub_a, :sub_b, :ab_split, :ab_metric, :preheader, :from_name,
+                    :from_email, :reply_to, :list_id, :segment_id, :template_id, :html, :plain';
+
+        if ($hasIntent) {
+            $insCols .= ', communication_intent';
+            $insVals .= ', :intent';
+        }
+        if ($hasCHash) {
+            $insCols .= ', content_sha256';
+            $insVals .= ', :chash';
+        }
+
+        $insCols .= ', status, created_by';
+        $insVals .= ', "draft", :uid';
+
+        $this->query("INSERT INTO campaigns_broadcast ({$insCols}) VALUES ({$insVals})");
         $this->bind(':code', $campaignCode);
         $this->bind(':name', $name);
         $this->bind(':sub_a', $subjectA);
@@ -177,6 +245,12 @@ class CampaignBroadcast extends Model {
         $this->bind(':template_id', $templateId);
         $this->bind(':html', $htmlContent);
         $this->bind(':plain', $plainTextContent);
+        if ($hasIntent) {
+            $this->bind(':intent', $communicationIntent);
+        }
+        if ($hasCHash) {
+            $this->bind(':chash', $contentHash);
+        }
         $this->bind(':uid', $userId);
         $this->execute();
 
@@ -260,8 +334,18 @@ class CampaignBroadcast extends Model {
             return ['success' => false, 'error' => 'Campaign not found'];
         }
 
-        if ($camp->status !== self::STATUS_DRAFT && $camp->status !== self::STATUS_SCHEDULED) {
+        if ($camp->status !== self::STATUS_DRAFT && $camp->status !== self::STATUS_SCHEDULED && $camp->status !== 'approved') {
             return ['success' => false, 'error' => 'Campaign is not in a launchable state (status: ' . $camp->status . ')'];
+        }
+
+        // Verify cryptographic approval snapshot if approved_snapshot_hash was recorded
+        if (!empty($camp->approved_snapshot_hash) && class_exists('CampaignSnapshotService')) {
+            if (!CampaignSnapshotService::verifySnapshot($campaignId)) {
+                return [
+                    'success' => false,
+                    'error' => 'Campaign approved content hash mismatch (Rule D-017). Approval invalidated because content was edited after sign-off. Please re-run preflight and re-approve.'
+                ];
+            }
         }
 
         // 1. Run Pre-Send Deliverability & Compliance Checklist
