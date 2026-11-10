@@ -114,10 +114,12 @@ class RecruitmentController extends Controller {
     }
 
     /**
-     * Offers placeholder (delegates to Sprint 7).
+     * Offer Management & Approvals (Sprint 7).
      */
     public function offers(): void {
-        $this->redirect('index.php?route=recruitment/dashboard#offers');
+        require_once __DIR__ . '/RecruitmentOfferController.php';
+        $controller = new RecruitmentOfferController();
+        $controller->index();
     }
 
     /**

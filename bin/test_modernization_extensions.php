@@ -1408,6 +1408,171 @@ $assEvalMarkup = file_get_contents($assEvalView);
 assertCustom(strpos($assEvalMarkup, 'Evaluator Grading Scorecard') !== false, "Assessment evaluate view renders grading rubric");
 assertCustom(strpos($assEvalMarkup, 'recruitment_assessment/grade') !== false, "Assessment evaluate form dispatches to grade action");
 
+// ============================================================================
+// 20. SPRINT 7: OFFER MANAGEMENT & SALARY PROTECTION
+// ============================================================================
+echo "\n20. Testing Sprint 7 Offer Management & Salary Protection...\n";
+
+require_once __DIR__ . '/../app/services/recruitment/OfferApprovalService.php';
+require_once __DIR__ . '/../app/services/recruitment/OfferService.php';
+
+$offerApprovalService = new OfferApprovalService();
+$offerService         = new OfferService($offerApprovalService);
+
+// Test 20.1: Offer Reference Code Generation
+$offCode = $offerService->generateOfferCode($mockDb);
+assertCustom((bool)preg_match('/^OFF-\d{4}-\d{5}$/', $offCode), "OfferService generates standard format code ({$offCode})");
+
+// Test 20.2: Standard Offer Creation within Budget
+// Requisition max_salary is 1800000. Let's offer Aarav 1400000 (within budget, below 15L threshold)
+$offerWithin = $offerService->createOffer($mockDb, [
+    'application_id'          => $aaravAppId,
+    'job_title'               => 'Senior Staff Backend Architect',
+    'department'              => 'Engineering',
+    'annual_ctc'              => 1400000.00,
+    'fixed_salary'            => 1200000.00,
+    'variable_pay'            => 150000.00,
+    'joining_bonus'           => 50000.00,
+    'proposed_joining_date'   => date('Y-m-d', strtotime('+30 days')),
+    'offer_expiry_date'       => date('Y-m-d', strtotime('+7 days')),
+    'probation_period_months' => 3,
+    'notice_period_days'      => 30
+], 1);
+
+assertCustom(!empty($offerWithin['offer_id']), "Offer created successfully with unique ID");
+assertCustom($offerWithin['status'] === 'pending_approval', "Initial offer status defaults to 'pending_approval'");
+assertCustom($offerWithin['is_over_budget'] === false, "In-budget offer is identified with is_over_budget = false");
+assertCustom($offerWithin['steps_count'] === 2, "In-budget offer under 15L requires exactly 2 approval steps (Manager + HR)");
+
+// Verify application stage moved to 'offer_preparation'
+$stmtAppOfferStg = $mockDb->prepare("SELECT current_stage FROM recruitment_applications WHERE application_id = :id");
+$stmtAppOfferStg->execute([':id' => $aaravAppId]);
+assertCustom($stmtAppOfferStg->fetchColumn() === 'offer_preparation', "Application stage auto-advanced to 'offer_preparation'");
+
+// Test 20.3: Budget Overrun Offer Escalation Rule
+// Create offer for Priya Sharma exceeding requisition budget (3,500,000 > 3,200,000)
+$offerOver = $offerService->createOffer($mockDb, [
+    'application_id'          => $appId,
+    'job_title'               => 'Principal Architect',
+    'department'              => 'Engineering',
+    'annual_ctc'              => 3500000.00,
+    'fixed_salary'            => 3000000.00,
+    'variable_pay'            => 350000.00,
+    'joining_bonus'           => 150000.00,
+    'proposed_joining_date'   => date('Y-m-d', strtotime('+45 days')),
+    'offer_expiry_date'       => date('Y-m-d', strtotime('+10 days'))
+], 1);
+
+assertCustom($offerOver['is_over_budget'] === true, "Over-budget offer triggers is_over_budget = true flag");
+assertCustom($offerOver['steps_count'] === 3, "Over-budget offer escalates to 3 approval steps including Executive/CEO");
+$overOfferId = (int)$offerOver['offer_id'];
+
+// Test 20.4: Multi-Tier Approval Chain Actioning
+// Step 1: Department Head (Manager)
+$step1Res = $offerApprovalService->actionApproval($mockDb, $overOfferId, 2, 'manager', 'approved', 'Candidate has proven mastery.');
+assertCustom($step1Res['success'] === true, "Step 1 (Department Head) actioned successfully");
+assertCustom($step1Res['all_approved'] === false, "Offer remains pending while subsequent steps remain");
+
+// Unauthorized role check: Sales person trying to action HR Step 2
+$salesBlocked = false;
+try {
+    $offerApprovalService->actionApproval($mockDb, $overOfferId, 999, 'sales_person', 'approved');
+} catch (RuntimeException $e) {
+    $salesBlocked = true;
+}
+assertCustom($salesBlocked, "Unauthorized role actioning approval step throws RuntimeException");
+
+// Step 2: HR Manager
+$step2Res = $offerApprovalService->actionApproval($mockDb, $overOfferId, 1, 'hr', 'approved', 'Compensation aligns with grade scale.');
+assertCustom($step2Res['success'] === true, "Step 2 (HR Manager) actioned successfully");
+assertCustom($step2Res['all_approved'] === false, "Offer remains pending for Step 3 executive signoff");
+
+// Step 3: CEO / Finance
+$step3Res = $offerApprovalService->actionApproval($mockDb, $overOfferId, 1, 'ceo', 'approved', 'Executive approval granted for Q4 expansion.');
+assertCustom($step3Res['success'] === true, "Step 3 (CEO) actioned successfully");
+assertCustom($step3Res['all_approved'] === true, "All offer approval steps completed");
+assertCustom($step3Res['offer_status'] === 'approved', "Offer status updated to 'approved'");
+
+// Verify application stage moved to 'offer_approved'
+$stmtAppOffAppr = $mockDb->prepare("SELECT current_stage FROM recruitment_applications WHERE application_id = :id");
+$stmtAppOffAppr->execute([':id' => $appId]);
+assertCustom($stmtAppOffAppr->fetchColumn() === 'offer_approved', "Application stage auto-advanced to 'offer_approved'");
+
+// Test 20.5: Offer Release Gate & Queue Dispatch
+$releaseRes = $offerService->releaseOffer($mockDb, $overOfferId, 1);
+assertCustom($releaseRes['success'] === true, "Approved offer successfully released");
+assertCustom($releaseRes['status'] === 'released', "Offer status updated to 'released'");
+
+// Verify candidate notification in recruitment_queue
+$stmtOffQ = $mockDb->query("SELECT * FROM recruitment_queue WHERE job_type = 'offer_released' ORDER BY queue_id DESC LIMIT 1");
+$offJob = $stmtOffQ->fetch(PDO::FETCH_ASSOC);
+assertCustom(!empty($offJob), "Candidate offer release email job enqueued in recruitment_queue");
+
+// Test 20.6: Candidate Acceptance & Rejection
+// Release and Decline Aarav's offer
+// First approve steps 1 & 2 for Aarav's offer
+$offerApprovalService->actionApproval($mockDb, (int)$offerWithin['offer_id'], 2, 'manager', 'approved');
+$offerApprovalService->actionApproval($mockDb, (int)$offerWithin['offer_id'], 1, 'hr', 'approved');
+$offerService->releaseOffer($mockDb, (int)$offerWithin['offer_id'], 1);
+
+$declineRes = $offerService->candidateResponse($mockDb, (int)$offerWithin['offer_id'], 'declined', 'Accepted competing offer.');
+assertCustom($declineRes['success'] === true, "Candidate offer decline recorded successfully");
+assertCustom($declineRes['status'] === 'declined', "Offer status set to 'declined'");
+
+// Candidate Priya Sharma accepts her offer
+$acceptRes = $offerService->candidateResponse($mockDb, $overOfferId, 'accepted');
+assertCustom($acceptRes['success'] === true, "Candidate offer acceptance recorded successfully");
+assertCustom($acceptRes['status'] === 'accepted', "Offer status set to 'accepted'");
+
+// Verify application stage moved to 'offer_accepted'
+$stmtAppAcc = $mockDb->prepare("SELECT current_stage FROM recruitment_applications WHERE application_id = :id");
+$stmtAppAcc->execute([':id' => $appId]);
+assertCustom($stmtAppAcc->fetchColumn() === 'offer_accepted', "Application stage auto-advanced to 'offer_accepted'");
+
+// Test 20.7: Salary Confidentiality Protection
+$hrOfferView = $offerService->getOfferById($mockDb, $overOfferId, 'hr');
+assertCustom((float)$hrOfferView['annual_ctc'] === 3500000.00, "HR role retrieves unmasked Annual CTC");
+assertCustom($hrOfferView['is_salary_masked'] === false, "HR offer view is marked as unmasked");
+
+$nonHrOfferView = $offerService->getOfferById($mockDb, $overOfferId, 'team_leader');
+assertCustom($nonHrOfferView['annual_ctc'] === null, "Non-HR role has Annual CTC strictly masked as null");
+assertCustom($nonHrOfferView['fixed_salary'] === null, "Non-HR role has Fixed Base Salary strictly masked as null");
+assertCustom($nonHrOfferView['is_salary_masked'] === true, "Non-HR offer view is marked as masked");
+
+// Test 20.8: Controller Reflection & Routing Verification
+require_once __DIR__ . '/../app/controllers/RecruitmentOfferController.php';
+
+$offControllerReflect = new ReflectionClass('RecruitmentOfferController');
+assertCustom($offControllerReflect->isSubclassOf('Controller'), "RecruitmentOfferController extends core Controller architecture");
+assertCustom($offControllerReflect->hasMethod('index'), "RecruitmentOfferController exposes index() action");
+assertCustom($offControllerReflect->hasMethod('create'), "RecruitmentOfferController exposes create() action");
+assertCustom($offControllerReflect->hasMethod('store'), "RecruitmentOfferController exposes store() action");
+assertCustom($offControllerReflect->hasMethod('show'), "RecruitmentOfferController exposes show() action");
+assertCustom($offControllerReflect->hasMethod('approve'), "RecruitmentOfferController exposes approve() action");
+assertCustom($offControllerReflect->hasMethod('release'), "RecruitmentOfferController exposes release() action");
+assertCustom($offControllerReflect->hasMethod('respond'), "RecruitmentOfferController exposes respond() action");
+
+assertCustom($recControllerReflect->hasMethod('offers'), "RecruitmentController exposes offers() routing");
+
+// Test 20.9: Views Existence & Content Markup
+$offIndexView = __DIR__ . '/../app/views/recruitment/offers/index.php';
+assertCustom(file_exists($offIndexView), "app/views/recruitment/offers/index.php exists");
+$offIndexMarkup = file_get_contents($offIndexView);
+assertCustom(strpos($offIndexMarkup, 'Offer Management & Compensation Approvals') !== false, "Offer index view renders header");
+
+$offCreateView = __DIR__ . '/../app/views/recruitment/offers/create.php';
+assertCustom(file_exists($offCreateView), "app/views/recruitment/offers/create.php exists");
+$offCreateMarkup = file_get_contents($offCreateView);
+assertCustom(strpos($offCreateMarkup, 'Create Job Offer Proposal') !== false, "Offer create view renders header");
+assertCustom(strpos($offCreateMarkup, 'annual_ctc') !== false, "Offer create view defines annual_ctc input");
+
+$offShowView = __DIR__ . '/../app/views/recruitment/offers/show.php';
+assertCustom(file_exists($offShowView), "app/views/recruitment/offers/show.php exists");
+$offShowMarkup = file_get_contents($offShowView);
+assertCustom(strpos($offShowMarkup, 'Approval Chain Progress') !== false, "Offer show view renders approval chain progress");
+assertCustom(strpos($offShowMarkup, 'Official Offer Letter Preview') !== false, "Offer show view renders official letter preview");
+
+
 
 
 
