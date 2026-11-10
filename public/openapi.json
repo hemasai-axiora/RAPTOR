@@ -1,0 +1,124 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Raptor Platform Enterprise REST API",
+    "version": "2.0.0",
+    "description": "Enterprise omnichannel CRM, HRMS, and Deliverability-guarded marketing platform API.",
+    "contact": {
+      "name": "Axiora Global Solutions",
+      "url": "https://axioraglobalsolutions.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Active Application Server"
+    }
+  ],
+  "paths": {
+    "/index.php?route=quicksearch/query": {
+      "get": {
+        "summary": "Global Command Palette Quick Search",
+        "description": "Fuzzy searches across staff employees, CRM leads, campaigns, and system navigation.",
+        "tags": ["Platform"],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Search term (min 2 characters)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful search query response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "query": { "type": "string" },
+                    "total": { "type": "integer" },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "category": { "type": "string" },
+                          "title": { "type": "string" },
+                          "subtitle": { "type": "string" },
+                          "url": { "type": "string" },
+                          "icon": { "type": "string" },
+                          "badge": { "type": "string", "nullable": true }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/index.php?route=api/leads": {
+      "post": {
+        "summary": "Capture Inbound Lead",
+        "description": "Ingests a prospective customer into Customer 360, computes initial lead score, and triggers automation journeys.",
+        "tags": ["CRM & Leads"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "first_name": { "type": "string" },
+                  "last_name": { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
+                  "phone": { "type": "string" },
+                  "company_name": { "type": "string" },
+                  "source": { "type": "string", "default": "web" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Lead created or reconciled successfully"
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/index.php?route=campaignwebhooks/handle": {
+      "post": {
+        "summary": "Email Provider Webhook Receiver",
+        "description": "Receives real-time delivery, bounce, complaint, open, and click events from SES, SendGrid, or Mailgun with HMAC signature verification.",
+        "tags": ["Email Marketing"],
+        "responses": {
+          "200": { "description": "Webhook processed" },
+          "401": { "description": "Invalid signature" }
+        }
+      }
+    },
+    "/index.php?route=whatsappwebhook/handle": {
+      "post": {
+        "summary": "Meta WhatsApp Cloud API Webhook",
+        "description": "Handles inbound WhatsApp message status (delivered, read, failed) and incoming customer conversations.",
+        "tags": ["Omnichannel"],
+        "responses": {
+          "200": { "description": "EVENT_RECEIVED" }
+        }
+      }
+    }
+  }
+}

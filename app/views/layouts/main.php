@@ -550,6 +550,224 @@
             justify-content: space-between;
         }
 
+        /* ═══════════════════════════════════════════════════════════
+           RAPTOR NEXT-GEN ADVANCEMENTS: Toasts, Command Palette & Skeletons
+           ═══════════════════════════════════════════════════════════ */
+        #raptor-toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 380px;
+            width: calc(100% - 40px);
+            pointer-events: none;
+        }
+        .raptor-toast {
+            pointer-events: auto;
+            position: relative;
+            background: var(--panel-dark);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--primary);
+            border-radius: 10px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            padding: 12px 16px;
+            overflow: hidden;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transform: translateX(120%);
+            opacity: 0;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        }
+        .raptor-toast.raptor-toast-visible {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        .raptor-toast-success { border-left-color: #10B981 !important; }
+        .raptor-toast-error   { border-left-color: #EF4444 !important; }
+        .raptor-toast-warning { border-left-color: #F59E0B !important; }
+        .raptor-toast-info    { border-left-color: #06B6D4 !important; }
+        .raptor-toast-icon {
+            font-size: 1.15rem;
+            line-height: 1.4;
+        }
+        .raptor-toast-content {
+            flex-grow: 1;
+            min-width: 0;
+        }
+        .raptor-toast-title {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        .raptor-toast-msg {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.35;
+            word-break: break-word;
+        }
+        .raptor-toast-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0 4px;
+            font-size: 0.85rem;
+            line-height: 1;
+            transition: color 0.15s ease;
+        }
+        .raptor-toast-close:hover { color: var(--text-primary); }
+        .raptor-toast-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: rgba(37, 99, 235, 0.3);
+            width: 100%;
+            transform-origin: left;
+        }
+
+        /* Command Palette Backdrop & Modal */
+        #raptor-cmd-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 10500;
+            display: none;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 10vh;
+            padding-left: 1rem;
+            padding-right: 1rem;
+            opacity: 0;
+            transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #raptor-cmd-backdrop.cmd-active {
+            display: flex;
+            opacity: 1;
+        }
+        #raptor-cmd-card {
+            background: var(--panel-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+            width: 100%;
+            max-width: 620px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            max-height: 75vh;
+            transform: scale(0.96) translateY(-10px);
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #raptor-cmd-backdrop.cmd-active #raptor-cmd-card {
+            transform: scale(1) translateY(0);
+        }
+        .raptor-cmd-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--surface-soft);
+        }
+        .raptor-cmd-input {
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            width: 100%;
+            font-family: inherit;
+        }
+        .raptor-cmd-body {
+            overflow-y: auto;
+            padding: 8px;
+            max-height: 55vh;
+        }
+        .raptor-cmd-group-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            padding: 6px 10px 4px;
+        }
+        .raptor-cmd-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            color: var(--text-primary);
+            transition: all 0.15s ease;
+        }
+        .raptor-cmd-item:hover, .raptor-cmd-item.cmd-selected {
+            background-color: var(--primary-soft);
+            color: var(--primary) !important;
+        }
+        .raptor-cmd-item.cmd-selected .raptor-cmd-item-icon {
+            color: var(--primary) !important;
+            transform: scale(1.1);
+        }
+        .raptor-cmd-item-icon {
+            font-size: 0.95rem;
+            width: 20px;
+            text-align: center;
+            color: var(--text-secondary);
+            transition: transform 0.15s ease;
+        }
+        .raptor-cmd-item-info {
+            flex-grow: 1;
+            min-width: 0;
+        }
+        .raptor-cmd-item-title {
+            font-size: 0.85rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .raptor-cmd-item-sub {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .raptor-cmd-footer {
+            padding: 8px 16px;
+            border-top: 1px solid var(--border-color);
+            background: var(--surface-soft);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+
+        /* Skeleton shimmer loader */
+        .raptor-skeleton {
+            background: linear-gradient(90deg, var(--surface-soft) 25%, var(--surface-muted) 50%, var(--surface-soft) 75%);
+            background-size: 200% 100%;
+            animation: raptorSkeletonShimmer 1.5s infinite linear;
+            border-radius: 6px;
+            display: inline-block;
+        }
+        @keyframes raptorSkeletonShimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
         /* Theme-aware Bootstrap utility remap.
            Existing views used dark utility classes heavily; these semantic
            overrides make the whole frontend follow the white/blue theme while
@@ -1578,6 +1796,18 @@
                 </div>
 
                 <div class="topbar-right d-flex align-items-center gap-2">
+                    <!-- Global Command Palette Trigger (Ctrl + K) -->
+                    <button type="button" class="btn btn-sm d-flex align-items-center gap-2 px-2.5 py-1 rounded-3 shadow-none border" 
+                            id="raptor-cmd-trigger" 
+                            style="background: var(--surface-soft); border-color: var(--border-color) !important; color: var(--text-secondary); font-size: 0.8rem; cursor: pointer; transition: all 0.2s ease;"
+                            title="Quick Search & Actions (Ctrl + K)">
+                        <i class="fa-solid fa-magnifying-glass text-primary" style="font-size: 0.82rem;"></i>
+                        <span class="d-none d-md-inline fw-normal">Quick Search...</span>
+                        <span class="d-none d-sm-inline-flex align-items-center gap-1 ms-1 px-1.5 py-0.5 rounded text-muted fw-semibold" style="font-size: 0.65rem; background: var(--surface-muted); border: 1px solid var(--border-color); letter-spacing: 0.5px;">
+                            <span>Ctrl</span> K
+                        </span>
+                    </button>
+
                     <!-- Global Filters -->
                     <select class="filter-select d-none d-lg-block" id="client-selector">
                         <option value="all">All Clients</option>
@@ -2184,6 +2414,355 @@
             // Initial check
             checkSessionStatus();
         });
+    })();
+    </script>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         RAPTOR NEXT-GEN ADVANCEMENTS: Toast Container & Command Palette
+         ═══════════════════════════════════════════════════════════════ -->
+    <div id="raptor-toast-container"></div>
+
+    <div id="raptor-cmd-backdrop" role="dialog" aria-modal="true" aria-label="Command Palette">
+        <div id="raptor-cmd-card">
+            <div class="raptor-cmd-header">
+                <i class="fa-solid fa-magnifying-glass text-primary" style="font-size: 1rem;"></i>
+                <input type="text" id="raptor-cmd-search-input" class="raptor-cmd-input" placeholder="Type a command, page, employee, lead or campaign..." autocomplete="off" spellcheck="false">
+                <kbd class="px-2 py-0.5 rounded text-muted fw-semibold" style="font-size: 0.65rem; background: var(--surface-muted); border: 1px solid var(--border-color);">ESC</kbd>
+            </div>
+            <div id="raptor-cmd-results" class="raptor-cmd-body">
+                <!-- Dynamically rendered by JS -->
+            </div>
+            <div class="raptor-cmd-footer">
+                <div class="d-flex align-items-center gap-3">
+                    <span><kbd class="px-1 text-muted" style="background: var(--surface-muted); border: 1px solid var(--border-color);">↑</kbd> <kbd class="px-1 text-muted" style="background: var(--surface-muted); border: 1px solid var(--border-color);">↓</kbd> Navigate</span>
+                    <span><kbd class="px-1 text-muted" style="background: var(--surface-muted); border: 1px solid var(--border-color);">↵</kbd> Select</span>
+                    <span><kbd class="px-1 text-muted" style="background: var(--surface-muted); border: 1px solid var(--border-color);">ESC</kbd> Dismiss</span>
+                </div>
+                <div class="fw-semibold text-primary" style="font-size: 0.7rem; letter-spacing: 0.5px;">RAPTOR ENTERPRISE</div>
+            </div>
+        </div>
+    </div>
+
+    <?php
+    $initialToasts = [];
+    $flashKeys = [
+        'flash_success'     => 'success',
+        'flash_error'       => 'error',
+        'flash_warning'     => 'warning',
+        'flash_info'        => 'info',
+        'user_success'      => 'success',
+        'user_error'        => 'error',
+        'success'           => 'success',
+        'error'             => 'error',
+        'attendance_notice' => 'info',
+    ];
+    foreach ($flashKeys as $sessionKey => $toastType) {
+        if (!empty($_SESSION[$sessionKey])) {
+            $initialToasts[] = [
+                'type'    => $toastType,
+                'message' => (string)$_SESSION[$sessionKey],
+                'title'   => ucfirst($toastType)
+            ];
+            unset($_SESSION[$sessionKey]);
+        }
+    }
+    ?>
+
+    <script>
+    (function() {
+        // ═══════════════════════════════════════════════════════════════
+        // RAPTOR ADVANCED TOAST SYSTEM
+        // ═══════════════════════════════════════════════════════════════
+        const toastContainer = document.getElementById('raptor-toast-container');
+
+        // Web Audio Synthesizer for subtle micro-chimes (zero network latency)
+        function playChime(type) {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                const ctx = new AudioCtx();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                gain.gain.setValueAtTime(0.035, ctx.currentTime);
+                
+                if (type === 'success') {
+                    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(880.00, ctx.currentTime + 0.12);
+                } else if (type === 'error') {
+                    osc.frequency.setValueAtTime(329.63, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(220.00, ctx.currentTime + 0.15);
+                } else {
+                    osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+                }
+                
+                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.22);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.23);
+            } catch (e) {}
+        }
+
+        window.RaptorToast = {
+            show: function(opts) {
+                if (!toastContainer) return;
+                const type = opts.type || 'info';
+                const message = opts.message || '';
+                const title = opts.title || (type.charAt(0).toUpperCase() + type.slice(1));
+                const duration = opts.duration || 4500;
+
+                const iconMap = {
+                    success: 'fa-solid fa-circle-check text-success',
+                    error: 'fa-solid fa-circle-exclamation text-danger',
+                    warning: 'fa-solid fa-triangle-exclamation text-warning',
+                    info: 'fa-solid fa-circle-info text-info'
+                };
+
+                const toast = document.createElement('div');
+                toast.className = `raptor-toast raptor-toast-${type}`;
+                toast.innerHTML = `
+                    <div class="raptor-toast-icon">
+                        <i class="${iconMap[type] || iconMap.info}"></i>
+                    </div>
+                    <div class="raptor-toast-content">
+                        <div class="raptor-toast-title">${$('<div>').text(title).html()}</div>
+                        <div class="raptor-toast-msg">${$('<div>').text(message).html()}</div>
+                    </div>
+                    <button type="button" class="raptor-toast-close" aria-label="Close">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    <div class="raptor-toast-progress" style="transition: transform ${duration}ms linear; transform: scaleX(1);"></div>
+                `;
+
+                toastContainer.appendChild(toast);
+
+                requestAnimationFrame(() => {
+                    toast.classList.add('raptor-toast-visible');
+                    playChime(type);
+                    const progress = toast.querySelector('.raptor-toast-progress');
+                    if (progress) {
+                        requestAnimationFrame(() => {
+                            progress.style.transform = 'scaleX(0)';
+                        });
+                    }
+                });
+
+                let dismissed = false;
+                const dismiss = function() {
+                    if (dismissed) return;
+                    dismissed = true;
+                    toast.classList.remove('raptor-toast-visible');
+                    setTimeout(() => {
+                        if (toast.parentNode) toast.parentNode.removeChild(toast);
+                    }, 300);
+                };
+
+                const timer = setTimeout(dismiss, duration);
+
+                toast.querySelector('.raptor-toast-close').addEventListener('click', function() {
+                    clearTimeout(timer);
+                    dismiss();
+                });
+            },
+            success: function(msg, title) { this.show({ type: 'success', message: msg, title: title || 'Success' }); },
+            error: function(msg, title) { this.show({ type: 'error', message: msg, title: title || 'Notice' }); },
+            warning: function(msg, title) { this.show({ type: 'warning', message: msg, title: title || 'Warning' }); },
+            info: function(msg, title) { this.show({ type: 'info', message: msg, title: title || 'Info' }); }
+        };
+
+        // Auto-display initial server flash toasts
+        const initialToasts = <?php echo json_encode($initialToasts ?? []); ?>;
+        if (Array.isArray(initialToasts) && initialToasts.length > 0) {
+            $(function() {
+                initialToasts.forEach((t, i) => {
+                    setTimeout(() => RaptorToast.show(t), i * 250);
+                });
+            });
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // RAPTOR COMMAND PALETTE (Ctrl + K / Cmd + K)
+        // ═══════════════════════════════════════════════════════════════
+        const cmdBackdrop = document.getElementById('raptor-cmd-backdrop');
+        const cmdInput = document.getElementById('raptor-cmd-search-input');
+        const cmdResults = document.getElementById('raptor-cmd-results');
+        const cmdTrigger = document.getElementById('raptor-cmd-trigger');
+
+        let selectedIndex = 0;
+        let currentItems = [];
+        let searchDebounce = null;
+
+        function openPalette() {
+            if (!cmdBackdrop) return;
+            cmdBackdrop.style.display = 'flex';
+            requestAnimationFrame(() => {
+                cmdBackdrop.classList.add('cmd-active');
+                if (cmdInput) {
+                    cmdInput.value = '';
+                    cmdInput.focus();
+                }
+                fetchSuggestions('');
+            });
+        }
+
+        function closePalette() {
+            if (!cmdBackdrop) return;
+            cmdBackdrop.classList.remove('cmd-active');
+            setTimeout(() => {
+                cmdBackdrop.style.display = 'none';
+            }, 200);
+        }
+
+        function fetchSuggestions(query) {
+            if (cmdResults) {
+                cmdResults.innerHTML = `
+                    <div class="p-3 text-center text-muted">
+                        <i class="fa-solid fa-spinner fa-spin me-2"></i>Searching...
+                    </div>
+                `;
+            }
+
+            fetch('index.php?route=quicksearch/query&q=' + encodeURIComponent(query), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data || !data.results) return;
+                renderResults(data.results);
+            })
+            .catch(() => {
+                if (cmdResults) {
+                    cmdResults.innerHTML = '<div class="p-3 text-center text-muted small">No results found.</div>';
+                }
+            });
+        }
+
+        function renderResults(items) {
+            currentItems = items;
+            selectedIndex = 0;
+            if (!cmdResults) return;
+
+            if (items.length === 0) {
+                cmdResults.innerHTML = `
+                    <div class="p-4 text-center text-muted">
+                        <i class="fa-solid fa-magnifying-glass mb-2" style="font-size: 1.5rem; opacity: 0.5;"></i>
+                        <div class="small">No matching records found. Try another term.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const groups = {};
+            items.forEach((item, idx) => {
+                const cat = item.category || 'General';
+                if (!groups[cat]) groups[cat] = [];
+                groups[cat].push({ item, idx });
+            });
+
+            let html = '';
+            for (const cat in groups) {
+                html += `<div class="raptor-cmd-group-title">${cat}</div>`;
+                groups[cat].forEach(entry => {
+                    const item = entry.item;
+                    const idx = entry.idx;
+                    const badgeHtml = item.badge ? `<span class="badge bg-secondary-subtle ms-2" style="font-size: 0.65rem;">${item.badge}</span>` : '';
+                    html += `
+                        <div class="raptor-cmd-item ${idx === 0 ? 'cmd-selected' : ''}" data-index="${idx}" data-url="${item.url}">
+                            <div class="raptor-cmd-item-icon">
+                                <i class="fa-solid ${item.icon || 'fa-arrow-right'}"></i>
+                            </div>
+                            <div class="raptor-cmd-item-info">
+                                <div class="raptor-cmd-item-title">${$('<div>').text(item.title).html()}</div>
+                                ${item.subtitle ? `<div class="raptor-cmd-item-sub">${$('<div>').text(item.subtitle).html()}</div>` : ''}
+                            </div>
+                            <div>${badgeHtml}</div>
+                        </div>
+                    `;
+                });
+            }
+
+            cmdResults.innerHTML = html;
+
+            cmdResults.querySelectorAll('.raptor-cmd-item').forEach(el => {
+                el.addEventListener('click', function() {
+                    const url = this.getAttribute('data-url');
+                    if (url) window.location.href = url;
+                });
+                el.addEventListener('mouseenter', function() {
+                    const idx = parseInt(this.getAttribute('data-index'), 10);
+                    highlightItem(idx);
+                });
+            });
+        }
+
+        function highlightItem(idx) {
+            selectedIndex = idx;
+            const allItems = cmdResults ? cmdResults.querySelectorAll('.raptor-cmd-item') : [];
+            allItems.forEach((el, i) => {
+                if (i === idx) {
+                    el.classList.add('cmd-selected');
+                    el.scrollIntoView({ block: 'nearest' });
+                } else {
+                    el.classList.remove('cmd-selected');
+                }
+            });
+        }
+
+        document.addEventListener('keydown', function(e) {
+            // Ctrl + K or Cmd + K
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                if (cmdBackdrop && cmdBackdrop.classList.contains('cmd-active')) {
+                    closePalette();
+                } else {
+                    openPalette();
+                }
+            }
+            
+            // Escape closes
+            if (e.key === 'Escape' && cmdBackdrop && cmdBackdrop.classList.contains('cmd-active')) {
+                closePalette();
+            }
+        });
+
+        if (cmdTrigger) {
+            cmdTrigger.addEventListener('click', openPalette);
+        }
+
+        if (cmdBackdrop) {
+            cmdBackdrop.addEventListener('click', function(e) {
+                if (e.target === cmdBackdrop) closePalette();
+            });
+        }
+
+        if (cmdInput) {
+            cmdInput.addEventListener('input', function() {
+                clearTimeout(searchDebounce);
+                const val = this.value.trim();
+                searchDebounce = setTimeout(() => {
+                    fetchSuggestions(val);
+                }, 180);
+            });
+
+            cmdInput.addEventListener('keydown', function(e) {
+                if (!currentItems || currentItems.length === 0) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    const next = (selectedIndex + 1) % currentItems.length;
+                    highlightItem(next);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const prev = (selectedIndex - 1 + currentItems.length) % currentItems.length;
+                    highlightItem(prev);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (currentItems[selectedIndex] && currentItems[selectedIndex].url) {
+                        window.location.href = currentItems[selectedIndex].url;
+                    }
+                }
+            });
+        }
     })();
     </script>
 </body>

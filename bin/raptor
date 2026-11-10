@@ -1,0 +1,255 @@
+#!/usr/bin/env php
+<?php
+/**
+ * Raptor Unified CLI Console Tool
+ * -------------------------------------------------------------------------
+ * Enterprise Command Line Interface for Raptor CRM & HRMS Platform.
+ * Unifies test execution, database migrations, queue management, and health telemetry.
+ *
+ * Usage:
+ *   php bin/raptor list
+ *   php bin/raptor test:run [suite]
+ *   php bin/raptor migrate:status
+ *   php bin/raptor migrate:run
+ *   php bin/raptor queue:status
+ *   php bin/raptor health:check
+ */
+
+declare(strict_types=1);
+
+if (php_sapi_name() !== 'cli') {
+    die("Error: Raptor CLI must be run from command line.\n");
+}
+
+$root = dirname(__DIR__);
+require_once $root . '/app/config/config.php';
+require_once $root . '/app/core/Database.php';
+
+// ANSI Terminal Colors
+class Ansi {
+    public const RESET   = "\033[0m";
+    public const BOLD    = "\033[1m";
+    public const DIM     = "\033[2m";
+    public const RED     = "\033[31m";
+    public const GREEN   = "\033[32m";
+    public const YELLOW  = "\033[33m";
+    public const BLUE    = "\033[34m";
+    public const CYAN    = "\033[36m";
+    public const WHITE   = "\033[37m";
+    public const BG_BLUE = "\033[44m";
+
+    public static function c(string $text, string $color): string {
+        // Windows CMD support detection
+        if (DIRECTORY_SEPARATOR === '\\' && !getenv('ANSICON') && !getenv('WT_SESSION') && getenv('TERM') !== 'xterm') {
+            return $text;
+        }
+        return $color . $text . self::RESET;
+    }
+}
+
+$argv = $_SERVER['argv'] ?? [];
+$command = $argv[1] ?? 'list';
+$param = $argv[2] ?? null;
+
+echo Ansi::c("\n  ____      _    ____ _____ ___  ____  \n", Ansi::CYAN);
+echo Ansi::c(" |  _ \\    / \\  |  _ \\_   _/ _ \\|  _ \\ \n", Ansi::CYAN);
+echo Ansi::c(" | |_) |  / _ \\ | |_) || || | | | |_) |\n", Ansi::CYAN);
+echo Ansi::c(" |  _ <  / ___ \\|  __/ | || |_| |  _ < \n", Ansi::CYAN);
+echo Ansi::c(" |_| \\_\\/_/   \\_\\_|    |_| \\___/|_| \\_\\\n\n", Ansi::CYAN);
+echo Ansi::c(" Raptor Platform CLI Engine v2.0-PRO (PHP " . PHP_VERSION . ")\n", Ansi::DIM);
+echo Ansi::c(" ─────────────────────────────────────────────────────────────\n\n", Ansi::DIM);
+
+switch ($command) {
+    case 'list':
+    case 'help':
+    case '--help':
+    case '-h':
+        renderHelp();
+        break;
+
+    case 'test:run':
+    case 'test':
+        runTests($root, $param);
+        break;
+
+    case 'migrate:status':
+        runMigrationStatus($root);
+        break;
+
+    case 'migrate:run':
+    case 'migrate':
+        runMigrations($root);
+        break;
+
+    case 'queue:status':
+        showQueueStatus();
+        break;
+
+    case 'health:check':
+    case 'health':
+        runHealthCheck($root);
+        break;
+
+    default:
+        echo Ansi::c(" [ERROR] Unknown command '{$command}'.\n\n", Ansi::RED);
+        renderHelp();
+        exit(1);
+}
+
+function renderHelp(): void {
+    echo Ansi::c(" AVAILABLE COMMANDS:\n\n", Ansi::BOLD . Ansi::WHITE);
+    
+    $commands = [
+        ['test:run [suite]', 'Run automated test suites (or full master test pack)'],
+        ['migrate:status',   'Inspect pending vs applied database migrations'],
+        ['migrate:run',      'Apply all outstanding database migrations'],
+        ['queue:status',     'Inspect real-time telemetry for email, WhatsApp & journey queues'],
+        ['health:check',     'Perform runtime diagnostic (PHP, DB, directories, permissions)'],
+        ['list',             'Display this command documentation menu']
+    ];
+
+    foreach ($commands as [$cmd, $desc]) {
+        echo "  " . Ansi::c(str_pad($cmd, 22), Ansi::GREEN) . Ansi::c($desc, Ansi::DIM) . "\n";
+    }
+    echo "\n";
+}
+
+function runTests(string $root, ?string $suite): void {
+    $runner = $root . '/bin/run_all_campaign_tests.php';
+    if (!file_exists($runner)) {
+        echo Ansi::c(" [ERROR] Test runner not found at {$runner}\n", Ansi::RED);
+        exit(1);
+    }
+    echo Ansi::c(" [INFO] Launching Raptor Test Suite...\n\n", Ansi::BLUE);
+    passthru(PHP_BINARY . ' ' . escapeshellarg($runner));
+}
+
+function runMigrationStatus(string $root): void {
+    $migrator = $root . '/bin/migrate.php';
+    if (!file_exists($migrator)) {
+        echo Ansi::c(" [ERROR] Migrator script not found at {$migrator}\n", Ansi::RED);
+        exit(1);
+    }
+    echo Ansi::c(" [INFO] Querying Migration Schema Registry...\n\n", Ansi::BLUE);
+    passthru(PHP_BINARY . ' ' . escapeshellarg($migrator) . ' --status');
+}
+
+function runMigrations(string $root): void {
+    $migrator = $root . '/bin/migrate.php';
+    if (!file_exists($migrator)) {
+        echo Ansi::c(" [ERROR] Migrator script not found at {$migrator}\n", Ansi::RED);
+        exit(1);
+    }
+    echo Ansi::c(" [INFO] Executing Pending Database Migrations...\n\n", Ansi::BLUE);
+    passthru(PHP_BINARY . ' ' . escapeshellarg($migrator));
+}
+
+function showQueueStatus(): void {
+    echo Ansi::c(" [INFO] Fetching Real-Time Queue Status...\n\n", Ansi::BLUE);
+    try {
+        $db = Database::getInstance()->getConnection();
+
+        // 1. Marketing / Email Queue
+        try {
+            $stmt = $db->query("
+                SELECT status, COUNT(*) AS cnt 
+                FROM marketing_queue 
+                GROUP BY status
+            ");
+            $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_KEY_PAIR) : [];
+            echo Ansi::c(" Email Broadcast Queue (marketing_queue):\n", Ansi::BOLD);
+            echo "   • Pending:    " . ($rows['pending'] ?? 0) . "\n";
+            echo "   • Processing: " . ($rows['processing'] ?? 0) . "\n";
+            echo "   • Sent:       " . ($rows['sent'] ?? 0) . "\n";
+            echo "   • Failed:     " . ($rows['failed'] ?? 0) . "\n\n";
+        } catch (Throwable $e) {
+            echo Ansi::c("   marketing_queue table not initialized or empty.\n\n", Ansi::DIM);
+        }
+
+        // 2. WhatsApp Queue
+        try {
+            $stmtWa = $db->query("
+                SELECT status, COUNT(*) AS cnt 
+                FROM whatsapp_messages 
+                GROUP BY status
+            ");
+            $waRows = $stmtWa ? $stmtWa->fetchAll(PDO::FETCH_KEY_PAIR) : [];
+            echo Ansi::c(" WhatsApp Cloud API Queue (whatsapp_messages):\n", Ansi::BOLD);
+            echo "   • Queued:     " . ($waRows['queued'] ?? 0) . "\n";
+            echo "   • Sent:       " . ($waRows['sent'] ?? 0) . "\n";
+            echo "   • Delivered:  " . ($waRows['delivered'] ?? 0) . "\n";
+            echo "   • Failed:     " . ($waRows['failed'] ?? 0) . "\n\n";
+        } catch (Throwable $e) {
+            echo Ansi::c("   whatsapp_messages table not initialized or empty.\n\n", Ansi::DIM);
+        }
+
+        echo Ansi::c(" [SUCCESS] Queue telemetry inspection completed.\n\n", Ansi::GREEN);
+    } catch (Throwable $e) {
+        echo Ansi::c(" [ERROR] Database connection failed: " . $e->getMessage() . "\n\n", Ansi::RED);
+    }
+}
+
+function runHealthCheck(string $root): void {
+    echo Ansi::c(" SYSTEM HEALTH & DIAGNOSTIC INSPECTION\n", Ansi::BOLD . Ansi::WHITE);
+    echo " ─────────────────────────────────────────────────────────────\n";
+
+    $checks = [];
+
+    // 1. PHP Version
+    $phpVer = PHP_VERSION;
+    $phpPass = version_compare($phpVer, '8.2.0', '>=');
+    $checks[] = [
+        'name'   => 'PHP Runtime Version',
+        'status' => $phpPass ? 'PASS' : 'WARN',
+        'detail' => $phpVer . ($phpPass ? ' (Meets >=8.2 standard)' : ' (Recommend >=8.2)')
+    ];
+
+    // 2. Required Extensions
+    $exts = ['pdo', 'pdo_mysql', 'curl', 'json', 'mbstring', 'openssl'];
+    foreach ($exts as $ext) {
+        $loaded = extension_loaded($ext);
+        $checks[] = [
+            'name'   => "PHP Extension: {$ext}",
+            'status' => $loaded ? 'PASS' : 'FAIL',
+            'detail' => $loaded ? 'Installed & Active' : 'Missing extension'
+        ];
+    }
+
+    // 3. Writable Directories
+    $dirs = ['/public', '/migrations', '/bin'];
+    foreach ($dirs as $dir) {
+        $full = $root . $dir;
+        $isWritable = is_writable($full);
+        $checks[] = [
+            'name'   => "Directory Writable: {$dir}",
+            'status' => $isWritable ? 'PASS' : 'WARN',
+            'detail' => $isWritable ? 'Writable' : 'Read-only'
+        ];
+    }
+
+    // 4. Database Connection
+    $dbPass = false;
+    $dbDetail = '';
+    try {
+        $db = Database::getInstance()->getConnection();
+        $db->query('SELECT 1');
+        $dbPass = true;
+        $dbDetail = 'Connected successfully';
+    } catch (Throwable $e) {
+        $dbDetail = $e->getMessage();
+    }
+    $checks[] = [
+        'name'   => 'Database Connectivity (PDO)',
+        'status' => $dbPass ? 'PASS' : 'WARN',
+        'detail' => $dbDetail
+    ];
+
+    foreach ($checks as $c) {
+        $badge = $c['status'] === 'PASS' 
+            ? Ansi::c(' [PASS] ', Ansi::GREEN)
+            : ($c['status'] === 'WARN' ? Ansi::c(' [WARN] ', Ansi::YELLOW) : Ansi::c(' [FAIL] ', Ansi::RED));
+        echo str_pad($c['name'], 34) . $badge . " " . Ansi::c($c['detail'], Ansi::DIM) . "\n";
+    }
+
+    echo "\n" . Ansi::c(" Diagnostic complete.\n\n", Ansi::GREEN);
+}
