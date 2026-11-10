@@ -638,6 +638,117 @@ assertCustom(strpos($dashContent, 'Active Requisitions') !== false, "Recruitment
 assertCustom(strpos($dashContent, 'Talent Pipeline Funnel') !== false, "Recruitment dashboard renders visual Pipeline Funnel");
 assertCustom(strpos($dashContent, 'Upcoming Interviews') !== false, "Recruitment dashboard renders Upcoming Interviews operational list");
 
+// ── 15. Sprint 2 (Raptor v2.3): Requisition Management & Approval Workflows ──
+echo "\n15. Testing Sprint 2 Requisition Management & Multi-Level Approvals...\n";
+
+// Test 15.1: RequisitionService Architecture & Code Generation
+require_once __DIR__ . '/../app/services/recruitment/RequisitionApprovalService.php';
+require_once __DIR__ . '/../app/services/recruitment/RequisitionService.php';
+$reqService = new RequisitionService();
+$generatedCode = $reqService->generateRequisitionCode($mockDb);
+assertCustom((bool)preg_match('/^REQ-\d{4}-\d{4}$/', $generatedCode), "RequisitionService generates standard format code ({$generatedCode})");
+
+// Test 15.2: Requisition Creation (Draft State)
+$createResult = $reqService->createRequisition($mockDb, [
+    'title'                  => 'Senior Staff Backend Architect',
+    'department'             => 'Engineering',
+    'vacancies'              => 2,
+    'employment_type'        => 'full_time',
+    'workplace_arrangement'  => 'hybrid',
+    'hiring_priority'        => 'urgent',
+    'min_experience_years'   => 7.0,
+    'min_salary'             => 2400000.00,
+    'max_salary'             => 3200000.00,
+    'is_salary_confidential' => 1,
+    'job_description'        => 'Lead distributed enterprise backend architecture in PHP 8.2 and high-throughput MySQL.',
+    'responsibilities'       => '• Design fault-tolerant queues\n• Lead code reviews\n• Mentor engineers',
+    'required_skills'        => 'PHP 8.2, MySQL, Queue Daemons, Redis, SOLID, PSR'
+], 1);
+
+assertCustom(!empty($createResult['requisition_id']), "Requisition successfully persisted to database with auto-generated ID");
+assertCustom($createResult['status'] === 'draft', "Newly created requisition defaults to 'draft' status when not submitted immediately");
+$testReqId = (int) $createResult['requisition_id'];
+
+// Test 15.3: Requisition Submission & Multi-Level Approval Chain Initialization
+$subResult = $reqService->submitForApproval($mockDb, $testReqId, 1);
+assertCustom($subResult['status'] === 'pending_approval', "Submitting draft requisition updates status to 'pending_approval'");
+
+$apprHistory = (new RequisitionApprovalService())->getApprovalHistory($mockDb, $testReqId);
+assertCustom(count($apprHistory) >= 2, "Requisition approval chain initialized with multi-level steps (found: " . count($apprHistory) . " steps)");
+assertCustom($apprHistory[0]['approver_role'] === 'department_head', "Step 1 of approval chain requires 'department_head'");
+assertCustom($apprHistory[1]['approver_role'] === 'hr_manager', "Step 2 of approval chain requires 'hr_manager'");
+
+// Test 15.4: Requisition Approval Step 1 Execution (Department Head Approval)
+$apprService = new RequisitionApprovalService();
+$step1Action = $apprService->actionApproval(
+    $mockDb,
+    $testReqId,
+    1,
+    'manager',
+    'approved',
+    'Engineering headcount approved within quarterly budget plan.'
+);
+assertCustom($step1Action['actioned_step'] === 1, "Approval Step 1 actioned successfully by authorized manager role");
+assertCustom($step1Action['requisition_status'] === 'pending_approval', "Requisition status remains 'pending_approval' while subsequent approval steps remain");
+
+// Test 15.5: Requisition Approval Step 2 Execution (HR Manager Approval & Final Sign-Off)
+$step2Action = $apprService->actionApproval(
+    $mockDb,
+    $testReqId,
+    2,
+    'hr',
+    'approved',
+    'HR compensation bands and job description verified.'
+);
+assertCustom($step2Action['actioned_step'] === 2, "Approval Step 2 actioned successfully by authorized HR role");
+// Since salary >= 1.5M, step 3 (finance) was added
+if (count($apprHistory) >= 3) {
+    assertCustom($step2Action['requisition_status'] === 'pending_approval', "Requisition with salary > 1.5M awaits executive finance signoff");
+    $step3Action = $apprService->actionApproval($mockDb, $testReqId, 1, 'ceo', 'approved', 'CEO/Finance final authorization granted.');
+    assertCustom($step3Action['requisition_status'] === 'approved', "Requisition status updates to 'approved' upon completion of all approval chain steps");
+} else {
+    assertCustom($step2Action['requisition_status'] === 'approved', "Requisition status updates to 'approved' upon completion of all approval chain steps");
+}
+
+// Test 15.6: Salary Confidentiality Masking Verification
+$reqViewHR = $reqService->getRequisition($mockDb, $testReqId, 2, 'hr');
+assertCustom($reqViewHR['salary_masked'] === false, "HR role can view unmasked salary parameters");
+assertCustom((float)$reqViewHR['max_salary'] === 3200000.00, "HR role retrieves exact compensation parameters");
+
+$reqViewInterviewer = $reqService->getRequisition($mockDb, $testReqId, 99, 'sales_person');
+assertCustom($reqViewInterviewer['salary_masked'] === true, "Non-HR / sales role receives masked salary protection");
+assertCustom($reqViewInterviewer['max_salary'] === null, "Confidential maximum salary field is nullified for non-HR role");
+
+// Test 15.7: RecruitmentRequisitionController Architecture & Reflection
+require_once __DIR__ . '/../app/controllers/RecruitmentRequisitionController.php';
+$reqCtrlReflect = new ReflectionClass('RecruitmentRequisitionController');
+assertCustom($reqCtrlReflect->isSubclassOf('Controller'), "RecruitmentRequisitionController extends core Controller architecture");
+assertCustom($reqCtrlReflect->hasMethod('index'), "RecruitmentRequisitionController exposes index() action");
+assertCustom($reqCtrlReflect->hasMethod('create'), "RecruitmentRequisitionController exposes create() action");
+assertCustom($reqCtrlReflect->hasMethod('store'), "RecruitmentRequisitionController exposes store() action");
+assertCustom($reqCtrlReflect->hasMethod('show'), "RecruitmentRequisitionController exposes show() action");
+assertCustom($reqCtrlReflect->hasMethod('approve'), "RecruitmentRequisitionController exposes approve() action");
+assertCustom($reqCtrlReflect->hasMethod('submit'), "RecruitmentRequisitionController exposes submit() action");
+
+// Test 15.8: Requisition Views Markup Verification
+$reqIndexView = __DIR__ . '/../app/views/recruitment/requisitions/index.php';
+assertCustom(file_exists($reqIndexView), "app/views/recruitment/requisitions/index.php exists");
+$indexMarkup = file_get_contents($reqIndexView);
+assertCustom(strpos($indexMarkup, 'Job Requisitions') !== false, "Requisitions index renders page title");
+assertCustom(strpos($indexMarkup, 'Filter Pills Row') !== false, "Requisitions index integrates status filter pills");
+
+$reqCreateView = __DIR__ . '/../app/views/recruitment/requisitions/create.php';
+assertCustom(file_exists($reqCreateView), "app/views/recruitment/requisitions/create.php exists");
+$createMarkup = file_get_contents($reqCreateView);
+assertCustom(strpos($createMarkup, 'Create Job Requisition') !== false, "Requisitions create wizard renders header");
+assertCustom(strpos($createMarkup, 'templateSelector') !== false, "Requisitions create wizard integrates template autofill dropdown");
+
+$reqDetailView = __DIR__ . '/../app/views/recruitment/requisitions/view.php';
+assertCustom(file_exists($reqDetailView), "app/views/recruitment/requisitions/view.php exists");
+$detailMarkup = file_get_contents($reqDetailView);
+assertCustom(strpos($detailMarkup, 'Approval Workflow Chain') !== false, "Requisition detail view renders approval timeline progress card");
+assertCustom(strpos($detailMarkup, 'approvalModal') !== false, "Requisition detail view integrates formal approval modal dialog");
+
 echo "\n=======================================================\n";
 echo "SUMMARY: {$passed} PASSED, {$failed} FAILED\n";
 echo "=======================================================\n";

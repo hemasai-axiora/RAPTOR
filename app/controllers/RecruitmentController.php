@@ -51,10 +51,12 @@ class RecruitmentController extends Controller {
     }
 
     /**
-     * Requisitions placeholder (delegates to Sprint 2).
+     * Job Requisitions list & management (Sprint 2).
      */
     public function requisitions(): void {
-        $this->redirect('index.php?route=recruitment/dashboard#requisitions');
+        require_once __DIR__ . '/RecruitmentRequisitionController.php';
+        $controller = new RecruitmentRequisitionController();
+        $controller->index();
     }
 
     /**
