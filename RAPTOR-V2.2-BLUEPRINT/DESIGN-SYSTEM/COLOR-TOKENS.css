@@ -1,0 +1,141 @@
+/**
+ * RAPTOR v2.2 Design System — Semantic Color Tokens
+ * -------------------------------------------------------------------------
+ * Centralized design token repository for dark and light theme palettes.
+ * Compliant with WCAG 2.2 Level AA contrast requirements (>= 4.5:1 text contrast).
+ */
+
+:root {
+    /* Brand Foundation */
+    --raptor-brand-blue:       #2563EB;
+    --raptor-brand-indigo:     #4F46E5;
+    --raptor-brand-cyan:       #06B6D4;
+    --raptor-brand-emerald:    #10B981;
+    --raptor-brand-amber:      #F59E0B;
+    --raptor-brand-rose:       #F43F5E;
+
+    /* Spatial & Border Radius Scale */
+    --raptor-radius-xs:        4px;
+    --raptor-radius-sm:        6px;
+    --raptor-radius-md:        8px;
+    --raptor-radius-lg:        12px;
+    --raptor-radius-xl:        16px;
+    --raptor-radius-full:      9999px;
+
+    /* Transition Speeds */
+    --raptor-transition-fast:  120ms ease;
+    --raptor-transition-base:  180ms ease;
+    --raptor-transition-slow:  300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   1. DARK THEME PALETTE (Default Executive Dark)
+   ───────────────────────────────────────────────────────────────────────── */
+:root,
+[data-theme="dark"] {
+    /* Canvas & Surface Layers */
+    --raptor-bg-canvas:        #0B0F19; /* Deep executive midnight */
+    --raptor-bg-subtle:        #111827; /* Table alternating rows / subtle areas */
+    --raptor-surface:          #1E293B; /* Card & container solid surface */
+    --raptor-surface-elevated: #283548; /* Floating dropdowns & popovers */
+    --raptor-surface-hover:    #334155; /* Interactive hover highlight */
+
+    /* Glassmorphism Variables */
+    --raptor-glass-bg:         rgba(30, 41, 59, 0.70);
+    --raptor-glass-modal-bg:   rgba(15, 23, 42, 0.88);
+    --raptor-glass-border:     rgba(255, 255, 255, 0.10);
+
+    /* Text & Content Tokens */
+    --raptor-text-primary:     #F8FAFC; /* Primary high-contrast text (contrast ratio: 14.8:1) */
+    --raptor-text-secondary:   #94A3B8; /* Supporting metadata & labels (contrast ratio: 5.6:1) */
+    --raptor-text-muted:       #64748B; /* Placeholder & disabled text */
+    --raptor-text-inverse:     #0B0F19; /* Text on bright badges */
+
+    /* Borders & Dividers */
+    --raptor-border-subtle:    rgba(255, 255, 255, 0.08);
+    --raptor-border-medium:    rgba(255, 255, 255, 0.15);
+    --raptor-border-focus:     #3B82F6;
+
+    /* Semantic Feedback States */
+    --raptor-primary:          #3B82F6;
+    --raptor-primary-hover:    #2563EB;
+    --raptor-primary-bg:       rgba(59, 130, 246, 0.15);
+
+    --raptor-success:          #10B981;
+    --raptor-success-hover:    #059669;
+    --raptor-success-bg:       rgba(16, 185, 129, 0.15);
+
+    --raptor-warning:          #F59E0B;
+    --raptor-warning-hover:    #D97706;
+    --raptor-warning-bg:       rgba(245, 158, 11, 0.15);
+
+    --raptor-danger:           #EF4444;
+    --raptor-danger-hover:     #DC2626;
+    --raptor-danger-bg:        rgba(239, 68, 68, 0.15);
+
+    --raptor-info:             #06B6D4;
+    --raptor-info-hover:       #0891B2;
+    --raptor-info-bg:          rgba(6, 182, 212, 0.15);
+
+    /* Shadow Scale */
+    --raptor-shadow-sm:        0 1px 2px 0 rgba(0, 0, 0, 0.35);
+    --raptor-shadow-md:        0 4px 6px -1px rgba(0, 0, 0, 0.45), 0 2px 4px -2px rgba(0, 0, 0, 0.45);
+    --raptor-shadow-lg:        0 10px 15px -3px rgba(0, 0, 0, 0.55), 0 4px 6px -4px rgba(0, 0, 0, 0.55);
+    --raptor-shadow-modal:     0 25px 50px -12px rgba(0, 0, 0, 0.75);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   2. LIGHT THEME PALETTE (Executive Daylight Mode)
+   ───────────────────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+    /* Canvas & Surface Layers */
+    --raptor-bg-canvas:        #F8FAFC; /* Clean off-white daylight */
+    --raptor-bg-subtle:        #F1F5F9; /* Table alternating rows / subtle areas */
+    --raptor-surface:          #FFFFFF; /* Pure white solid card surface */
+    --raptor-surface-elevated: #FFFFFF; /* Floating dropdowns & popovers */
+    --raptor-surface-hover:    #E2E8F0; /* Interactive hover highlight */
+
+    /* Glassmorphism Variables */
+    --raptor-glass-bg:         rgba(255, 255, 255, 0.85);
+    --raptor-glass-modal-bg:   rgba(255, 255, 255, 0.95);
+    --raptor-glass-border:     rgba(0, 0, 0, 0.08);
+
+    /* Text & Content Tokens */
+    --raptor-text-primary:     #0F172A; /* Deep navy text (contrast ratio: 15.2:1) */
+    --raptor-text-secondary:   #475569; /* Supporting metadata & labels (contrast ratio: 6.8:1) */
+    --raptor-text-muted:       #94A3B8; /* Placeholder & disabled text */
+    --raptor-text-inverse:     #FFFFFF; /* White text on dark buttons */
+
+    /* Borders & Dividers */
+    --raptor-border-subtle:    rgba(0, 0, 0, 0.08);
+    --raptor-border-medium:    rgba(0, 0, 0, 0.16);
+    --raptor-border-focus:     #2563EB;
+
+    /* Semantic Feedback States */
+    --raptor-primary:          #2563EB;
+    --raptor-primary-hover:    #1D4ED8;
+    --raptor-primary-bg:       #EFF6FF;
+
+    --raptor-success:          #059669;
+    --raptor-success-hover:    #047857;
+    --raptor-success-bg:       #ECFDF5;
+
+    --raptor-warning:          #D97706;
+    --raptor-warning-hover:    #B45309;
+    --raptor-warning-bg:       #FFFBEB;
+
+    --raptor-danger:           #DC2626;
+    --raptor-danger-hover:     #B91C1C;
+    --raptor-danger-bg:        #FEF2F2;
+
+    --raptor-info:             #0891B2;
+    --raptor-info-hover:       #0E7490;
+    --raptor-info-bg:          #ECFEFF;
+
+    /* Shadow Scale */
+    --raptor-shadow-sm:        0 1px 3px 0 rgba(0, 0, 0, 0.10);
+    --raptor-shadow-md:        0 4px 6px -1px rgba(0, 0, 0, 0.10), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+    --raptor-shadow-lg:        0 10px 15px -3px rgba(0, 0, 0, 0.10), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+    --raptor-shadow-modal:     0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.10);
+}
+

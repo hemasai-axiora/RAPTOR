@@ -42,7 +42,20 @@
 
         <h4 class="text-white mb-0">Employee Management</h4>
 
-        <div class="d-flex gap-2 flex-wrap">
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+
+            <!-- View Switcher (Sprint 5 Modernization) -->
+            <div class="btn-group btn-group-sm me-2" role="group" aria-label="View Mode">
+                <button type="button" class="btn btn-outline-light active px-3 py-2" id="btn-view-table" title="Standard Table View">
+                    <i class="fa-solid fa-table me-1"></i>Table View
+                </button>
+                <button type="button" class="btn btn-outline-light px-3 py-2" id="btn-view-cards" title="Visual Employee Directory Cards">
+                    <i class="fa-solid fa-address-card me-1"></i>Directory Cards
+                </button>
+                <a href="index.php?route=hrms/hierarchy" class="btn btn-outline-info px-3 py-2" title="Organization & Team Reporting Hierarchy">
+                    <i class="fa-solid fa-sitemap me-1"></i>Hierarchy Tree
+                </a>
+            </div>
 
             <a href="index.php?route=users/export" class="btn btn-outline-success btn-sm px-3 py-2" style="border-radius: 8px;" title="Download all employee details as CSV">
 
@@ -174,9 +187,10 @@
 
 
 
-    <div class="table-responsive">
+    <div id="users-table-container">
+        <div class="table-responsive">
 
-        <table class="table table-dark table-hover align-middle border-secondary" id="users-table">
+            <table class="table table-dark table-hover align-middle border-secondary" id="users-table">
 
             <thead>
 
@@ -361,6 +375,80 @@
 
         </table>
 
+        </div>
+    </div>
+
+    <!-- Modern Employee Directory Cards Grid View (Sprint 5) -->
+    <div id="users-cards-container" style="display: none;" class="mt-2">
+        <div class="row g-3" id="employee-cards-row">
+            <?php foreach ($users as $user): 
+                $statusClass = (($user->status ?? 'active') === 'active') ? 'bg-success' : 'bg-secondary';
+                $statusText = (($user->status ?? 'active') === 'active') ? 'Active' : 'Inactive';
+                $initials = strtoupper(substr($user->name ?? 'EP', 0, 2));
+                $phone = trim((string)($user->phone_number ?? ''));
+                $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+                $email = trim((string)($user->email ?? ''));
+            ?>
+            <div class="col-xl-3 col-lg-4 col-md-6 emp-card-item" 
+                 data-name="<?php echo strtolower($user->name ?? ''); ?>"
+                 data-code="<?php echo strtolower($user->employee_code ?? ''); ?>"
+                 data-email="<?php echo strtolower($user->email ?? ''); ?>"
+                 data-status="<?php echo $statusText; ?>"
+                 data-location="<?php echo htmlspecialchars($user->work_location ?? 'Office'); ?>"
+                 data-department="<?php echo htmlspecialchars($user->department ?? 'Sales'); ?>"
+                 data-job-title="<?php echo htmlspecialchars($user->job_title ?? ''); ?>">
+                <div class="card h-100 border-0 shadow-sm rounded-3 p-3 text-start position-relative" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); transition: transform 0.2s ease, box-shadow 0.2s ease;">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="position-relative">
+                                <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold" style="width: 44px; height: 44px; font-size: 1rem;">
+                                    <?php echo $initials; ?>
+                                </div>
+                                <span class="position-absolute bottom-0 end-0 rounded-circle <?php echo $statusClass; ?> border border-2 border-dark" style="width: 12px; height: 12px;"></span>
+                            </div>
+                            <div class="overflow-hidden">
+                                <h6 class="fw-bold mb-0 text-truncate">
+                                    <a href="index.php?route=hrms/profile/<?php echo $user->user_id; ?>" class="text-white text-decoration-none">
+                                        <?php echo htmlspecialchars($user->name ?? ''); ?>
+                                    </a>
+                                </h6>
+                                <code class="small text-primary-subtle" style="font-size: 0.72rem;"><?php echo htmlspecialchars($user->employee_code ?? 'EMP'); ?></code>
+                            </div>
+                        </div>
+                        <span class="badge bg-secondary-subtle text-secondary small" style="font-size: 0.65rem;"><?php echo htmlspecialchars($user->department ?? 'General'); ?></span>
+                    </div>
+
+                    <div class="mb-3 small">
+                        <div class="text-light text-truncate mb-1"><i class="fa-solid fa-briefcase text-secondary me-1"></i><?php echo htmlspecialchars($user->job_title ?? 'Employee'); ?></div>
+                        <div class="text-secondary text-truncate"><i class="fa-solid fa-location-dot me-1"></i><?php echo htmlspecialchars($user->work_location ?? 'Office'); ?> &bull; <span class="text-info-emphasis"><?php echo htmlspecialchars($user->role_name ?? 'User'); ?></span></div>
+                    </div>
+
+                    <!-- 1-Click Communication Toolbar -->
+                    <div class="mt-auto pt-2 border-top border-secondary d-flex justify-content-between align-items-center">
+                        <span class="badge <?php echo $statusClass; ?>-subtle text-white small" style="font-size: 0.7rem;"><?php echo $statusText; ?></span>
+                        <div class="d-flex gap-1">
+                            <?php if (!empty($phone)): ?>
+                                <a href="tel:<?php echo htmlspecialchars($phone); ?>" class="btn btn-outline-success btn-sm py-1 px-2" title="Call <?php echo htmlspecialchars($user->name); ?>">
+                                    <i class="fa-solid fa-phone"></i>
+                                </a>
+                                <a href="https://wa.me/<?php echo $cleanPhone; ?>" target="_blank" class="btn btn-outline-success btn-sm py-1 px-2" title="WhatsApp <?php echo htmlspecialchars($user->name); ?>">
+                                    <i class="fa-brands fa-whatsapp"></i>
+                                </a>
+                            <?php endif; ?>
+                            <?php if (!empty($email)): ?>
+                                <a href="mailto:<?php echo htmlspecialchars($email); ?>" class="btn btn-outline-primary btn-sm py-1 px-2" title="Email <?php echo htmlspecialchars($user->name); ?>">
+                                    <i class="fa-solid fa-envelope"></i>
+                                </a>
+                            <?php endif; ?>
+                            <a href="index.php?route=hrms/profile/<?php echo $user->user_id; ?>" class="btn btn-outline-light btn-sm py-1 px-2" title="View Full Profile">
+                                <i class="fa-solid fa-id-card"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
     </div>
 
 </div>
@@ -1336,6 +1424,68 @@
 <script>
 
 $(document).ready(function() {
+
+    // Sprint 5: Directory Cards & Table View Switcher
+    $('#btn-view-table').on('click', function() {
+        $('#btn-view-table').addClass('active').removeClass('btn-outline-light');
+        $('#btn-view-cards').removeClass('active');
+        $('#users-table-container').show();
+        $('#users-cards-container').hide();
+    });
+
+    $('#btn-view-cards').on('click', function() {
+        $('#btn-view-cards').addClass('active');
+        $('#btn-view-table').removeClass('active');
+        $('#users-table-container').hide();
+        $('#users-cards-container').show();
+        filterEmployeeCards();
+    });
+
+    function filterEmployeeCards() {
+        const query = ($('#emp-search-input').val() || '').trim().toLowerCase();
+        const status = ($('#emp-status-filter').val() || '').toLowerCase();
+        const location = ($('#emp-location-filter').val() || '').toLowerCase();
+        const dept = ($('#emp-dept-filter').val() || '').toLowerCase();
+        const title = ($('#emp-title-filter').val() || '').toLowerCase();
+
+        $('.emp-card-item').each(function() {
+            const cardName = $(this).attr('data-name') || '';
+            const cardCode = $(this).attr('data-code') || '';
+            const cardEmail = $(this).attr('data-email') || '';
+            const cardStatus = ($(this).attr('data-status') || '').toLowerCase();
+            const cardLocation = ($(this).attr('data-location') || '').toLowerCase();
+            const cardDept = ($(this).attr('data-department') || '').toLowerCase();
+            const cardTitle = ($(this).attr('data-job-title') || '').toLowerCase();
+
+            let match = true;
+
+            if (query !== '' && !cardName.includes(query) && !cardCode.includes(query) && !cardEmail.includes(query) && !cardTitle.includes(query)) {
+                match = false;
+            }
+            if (status !== '' && cardStatus !== status) {
+                match = false;
+            }
+            if (location !== '' && cardLocation !== location) {
+                match = false;
+            }
+            if (dept !== '' && cardDept !== dept) {
+                match = false;
+            }
+            if (title !== '' && cardTitle !== title) {
+                match = false;
+            }
+
+            if (match) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    }
+
+    $('#emp-search-input, #emp-status-filter, #emp-location-filter, #emp-dept-filter, #emp-title-filter').on('input change keyup', function() {
+        filterEmployeeCards();
+    });
 
     // Deactivate User from Modal
 

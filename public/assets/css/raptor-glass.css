@@ -1,0 +1,154 @@
+/**
+ * RAPTOR v2.2 Design System — Selective Glassmorphism & Elevation Surfaces
+ * -------------------------------------------------------------------------
+ * Hardware-accelerated backdrop filters for high-elevation UI components.
+ * Automatically falls back to high-contrast solid surfaces on low-power
+ * devices or when prefers-reduced-transparency is enabled.
+ */
+
+/* 1. Selective Glass Cards & Panels */
+.raptor-glass-card,
+.raptor-glass-panel {
+    background: var(--raptor-glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--raptor-glass-border);
+    box-shadow: var(--raptor-shadow-md);
+    border-radius: var(--raptor-radius-lg);
+    transition: transform var(--raptor-transition-base), box-shadow var(--raptor-transition-base);
+}
+
+.raptor-glass-card:hover,
+.raptor-glass-panel:hover {
+    box-shadow: var(--raptor-shadow-lg);
+}
+
+/* 2. Selective Glass Modals & Drawers */
+.raptor-glass-modal {
+    background: var(--raptor-glass-modal-bg) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--raptor-border-medium) !important;
+    box-shadow: var(--raptor-shadow-modal) !important;
+}
+
+/* 3. Solid Surface Cards (for high-density tables & lists) */
+.raptor-solid-card {
+    background: var(--raptor-surface);
+    border: 1px solid var(--raptor-border-subtle);
+    box-shadow: var(--raptor-shadow-sm);
+    border-radius: var(--raptor-radius-lg);
+}
+
+/* 4. Glass Floating Toasts */
+.raptor-toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1090;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 380px;
+    width: 100%;
+}
+
+.raptor-glass-toast {
+    background: var(--raptor-glass-modal-bg);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--raptor-glass-border);
+    border-radius: var(--raptor-radius-md);
+    box-shadow: var(--raptor-shadow-lg);
+    color: var(--raptor-text-primary);
+    overflow: hidden;
+    animation: raptorToastIn 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes raptorToastIn {
+    from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* 5. Slide-Over Drawer Surfaces (Raptor v2.2 - Sprint 2) */
+.raptor-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1050;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.raptor-drawer-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.raptor-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 520px;
+    background: var(--raptor-surface, #1E293B);
+    border-left: 1px solid var(--raptor-border-medium, rgba(255, 255, 255, 0.1));
+    box-shadow: -15px 0 35px -5px rgba(0, 0, 0, 0.5);
+    z-index: 1051;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.raptor-drawer.active {
+    transform: translateX(0);
+}
+
+.raptor-drawer-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--raptor-border-subtle, rgba(255, 255, 255, 0.08));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--raptor-surface-elevated, #283548);
+}
+
+.raptor-drawer-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.raptor-drawer-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--raptor-border-subtle, rgba(255, 255, 255, 0.08));
+    background: var(--raptor-surface-elevated, #283548);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+/* 6. Reduced Transparency Fallback */
+@media (prefers-reduced-transparency: reduce) {
+    .raptor-glass-card,
+    .raptor-glass-panel,
+    .raptor-glass-modal,
+    .raptor-glass-toast,
+    .raptor-drawer-backdrop {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background: var(--raptor-surface) !important;
+    }
+}

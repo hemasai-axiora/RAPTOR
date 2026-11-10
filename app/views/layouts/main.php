@@ -9,10 +9,24 @@
         $page_title = str_ireplace('Raptor CRM', 'RAPTOR', $page_title);
     ?>
     <title><?php echo $page_title; ?></title>
+    <!-- Early FOUT-Free Theme Resolver -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('raptor-theme') || 'dark';
+            let resolved = savedTheme;
+            if (savedTheme === 'system') {
+                resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            document.documentElement.setAttribute('data-theme', resolved);
+        })();
+    </script>
     <!-- Favicon & PWA Manifest -->
     <link rel="icon" type="image/png" href="<?php echo URLROOT; ?>/logo.png">
     <link rel="manifest" href="<?php echo URLROOT; ?>/manifest.json">
     <meta name="theme-color" content="#2563EB">
+    <!-- Raptor v2.2 Design Tokens & Glass Surfaces -->
+    <link href="<?php echo URLROOT; ?>/assets/css/raptor-tokens.css?v=2.2.0" rel="stylesheet">
+    <link href="<?php echo URLROOT; ?>/assets/css/raptor-glass.css?v=2.2.0" rel="stylesheet">
     <!-- Inter Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Bootstrap 5 CSS -->
@@ -101,6 +115,7 @@
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.bootstrap5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.colVis.min.js"></script>
     <script>
@@ -1517,6 +1532,61 @@
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'hrms_reports') ? 'active' : ''; ?>">
                             <a href="index.php?route=hrms/reports">
                                 <i class="fa-solid fa-file-invoice"></i><span>HRMS Reports</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                    </ul>
+                </li>
+                <?php endif; ?>
+
+                <!-- 5.5 Recruitment (ATS) Accordion Group -->
+                <?php if (Policy::canAccessRecruitment()): ?>
+                <li class="menu-section <?php echo (isset($active_tab) && strpos($active_tab, 'recruitment') !== false) ? 'open active' : ''; ?>" data-section="recruitment">
+                    <div class="menu-section-header" title="Recruitment (ATS)">
+                        <i class="fa-solid fa-user-plus section-icon"></i>
+                        <span class="section-text">Recruitment (ATS)</span>
+                        <i class="fa-solid fa-chevron-right section-arrow"></i>
+                    </div>
+                    <ul class="menu-section-items">
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'recruitment_dashboard') ? 'active' : ''; ?>">
+                            <a href="index.php?route=recruitment/dashboard">
+                                <i class="fa-solid fa-gauge-high"></i><span>Recruitment Hub</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'recruitment_requisitions') ? 'active' : ''; ?>">
+                            <a href="index.php?route=recruitment/requisitions">
+                                <i class="fa-solid fa-clipboard-list"></i><span>Job Requisitions</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'recruitment_candidates') ? 'active' : ''; ?>">
+                            <a href="index.php?route=recruitment/candidates">
+                                <i class="fa-solid fa-user-tie"></i><span>Candidate Database</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'recruitment_applications') ? 'active' : ''; ?>">
+                            <a href="index.php?route=recruitment/applications">
+                                <i class="fa-solid fa-network-wired"></i><span>Pipeline Kanban</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'recruitment_interviews') ? 'active' : ''; ?>">
+                            <a href="index.php?route=recruitment/interviews">
+                                <i class="fa-solid fa-calendar-days"></i><span>Interview Calendar</span>
+                            </a>
+                        </li>
+                        <?php if (in_array($role, ['admin', 'ceo', 'hr'], true)): ?>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'recruitment_offers') ? 'active' : ''; ?>">
+                            <a href="index.php?route=recruitment/offers">
+                                <i class="fa-solid fa-file-signature"></i><span>Offers & Approvals</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'recruitment_onboarding') ? 'active' : ''; ?>">
+                            <a href="index.php?route=recruitment/onboarding">
+                                <i class="fa-solid fa-id-card-clip"></i><span>Pre-Joining & BGV</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'recruitment_reports') ? 'active' : ''; ?>">
+                            <a href="index.php?route=recruitment/reports">
+                                <i class="fa-solid fa-chart-column"></i><span>Recruitment Analytics</span>
                             </a>
                         </li>
                         <?php endif; ?>

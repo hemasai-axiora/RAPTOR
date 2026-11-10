@@ -218,13 +218,98 @@ class CustomersController extends Controller {
             $this->redirect('index.php?route=customers/index');
         }
 
+        $activities = [];
+        if (!empty($customer->contact_id) && file_exists(APPROOT . '/models/Contact.php')) {
+            try {
+                require_once APPROOT . '/models/Contact.php';
+                $contactModel = new Contact();
+                $activities = $contactModel->getActivities((int)$customer->contact_id, 10);
+            } catch (\Throwable $e) {
+                // best effort
+            }
+        }
+
         $data = [
             'title' => 'Customer Profile | Raptor CRM',
             'active_tab' => 'operations',
-            'customer' => $customer
+            'customer' => $customer,
+            'activities' => $activities
         ];
 
         $this->viewWithLayout('customers/detail', 'main', $data);
+    }
+
+    /**
+     * AI Smart Reply Generator (Raptor v2.2 - Sprint 2)
+     * POST index.php?route=customers/smartReply
+     */
+    public function smartReply() {
+        $this->requireAuth();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->jsonError('Method not allowed', 405);
+            return;
+        }
+
+        $customerId = (int)($_POST['customer_id'] ?? 0);
+        $context = trim((string)($_POST['context'] ?? ''));
+        $tone = trim((string)($_POST['tone'] ?? 'professional'));
+
+        $customer = $this->customerModel->getCustomerById($customerId);
+        if (!$customer) {
+            $this->jsonError('Customer not found', 404);
+            return;
+        }
+
+        $customerName = trim($customer->company_name ?: $customer->first_name ?: 'Valued Client');
+        $contactPerson = trim($customer->first_name ?: $customerName);
+
+        // Ensure AiService is loaded
+        if (file_exists(APPROOT . '/services/AiService.php')) {
+            require_once APPROOT . '/services/AiService.php';
+        }
+
+        $prompt = "You are an enterprise CRM sales and customer success copilot for Raptor Platform.\n";
+        $prompt .= "Generate a polished, {$tone} email reply to the customer.\n";
+        $prompt .= "Customer Company: {$customerName}\n";
+        $prompt .= "Contact Person: {$contactPerson}\n";
+        if (!empty($customer->products_subscribed)) {
+            $prompt .= "Subscribed Products: {$customer->products_subscribed}\n";
+        }
+        if (!empty($context)) {
+            $prompt .= "Customer Message or Inquiry to respond to:\n\"{$context}\"\n";
+        } else {
+            $prompt .= "Context: Routine relationship review and executive check-in.\n";
+        }
+        $prompt .= "\nWrite a clear, personalized message ready to send. Keep it under 150 words. Sign off as 'Raptor Customer Success Team'.";
+
+        try {
+            if (class_exists('AiService')) {
+                $aiResult = AiService::generate($prompt, [
+                    'temperature' => 0.6,
+                    'max_tokens'  => 300,
+                ]);
+
+                if (!empty($aiResult['success']) && !empty($aiResult['text'])) {
+                    $this->json([
+                        'success'  => true,
+                        'provider' => $aiResult['provider'] ?? 'ai',
+                        'reply'    => $aiResult['text']
+                    ]);
+                    return;
+                }
+            }
+        } catch (\Throwable $e) {
+            // fallback
+        }
+
+        // Reliable fallback template draft
+        $fallback = "Dear {$contactPerson},\n\nThank you for reaching out to us. We have received your update regarding your account with {$customerName} and are actively reviewing it. Our team will ensure everything proceeds smoothly and keep you updated on the next steps.\n\nPlease let us know if you need any additional assistance.\n\nBest regards,\nRaptor Customer Success Team";
+        $this->json([
+            'success'  => true,
+            'provider' => 'template_fallback',
+            'reply'    => $fallback
+        ]);
     }
 
     public function downloadSampleCsv() {

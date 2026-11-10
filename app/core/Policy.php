@@ -104,4 +104,18 @@ class Policy {
     public static function isHrOrAdmin(): bool {
         return self::isAdmin() || self::isHr();
     }
+
+    /**
+     * Check if user can access Recruitment Management (ATS).
+     */
+    public static function canAccessRecruitment(): bool {
+        return self::isAdmin() || self::isHr() || self::role() === 'ceo' || in_array(self::role(), ['manager', 'team_leader'], true);
+    }
+
+    /**
+     * Check if user can manage or approve job requisitions.
+     */
+    public static function canManageRequisitions(): bool {
+        return self::isAdmin() || self::isHr() || self::role() === 'ceo' || in_array(self::role(), ['manager', 'team_leader'], true);
+    }
 }

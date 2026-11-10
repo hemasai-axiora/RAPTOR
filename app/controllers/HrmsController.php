@@ -75,6 +75,18 @@ class HrmsController extends Controller {
 
         $balances = $this->leaveModel->getLeaveBalances($id);
 
+        // Security Invariant (Sprint 5): Sensitive employee records (bank accounts, base salary, Aadhar, PAN)
+        // are masked unless user has payroll.manage or hr.manage permissions or is viewing their own profile.
+        $canViewSensitive = ($id === $userId) || Policy::isAdmin() || Policy::isHr() || (class_exists('Policy') && Policy::can('payroll', 'manage'));
+        if (!$canViewSensitive) {
+            if (isset($profile->pan_number)) $profile->pan_number = '••••••••';
+            if (isset($profile->aadhar_number)) $profile->aadhar_number = '••••••••';
+            if (!empty($profile->bank_account_number)) {
+                $profile->bank_account_number = '••••••••' . substr((string)$profile->bank_account_number, -4);
+            }
+            if (isset($profile->base_salary)) $profile->base_salary = null;
+        }
+
         $data = [
             'title'        => $profile->name . '\'s Profile | Raptor CRM',
             'active_tab'   => 'profile',
@@ -224,5 +236,87 @@ class HrmsController extends Controller {
 
         fclose($out);
         exit();
+    }
+
+    /**
+     * Visual Team & Organization Hierarchy Tree View (Sprint 5)
+     */
+    public function hierarchy() {
+        $db = Database::getInstance()->getConnection();
+
+        // Fetch distinct departments
+        $deptStmt = $db->query("SELECT DISTINCT department FROM employees WHERE department IS NOT NULL AND department != '' ORDER BY department ASC");
+        $departments = $deptStmt ? $deptStmt->fetchAll(PDO::FETCH_COLUMN) : ['Sales', 'Engineering', 'Marketing', 'HR', 'Finance'];
+
+        // Fetch top executive leader (admin / ceo)
+        $leadStmt = $db->query("SELECT u.user_id, u.name, u.email, e.job_title, e.department, e.phone_number 
+                                FROM users u 
+                                LEFT JOIN employees e ON u.user_id = e.user_id 
+                                JOIN roles r ON u.role_id = r.role_id 
+                                WHERE r.role_name IN ('admin', 'ceo') 
+                                ORDER BY u.user_id ASC LIMIT 1");
+        $leader = $leadStmt ? $leadStmt->fetch(PDO::FETCH_OBJ) : null;
+
+        // Fetch department managers / team leaders
+        $mgrStmt = $db->query("SELECT u.user_id, u.name, u.email, e.job_title, e.department, e.phone_number 
+                               FROM users u 
+                               LEFT JOIN employees e ON u.user_id = e.user_id 
+                               JOIN roles r ON u.role_id = r.role_id 
+                               WHERE r.role_name IN ('manager', 'team_leader') AND u.status = 'active' 
+                               ORDER BY e.department ASC, u.name ASC");
+        $managers = $mgrStmt ? $mgrStmt->fetchAll(PDO::FETCH_OBJ) : [];
+
+        // Fetch all direct reports and map them to their managers or teams
+        $repStmt = $db->query("SELECT u.user_id, u.name, u.email, e.job_title, e.department, e.phone_number, e.reporting_manager_id, e.team_id 
+                               FROM users u 
+                               JOIN employees e ON u.user_id = e.user_id 
+                               JOIN roles r ON u.role_id = r.role_id 
+                               WHERE r.role_name NOT IN ('admin', 'ceo') AND u.status = 'active' 
+                               ORDER BY u.name ASC");
+        $allReports = $repStmt ? $repStmt->fetchAll(PDO::FETCH_OBJ) : [];
+
+        // Group reports under managers
+        $reportsByMgr = [];
+        $unassigned = [];
+
+        foreach ($allReports as $rep) {
+            $mgrId = (int)($rep->reporting_manager_id ?? 0);
+            if ($mgrId > 0) {
+                $reportsByMgr[$mgrId][] = $rep;
+            } else {
+                $unassigned[] = $rep;
+            }
+        }
+
+        // Attach direct reports array to each manager
+        foreach ($managers as &$mgr) {
+            $mgr->reports = $reportsByMgr[$mgr->user_id] ?? [];
+            if (empty($mgr->reports)) {
+                $mgr->reports = array_values(array_filter($unassigned, fn($u) => ($u->department ?? '') === ($mgr->department ?? '')));
+            }
+        }
+        unset($mgr);
+
+        // If JSON requested
+        if (isset($_SERVER['HTTP_ACCEPT']) && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json')) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'leader' => $leader,
+                'managers' => $managers,
+                'departments' => $departments
+            ]);
+            exit();
+        }
+
+        $data = [
+            'title'       => 'Organization Hierarchy Tree | Raptor CRM',
+            'active_tab'  => 'hrms_hierarchy',
+            'leader'      => $leader,
+            'managers'    => $managers,
+            'departments' => $departments
+        ];
+
+        $this->viewWithLayout('hrms/hierarchy', 'main', $data);
     }
 }

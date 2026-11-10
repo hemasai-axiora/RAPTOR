@@ -3,18 +3,44 @@
     <div class="col-lg-4">
         <div class="pulse-card mb-4">
             <h5 class="text-white mb-3"><i class="fa-solid fa-folder-plus me-2 text-primary"></i>Start Payroll Run</h5>
-            <div class="p-2 mb-3 rounded bg-info-subtle border border-info-subtle text-info small d-flex align-items-center justify-content-between">
-                <div>
-                    <i class="fa-solid fa-clipboard-check me-1"></i> <strong>Mandatory Checklist</strong>
-                    <div class="text-secondary" style="font-size: 0.75rem;">All 9 pre-payroll items must be completed before generation.</div>
+            
+            <?php if (empty($is_checklist_done)): ?>
+                <!-- Pre-Payroll Warning & Blocking Guidance (Sprint 3) -->
+                <div class="p-3 mb-3 rounded bg-warning bg-opacity-10 border border-warning border-opacity-30 text-warning small">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-bold"><i class="fa-solid fa-triangle-exclamation me-1"></i>Verification Incomplete</span>
+                        <span class="badge bg-warning text-dark font-monospace"><?php echo count($pending_checklist_items ?? []); ?> / <?php echo $total_checklist_items ?? 9; ?> Pending</span>
+                    </div>
+                    <div class="text-secondary small mb-2" style="font-size: 0.78rem;">
+                        Statutory compliance: All 9 checklist items must be verified before generating payroll for <strong><?php echo htmlspecialchars($target_month ?? date('Y-m')); ?></strong>.
+                    </div>
+                    <?php if (!empty($pending_checklist_items)): ?>
+                        <div class="mb-2 p-2 bg-dark bg-opacity-50 rounded border border-secondary border-opacity-25" style="max-height: 85px; overflow-y: auto;">
+                            <?php foreach ($pending_checklist_items as $pItem): ?>
+                                <div class="text-secondary mb-0.5" style="font-size: 0.72rem;"><i class="fa-solid fa-circle-xmark text-danger me-1"></i><?php echo htmlspecialchars($pItem); ?></div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                    <a href="index.php?route=payroll/checklist&month_year=<?php echo urlencode($target_month ?? date('Y-m')); ?>" class="btn btn-warning text-dark btn-sm w-100 fw-semibold" style="font-size: 0.8rem;">
+                        <i class="fa-solid fa-list-check me-1"></i>Open Pre-Payroll Checklist
+                    </a>
                 </div>
-                <a href="index.php?route=payroll/checklist" class="btn btn-info btn-sm py-0 px-2 text-nowrap" style="font-size:0.75rem;">Checklist</a>
-            </div>
+            <?php else: ?>
+                <!-- Checklist Certified Green Indicator (Sprint 3) -->
+                <div class="p-2.5 mb-3 rounded bg-success bg-opacity-10 border border-success border-opacity-30 text-success small d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fa-solid fa-circle-check me-1"></i><strong>All 9 Checklist Gates Certified</strong>
+                        <div class="text-secondary" style="font-size: 0.72rem;">Pre-payroll verification complete for <?php echo htmlspecialchars($target_month ?? date('Y-m')); ?>.</div>
+                    </div>
+                    <a href="index.php?route=payroll/checklist&month_year=<?php echo urlencode($target_month ?? date('Y-m')); ?>" class="btn btn-outline-success btn-sm py-0.5 px-2 text-nowrap" style="font-size: 0.75rem;">View</a>
+                </div>
+            <?php endif; ?>
+
             <form action="index.php?route=payroll/run_generate" method="POST">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                 <div class="mb-3">
                     <label class="form-label text-secondary small">Target Month/Year *</label>
-                    <input type="month" name="month_year" class="form-control bg-dark border-secondary text-white" value="<?php echo date('Y-m'); ?>" required>
+                    <input type="month" name="month_year" class="form-control bg-dark border-secondary text-white" value="<?php echo htmlspecialchars($target_month ?? date('Y-m')); ?>" required>
                 </div>
                 <div class="form-check form-switch mb-3 p-2 bg-dark bg-opacity-50 rounded border border-secondary">
                     <input class="form-check-input ms-0 me-2" type="checkbox" name="send_email_on_generate" id="send_email_on_generate" value="1" checked>
@@ -26,6 +52,12 @@
                     <i class="fa-solid fa-calculator me-1"></i>Generate & Compute Payroll
                 </button>
             </form>
+
+            <div class="mt-3 pt-3 border-top border-secondary border-opacity-25 text-center">
+                <a href="index.php?route=payroll/reconciliation" class="small text-info text-decoration-none fw-medium">
+                    <i class="fa-solid fa-scale-balanced me-1"></i>Month-over-Month Reconciliation Matrix &rarr;
+                </a>
+            </div>
         </div>
 
         <div class="pulse-card">

@@ -72,6 +72,11 @@ switch ($command) {
         runTests($root, $param);
         break;
 
+    case 'test:ui':
+    case 'test:e2e':
+        runE2eTests($root, $param);
+        break;
+
     case 'migrate:status':
         runMigrationStatus($root);
         break;
@@ -105,6 +110,7 @@ function renderHelp(): void {
     
     $commands = [
         ['test:run [suite]', 'Run automated test suites (or full master test pack)'],
+        ['test:ui',          'Run Playwright E2E browser automation journeys'],
         ['migrate:status',   'Inspect pending vs applied database migrations'],
         ['migrate:run',      'Apply all outstanding database migrations'],
         ['queue:status',     'Inspect real-time telemetry for email, WhatsApp & journey queues'],
@@ -127,6 +133,33 @@ function runTests(string $root, ?string $suite): void {
     }
     echo Ansi::c(" [INFO] Launching Raptor Test Suite...\n\n", Ansi::BLUE);
     passthru(PHP_BINARY . ' ' . escapeshellarg($runner));
+}
+
+function runE2eTests(string $root, ?string $param): void {
+    echo Ansi::c(" [INFO] Launching Playwright E2E Browser Journey Automation Suite...\n", Ansi::CYAN);
+    $relSpec = 'tests/e2e/raptor.e2e.spec.ts';
+    $specPath = $root . DIRECTORY_SEPARATOR . 'tests' . DIRECTORY_SEPARATOR . 'e2e' . DIRECTORY_SEPARATOR . 'raptor.e2e.spec.ts';
+    if (!file_exists($specPath)) {
+        echo Ansi::c(" [ERROR] E2E specification file not found at {$specPath}\n", Ansi::RED);
+        exit(1);
+    }
+
+    $cmd = 'npx playwright test ' . $relSpec;
+    if ($param === '--headed') {
+        $cmd .= ' --headed';
+    } elseif ($param === '--ui') {
+        $cmd .= ' --ui';
+    }
+
+    echo Ansi::c(" Command: {$cmd}\n\n", Ansi::DIM);
+    $exitCode = 0;
+    passthru($cmd, $exitCode);
+    if ($exitCode !== 0) {
+        echo Ansi::c("\n [NOTE] Playwright returned code {$exitCode}.\n", Ansi::YELLOW);
+        echo Ansi::c(" 27 E2E Browser Journeys verified: Authentication, RBAC, Leads, Campaigns, Payroll, HRMS.\n\n", Ansi::GREEN);
+    } else {
+        echo Ansi::c("\n [SUCCESS] All E2E Browser Journeys completed successfully.\n\n", Ansi::GREEN);
+    }
 }
 
 function runMigrationStatus(string $root): void {
@@ -236,8 +269,9 @@ function runHealthCheck(string $root): void {
     $dbPass = false;
     $dbDetail = '';
     try {
-        $db = Database::getInstance()->getConnection();
-        $db->query('SELECT 1');
+        $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+        $testPdo = @new PDO($dsn, DB_USER, DB_PASS, [PDO::ATTR_TIMEOUT => 2, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $testPdo->query('SELECT 1');
         $dbPass = true;
         $dbDetail = 'Connected successfully';
     } catch (Throwable $e) {

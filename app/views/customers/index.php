@@ -262,9 +262,27 @@ $(function() {
         $('#customers-table').DataTable({
             pageLength: 10,
             lengthChange: false,
-            info: false,
+            info: true,
             searching: true,
-            language: { search: 'Search Customers:' }
+            dom: '<"d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"<"d-flex align-items-center gap-2"B><"d-flex align-items-center"f>>rt<"d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3"ip>',
+            buttons: [
+                {
+                    extend: 'csvHtml5',
+                    text: '<i class="fa-solid fa-file-csv me-1 text-info"></i> CSV Export',
+                    className: 'btn btn-sm btn-outline-secondary',
+                    exportOptions: { columns: ':not(:last-child)' }
+                },
+                {
+                    extend: 'excelHtml5',
+                    text: '<i class="fa-solid fa-file-excel me-1 text-success"></i> Excel Export',
+                    className: 'btn btn-sm btn-outline-secondary',
+                    exportOptions: { columns: ':not(:last-child)' }
+                }
+            ],
+            language: { 
+                search: '',
+                searchPlaceholder: 'Search customers...' 
+            }
         });
     }
 });

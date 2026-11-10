@@ -28,6 +28,27 @@ class Controller {
         }
     }
 
+    // Render a reusable UI component
+    public function component(string $name, array $props = [], bool $return = false): ?string {
+        $file = APPROOT . '/views/components/' . $name . '.php';
+        if (file_exists($file)) {
+            extract($props);
+            if ($return) {
+                ob_start();
+                include $file;
+                return ob_get_clean();
+            }
+            include $file;
+            return null;
+        }
+        $missing = "<!-- Component {$name} not found -->";
+        if ($return) {
+            return $missing;
+        }
+        echo $missing;
+        return null;
+    }
+
     // Generate or propagate Correlation / Request ID for distributed tracing
     protected function initCorrelationId(): string {
         $requestId = $_SERVER['HTTP_X_REQUEST_ID'] ?? $_SERVER['HTTP_X_CORRELATION_ID'] ?? null;

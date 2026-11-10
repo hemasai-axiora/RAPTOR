@@ -2,6 +2,11 @@
 /**
  * LeavesController — Handles employee leave applications, history, calendar, approvals workflow, and admin leave balances.
  */
+
+if (!class_exists('LeaveService')) {
+    require_once APPROOT . '/services/LeaveService.php';
+}
+
 class LeavesController extends Controller {
     private $leaveModel;
     private $hrmsModel;
@@ -107,18 +112,20 @@ class LeavesController extends Controller {
                 return;
             }
 
-            // Calculate duration in days
-            $days = $halfDay ? 0.5 : (int)round(($tsTo - $tsFrom) / 86400) + 1;
+            // Calculate duration in working business days (excluding weekends & statutory holidays) via LeaveService
+            $days = LeaveService::calculateBusinessDays($fromDate, $toDate, (bool)$halfDay);
+            if ($days <= 0.0) {
+                $_SESSION['leaves_error'] = 'Selected date range contains zero working days (weekends or statutory holidays).';
+                $this->redirect('index.php?route=leaves/index');
+                return;
+            }
 
-            // Check balance
+            // Check balance using LeaveService
             $balances = $this->leaveModel->getLeaveBalances($userId);
-            $available = 0.0;
-            if ($leaveType === 'Sick Leave')   $available = (float)($balances->sick_leave ?? 0);
-            if ($leaveType === 'Casual Leave') $available = (float)($balances->casual_leave ?? 0);
-            if ($leaveType === 'Earned Leave') $available = (float)($balances->earned_leave ?? 0);
+            $balanceCheck = LeaveService::checkLeaveBalance($balances, $leaveType, $days);
 
-            if ($days > $available) {
-                $_SESSION['leaves_error'] = "Insufficient leave balance. Requested {$days} days, but only {$available} days available.";
+            if (!$balanceCheck['allowed']) {
+                $_SESSION['leaves_error'] = $balanceCheck['error'] ?? "Insufficient leave balance for {$leaveType}.";
                 $this->redirect('index.php?route=leaves/index');
                 return;
             }

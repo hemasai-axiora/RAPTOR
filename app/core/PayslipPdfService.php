@@ -42,10 +42,10 @@ class PayslipPdfService {
         $bonus = round((float)($detail->bonus ?? 0));
         $otherEarn = round((float)($detail->other_earnings ?? 0));
         
-        $actualBasic = round((float)($detail->actual_basic > 0 ? $detail->actual_basic : $basic));
-        $actualHra = round((float)($detail->actual_hra > 0 ? $detail->actual_hra : $hra));
-        $actualSpecial = round((float)($detail->actual_special_allowance > 0 ? $detail->actual_special_allowance : $special));
-        $actualOther = round((float)($detail->actual_other_allowance > 0 ? $detail->actual_other_allowance : $otherAll));
+        $actualBasic = round((float)(($detail->actual_basic ?? 0) > 0 ? $detail->actual_basic : $basic));
+        $actualHra = round((float)(($detail->actual_hra ?? 0) > 0 ? $detail->actual_hra : $hra));
+        $actualSpecial = round((float)(($detail->actual_special_allowance ?? 0) > 0 ? $detail->actual_special_allowance : $special));
+        $actualOther = round((float)(($detail->actual_other_allowance ?? 0) > 0 ? $detail->actual_other_allowance : $otherAll));
         
         $grossActual = round($actualBasic + $actualHra + $actualSpecial + $actualOther);
         $gross = round((float)($detail->gross_salary ?? ($basic + $hra + $special + $otherAll + $bonus + $otherEarn)));
@@ -62,7 +62,7 @@ class PayslipPdfService {
         $gratuity = round((float)(isset($detail->gratuity) && (float)$detail->gratuity > 0 ? $detail->gratuity : round($actualBasic * 0.0481, 0, PHP_ROUND_HALF_DOWN)));
         $totalBenefits = round($employerPf + $gratuity);
         
-        $ctc = round((float)($detail->ctc > 0 ? $detail->ctc : ($gross + $totalBenefits)));
+        $ctc = round((float)(($detail->ctc ?? 0) > 0 ? $detail->ctc : ($gross + $totalBenefits)));
         $netPay = round((float)($detail->net_salary ?? ($gross - $deductions)));
         $inWords = PayslipHelper::numberToWords($netPay);
 
@@ -600,5 +600,60 @@ class PayslipPdfService {
         $pdf .= "trailer\n<< /Size " . (count($objects) + 1) . " /Root 1 0 R >>\nstartxref\n" . $xrefPos . "\n%%EOF\n";
 
         return $pdf;
+    }
+
+    /**
+     * Get or generate cached PDF binary for a given payslip detail object.
+     * Caches generated PDF under STORAGE_PATH/payslips/{month_year}/{employee_code}_{detail_id}.pdf
+     * Eliminates redundant PostScript/PDF assembly overhead on subsequent requests.
+     */
+    public static function getOrGenerateCachedPdf($detail, bool $forceRegenerate = false): string {
+        $storageBase = defined('STORAGE_PATH') ? STORAGE_PATH : (dirname(__DIR__, 2) . '/storage');
+        $rawMonth = preg_replace('/[^0-9-]/', '', (string)($detail->month_year ?? date('Y-m')));
+        $empCode = preg_replace('/[^A-Za-z0-9_-]/', '_', (string)($detail->employee_code ?? 'EMP'));
+        $detailId = (int)($detail->payroll_detail_id ?? 0);
+
+        $dir = $storageBase . '/payslips/' . $rawMonth;
+        $cacheFile = $dir . '/' . $empCode . '_' . $detailId . '.pdf';
+
+        if (!$forceRegenerate && file_exists($cacheFile) && filesize($cacheFile) > 0) {
+            $cachedContent = @file_get_contents($cacheFile);
+            if ($cachedContent !== false && strlen($cachedContent) > 0) {
+                return $cachedContent;
+            }
+        }
+
+        $pdfBinary = self::generatePdf($detail);
+
+        try {
+            if (!is_dir($dir)) {
+                @mkdir($dir, 0755, true);
+            }
+            @file_put_contents($cacheFile, $pdfBinary);
+        } catch (\Throwable $e) {
+            // cache writing is best effort
+        }
+
+        return $pdfBinary;
+    }
+
+    /**
+     * Invalidate cached PDF file for a revised payslip record.
+     */
+    public static function invalidateCache(int $detailId, ?string $monthYear = null, ?string $empCode = null): bool {
+        $storageBase = defined('STORAGE_PATH') ? STORAGE_PATH : (dirname(__DIR__, 2) . '/storage');
+        $rawMonth = $monthYear ? preg_replace('/[^0-9-]/', '', $monthYear) : '*';
+        $pattern = $storageBase . '/payslips/' . $rawMonth . '/*_' . $detailId . '.pdf';
+
+        $files = glob($pattern);
+        $deleted = true;
+        if (!empty($files)) {
+            foreach ($files as $file) {
+                if (file_exists($file) && !@unlink($file)) {
+                    $deleted = false;
+                }
+            }
+        }
+        return $deleted;
     }
 }
