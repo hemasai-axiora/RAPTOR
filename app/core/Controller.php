@@ -28,8 +28,21 @@ class Controller {
         }
     }
 
+    // Generate or propagate Correlation / Request ID for distributed tracing
+    protected function initCorrelationId(): string {
+        $requestId = $_SERVER['HTTP_X_REQUEST_ID'] ?? $_SERVER['HTTP_X_CORRELATION_ID'] ?? null;
+        if (empty($requestId)) {
+            $requestId = bin2hex(random_bytes(16));
+        }
+        if (!headers_sent()) {
+            header('X-Request-ID: ' . $requestId);
+        }
+        return $requestId;
+    }
+
     // Render view inside a layout
     public function viewWithLayout($view, $layout, $data = []) {
+        $this->initCorrelationId();
         // Ensure CSRF token is generated and active in session
         $this->generateCsrfToken();
 
@@ -263,6 +276,7 @@ class Controller {
 
     /** Emit a JSON response and stop. */
     protected function json($payload, int $status = 200) {
+        $this->initCorrelationId();
         if (ob_get_length()) {
             ob_clean();
         }

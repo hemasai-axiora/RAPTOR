@@ -253,3 +253,4 @@ function runHealthCheck(string $root): void {
 
     echo "\n" . Ansi::c(" Diagnostic complete.\n\n", Ansi::GREEN);
 }
+

@@ -1,0 +1,17 @@
+{
+  "name": "RAPTOR Enterprise CRM & HRMS",
+  "short_name": "RAPTOR",
+  "start_url": "index.php",
+  "display": "standalone",
+  "background_color": "#0F172A",
+  "theme_color": "#2563EB",
+  "description": "Enterprise Omnichannel CRM, Statutory HRMS & Payroll, and Deliverability Intelligence Platform",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

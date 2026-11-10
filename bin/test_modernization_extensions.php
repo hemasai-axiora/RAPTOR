@@ -132,6 +132,21 @@ $cliContent = file_get_contents($cliPath);
 assertCustom(strpos($cliContent, 'runHealthCheck') !== false, "bin/raptor defines system health diagnostics");
 assertCustom(strpos($cliContent, 'showQueueStatus') !== false, "bin/raptor defines real-time queue inspector");
 
+// ── 6. PWA Manifest, DLQ Inspector & Correlation Tracing ──
+echo "\n6. Testing PWA, DLQ Inspector & Request Correlation Tracing...\n";
+$manifestPath = __DIR__ . '/../public/manifest.json';
+assertCustom(file_exists($manifestPath), "public/manifest.json exists");
+$manifest = json_decode(file_get_contents($manifestPath), true);
+assertCustom(isset($manifest['name']) && strpos($manifest['name'], 'RAPTOR') !== false, "PWA manifest defines valid app name");
+
+require_once __DIR__ . '/../app/controllers/SettingsController.php';
+$settingsReflect = new ReflectionClass(SettingsController::class);
+assertCustom($settingsReflect->hasMethod('dlq'), "SettingsController defines dlq inspection route");
+assertCustom($settingsReflect->hasMethod('retryDlq'), "SettingsController defines retryDlq recovery route");
+
+$controllerReflect = new ReflectionClass(Controller::class);
+assertCustom($controllerReflect->hasMethod('initCorrelationId'), "Controller defines distributed correlation tracing (X-Request-ID)");
+
 echo "\n=======================================================\n";
 echo "SUMMARY: {$passed} PASSED, {$failed} FAILED\n";
 echo "=======================================================\n";
@@ -140,3 +155,4 @@ if ($failed > 0) {
     exit(1);
 }
 exit(0);
+

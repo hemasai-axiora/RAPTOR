@@ -354,4 +354,48 @@ class SettingsController extends Controller {
         ];
         $this->viewWithLayout('settings/audit_logs', 'main', $data);
     }
+
+    // Dead-Letter Queue (DLQ) & Webhook Replay Inspector
+    public function dlq() {
+        $failedJobs = [];
+        try {
+            $stmt = $this->db->query("
+                SELECT mq.queue_id, mq.campaign_id, mq.contact_id, mq.status, mq.attempts, 
+                       mq.last_error, mq.created_at, mq.updated_at,
+                       COALESCE(c.name, 'Ad-hoc Broadcast') AS campaign_name
+                FROM marketing_queue mq
+                LEFT JOIN marketing_campaigns c ON mq.campaign_id = c.campaign_id
+                WHERE mq.status = 'failed'
+                ORDER BY mq.updated_at DESC
+                LIMIT 100
+            ");
+            $failedJobs = $stmt ? $stmt->fetchAll(PDO::FETCH_OBJ) : [];
+        } catch (Throwable $e) {}
+
+        $data = [
+            'title'      => 'Dead-Letter Queue & Failed Jobs | Raptor CRM',
+            'active_tab' => 'settings',
+            'failed_jobs'=> $failedJobs
+        ];
+        $this->viewWithLayout('settings/dlq', 'main', $data);
+    }
+
+    // Retry a failed queue item
+    public function retryDlq($id = null) {
+        $id = (int)$id;
+        if ($id > 0) {
+            try {
+                $stmt = $this->db->prepare("
+                    UPDATE marketing_queue 
+                    SET status = 'pending', attempts = 0, last_error = NULL, locked_at = NULL, updated_at = NOW() 
+                    WHERE queue_id = :id
+                ");
+                $stmt->execute([':id' => $id]);
+                $_SESSION['settings_success'] = "Queue item #{$id} reset to pending for immediate reprocessing.";
+            } catch (Throwable $e) {
+                $_SESSION['settings_error'] = "Failed to retry job: " . $e->getMessage();
+            }
+        }
+        $this->redirect('index.php?route=settings/dlq');
+    }
 }

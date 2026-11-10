@@ -8,7 +8,17 @@
         <?php endif; ?>
 
         <div class="pulse-card">
-            <h4 class="text-white mb-4"><i class="fa-solid fa-sliders text-primary me-2"></i>Admin Configuration Hub</h4>
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <h4 class="text-white mb-0"><i class="fa-solid fa-sliders text-primary me-2"></i>Admin Configuration Hub</h4>
+                <div class="d-flex gap-2">
+                    <a href="index.php?route=settings/dlq" class="btn btn-sm btn-outline-warning">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Dead-Letter Queue
+                    </a>
+                    <a href="index.php?route=apidocs/index" target="_blank" class="btn btn-sm btn-outline-info">
+                        <i class="fa-solid fa-book-bookmark me-1"></i> Interactive API Docs
+                    </a>
+                </div>
+            </div>
 
             <form action="index.php?route=settings/save" method="POST" id="settings-form">
                 <!-- CSRF Token -->

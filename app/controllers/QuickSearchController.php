@@ -260,3 +260,4 @@ class QuickSearchController extends Controller {
         ];
     }
 }
+

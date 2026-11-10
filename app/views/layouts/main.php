@@ -9,8 +9,10 @@
         $page_title = str_ireplace('Raptor CRM', 'RAPTOR', $page_title);
     ?>
     <title><?php echo $page_title; ?></title>
-    <!-- Favicon -->
+    <!-- Favicon & PWA Manifest -->
     <link rel="icon" type="image/png" href="<?php echo URLROOT; ?>/logo.png">
+    <link rel="manifest" href="<?php echo URLROOT; ?>/manifest.json">
+    <meta name="theme-color" content="#2563EB">
     <!-- Inter Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Bootstrap 5 CSS -->
@@ -20,6 +22,7 @@
     <!-- Charting & UI Library CSS -->
     <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.bootstrap5.min.css" rel="stylesheet">
 
     <!-- Select2 Searchable Dropdowns -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -96,6 +99,10 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.colVis.min.js"></script>
     <script>
         /* Apply saved theme preference (defaults to light) */
         var _savedTheme = localStorage.getItem('raptor_theme') || 'light';

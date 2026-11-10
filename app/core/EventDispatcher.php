@@ -86,3 +86,4 @@ class EventDispatcher {
         return self::$dispatchedEvents;
     }
 }
+
