@@ -2676,41 +2676,217 @@ class PayrollController extends Controller {
         // Selected run details
 
         $runId = (int)($_GET['run_id'] ?? 0);
-
         $details = [];
-
         $selectedRun = null;
-
         if ($runId > 0) {
-
             $selectedRun = $this->payrollModel->getPayrollRunById($runId);
-
             $details = $this->payrollModel->getPayrollDetailsByRunId($runId);
-
         }
 
-
+        // Pre-payroll verification checklist audit for target month
+        $targetMonth = trim((string)($_GET['month_year'] ?? date('Y-m')));
+        $isChecklistDone = $this->payrollModel->isChecklistCompleted($targetMonth);
+        $pendingChecklistItems = [];
+        $totalChecklistItems = 9;
+        try {
+            $chk = $this->payrollModel->getChecklistByMonth($targetMonth);
+            if ($chk) {
+                $allItems = $this->payrollModel->getChecklistItems($chk->checklist_id);
+                $totalChecklistItems = count($allItems) ?: 9;
+                foreach ($allItems as $it) {
+                    if ($it->status !== 'completed') {
+                        $pendingChecklistItems[] = $it->item_title ?: $it->item_key;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // best-effort
+        }
 
         $data = [
-
             'title' => 'Payroll Processing | Raptor CRM',
-
             'active_tab' => 'payroll_processing',
-
             'runs' => $runs,
-
             'selected_run' => $selectedRun,
-
             'details' => $details,
-
-            'role' => $_SESSION['user_role']
-
+            'role' => $_SESSION['user_role'],
+            'target_month' => $targetMonth,
+            'is_checklist_done' => $isChecklistDone,
+            'pending_checklist_items' => $pendingChecklistItems,
+            'total_checklist_items' => $totalChecklistItems
         ];
 
-
-
         $this->viewWithLayout('payroll/processing', 'main', $data);
+    }
 
+    /**
+     * Month-over-Month Salary Variance Reconciliation Matrix (Raptor v2.2 - Sprint 3)
+     * GET index.php?route=payroll/reconciliation
+     */
+    public function reconciliation() {
+        if (in_array($_SESSION['user_role'], ['analyst', 'employee', 'sales_person'], true)) {
+            $this->redirect('index.php?route=dashboard/index');
+            return;
+        }
+
+        $this->requirePermission('payroll', 'view');
+
+        $runs = $this->payrollModel->getPayrollRuns();
+
+        // Selected month
+        $currentMonth = trim((string)($_GET['month_year'] ?? ''));
+        if (empty($currentMonth) && !empty($runs)) {
+            $currentMonth = $runs[0]->month_year;
+        }
+        if (empty($currentMonth)) {
+            $currentMonth = date('Y-m');
+        }
+
+        // Calculate previous month
+        $prevMonth = date('Y-m', strtotime($currentMonth . '-01 -1 month'));
+
+        $currRun = $this->payrollModel->getPayrollRunByMonth($currentMonth);
+        $prevRun = $this->payrollModel->getPayrollRunByMonth($prevMonth);
+
+        $currDetails = $currRun ? $this->payrollModel->getPayrollDetailsByRunId((int)$currRun->payroll_run_id) : [];
+        $prevDetails = $prevRun ? $this->payrollModel->getPayrollDetailsByRunId((int)$prevRun->payroll_run_id) : [];
+
+        // Build reconciliation matrix
+        $matrix = [];
+        $totals = [
+            'curr_gross' => 0.0,
+            'prev_gross' => 0.0,
+            'curr_net'   => 0.0,
+            'prev_net'   => 0.0,
+            'curr_ded'   => 0.0,
+            'prev_ded'   => 0.0,
+            'diff_gross' => 0.0,
+            'diff_net'   => 0.0,
+            'headcount_curr' => count($currDetails),
+            'headcount_prev' => count($prevDetails),
+            'new_joinees' => 0,
+            'exited'      => 0,
+            'revised'     => 0,
+            'unchanged'   => 0
+        ];
+
+        $prevByEmp = [];
+        foreach ($prevDetails as $pd) {
+            $key = (int)$pd->employee_id;
+            $prevByEmp[$key] = $pd;
+            $totals['prev_gross'] += (float)($pd->gross_salary ?? 0);
+            $totals['prev_net']   += (float)($pd->net_salary ?? 0);
+            $totals['prev_ded']   += (float)($pd->total_deductions ?? 0);
+        }
+
+        $currSeen = [];
+        foreach ($currDetails as $cd) {
+            $empId = (int)$cd->employee_id;
+            $currSeen[$empId] = true;
+
+            $currGross = (float)($cd->gross_salary ?? 0);
+            $currNet   = (float)($cd->net_salary ?? 0);
+            $currDed   = (float)($cd->total_deductions ?? 0);
+            $currLop   = (int)($cd->absent_days ?? 0);
+
+            $totals['curr_gross'] += $currGross;
+            $totals['curr_net']   += $currNet;
+            $totals['curr_ded']   += $currDed;
+
+            $pd = $prevByEmp[$empId] ?? null;
+            if ($pd) {
+                $prevGross = (float)($pd->gross_salary ?? 0);
+                $prevNet   = (float)($pd->net_salary ?? 0);
+                $prevLop   = (int)($pd->absent_days ?? 0);
+
+                $diffGross = $currGross - $prevGross;
+                $diffNet   = $currNet - $prevNet;
+
+                $status = 'Unchanged';
+                if (abs($diffNet) > 0.5) {
+                    $status = 'Revised';
+                    $totals['revised']++;
+                } else {
+                    $totals['unchanged']++;
+                }
+
+                $matrix[] = [
+                    'employee_id'   => $empId,
+                    'employee_code' => $cd->employee_code ?? '',
+                    'name'          => $cd->name ?? 'Employee',
+                    'department'    => $cd->department ?? 'General',
+                    'status'        => $status,
+                    'prev_gross'    => $prevGross,
+                    'curr_gross'    => $currGross,
+                    'diff_gross'    => $diffGross,
+                    'prev_net'      => $prevNet,
+                    'curr_net'      => $currNet,
+                    'diff_net'      => $diffNet,
+                    'prev_lop'      => $prevLop,
+                    'curr_lop'      => $currLop,
+                    'remarks'       => $diffNet > 0 ? 'Salary increment / bonus / reduced LOP' : ($diffNet < 0 ? 'LOP deduction / tax adjustment' : 'No variance')
+                ];
+            } else {
+                $totals['new_joinees']++;
+                $matrix[] = [
+                    'employee_id'   => $empId,
+                    'employee_code' => $cd->employee_code ?? '',
+                    'name'          => $cd->name ?? 'Employee',
+                    'department'    => $cd->department ?? 'General',
+                    'status'        => 'New Joinee',
+                    'prev_gross'    => 0.0,
+                    'curr_gross'    => $currGross,
+                    'diff_gross'    => $currGross,
+                    'prev_net'      => 0.0,
+                    'curr_net'      => $currNet,
+                    'diff_net'      => $currNet,
+                    'prev_lop'      => 0,
+                    'curr_lop'      => $currLop,
+                    'remarks'       => 'New joinee on active payroll'
+                ];
+            }
+        }
+
+        foreach ($prevByEmp as $empId => $pd) {
+            if (!isset($currSeen[$empId])) {
+                $totals['exited']++;
+                $prevGross = (float)($pd->gross_salary ?? 0);
+                $prevNet   = (float)($pd->net_salary ?? 0);
+                $matrix[] = [
+                    'employee_id'   => $empId,
+                    'employee_code' => $pd->employee_code ?? '',
+                    'name'          => $pd->name ?? 'Employee',
+                    'department'    => $pd->department ?? 'General',
+                    'status'        => 'Separated',
+                    'prev_gross'    => $prevGross,
+                    'curr_gross'    => 0.0,
+                    'diff_gross'    => -$prevGross,
+                    'prev_net'      => $prevNet,
+                    'curr_net'      => 0.0,
+                    'diff_net'      => -$prevNet,
+                    'prev_lop'      => (int)($pd->absent_days ?? 0),
+                    'curr_lop'      => 0,
+                    'remarks'       => 'Separated / Exited from active payroll'
+                ];
+            }
+        }
+
+        $totals['diff_gross'] = $totals['curr_gross'] - $totals['prev_gross'];
+        $totals['diff_net']   = $totals['curr_net'] - $totals['prev_net'];
+
+        $data = [
+            'title'         => 'Month-over-Month Reconciliation | Raptor CRM',
+            'active_tab'    => 'payroll_reconciliation',
+            'runs'          => $runs,
+            'current_month' => $currentMonth,
+            'prev_month'    => $prevMonth,
+            'curr_run'      => $currRun,
+            'prev_run'      => $prevRun,
+            'matrix'        => $matrix,
+            'totals'        => $totals
+        ];
+
+        $this->viewWithLayout('payroll/reconciliation', 'main', $data);
     }
 
 
@@ -4124,9 +4300,7 @@ class PayrollController extends Controller {
         // If direct PDF download requested
 
         if (isset($_GET['download']) && $_GET['download'] === 'pdf') {
-
-            $pdf = PayslipPdfService::generatePdf($detail);
-
+            $pdf = PayslipPdfService::getOrGenerateCachedPdf($detail);
             $filename = 'Payslip_' . preg_replace('/[^A-Za-z0-9_-]/', '_', ($detail->employee_code ?? 'EMP') . '_' . $detail->month_year) . '.pdf';
 
             header('Content-Type: application/pdf');

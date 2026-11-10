@@ -445,7 +445,7 @@ class EmailService {
         if (!class_exists('PayslipPdfService')) {
             require_once APPROOT . '/core/PayslipPdfService.php';
         }
-        $pdfBinary = PayslipPdfService::generatePdf($slip);
+        $pdfBinary = PayslipPdfService::getOrGenerateCachedPdf($slip);
         $pdfFilename = "Payslip_" . preg_replace('/[^A-Za-z0-9_-]/', '_', $empCode . '_' . $rawMonth) . ".pdf";
 
         $attachments = [

@@ -265,6 +265,51 @@ $custDetailContent = file_get_contents($custDetailPath);
 assertCustom(strpos($custDetailContent, 'aiSmartReplyForm') !== false, "Customer detail renders AI Smart Reply Copilot form");
 assertCustom(strpos($custDetailContent, 'customers/smartReply') !== false, "Customer detail dispatches to smartReply endpoint");
 
+// ── 12. Statutory Payroll Polish & Pre-Payroll Checklist Gates (Sprint 3) ──
+echo "\n12. Testing Statutory Payroll Polish & Pre-Payroll Gates...\n";
+require_once __DIR__ . '/../app/core/PayslipPdfService.php';
+require_once __DIR__ . '/../app/controllers/PayrollController.php';
+
+$pdfReflect = new ReflectionClass(PayslipPdfService::class);
+assertCustom($pdfReflect->hasMethod('getOrGenerateCachedPdf'), "PayslipPdfService defines getOrGenerateCachedPdf() for disk caching");
+assertCustom($pdfReflect->hasMethod('invalidateCache'), "PayslipPdfService defines invalidateCache() for revised runs");
+
+$dummyDetail = (object)[
+    'payroll_detail_id' => 9991,
+    'employee_id' => 101,
+    'employee_code' => 'AX-TEST-01',
+    'month_year' => '2026-10',
+    'name' => 'Test Employee',
+    'basic_salary' => 25000,
+    'gross_salary' => 50000,
+    'net_salary' => 45000,
+    'pf' => 1800,
+    'total_deductions' => 5000
+];
+
+$cachedBinary1 = PayslipPdfService::getOrGenerateCachedPdf($dummyDetail);
+assertCustom(!empty($cachedBinary1) && strpos($cachedBinary1, '%PDF') === 0, "PayslipPdfService creates valid PDF binary on initial cache miss");
+
+$cachedBinary2 = PayslipPdfService::getOrGenerateCachedPdf($dummyDetail);
+assertCustom($cachedBinary1 === $cachedBinary2, "PayslipPdfService delivers identical cached PDF on subsequent access");
+
+$invalidationSuccess = PayslipPdfService::invalidateCache(9991, '2026-10', 'AX-TEST-01');
+assertCustom($invalidationSuccess, "PayslipPdfService successfully invalidates cached payslip on revision");
+
+$payrollReflect = new ReflectionClass(PayrollController::class);
+assertCustom($payrollReflect->hasMethod('reconciliation'), "PayrollController defines reconciliation() endpoint for MoM variance matrix");
+
+$procViewPath = __DIR__ . '/../app/views/payroll/processing.php';
+$procContent = file_get_contents($procViewPath);
+assertCustom(strpos($procContent, 'Verification Incomplete') !== false || strpos($procContent, 'is_checklist_done') !== false, "Payroll processing view integrates pre-payroll checklist warning gate");
+assertCustom(strpos($procContent, 'payroll/reconciliation') !== false, "Payroll processing view links to reconciliation report");
+
+$reconViewPath = __DIR__ . '/../app/views/payroll/reconciliation.php';
+assertCustom(file_exists($reconViewPath), "app/views/payroll/reconciliation.php exists");
+$reconContent = file_get_contents($reconViewPath);
+assertCustom(strpos($reconContent, 'table-sticky-header') !== false, "Reconciliation view renders sticky-header matrix view");
+assertCustom(strpos($reconContent, 'csvHtml5') !== false, "Reconciliation view provides DataTables CSV export button");
+
 echo "\n=======================================================\n";
 echo "SUMMARY: {$passed} PASSED, {$failed} FAILED\n";
 echo "=======================================================\n";
