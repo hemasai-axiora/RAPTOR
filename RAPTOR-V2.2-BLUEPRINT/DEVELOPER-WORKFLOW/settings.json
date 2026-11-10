@@ -1,0 +1,73 @@
+{
+  "files.eol": "\n",
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "editor.renderWhitespace": "selection",
+  "editor.formatOnSave": true,
+  "editor.rulers": [100, 120],
+
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.wordWrap": "on"
+  },
+  "[php]": {
+    "editor.tabSize": 4,
+    "editor.defaultFormatter": "bmewburn.vscode-intelephense-client"
+  },
+
+  "intelephense.environment.phpVersion": "8.2.0",
+  "intelephense.files.maxSize": 5000000,
+  "intelephense.stubs": [
+    "Core",
+    "standard",
+    "date",
+    "pcre",
+    "PDO",
+    "pdo_mysql",
+    "pdo_sqlite",
+    "json",
+    "curl",
+    "mbstring",
+    "openssl",
+    "fileinfo",
+    "session",
+    "SPL"
+  ],
+  "intelephense.diagnostics.undefinedClassConstants": true,
+  "intelephense.diagnostics.undefinedFunctions": true,
+  "intelephense.diagnostics.undefinedMethods": true,
+  "intelephense.diagnostics.undefinedTypes": true,
+
+  "git.autofetch": true,
+  "git.confirmSync": false,
+
+  "todo-tree.general.tags": [
+    "TODO",
+    "FIXME",
+    "BUG",
+    "SECURITY",
+    "HACK",
+    "REVIEW"
+  ],
+  "todo-tree.highlights.customHighlight": {
+    "SECURITY": {
+      "foreground": "#FFFFFF",
+      "background": "#DC2626",
+      "icon": "shield"
+    }
+  }
+}
