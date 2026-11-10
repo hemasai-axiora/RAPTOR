@@ -1736,6 +1736,154 @@ assertCustom(strpos($onbConvertMarkup, 'CONFIRMATION GATE: Permanent Employee Co
 assertCustom(strpos($onbConvertMarkup, 'recruitment_onboarding/executeConversion') !== false, "Convert view defines form submission action");
 
 
+// ============================================================================
+// 22. SPRINT 9: RECRUITMENT QUEUE WORKER & MULTI-PROVIDER AI COPILOT
+// ============================================================================
+echo "\n--- Section 22: Sprint 9 - Queue Worker & Multi-Provider AI Copilot ---\n";
+
+require_once __DIR__ . '/../app/services/recruitment/RecruitmentAiService.php';
+require_once __DIR__ . '/../bin/recruitment_worker.php';
+
+$recAiService = new RecruitmentAiService();
+
+// Test 22.1: PII Redaction Engine (DPDP & GDPR Compliance)
+$samplePiiText = "Candidate Name: Rohan Verma, Email: rohan.verma@example.com, Phone: +91 98765 43210. Aadhaar: 1234 5678 9012, PAN: ABCDE1234F. Address: Bangalore Pincode: 560001.";
+$redactedPii = $recAiService->redactPii($samplePiiText);
+
+assertCustom(strpos($redactedPii, '[REDACTED_EMAIL]') !== false, "PII redaction masks email addresses");
+assertCustom(strpos($redactedPii, 'rohan.verma@example.com') === false, "Raw email is removed from prompt payload");
+assertCustom(strpos($redactedPii, '[REDACTED_PHONE]') !== false, "PII redaction masks phone numbers");
+assertCustom(strpos($redactedPii, '98765 43210') === false, "Raw phone number is removed from prompt payload");
+assertCustom(strpos($redactedPii, '[REDACTED_AADHAAR]') !== false, "PII redaction masks Aadhaar numbers");
+assertCustom(strpos($redactedPii, '1234 5678 9012') === false, "Raw Aadhaar number is removed from prompt payload");
+assertCustom(strpos($redactedPii, '[REDACTED_PAN]') !== false, "PII redaction masks PAN card numbers");
+assertCustom(strpos($redactedPii, 'ABCDE1234F') === false, "Raw PAN number is removed from prompt payload");
+
+// Test 22.2: Resume Parsing (Offline Heuristic Resiliency)
+$sampleResume = "
+Rohan Verma
+Senior Backend Architect with 8.5 years of experience in distributed systems.
+Education: B.Tech in Computer Science from NIT Trichy.
+Core Technical Skills: PHP, MySQL, Docker, Kubernetes, AWS, Redis, Microservices, CI/CD, Git.
+Prior Employment: TechCorp India, Infosys.
+";
+
+$parsedResume = $recAiService->parseResume($sampleResume, $mockDb);
+assertCustom(is_array($parsedResume['skills']), "parseResume returns skills array");
+assertCustom(in_array('Php', $parsedResume['skills'], true), "parseResume extracts PHP skill");
+assertCustom(in_array('Mysql', $parsedResume['skills'], true), "parseResume extracts MySQL skill");
+assertCustom(in_array('Docker', $parsedResume['skills'], true), "parseResume extracts Docker skill");
+assertCustom(in_array('Aws', $parsedResume['skills'], true), "parseResume extracts AWS skill");
+assertCustom((float)$parsedResume['experience_years'] === 8.5, "parseResume accurately extracts 8.5 years of experience");
+assertCustom(in_array('B.Tech', $parsedResume['education'], true), "parseResume extracts B.Tech degree");
+assertCustom(isset($parsedResume['provider_used']), "parseResume records provider_used metadata");
+
+// Test 22.3: Candidate-Job Evidence Match Scoring & Advisory Guard
+$jobReqs = [
+    'job_title'             => 'Lead Staff Engineer',
+    'required_skills'       => ['PHP', 'MySQL', 'Docker', 'Kubernetes', 'Terraform'],
+    'min_experience_years'  => 7.0
+];
+
+$matchResult = $recAiService->scoreCandidateJobMatch($sampleResume, $jobReqs, $mockDb);
+assertCustom($matchResult['match_score'] >= 70, "scoreCandidateJobMatch scores strong candidate >= 70 (score: {$matchResult['match_score']})");
+assertCustom($matchResult['human_action_required'] === true, "scoreCandidateJobMatch enforces ADR-0007 human_action_required");
+assertCustom($matchResult['advisory_only'] === true, "scoreCandidateJobMatch enforces advisory_only flag");
+assertCustom(in_array('Php', $matchResult['matched_skills'], true), "scoreCandidateJobMatch records matched skill PHP");
+assertCustom(in_array('Terraform', $matchResult['missing_skills'], true), "scoreCandidateJobMatch detects missing skill Terraform");
+assertCustom(!empty($matchResult['evidence_summary']), "scoreCandidateJobMatch provides evidence summary narrative");
+
+// Test 22.4: Structured Interview Question Suggestions
+$interviewQuestions = $recAiService->generateInterviewQuestions('Lead Staff Engineer', ['PHP', 'Docker', 'Microservices'], 'technical', $mockDb);
+assertCustom($interviewQuestions['success'] === true, "generateInterviewQuestions succeeds");
+assertCustom(count($interviewQuestions['questions']) >= 3, "generateInterviewQuestions returns at least 3 structured questions");
+assertCustom(!empty($interviewQuestions['questions'][0]['question']), "Question object contains question prompt");
+assertCustom(!empty($interviewQuestions['questions'][0]['evaluation_criteria']), "Question object contains evaluation criteria");
+
+$cultureQuestions = $recAiService->generateInterviewQuestions('Lead Staff Engineer', [], 'culture', $mockDb);
+assertCustom($cultureQuestions['success'] === true, "generateInterviewQuestions succeeds for culture round");
+assertCustom(count($cultureQuestions['questions']) >= 3, "Culture round returns structured behavioral questions");
+
+// Test 22.5: Recruitment Queue Worker Batch Execution
+$worker = new RecruitmentQueueWorker($mockDb, 10, 3);
+
+// Enqueue an AI matching job
+$aiMatchPayload = json_encode([
+    'application_id'   => $aaravAppId,
+    'resume_text'      => $sampleResume,
+    'job_requirements' => $jobReqs
+]);
+
+$stmtQJob = $mockDb->prepare("
+    INSERT INTO recruitment_queue (job_type, payload_json, status, attempts, scheduled_at, created_at)
+    VALUES ('ai_candidate_match', :payload, 'pending', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+");
+$stmtQJob->execute([':payload' => $aiMatchPayload]);
+$aiJobId = (int)$mockDb->lastInsertId();
+
+$processed = $worker->processBatch();
+assertCustom($processed >= 1, "RecruitmentQueueWorker processes pending batch");
+
+// Verify job completed in DB
+$stmtJobDone = $mockDb->prepare("SELECT status, attempts, last_error FROM recruitment_queue WHERE queue_id = :id");
+$stmtJobDone->execute([':id' => $aiJobId]);
+$jobDoneRow = $stmtJobDone->fetch(PDO::FETCH_ASSOC);
+assertCustom($jobDoneRow['status'] === 'completed', "Queue job status updated to 'completed'");
+assertCustom($jobDoneRow['last_error'] === null, "Queue job last_error cleared");
+assertCustom((int)$jobDoneRow['attempts'] === 1, "Queue job attempts updated to 1");
+
+// Verify application match_score_advisory was updated
+$stmtAppMatch = $mockDb->prepare("SELECT match_score_advisory FROM recruitment_applications WHERE application_id = :id");
+$stmtAppMatch->execute([':id' => $aaravAppId]);
+$appMatchScore = (int)$stmtAppMatch->fetchColumn();
+assertCustom($appMatchScore >= 70, "Application match_score_advisory updated via queue job ({$appMatchScore}%)");
+
+// Test 22.6: Retry Backoff & Dead-Letter Queue (DLQ) Transitions
+// Create a failing job
+$failingPayload = json_encode(['interview_id' => -999]); // Invalid interview_id will throw
+$stmtFailJob = $mockDb->prepare("
+    INSERT INTO recruitment_queue (job_type, payload_json, status, attempts, scheduled_at, created_at)
+    VALUES ('interview_scheduled', :payload, 'pending', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+");
+$stmtFailJob->execute([':payload' => $failingPayload]);
+$failJobId = (int)$mockDb->lastInsertId();
+
+// Attempt 1 Failure -> Remains pending with scheduled_at delayed (exponential backoff)
+$failJobRow1 = ['queue_id' => $failJobId, 'job_type' => 'interview_scheduled', 'attempts' => 0, 'payload_json' => $failingPayload];
+$worker->executeJob($failJobRow1);
+
+$stmtCheckFail1 = $mockDb->prepare("SELECT status, attempts, last_error FROM recruitment_queue WHERE queue_id = :id");
+$stmtCheckFail1->execute([':id' => $failJobId]);
+$checkRow1 = $stmtCheckFail1->fetch(PDO::FETCH_ASSOC);
+assertCustom($checkRow1['status'] === 'pending', "Attempt 1 failure keeps job in 'pending' status for retry");
+assertCustom((int)$checkRow1['attempts'] === 1, "Attempts incremented to 1");
+assertCustom(!empty($checkRow1['last_error']), "Last error message recorded on attempt 1");
+
+// Attempt 2 Failure
+$failJobRow2 = ['queue_id' => $failJobId, 'job_type' => 'interview_scheduled', 'attempts' => 1, 'payload_json' => $failingPayload];
+$worker->executeJob($failJobRow2);
+
+$stmtCheckFail2 = $mockDb->prepare("SELECT status, attempts FROM recruitment_queue WHERE queue_id = :id");
+$stmtCheckFail2->execute([':id' => $failJobId]);
+$checkRow2 = $stmtCheckFail2->fetch(PDO::FETCH_ASSOC);
+assertCustom($checkRow2['status'] === 'pending', "Attempt 2 failure keeps job in 'pending' status");
+assertCustom((int)$checkRow2['attempts'] === 2, "Attempts incremented to 2");
+
+// Attempt 3 Failure -> DLQ Transition (max_attempts = 3)
+$failJobRow3 = ['queue_id' => $failJobId, 'job_type' => 'interview_scheduled', 'attempts' => 2, 'payload_json' => $failingPayload];
+$worker->executeJob($failJobRow3);
+
+$stmtCheckFail3 = $mockDb->prepare("SELECT status, attempts, last_error FROM recruitment_queue WHERE queue_id = :id");
+$stmtCheckFail3->execute([':id' => $failJobId]);
+$checkRow3 = $stmtCheckFail3->fetch(PDO::FETCH_ASSOC);
+assertCustom($checkRow3['status'] === 'dlq', "Attempt 3 failure transitions job to 'dlq' (Dead-Letter Queue)");
+assertCustom((int)$checkRow3['attempts'] === 3, "Attempts recorded as 3 in DLQ");
+assertCustom(strpos($checkRow3['last_error'], 'Exhausted 3 attempts') !== false, "DLQ records exhaustion error message");
+
+// Test 22.7: CLI Script File Verification
+assertCustom(file_exists(__DIR__ . '/../bin/recruitment_worker.php'), "bin/recruitment_worker.php CLI executable exists");
+
+
 
 
 
