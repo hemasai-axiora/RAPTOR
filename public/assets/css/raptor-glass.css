@@ -1,0 +1,88 @@
+/**
+ * RAPTOR v2.2 Design System — Selective Glassmorphism & Elevation Surfaces
+ * -------------------------------------------------------------------------
+ * Hardware-accelerated backdrop filters for high-elevation UI components.
+ * Automatically falls back to high-contrast solid surfaces on low-power
+ * devices or when prefers-reduced-transparency is enabled.
+ */
+
+/* 1. Selective Glass Cards & Panels */
+.raptor-glass-card,
+.raptor-glass-panel {
+    background: var(--raptor-glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--raptor-glass-border);
+    box-shadow: var(--raptor-shadow-md);
+    border-radius: var(--raptor-radius-lg);
+    transition: transform var(--raptor-transition-base), box-shadow var(--raptor-transition-base);
+}
+
+.raptor-glass-card:hover,
+.raptor-glass-panel:hover {
+    box-shadow: var(--raptor-shadow-lg);
+}
+
+/* 2. Selective Glass Modals & Drawers */
+.raptor-glass-modal {
+    background: var(--raptor-glass-modal-bg) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--raptor-border-medium) !important;
+    box-shadow: var(--raptor-shadow-modal) !important;
+}
+
+/* 3. Solid Surface Cards (for high-density tables & lists) */
+.raptor-solid-card {
+    background: var(--raptor-surface);
+    border: 1px solid var(--raptor-border-subtle);
+    box-shadow: var(--raptor-shadow-sm);
+    border-radius: var(--raptor-radius-lg);
+}
+
+/* 4. Glass Floating Toasts */
+.raptor-toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1090;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 380px;
+    width: 100%;
+}
+
+.raptor-glass-toast {
+    background: var(--raptor-glass-modal-bg);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--raptor-glass-border);
+    border-radius: var(--raptor-radius-md);
+    box-shadow: var(--raptor-shadow-lg);
+    color: var(--raptor-text-primary);
+    overflow: hidden;
+    animation: raptorToastIn 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes raptorToastIn {
+    from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* 5. Reduced Transparency Fallback */
+@media (prefers-reduced-transparency: reduce) {
+    .raptor-glass-card,
+    .raptor-glass-modal,
+    .raptor-glass-toast {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background: var(--raptor-surface) !important;
+    }
+}

@@ -9,10 +9,24 @@
         $page_title = str_ireplace('Raptor CRM', 'RAPTOR', $page_title);
     ?>
     <title><?php echo $page_title; ?></title>
+    <!-- Early FOUT-Free Theme Resolver -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('raptor-theme') || 'dark';
+            let resolved = savedTheme;
+            if (savedTheme === 'system') {
+                resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            document.documentElement.setAttribute('data-theme', resolved);
+        })();
+    </script>
     <!-- Favicon & PWA Manifest -->
     <link rel="icon" type="image/png" href="<?php echo URLROOT; ?>/logo.png">
     <link rel="manifest" href="<?php echo URLROOT; ?>/manifest.json">
     <meta name="theme-color" content="#2563EB">
+    <!-- Raptor v2.2 Design Tokens & Glass Surfaces -->
+    <link href="<?php echo URLROOT; ?>/assets/css/raptor-tokens.css?v=2.2.0" rel="stylesheet">
+    <link href="<?php echo URLROOT; ?>/assets/css/raptor-glass.css?v=2.2.0" rel="stylesheet">
     <!-- Inter Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Bootstrap 5 CSS -->

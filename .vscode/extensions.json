@@ -1,0 +1,20 @@
+{
+  "recommendations": [
+    "bmewburn.vscode-intelephense-client",
+    "xdebug.php-debug",
+    "esbenp.prettier-vscode",
+    "usernamehw.errorlens",
+    "eamodio.gitlens",
+    "Semgrep.semgrep",
+    "GitGuardian.gitguardian",
+    "pranaygp.csspeek",
+    "naumovs.color-highlight",
+    "EditorConfig.EditorConfig",
+    "humao.rest-client",
+    "Gruntfuggly.todo-tree"
+  ],
+  "unwantedRecommendations": [
+    "felixfbecker.php-intellisense"
+  ]
+}
+

@@ -147,6 +147,82 @@ assertCustom($settingsReflect->hasMethod('retryDlq'), "SettingsController define
 $controllerReflect = new ReflectionClass(Controller::class);
 assertCustom($controllerReflect->hasMethod('initCorrelationId'), "Controller defines distributed correlation tracing (X-Request-ID)");
 
+// ── 7. Design System Semantic Tokens & Glassmorphic CSS Integrity (Sprint 1) ──
+echo "\n7. Testing Design System Semantic Tokens & Glass Surfaces...\n";
+$tokensPath = __DIR__ . '/../public/assets/css/raptor-tokens.css';
+$glassPath  = __DIR__ . '/../public/assets/css/raptor-glass.css';
+
+assertCustom(file_exists($tokensPath), "public/assets/css/raptor-tokens.css exists");
+$tokensContent = file_get_contents($tokensPath);
+assertCustom(strpos($tokensContent, '--raptor-primary') !== false, "raptor-tokens.css defines primary brand tokens");
+assertCustom(strpos($tokensContent, '--raptor-surface-panel') !== false, "raptor-tokens.css defines surface tokens");
+assertCustom(strpos($tokensContent, '[data-raptor-theme="light"]') !== false, "raptor-tokens.css supports light theme token palette");
+
+assertCustom(file_exists($glassPath), "public/assets/css/raptor-glass.css exists");
+$glassContent = file_get_contents($glassPath);
+assertCustom(strpos($glassContent, '.raptor-glass-panel') !== false, "raptor-glass.css defines hardware-accelerated glass panel");
+assertCustom(strpos($glassContent, 'prefers-reduced-transparency') !== false, "raptor-glass.css satisfies WCAG accessibility fallback for reduced transparency");
+
+// ── 8. Reusable Blade-Style Component Library & Controller Helper (Sprint 1) ──
+echo "\n8. Testing Reusable Component Library & Controller Helper...\n";
+assertCustom($controllerReflect->hasMethod('component'), "Controller defines \$this->component(\$name, \$props) helper");
+
+$testController = new class extends Controller {
+    public function renderTest(string $comp, array $props): string {
+        return (string) $this->component($comp, $props, true);
+    }
+};
+
+$badgeHtml = $testController->renderTest('badge', ['label' => 'Active', 'variant' => 'success']);
+assertCustom(strpos($badgeHtml, 'raptor-badge') !== false && strpos($badgeHtml, 'Active') !== false, "Component helper renders badge component with correct HTML");
+
+$cardHtml = $testController->renderTest('card', ['title' => 'Sprint 1 Card', 'body' => 'Core Architecture']);
+assertCustom(strpos($cardHtml, 'raptor-card') !== false && strpos($cardHtml, 'Sprint 1 Card') !== false, "Component helper renders card component with header and body");
+
+$statHtml = $testController->renderTest('stat_tile', ['title' => 'Total Users', 'value' => '1,420', 'icon' => 'fa-users']);
+assertCustom(strpos($statHtml, 'raptor-stat-tile') !== false && strpos($statHtml, '1,420') !== false, "Component helper renders stat_tile component with value and icon");
+
+$emptyHtml = $testController->renderTest('empty_state', ['title' => 'No Records', 'description' => 'Try expanding filters']);
+assertCustom(strpos($emptyHtml, 'raptor-empty-state') !== false && strpos($emptyHtml, 'No Records') !== false, "Component helper renders empty_state component");
+
+// ── 9. QuickSearch RBAC Defense-in-Depth & AUD-003 Subtree Scoping (Sprint 1) ──
+echo "\n9. Testing QuickSearch RBAC Defense-in-Depth (AUD-003)...\n";
+$mockDb = new PDO('sqlite::memory:');
+$mockDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$mockDb->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_OBJ);
+Database::setMockConnection($mockDb);
+
+// Create minimal schema for PermissionService
+$mockDb->exec("
+    CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, status TEXT, role_id INTEGER);
+    CREATE TABLE IF NOT EXISTS roles (role_id INTEGER PRIMARY KEY, role_name TEXT);
+    CREATE TABLE IF NOT EXISTS permissions (permission_id INTEGER PRIMARY KEY, module TEXT, action TEXT, permission_name TEXT, description TEXT);
+    CREATE TABLE IF NOT EXISTS role_permissions (role_id INTEGER, permission_id INTEGER, scope TEXT);
+    CREATE TABLE IF NOT EXISTS user_permission_overrides (user_id INTEGER, permission_id INTEGER, scope TEXT, type TEXT);
+    CREATE TABLE IF NOT EXISTS employees (employee_id TEXT, user_id INTEGER, reporting_manager_id INTEGER, team_id INTEGER, designation TEXT);
+    CREATE TABLE IF NOT EXISTS teams (team_id INTEGER, team_leader_user_id INTEGER, manager_user_id INTEGER);
+    CREATE TABLE IF NOT EXISTS leads (lead_id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, company_name TEXT, email TEXT, phone TEXT, status TEXT, assigned_to_user_id INTEGER, created_by_user_id INTEGER);
+    CREATE TABLE IF NOT EXISTS marketing_campaigns (campaign_id INTEGER PRIMARY KEY, name TEXT, subject TEXT, status TEXT);
+");
+
+if (!isset($_SESSION)) {
+    $_SESSION = [];
+}
+$_SESSION['user_id'] = 999;
+$_SESSION['user_role'] = 'sales_person';
+$_SESSION['role_id'] = 4;
+$_SESSION['user_status'] = 'active';
+
+$scopedNav = $getAll->invoke($qs);
+$scopedUrls = array_column($scopedNav, 'url');
+
+assertCustom(!in_array('index.php?route=settings/index', $scopedUrls, true), "Sales person cannot view admin System Settings in QuickSearch");
+assertCustom(!in_array('index.php?route=roles/index', $scopedUrls, true), "Sales person cannot view Roles & Permissions in QuickSearch");
+assertCustom(!in_array('index.php?route=payroll/salary_structures', $scopedUrls, true), "Sales person cannot view Salary Structures in QuickSearch");
+
+// Clean up session mock
+unset($_SESSION['user_id'], $_SESSION['user_role'], $_SESSION['role_id'], $_SESSION['user_status']);
+
 echo "\n=======================================================\n";
 echo "SUMMARY: {$passed} PASSED, {$failed} FAILED\n";
 echo "=======================================================\n";
