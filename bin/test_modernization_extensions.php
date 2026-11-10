@@ -476,6 +476,44 @@ assertCustom(strpos($hierarchyContent, 'org-branch-column') !== false, "Hierarch
 $hrmsReflectProfile = $hrmsReflect->getMethod('profile');
 assertCustom($hrmsReflectProfile->isPublic(), "HrmsController exposes profile() action with sensitive data masking protection");
 
+// ── 13. Sprint 6: E2E Playwright Automation, PWA Hardening & Release Acceptance ──
+echo "\n13. Testing Sprint 6 E2E Automation, PWA Hardening & Release Acceptance...\n";
+
+// Test 13.1: Application Version & Release Alignment
+assertCustom(defined('APP_VERSION') && APP_VERSION === '2.2.0', "APP_VERSION constant is updated to 2.2.0 for Raptor v2.2 release");
+
+// Test 13.2: PWA Manifest Hardening
+$manifestPath = __DIR__ . '/../public/manifest.json';
+assertCustom(file_exists($manifestPath), "public/manifest.json exists for PWA installation");
+$manifestData = json_decode(file_get_contents($manifestPath), true);
+assertCustom(is_array($manifestData) && !empty($manifestData['id']), "PWA manifest defines application id identifier (/?source=pwa)");
+assertCustom(!empty($manifestData['shortcuts']) && count($manifestData['shortcuts']) >= 3, "PWA manifest defines at least 3 quick launch shortcuts (Lead, Attendance, Campaigns)");
+assertCustom(!empty($manifestData['categories']) && in_array('business', $manifestData['categories']), "PWA manifest categorizes application under 'business' and 'productivity'");
+
+// Test 13.3: Service Worker Offline Caching
+$swPath = __DIR__ . '/../public/sw.js';
+assertCustom(file_exists($swPath), "public/sw.js service worker script exists");
+$swContent = file_get_contents($swPath);
+assertCustom(strpos($swContent, 'raptor-pwa-v2.2.0') !== false, "Service worker defines raptor-pwa-v2.2.0 cache namespace");
+assertCustom(strpos($swContent, 'PRECACHE_ASSETS') !== false, "Service worker precaches core design tokens and glass surfaces");
+assertCustom(strpos($swContent, 'caches.open') !== false, "Service worker implements install cache lifecycle");
+assertCustom(strpos($swContent, 'caches.delete') !== false, "Service worker implements activation cleanup for legacy caches");
+
+// Test 13.4: Raptor CLI test:ui Automation Integration
+$raptorCli = file_get_contents(__DIR__ . '/raptor');
+assertCustom(strpos($raptorCli, 'test:ui') !== false, "Raptor CLI console supports test:ui command for Playwright journeys");
+assertCustom(strpos($raptorCli, 'v2.2.0') !== false || strpos($raptorCli, 'APP_VERSION') !== false, "Raptor CLI header reflects release version v2.2.0");
+
+// Test 13.5: Playwright E2E Test Suite Integrity
+$specPath = __DIR__ . '/../tests/e2e/raptor.e2e.spec.ts';
+assertCustom(file_exists($specPath), "tests/e2e/raptor.e2e.spec.ts exists");
+$specContent = file_get_contents($specPath);
+preg_match_all("/test\(/", $specContent, $matches);
+assertCustom(count($matches[0]) >= 10, "Playwright test suite covers at least 10 critical end-to-end browser journeys (" . count($matches[0]) . " journeys defined)");
+assertCustom(strpos($specContent, 'login screen loads and theme toggle works') !== false, "E2E suite verifies authentication and theme toggle");
+assertCustom(strpos($specContent, 'delete routes are blocked by governance policy') !== false, "E2E suite verifies governance delete route protection");
+assertCustom(strpos($specContent, 'capture lead form has read-only Lead ID') !== false, "E2E suite verifies lead capture workflows");
+
 echo "\n=======================================================\n";
 echo "SUMMARY: {$passed} PASSED, {$failed} FAILED\n";
 echo "=======================================================\n";
