@@ -65,3 +65,4 @@ When completing a task, the AI agent must provide a structured change report for
 - **Syntax Check**: [Zero PHP syntax errors detected]
 - **Rollback Instructions**: [Git command to revert if required]
 ```
+

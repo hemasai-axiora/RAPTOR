@@ -112,3 +112,4 @@ gantt
 - **AI Agent Scope**: Execute test runners and generate release documentation.
 - **QA & Security Review**: Final sign-off against `RELEASE-ACCEPTANCE.md`.
 - **Effort**: 16 Story Points (Full Team + CTO).
+

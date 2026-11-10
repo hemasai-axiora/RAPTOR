@@ -19,3 +19,4 @@ You are assisting an engineer on **Raptor**, an enterprise PHP 8.2+ MVC business
 - **Security Gates**: Ensure any new controller action calls `$this->requireAuth()` and `$this->requirePermission('module', 'action')`.
 - **Styling**: Use semantic CSS tokens (`var(--raptor-primary)`, `var(--raptor-surface)`) instead of hardcoded hex colors or arbitrary Bootstrap classes.
 - **Zero Regressions**: Any generated code must pass the 16 existing test suites (772 assertions).
+

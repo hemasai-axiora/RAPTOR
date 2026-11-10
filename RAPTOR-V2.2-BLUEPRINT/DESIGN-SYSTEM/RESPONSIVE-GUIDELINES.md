@@ -58,3 +58,4 @@ Wide enterprise tables (e.g. Employee Directory, Payroll Runs, Lead Manager) can
 - **Gesture Support**:
   - Modal sheets and drawers support pull-down-to-dismiss gestures.
   - Toast notifications can be swiped away to the right.
+

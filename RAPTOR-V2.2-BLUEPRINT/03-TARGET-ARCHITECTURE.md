@@ -223,3 +223,4 @@ Views load component templates from `app/views/components/`:
 - `empty_state.php`
 
 This ensures that UI updates are applied centrally across all 50 modules without altering individual controller templates.
+

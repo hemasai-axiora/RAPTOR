@@ -46,3 +46,4 @@ Whenever an AI coding agent or developer touches code in `app/`:
 1. **Pre-Change Verification**: Run `php bin/run_all_campaign_tests.php` to confirm a 772-pass clean slate.
 2. **Post-Change Verification**: Run `php bin/run_all_campaign_tests.php` immediately after editing.
 3. **Zero Compromise Rule**: If the score drops to 771/772, the change is considered broken. The agent must revert or fix the code. Under no circumstances may an agent delete or edit an assertion in `bin/test_*` to hide a regression.
+

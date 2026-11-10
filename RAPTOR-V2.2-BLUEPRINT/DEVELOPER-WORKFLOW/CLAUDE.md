@@ -63,3 +63,4 @@ php -l app/services/SomeService.php
 3. **Respect CSRF**: Any new HTML form must include `<input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">`.
 4. **Follow Design Tokens**: When updating or creating views, use CSS classes from `COLOR-TOKENS.css` and avoid hardcoded inline styles.
 5. **Traceability**: Preserve `X-Request-ID` propagation in any custom HTTP client requests or webhook callbacks.
+

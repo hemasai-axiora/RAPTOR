@@ -105,3 +105,4 @@ To safeguard production reliability, the following architectural invariants are 
 | **Security Controls** | Ad-hoc controller checks; partial CSRF on AJAX; unstandardized AI prompt validation. | OWASP ASVS Level 2 compliance, centralized security filter, automated prompt injection sanitization. |
 | **Developer DX** | Unstandardized IDE configs; manual linting; risk of AI coding hallucinations. | Curated VS Code extension workspace, strict `AGENTS.md` rules, automated pre-commit quality gates. |
 | **Automated Testing** | 16 backend test suites (772 assertions); no automated UI/DOM verification in CI. | 16 backend suites + automated Playwright / Chrome DevTools MCP browser UI test suites. |
+

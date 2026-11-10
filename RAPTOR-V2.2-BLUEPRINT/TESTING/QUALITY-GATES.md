@@ -49,3 +49,4 @@ php bin/raptor test:all
 ```
 
 *Runs Gates 1 through 4 synchronously and outputs a consolidated ANSI scorecard.*
+

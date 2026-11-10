@@ -51,3 +51,4 @@ To maintain engineering velocity and code consistency across both human develope
    - Line endings: `LF` across all files.
    - Format on save: enabled for JS, CSS, JSON, and Markdown.
    - Intelephense stubs: `['Core', 'standard', 'date', 'pcre', 'PDO', 'pdo_mysql', 'pdo_sqlite', 'json', 'curl', 'mbstring', 'openssl']`.
+

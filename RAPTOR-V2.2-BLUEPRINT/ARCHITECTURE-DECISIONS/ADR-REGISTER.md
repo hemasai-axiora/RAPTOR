@@ -124,3 +124,4 @@ Status:               Proposed / Ready for Technical Approval
 - **Consequences**:
   - *Positive*: Visual and DOM regressions caught automatically before deployment.
   - *Negative*: Requires Node.js and headless browser runtime in test environments.
+

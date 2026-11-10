@@ -72,3 +72,4 @@ flowchart TD
 ## 3. Exit Criteria
 - **100% Pass Rate**: All 19 security test cases must pass before any v2.2 release candidate tag is minted.
 - **Zero Critical / High Findings**: Any failing test case in Suites 1–7 is considered a **Blocker (P0)**.
+

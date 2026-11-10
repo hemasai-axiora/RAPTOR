@@ -115,3 +115,4 @@ Each module follows a structured 5-step modernization lifecycle:
   3. Add system health telemetry badge in the top navigation linking to DLQ and queue diagnostics.
 - **Security Invariant**: Geofence spoofing prevention: verify server-side distance calculation using the Haversine formula against configured office coordinates.
 - **Verification**: Post-deployment diagnostic suite (`bin/raptor health:check`).
+

@@ -52,3 +52,4 @@ flowchart TD
   - Responsive mobile drawer navigation at 375px viewport.
   - DataTables column visibility and CSV export.
   - Accessibility tree verification (WCAG 2.2 Level AA).
+

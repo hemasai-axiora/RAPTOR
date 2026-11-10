@@ -80,3 +80,4 @@ php bin/raptor migrate:rollback
 # Verify system health
 php bin/raptor health:check
 ```
+
