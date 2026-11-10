@@ -1884,6 +1884,84 @@ assertCustom(strpos($checkRow3['last_error'], 'Exhausted 3 attempts') !== false,
 assertCustom(file_exists(__DIR__ . '/../bin/recruitment_worker.php'), "bin/recruitment_worker.php CLI executable exists");
 
 
+// ============================================================================
+// 23. SPRINT 10: RECRUITMENT ANALYTICS & PLAYWRIGHT E2E ACCEPTANCE
+// ============================================================================
+echo "\n--- Section 23: Sprint 10 - Analytics, Playwright E2E & Release Acceptance ---\n";
+
+require_once __DIR__ . '/../app/services/recruitment/RecruitmentAnalyticsService.php';
+require_once __DIR__ . '/../app/controllers/RecruitmentAnalyticsController.php';
+
+$analyticsService = new RecruitmentAnalyticsService();
+
+// Test 23.1: Funnel Progression Metrics
+$funnelMetrics = $analyticsService->getFunnelMetrics($mockDb);
+assertCustom(isset($funnelMetrics['total_applications']), "getFunnelMetrics returns total_applications");
+assertCustom(is_array($funnelMetrics['funnel_stages']), "getFunnelMetrics returns funnel_stages array");
+assertCustom(count($funnelMetrics['funnel_stages']) === 6, "funnel_stages covers 6 standard pipeline stages");
+assertCustom($funnelMetrics['funnel_stages'][0]['stage_key'] === 'applied', "First funnel stage is 'applied'");
+assertCustom($funnelMetrics['funnel_stages'][5]['stage_key'] === 'hired', "Final funnel stage is 'hired'");
+
+// Test 23.2: Time-to-Hire Velocity
+$tthMetrics = $analyticsService->getTimeToHireMetrics($mockDb);
+assertCustom(isset($tthMetrics['avg_days_to_hire']), "getTimeToHireMetrics calculates avg_days_to_hire");
+assertCustom($tthMetrics['total_hires'] >= 1, "getTimeToHireMetrics reflects verified hires");
+assertCustom($tthMetrics['benchmark_target'] === 30.0, "Standard 30-day enterprise benchmark defined");
+
+// Test 23.3: Sourcing Channel ROI Matrix
+$sourcingRoi = $analyticsService->getSourcingChannelRoi($mockDb);
+assertCustom(is_array($sourcingRoi), "getSourcingChannelRoi returns array of channels");
+assertCustom(count($sourcingRoi) >= 1, "At least one sourcing channel recorded");
+assertCustom(isset($sourcingRoi[0]['channel']), "Channel object defines channel name");
+assertCustom(isset($sourcingRoi[0]['applications_count']), "Channel object tracks applications_count");
+assertCustom(isset($sourcingRoi[0]['hires_count']), "Channel object tracks hires_count");
+
+// Test 23.4: Offer Acceptance Ratios
+$offerStats = $analyticsService->getOfferAcceptanceRate($mockDb);
+assertCustom(isset($offerStats['total_released']), "getOfferAcceptanceRate tracks total_released");
+assertCustom(isset($offerStats['accepted_count']), "getOfferAcceptanceRate tracks accepted_count");
+assertCustom(isset($offerStats['acceptance_rate']), "getOfferAcceptanceRate computes acceptance_rate percentage");
+
+// Test 23.5: Executive KPI Consolidation
+$executiveKpis = $analyticsService->getExecutiveKpis($mockDb);
+assertCustom(isset($executiveKpis['total_applications']), "Executive KPIs track total_applications");
+assertCustom(isset($executiveKpis['total_hires']), "Executive KPIs track total_hires");
+assertCustom(isset($executiveKpis['funnel_conversion_rate']), "Executive KPIs track funnel_conversion_rate");
+assertCustom(isset($executiveKpis['offer_acceptance_rate']), "Executive KPIs track offer_acceptance_rate");
+assertCustom(isset($executiveKpis['avg_days_to_hire']), "Executive KPIs track avg_days_to_hire");
+
+// Test 23.6: RecruitmentAnalyticsController Architecture & Routing
+$analyticsControllerReflect = new ReflectionClass('RecruitmentAnalyticsController');
+assertCustom($analyticsControllerReflect->isSubclassOf('Controller'), "RecruitmentAnalyticsController extends Controller");
+assertCustom($analyticsControllerReflect->hasMethod('index'), "RecruitmentAnalyticsController exposes index() action");
+assertCustom($analyticsControllerReflect->hasMethod('exportCsv'), "RecruitmentAnalyticsController exposes exportCsv() action");
+
+assertCustom($recControllerReflect->hasMethod('reports'), "RecruitmentController exposes reports() routing");
+
+// Test 23.7: Views Existence & Content Markup
+$analyticsView = __DIR__ . '/../app/views/recruitment/analytics/index.php';
+assertCustom(file_exists($analyticsView), "app/views/recruitment/analytics/index.php exists");
+$analyticsMarkup = file_get_contents($analyticsView);
+assertCustom(strpos($analyticsMarkup, 'Recruitment Intelligence & Funnel Analytics') !== false, "Analytics view renders header");
+assertCustom(strpos($analyticsMarkup, 'Avg Time-to-Hire') !== false, "Analytics view renders Avg Time-to-Hire KPI card");
+assertCustom(strpos($analyticsMarkup, 'Hiring Pipeline Funnel Velocity') !== false, "Analytics view renders funnel table");
+assertCustom(strpos($analyticsMarkup, 'Sourcing Channel ROI') !== false, "Analytics view renders sourcing ROI matrix");
+assertCustom(strpos($analyticsMarkup, 'exportCsv') !== false, "Analytics view links to CSV export action");
+
+// Test 23.8: Playwright E2E Test Suite Validation
+$e2eSpec = __DIR__ . '/../tests/e2e/recruitment.e2e.spec.ts';
+assertCustom(file_exists($e2eSpec), "tests/e2e/recruitment.e2e.spec.ts exists");
+$e2eMarkup = file_get_contents($e2eSpec);
+assertCustom(strpos($e2eMarkup, 'Journey 1: Public Careers Portal') !== false, "E2E spec defines Public Careers Portal journey");
+assertCustom(strpos($e2eMarkup, 'Journey 2: Anti-Spam Honeypot') !== false, "E2E spec defines Anti-Spam Honeypot journey");
+assertCustom(strpos($e2eMarkup, 'Journey 3: Recruiter Command Center') !== false, "E2E spec defines Requisitions workflow journey");
+assertCustom(strpos($e2eMarkup, 'Journey 4: ATS Pipeline Kanban') !== false, "E2E spec defines ATS Kanban journey");
+assertCustom(strpos($e2eMarkup, 'Journey 5: Blind Interview Scorecards') !== false, "E2E spec defines Blind Scorecards journey");
+assertCustom(strpos($e2eMarkup, 'Journey 6: Offer Management') !== false, "E2E spec defines Offer Management journey");
+assertCustom(strpos($e2eMarkup, 'Journey 7: Background Verification') !== false, "E2E spec defines BGV & Employee Conversion journey");
+assertCustom(strpos($e2eMarkup, 'Journey 8: Executive Recruitment Analytics') !== false, "E2E spec defines Analytics journey");
+
+
 
 
 

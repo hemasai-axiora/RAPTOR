@@ -132,10 +132,12 @@ class RecruitmentController extends Controller {
     }
 
     /**
-     * Reports placeholder (delegates to Sprint 10).
+     * Recruitment Analytics, Funnel Velocity & Sourcing ROI (Sprint 10).
      */
     public function reports(): void {
-        $this->redirect('index.php?route=recruitment/dashboard#reports');
+        require_once __DIR__ . '/RecruitmentAnalyticsController.php';
+        $controller = new RecruitmentAnalyticsController();
+        $controller->index();
     }
 }
 
