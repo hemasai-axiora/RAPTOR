@@ -110,7 +110,11 @@ class ApplicationStageService {
             ];
         }
 
-        $db->beginTransaction();
+        $ownsTransaction = false;
+        if (!$db->inTransaction()) {
+            $db->beginTransaction();
+            $ownsTransaction = true;
+        }
         try {
             // Update application stage
             $updateSql = "
@@ -154,7 +158,9 @@ class ApplicationStageService {
                 ':comm'      => $comments
             ]);
 
-            $db->commit();
+            if ($ownsTransaction) {
+                $db->commit();
+            }
 
             return [
                 'success'        => true,
@@ -164,7 +170,9 @@ class ApplicationStageService {
                 'changed'        => true
             ];
         } catch (Throwable $e) {
-            $db->rollBack();
+            if ($ownsTransaction && $db->inTransaction()) {
+                $db->rollBack();
+            }
             throw $e;
         }
     }

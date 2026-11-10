@@ -96,10 +96,12 @@ class RecruitmentController extends Controller {
     }
 
     /**
-     * Interviews placeholder (delegates to Sprint 5).
+     * Interviews & Blind Scorecards (Sprint 5).
      */
     public function interviews(): void {
-        $this->redirect('index.php?route=recruitment/dashboard#interviews');
+        require_once __DIR__ . '/RecruitmentInterviewController.php';
+        $controller = new RecruitmentInterviewController();
+        $controller->index();
     }
 
     /**

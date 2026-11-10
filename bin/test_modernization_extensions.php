@@ -1082,6 +1082,213 @@ assertCustom(strpos($kanbanMarkup, 'Recruitment Pipeline Kanban') !== false, "Ka
 assertCustom(strpos($kanbanMarkup, 'draggable="true"') !== false, "Kanban index view supports draggable cards");
 assertCustom(strpos($kanbanMarkup, 'kanbanDrop') !== false, "Kanban index view defines drop handler");
 
+// ============================================================================
+// 18. SPRINT 5: SCREENING & BLIND INTERVIEW SCORECARDS
+// ============================================================================
+echo "\n18. Testing Sprint 5 Screening & Blind Interview Scorecards...\n";
+
+require_once __DIR__ . '/../app/services/recruitment/ScreeningService.php';
+require_once __DIR__ . '/../app/services/recruitment/InterviewService.php';
+require_once __DIR__ . '/../app/services/recruitment/InterviewEvaluationService.php';
+
+$screeningService = new ScreeningService();
+$interviewService = new InterviewService();
+$evalService      = new InterviewEvaluationService();
+
+// Ensure mock users exist for panel: User 1 (Admin/HR), User 2 (Manager), User 3 (Team Leader)
+$mockDb->exec("
+    INSERT OR IGNORE INTO users (user_id, name, email, role_id) VALUES 
+    (2, 'Sarah Manager', 'sarah.mgr@raptor.test', 3),
+    (3, 'Alex Lead', 'alex.lead@raptor.test', 4);
+");
+
+// Test 18.1: Recruiter Screening & Weighted Rubric
+// Using Aarav Patel's application: let's create a new application for Aarav
+$stmtAaravApp = $mockDb->prepare("
+    INSERT INTO recruitment_applications (application_code, candidate_id, job_id, current_stage, created_at, updated_at)
+    VALUES ('APP-2026-99001', :cid, :jid, 'applied', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+");
+$stmtAaravApp->execute([':cid' => $candResult1['candidate_id'], ':jid' => $testJobId]);
+$aaravAppId = (int)$mockDb->lastInsertId();
+
+// Submit screening: Skills (5), Experience (4), Comm (4)
+// Weighted: (5*0.4) + (4*0.35) + (4*0.25) = 2.0 + 1.4 + 1.0 = 4.4 / 5.0 * 100 = 88.0%
+$screenRes = $screeningService->submitScreening($mockDb, $aaravAppId, 1, [
+    'skills_rating'        => 5,
+    'experience_rating'    => 4,
+    'communication_rating' => 4,
+    'recommendation'       => 'shortlist',
+    'evaluation_comments'  => 'Strong systems engineering depth, highly articulate.'
+]);
+
+assertCustom($screenRes['success'] === true, "Screening submission succeeded");
+assertCustom((float)$screenRes['overall_score'] === 88.0, "Screening weighted score calculated accurately (88.0%)");
+assertCustom($screenRes['recommendation'] === 'shortlist', "Screening recommendation recorded as 'shortlist'");
+
+// Verify stage auto-advanced to 'shortlisted'
+$stmtCheckApp = $mockDb->prepare("SELECT current_stage, match_score_advisory FROM recruitment_applications WHERE application_id = :id");
+$stmtCheckApp->execute([':id' => $aaravAppId]);
+$updatedApp = $stmtCheckApp->fetch(PDO::FETCH_ASSOC);
+assertCustom($updatedApp['current_stage'] === 'shortlisted', "Shortlisted candidate automatically advanced to 'shortlisted' stage");
+assertCustom((int)$updatedApp['match_score_advisory'] === 88, "Application advisory match score updated to 88%");
+
+// Test 18.2: Interview Scheduling & Conflict Detection
+$schedStart1 = date('Y-m-d') . ' 14:00:00';
+$schedEnd1   = date('Y-m-d') . ' 15:00:00';
+
+$schedResult1 = $interviewService->scheduleInterview(
+    $mockDb,
+    [
+        'application_id'  => $aaravAppId,
+        'round_number'    => 1,
+        'round_name'      => 'System Architecture Round',
+        'interview_type'  => 'technical',
+        'interview_mode'  => 'video',
+        'scheduled_start' => $schedStart1,
+        'scheduled_end'   => $schedEnd1,
+        'meeting_link'    => 'https://meet.google.com/test-room-1'
+    ],
+    [2, 3], // Panel: User 2 (Manager) and User 3 (Lead)
+    1
+);
+assertCustom(!empty($schedResult1['interview_id']), "Interview scheduled successfully with unique ID");
+$testInterviewId = (int)$schedResult1['interview_id'];
+
+// Test 18.3: Interviewer Conflict Detection Gate
+$conflictDetected = false;
+try {
+    // Attempt to book User 2 (Sarah Manager) in an overlapping slot (14:30 - 15:30)
+    $interviewService->scheduleInterview(
+        $mockDb,
+        [
+            'application_id'  => $appId, // Priya Sharma's app
+            'round_number'    => 1,
+            'round_name'      => 'Overlapping Round',
+            'interview_type'  => 'technical',
+            'interview_mode'  => 'video',
+            'scheduled_start' => date('Y-m-d') . ' 14:30:00',
+            'scheduled_end'   => date('Y-m-d') . ' 15:30:00'
+        ],
+        [2], // User 2 is already busy!
+        1
+    );
+} catch (InvalidArgumentException $e) {
+    $conflictDetected = (strpos($e->getMessage(), 'Scheduling Collision') !== false || strpos($e->getMessage(), 'collision') !== false);
+}
+assertCustom($conflictDetected, "Interviewer scheduling conflict detected and blocked");
+
+// Test 18.4: Candidate Conflict Detection Gate
+$candConflictDetected = false;
+try {
+    // Attempt to book same candidate (Aarav) during an overlapping time window (14:15 - 15:15)
+    $interviewService->scheduleInterview(
+        $mockDb,
+        [
+            'application_id'  => $aaravAppId,
+            'round_number'    => 2,
+            'round_name'      => 'Concurrent Candidate Round',
+            'interview_type'  => 'functional',
+            'interview_mode'  => 'video',
+            'scheduled_start' => date('Y-m-d') . ' 14:15:00',
+            'scheduled_end'   => date('Y-m-d') . ' 15:15:00'
+        ],
+        [1], // Different interviewer (User 1), but candidate is busy!
+        1
+    );
+} catch (InvalidArgumentException $e) {
+    $candConflictDetected = (strpos($e->getMessage(), 'Candidate already has another interview') !== false);
+}
+assertCustom($candConflictDetected, "Candidate scheduling collision detected and blocked");
+
+// Test 18.5: Queue Email Invitation Dispatch
+$stmtIvQ = $mockDb->query("SELECT * FROM recruitment_queue WHERE job_type = 'interview_invitation' ORDER BY queue_id DESC LIMIT 1");
+$ivJob = $stmtIvQ->fetch(PDO::FETCH_ASSOC);
+assertCustom(!empty($ivJob), "Interview calendar invitation job enqueued in recruitment_queue");
+
+// Test 18.6: Calendar Event Query
+$calEvents = $interviewService->getCalendar($mockDb, date('Y-m-d'), date('Y-m-d'));
+assertCustom(count($calEvents) >= 1, "Interview calendar query retrieves scheduled events");
+assertCustom($calEvents[0]['round_name'] === 'System Architecture Round', "Calendar event captures round name");
+assertCustom(count($calEvents[0]['panel_members']) === 2, "Calendar event links all panel members");
+
+// Test 18.7: Blind Interview Feedback Lock (Before Submitting)
+// User 3 (Alex Lead) has NOT submitted their feedback yet.
+// When User 3 queries feedback, blind lock MUST be active:
+$blindViewUser3 = $evalService->getInterviewFeedback($mockDb, $testInterviewId, 3, 'team_leader');
+assertCustom($blindViewUser3['blind_lock_active'] === true, "Blind evaluation lock is ACTIVE for interviewer before scorecard submission");
+assertCustom(empty($blindViewUser3['feedbacks']), "Peer feedback is strictly hidden while blind lock is active");
+
+// HR role can ALWAYS view scorecards
+$hrViewFeedback = $evalService->getInterviewFeedback($mockDb, $testInterviewId, 1, 'hr');
+assertCustom($hrViewFeedback['blind_lock_active'] === false, "Blind evaluation lock is bypassed for HR / Admin role");
+
+// Test 18.8: First Interviewer (User 2) Submits Scorecard
+$fb1 = $evalService->submitFeedback($mockDb, $testInterviewId, 2, [
+    'technical_rating'       => 5,
+    'problem_solving_rating' => 4,
+    'communication_rating'   => 4,
+    'cultural_fit_rating'    => 5,
+    'overall_rating'         => 5,
+    'recommendation'         => 'strongly_recommend',
+    'strengths'              => 'Mastery of database locking and distributed systems.',
+    'concerns'               => 'None noted.',
+    'detailed_comments'      => 'Aarav is an exceptional candidate who will elevate the engineering team.'
+]);
+assertCustom($fb1['success'] === true, "Interviewer 1 scorecard submitted successfully");
+assertCustom($fb1['is_completed'] === false, "Interview status remains pending completion while Interviewer 2 scorecard is pending");
+
+// Verify that User 3 STILL cannot see User 2's feedback because User 3 hasn't submitted yet!
+$blindViewUser3AfterPeer = $evalService->getInterviewFeedback($mockDb, $testInterviewId, 3, 'team_leader');
+assertCustom($blindViewUser3AfterPeer['blind_lock_active'] === true, "Interviewer 3 still locked out of peer evaluations after Interviewer 2 submitted");
+assertCustom(empty($blindViewUser3AfterPeer['feedbacks']), "Interviewer 3 still receives 0 peer scorecards");
+
+// Test 18.9: Second Interviewer (User 3) Submits Scorecard & Unlocks Blind Feedback
+$fb2 = $evalService->submitFeedback($mockDb, $testInterviewId, 3, [
+    'technical_rating'       => 4,
+    'problem_solving_rating' => 4,
+    'communication_rating'   => 5,
+    'cultural_fit_rating'    => 4,
+    'overall_rating'         => 4,
+    'recommendation'         => 'recommend',
+    'strengths'              => 'Great communicator, solid architectural concepts.',
+    'concerns'               => 'Slightly less hands-on with front-end tooling.',
+    'detailed_comments'      => 'Strong recommend for backend architecture position.'
+]);
+assertCustom($fb2['success'] === true, "Interviewer 2 scorecard submitted successfully");
+assertCustom($fb2['is_completed'] === true, "Interview automatically marked as 'completed' once all panel members have submitted");
+
+// Now User 3 queries feedback: blind lock is UNLOCKED!
+$unlockedViewUser3 = $evalService->getInterviewFeedback($mockDb, $testInterviewId, 3, 'team_leader');
+assertCustom($unlockedViewUser3['blind_lock_active'] === false, "Blind evaluation lock is UNLOCKED after interviewer submits their scorecard");
+assertCustom(count($unlockedViewUser3['feedbacks']) === 2, "Interviewer can now inspect all panel scorecards (found: 2)");
+
+// Test 18.10: Controller Reflection & Routing
+require_once __DIR__ . '/../app/controllers/RecruitmentInterviewController.php';
+
+$ivControllerReflect = new ReflectionClass('RecruitmentInterviewController');
+assertCustom($ivControllerReflect->isSubclassOf('Controller'), "RecruitmentInterviewController extends core Controller architecture");
+assertCustom($ivControllerReflect->hasMethod('index'), "RecruitmentInterviewController exposes index() action");
+assertCustom($ivControllerReflect->hasMethod('store'), "RecruitmentInterviewController exposes store() action");
+assertCustom($ivControllerReflect->hasMethod('evaluate'), "RecruitmentInterviewController exposes evaluate() action");
+assertCustom($ivControllerReflect->hasMethod('submitEvaluation'), "RecruitmentInterviewController exposes submitEvaluation() action");
+assertCustom($ivControllerReflect->hasMethod('screen'), "RecruitmentInterviewController exposes screen() action");
+
+assertCustom($recControllerReflect->hasMethod('interviews'), "RecruitmentController exposes interviews() routing");
+
+// Test 18.11: Views Existence & Markup Verification
+$ivIndexView = __DIR__ . '/../app/views/recruitment/interviews/index.php';
+assertCustom(file_exists($ivIndexView), "app/views/recruitment/interviews/index.php exists");
+$ivIndexMarkup = file_get_contents($ivIndexView);
+assertCustom(strpos($ivIndexMarkup, 'Interview Calendar & Coordination') !== false, "Interview calendar index view renders header");
+assertCustom(strpos($ivIndexMarkup, 'scheduleInterviewModal') !== false, "Interview calendar view integrates schedule modal dialog");
+
+$ivEvalView = __DIR__ . '/../app/views/recruitment/interviews/evaluate.php';
+assertCustom(file_exists($ivEvalView), "app/views/recruitment/interviews/evaluate.php exists");
+$ivEvalMarkup = file_get_contents($ivEvalView);
+assertCustom(strpos($ivEvalMarkup, 'Blind Evaluation Gate Active') !== false, "Interview scorecard view displays blind evaluation governance alert");
+assertCustom(strpos($ivEvalMarkup, 'submitEvaluation') !== false, "Interview scorecard view form dispatches to submitEvaluation");
+
+
 
 echo "\n=======================================================\n";
 echo "SUMMARY: {$passed} PASSED, {$failed} FAILED\n";
