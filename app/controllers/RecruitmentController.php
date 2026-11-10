@@ -69,17 +69,30 @@ class RecruitmentController extends Controller {
     }
 
     /**
-     * Candidates placeholder (delegates to Sprint 4).
+     * Candidate master directory (Sprint 4).
      */
     public function candidates(): void {
-        $this->redirect('index.php?route=recruitment/dashboard#candidates');
+        require_once __DIR__ . '/RecruitmentCandidateController.php';
+        $controller = new RecruitmentCandidateController();
+        $controller->index();
     }
 
     /**
-     * Applications / Kanban placeholder (delegates to Sprint 4).
+     * Candidate 360 profile view (Sprint 4).
+     */
+    public function candidate($id = null): void {
+        require_once __DIR__ . '/RecruitmentCandidateController.php';
+        $controller = new RecruitmentCandidateController();
+        $controller->show($id);
+    }
+
+    /**
+     * Applications / ATS Kanban Pipeline (Sprint 4).
      */
     public function applications(): void {
-        $this->redirect('index.php?route=recruitment/dashboard#applications');
+        require_once __DIR__ . '/RecruitmentApplicationController.php';
+        $controller = new RecruitmentApplicationController();
+        $controller->index();
     }
 
     /**

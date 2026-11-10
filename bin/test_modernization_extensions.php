@@ -908,6 +908,181 @@ $recJobMarkup = file_get_contents($recJobIndexView);
 assertCustom(strpos($recJobMarkup, 'Job Postings & Career Site Listings') !== false, "Internal job listings view renders header");
 assertCustom(strpos($recJobMarkup, 'Approved Requisitions Ready to Publish') !== false, "Internal job listings view renders pending publication banner");
 
+// ============================================================================
+// 17. SPRINT 4: CANDIDATE 360, DEDUPLICATION & ATS PIPELINE KANBAN
+// ============================================================================
+echo "\n17. Testing Sprint 4 Candidate 360, Deduplication & ATS Pipeline Kanban...\n";
+
+require_once __DIR__ . '/../app/services/recruitment/CandidateDeduplicationService.php';
+require_once __DIR__ . '/../app/services/recruitment/CandidateService.php';
+require_once __DIR__ . '/../app/services/recruitment/ApplicationStageService.php';
+
+$dedupService = new CandidateDeduplicationService();
+$candidateService = new CandidateService($dedupService);
+$stageService = new ApplicationStageService();
+
+// Test 17.1: Candidate Code Generation & Deduplication Detection
+$candCode1 = $candidateService->generateCandidateCode($mockDb);
+assertCustom((bool)preg_match('/^CAN-\d{4}-\d{5}$/', $candCode1), "CandidateService generates standard format code ({$candCode1})");
+
+// Insert Primary Candidate
+$candResult1 = $candidateService->createOrUpdateCandidate($mockDb, [
+    'first_name'             => 'Aarav',
+    'last_name'              => 'Patel',
+    'email'                  => 'aarav.patel@techcorp.io',
+    'phone'                  => '+91 98111 22233',
+    'current_company'        => 'TechCorp Labs',
+    'current_designation'    => 'Full Stack Lead',
+    'total_experience_years' => 7.0,
+    'primary_skills'         => 'PHP, MySQL, Vue.js, Docker',
+    'current_ctc'            => 1800000.00,
+    'expected_ctc'           => 2200000.00
+], 1);
+assertCustom(!empty($candResult1['candidate_id']), "Candidate Aarav Patel created successfully with unique ID");
+assertCustom($candResult1['is_duplicate'] === false, "Fresh candidate is identified as non-duplicate");
+
+// Test 17.2: Exact Email Deduplication Match
+$dupsEmail = $dedupService->findDuplicates($mockDb, 'AARAV.PATEL@TECHCORP.IO', '9999999999');
+assertCustom(!empty($dupsEmail), "Deduplication detects match by case-insensitive email");
+assertCustom($dupsEmail[0]['confidence_score'] === 100, "Exact email match returns confidence score of 100");
+assertCustom(in_array('exact_email', $dupsEmail[0]['match_reasons'], true), "Deduplication reason records exact_email");
+
+// Test 17.3: Normalized Phone Deduplication Match
+$dupsPhone = $dedupService->findDuplicates($mockDb, 'different.email@other.io', '9811122233');
+assertCustom(!empty($dupsPhone), "Deduplication detects match by normalized 10-digit phone number");
+assertCustom($dupsPhone[0]['confidence_score'] >= 95, "Phone match returns confidence score >= 95");
+assertCustom(in_array('exact_phone', $dupsPhone[0]['match_reasons'], true), "Deduplication reason records exact_phone");
+
+// Test 17.4: Insert Duplicate Candidate Profile & Merge Verification
+$candResult2 = $candidateService->createOrUpdateCandidate($mockDb, [
+    'first_name'             => 'Aarav',
+    'last_name'              => 'Patel Duplicate',
+    'email'                  => 'aarav.duplicate@techcorp.io',
+    'phone'                  => '9811100000',
+    'current_company'        => 'TechCorp Labs',
+    'current_designation'    => 'Full Stack Lead',
+    'total_experience_years' => 7.0
+], 1);
+$dupCandId = (int)$candResult2['candidate_id'];
+
+// Attach a document and note to duplicate candidate
+$candidateService->attachDocument($mockDb, $dupCandId, 'resume', 'recruitment/2026/11/dup_resume.pdf', 'dup_resume.pdf', 54321, 'application/pdf', true, 1);
+$candidateService->addNote($mockDb, $dupCandId, 'Screening call note from initial reachout.', 1);
+
+// Execute candidate merge
+$mergeResult = $dedupService->mergeCandidates($mockDb, $candResult1['candidate_id'], $dupCandId, 1);
+assertCustom($mergeResult['success'] === true, "Candidate merge executed successfully without errors");
+
+// Verify duplicate record deleted from recruitment_candidates
+$stmtVerifyDup = $mockDb->prepare("SELECT * FROM recruitment_candidates WHERE candidate_id = :id");
+$stmtVerifyDup->execute([':id' => $dupCandId]);
+assertCustom(empty($stmtVerifyDup->fetch(PDO::FETCH_ASSOC)), "Merged duplicate candidate master record is deleted");
+
+// Verify documents and notes transferred to primary candidate
+$primaryDocs = $candidateService->getCandidateById($mockDb, $candResult1['candidate_id'], 1, 'hr');
+assertCustom(count($primaryDocs['documents']) >= 1, "Documents from duplicate successfully transferred to primary candidate profile");
+assertCustom(count($primaryDocs['notes']) >= 2, "Notes and audit log from duplicate successfully transferred to primary candidate");
+
+// Test 17.5: Candidate 360 Salary Confidentiality Protection
+$hrView = $candidateService->getCandidateById($mockDb, $candResult1['candidate_id'], 1, 'hr');
+assertCustom((float)$hrView['expected_ctc'] === 2200000.00, "HR role receives unmasked candidate expected CTC");
+assertCustom($hrView['is_salary_masked'] === false, "HR view is marked as unmasked");
+
+$interviewerView = $candidateService->getCandidateById($mockDb, $candResult1['candidate_id'], 2, 'team_leader');
+assertCustom($interviewerView['expected_ctc'] === null, "Non-HR interviewer has expected CTC confidential field masked");
+assertCustom($interviewerView['is_salary_masked'] === true, "Interviewer view is marked as masked");
+
+// Test 17.6: Blacklist and Unblacklist Candidate Profile
+$candidateService->blacklistCandidate($mockDb, $candResult1['candidate_id'], 'Failed integrity verification check', 1);
+$blacklistedCand = $candidateService->getCandidateById($mockDb, $candResult1['candidate_id'], 1, 'hr');
+assertCustom((int)$blacklistedCand['is_blacklisted'] === 1, "Candidate is flagged as blacklisted");
+assertCustom($blacklistedCand['blacklist_reason'] === 'Failed integrity verification check', "Blacklist reason is recorded");
+
+$candidateService->unblacklistCandidate($mockDb, $candResult1['candidate_id'], 1);
+$unblacklistedCand = $candidateService->getCandidateById($mockDb, $candResult1['candidate_id'], 1, 'hr');
+assertCustom((int)$unblacklistedCand['is_blacklisted'] === 0, "Candidate can be safely unblacklisted");
+
+// Test 17.7: Application Stage Progression & Validation
+assertCustom($stageService->isValidTransition('applied', 'screening') === true, "Progression from applied to screening is valid");
+assertCustom($stageService->isValidTransition('screening', 'technical_interview') === true, "Progression from screening to technical interview is valid");
+assertCustom($stageService->isValidTransition('applied', 'rejected') === true, "Rejection from applied is valid");
+assertCustom($stageService->isValidTransition('hired', 'applied') === false, "Regressing from hired to applied is blocked");
+
+// Test 17.8: Transition Application Stages with Audit Trail
+// Re-use $testJobId and Priya Sharma's application $appResult['application_id'] from Section 16
+$appId = (int)$appResult['application_id'];
+
+$trans1 = $stageService->transitionStage($mockDb, $appId, 'screening', 1, 'PASSED_RESUME_PARSER', 'Strong background in PHP 8.2');
+assertCustom($trans1['success'] === true, "Stage transition to 'screening' succeeded");
+assertCustom($trans1['to_stage'] === 'screening', "Transition returned correct to_stage");
+
+$trans2 = $stageService->transitionStage($mockDb, $appId, 'technical_interview', 1, 'PASSED_HR_SCREEN', 'Ready for technical round');
+assertCustom($trans2['success'] === true, "Stage transition to 'technical_interview' succeeded");
+
+$stageHistory = $stageService->getStageHistory($mockDb, $appId);
+assertCustom(count($stageHistory) >= 3, "Application stage history contains all progressive transitions (found: " . count($stageHistory) . ")");
+
+// Test 17.9: ATS Kanban Board Data Aggregation & Privacy Guard
+$kanbanBoard = $stageService->getKanbanBoard($mockDb, $testJobId);
+assertCustom(is_array($kanbanBoard), "getKanbanBoard returns array of pipeline stages");
+assertCustom(isset($kanbanBoard['technical_interview']), "Kanban board defines 'technical_interview' column");
+assertCustom($kanbanBoard['technical_interview']['count'] >= 1, "Technical interview column reflects active candidate card");
+
+$card = $kanbanBoard['technical_interview']['cards'][0];
+assertCustom($card['candidate_name'] === 'Priya Sharma', "Kanban card captures candidate name");
+assertCustom($card['job_title'] === 'Senior Staff Backend Architect', "Kanban card captures job title");
+assertCustom(!isset($card['expected_ctc']), "Kanban card strictly excludes confidential candidate salary parameters");
+
+// Test 17.10: Controller Architecture & Route Reflection
+require_once __DIR__ . '/../app/controllers/RecruitmentCandidateController.php';
+require_once __DIR__ . '/../app/controllers/RecruitmentApplicationController.php';
+
+$candControllerReflect = new ReflectionClass('RecruitmentCandidateController');
+assertCustom($candControllerReflect->isSubclassOf('Controller'), "RecruitmentCandidateController extends core Controller architecture");
+assertCustom($candControllerReflect->hasMethod('index'), "RecruitmentCandidateController exposes index() action");
+assertCustom($candControllerReflect->hasMethod('show'), "RecruitmentCandidateController exposes show() action");
+assertCustom($candControllerReflect->hasMethod('profile'), "RecruitmentCandidateController exposes profile() action");
+assertCustom($candControllerReflect->hasMethod('create'), "RecruitmentCandidateController exposes create() action");
+assertCustom($candControllerReflect->hasMethod('store'), "RecruitmentCandidateController exposes store() action");
+assertCustom($candControllerReflect->hasMethod('addNote'), "RecruitmentCandidateController exposes addNote() action");
+assertCustom($candControllerReflect->hasMethod('blacklist'), "RecruitmentCandidateController exposes blacklist() action");
+assertCustom($candControllerReflect->hasMethod('downloadDocument'), "RecruitmentCandidateController exposes downloadDocument() action");
+
+$appControllerReflect = new ReflectionClass('RecruitmentApplicationController');
+assertCustom($appControllerReflect->isSubclassOf('Controller'), "RecruitmentApplicationController extends core Controller architecture");
+assertCustom($appControllerReflect->hasMethod('index'), "RecruitmentApplicationController exposes index() action");
+assertCustom($appControllerReflect->hasMethod('stage'), "RecruitmentApplicationController exposes stage() action");
+
+$recControllerReflect = new ReflectionClass('RecruitmentController');
+assertCustom($recControllerReflect->hasMethod('candidates'), "RecruitmentController exposes candidates() routing");
+assertCustom($recControllerReflect->hasMethod('candidate'), "RecruitmentController exposes candidate() routing");
+assertCustom($recControllerReflect->hasMethod('applications'), "RecruitmentController exposes applications() routing");
+
+// Test 17.11: Views Existence and Markup
+$candIndexView = __DIR__ . '/../app/views/recruitment/candidates/index.php';
+assertCustom(file_exists($candIndexView), "app/views/recruitment/candidates/index.php exists");
+$candIndexMarkup = file_get_contents($candIndexView);
+assertCustom(strpos($candIndexMarkup, 'Candidate Master Directory') !== false, "Candidate index view renders header");
+assertCustom(strpos($candIndexMarkup, 'recruitment_candidate/create') !== false, "Candidate index view links to Add Candidate");
+
+$candProfileView = __DIR__ . '/../app/views/recruitment/candidates/profile.php';
+assertCustom(file_exists($candProfileView), "app/views/recruitment/candidates/profile.php exists");
+$candProfileMarkup = file_get_contents($candProfileView);
+assertCustom(strpos($candProfileMarkup, 'Candidate 360') !== false || strpos($candProfileMarkup, 'candidateTabs') !== false, "Candidate profile view renders tabbed 360 container");
+assertCustom(strpos($candProfileMarkup, 'downloadDocument') !== false, "Candidate profile view integrates secure document download endpoint");
+assertCustom(strpos($candProfileMarkup, 'blacklistModal') !== false, "Candidate profile view integrates blacklist modal dialog");
+
+$candCreateView = __DIR__ . '/../app/views/recruitment/candidates/create.php';
+assertCustom(file_exists($candCreateView), "app/views/recruitment/candidates/create.php exists");
+
+$kanbanIndexView = __DIR__ . '/../app/views/recruitment/applications/index.php';
+assertCustom(file_exists($kanbanIndexView), "app/views/recruitment/applications/index.php exists");
+$kanbanMarkup = file_get_contents($kanbanIndexView);
+assertCustom(strpos($kanbanMarkup, 'Recruitment Pipeline Kanban') !== false, "Kanban index view renders header");
+assertCustom(strpos($kanbanMarkup, 'draggable="true"') !== false, "Kanban index view supports draggable cards");
+assertCustom(strpos($kanbanMarkup, 'kanbanDrop') !== false, "Kanban index view defines drop handler");
+
+
 echo "\n=======================================================\n";
 echo "SUMMARY: {$passed} PASSED, {$failed} FAILED\n";
 echo "=======================================================\n";
