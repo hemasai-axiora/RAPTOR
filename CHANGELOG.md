@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.2] - 2026-11-10
+
+### Changed
+- **Module Architecture Redistribution**:
+  - **Decoupled HR & Payroll**: Cleanly split into standalone **HR Management** (`/leaves`, `/users`, `/teams`, `/hrms_dashboard`) and dedicated statutory **Payroll & Compensation** (`/payroll`, `/salary_structures`, `/pay_bands`, `/payroll_checklist`, `/payroll_runs`, `/payroll_reconciliation`, `/reimbursements`, `/employee_payslips`).
+  - **Dedicated CRM & Sales Module**: Extracted Leads Manager, Customer 360, Deals & Pipeline, Shared Omnichannel Inbox, Communications, Meetings & Demos, and Sales Targets out of Operations into an enterprise CRM workspace.
+  - **Focused Operations Center**: Streamlined Operations to real-time execution: System Monitoring, Attendance Approvals, Attendance Reports, Task Board, Content & Event Calendar, Clients Directory, and Team Performance.
+  - **Full 10-Module Enterprise Layout**: Standardized navigation hierarchy across Dashboard, My Day, CRM & Sales, Marketing, HR Management, Payroll & Compensation, Operations, Finance, Reports, and System Settings.
+
+### Verified
+- **Inter-Module Communication**:
+  - Employee Directory ↔ Salary Structures ↔ Payroll Runs bidirectional CTC/Band sync.
+  - CRM Leads ↔ Marketing Campaigns ↔ Deliverability Engine & One-Click Unsubscribes.
+  - Zero regressions: 16 test suites, 772 passing assertions.
+
+---
+
 ## [2.1.0] - 2026-11-10
 
 ### Added

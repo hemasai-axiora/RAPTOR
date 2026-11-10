@@ -1338,99 +1338,58 @@
                 </li>
                 <?php endif; ?>
 
-                <!-- 3. Monitoring Accordion Group -->
-                <?php if (in_array($_SESSION['user_role'], ['admin', 'ceo', 'employer', 'manager', 'team_leader', 'hr'], true)): ?>
-                <li class="menu-section" data-section="monitoring">
-                    <div class="menu-section-header" title="Monitoring">
-                        <i class="fa-solid fa-desktop section-icon"></i>
-                        <span class="section-text">Monitoring</span>
+                <!-- 3. CRM & Sales Accordion Group -->
+                <?php if (in_array($role, ['admin', 'ceo', 'employer', 'manager', 'team_leader', 'sales_person', 'analyst', 'employee', 'hr'], true)): ?>
+                <li class="menu-section" data-section="crm">
+                    <div class="menu-section-header" title="CRM & Sales">
+                        <i class="fa-solid fa-crosshairs section-icon"></i>
+                        <span class="section-text">CRM & Sales</span>
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
                     </div>
                     <ul class="menu-section-items">
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'monitoring_dashboard') ? 'active' : ''; ?>">
-                            <a href="index.php?route=dashboard/monitoring">
-                                <i class="fa-solid fa-tower-observation"></i><span>Command Center</span>
+                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'leads/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'leads') !== false)) ? 'active' : ''; ?>">
+                            <a href="index.php?route=leads/index">
+                                <i class="fa-solid fa-address-book"></i><span>Leads Manager</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'attendance_approvals') ? 'active' : ''; ?>">
-                            <a href="index.php?route=attendance/approvals">
-                                <i class="fa-solid fa-user-check"></i><span>Attendance Approvals</span>
+                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'customers/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'customers') !== false)) ? 'active' : ''; ?>">
+                            <a href="index.php?route=customers/index">
+                                <i class="fa-solid fa-address-card"></i><span>Customer 360</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'leave_approvals') ? 'active' : ''; ?>">
-                            <a href="index.php?route=leaves/approvals">
-                                <i class="fa-solid fa-file-signature"></i><span>Leave Approvals</span>
+                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'account_sales/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'account_sales') !== false)) ? 'active' : ''; ?>">
+                            <a href="index.php?route=account_sales/index">
+                                <i class="fa-solid fa-chart-line"></i><span>Deals & Pipeline</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'leaves_calendar') ? 'active' : ''; ?>">
-                            <a href="index.php?route=leaves/calendar">
-                                <i class="fa-solid fa-calendar-check"></i><span>Leave Calendar</span>
+                        <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'inbox') !== false) ? 'active' : ''; ?>">
+                            <a href="index.php?route=inbox/index">
+                                <i class="fa-solid fa-inbox"></i><span>Shared Team Inbox</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'attendance_report') ? 'active' : ''; ?>">
-                            <a href="index.php?route=attendance/report">
-                                <i class="fa-solid fa-calendar-check"></i><span>Attendance Report</span>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'communications') ? 'active' : ''; ?>">
+                            <a href="index.php?route=communications/index">
+                                <i class="fa-solid fa-comments"></i><span>Communications</span>
                             </a>
                         </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'meetings') ? 'active' : ''; ?>">
+                            <a href="index.php?route=meetings/index">
+                                <i class="fa-solid fa-handshake"></i><span>Meetings & Demos</span>
+                            </a>
+                        </li>
+                        <?php if (in_array($role, $salesRoles, true)): ?>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'targets') ? 'active' : ''; ?>">
+                            <a href="index.php?route=targets/index">
+                                <i class="fa-solid fa-bullseye"></i><span>Sales Targets</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
                     </ul>
                 </li>
                 <?php endif; ?>
 
-                <!-- Email Campaigns & Mass Mailing Accordion Group -->
-                <?php if (in_array($role ?? '', ['admin', 'ceo', 'employer', 'manager', 'hr', 'sales_person', 'team_leader', 'analyst'], true) || (class_exists('Policy') && Policy::can('email_campaigns', 'view'))): ?>
-                <li class="menu-section" data-section="email_campaigns">
-                    <div class="menu-section-header" title="Email Campaigns">
-                        <i class="fa-solid fa-paper-plane section-icon"></i>
-                        <span class="section-text">Email Campaigns</span>
-                        <i class="fa-solid fa-chevron-right section-arrow"></i>
-                    </div>
-                    <ul class="menu-section-items">
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_broadcasts') ? 'active' : ''; ?>">
-                            <a href="index.php?route=email_campaigns/campaigns">
-                                <i class="fa-solid fa-paper-plane"></i><span>Campaign Broadcasts</span>
-                            </a>
-                        </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_analytics') ? 'active' : ''; ?>">
-                            <a href="index.php?route=email_campaigns/analytics">
-                                <i class="fa-solid fa-chart-pie"></i><span>Analytics & Stats</span>
-                            </a>
-                        </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && in_array($active_tab, ['email_campaigns_domains', 'email_campaigns_guidance', 'email_campaigns_health'], true)) ? 'active' : ''; ?>">
-                            <a href="index.php?route=email_campaigns/domains">
-                                <i class="fa-solid fa-shield-halved"></i><span>Domains & DNS</span>
-                            </a>
-                        </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_templates') ? 'active' : ''; ?>">
-                            <a href="index.php?route=email_campaigns/templates">
-                                <i class="fa-solid fa-file-code"></i><span>Email Templates</span>
-                            </a>
-                        </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_contacts') ? 'active' : ''; ?>">
-                            <a href="index.php?route=email_campaigns/contacts">
-                                <i class="fa-solid fa-users"></i><span>Contacts & Audiences</span>
-                            </a>
-                        </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_lists') ? 'active' : ''; ?>">
-                            <a href="index.php?route=email_campaigns/lists">
-                                <i class="fa-solid fa-list-check"></i><span>Lists & Payroll Sync</span>
-                            </a>
-                        </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_segments') ? 'active' : ''; ?>">
-                            <a href="index.php?route=email_campaigns/segments">
-                                <i class="fa-solid fa-filter"></i><span>Audience Segments</span>
-                            </a>
-                        </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_suppressions') ? 'active' : ''; ?>">
-                            <a href="index.php?route=email_campaigns/suppressions">
-                                <i class="fa-solid fa-ban text-danger"></i><span>Global Suppression</span>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-                <?php endif; ?>
-
-                <!-- 4. Marketing Accordion Group -->
-                <?php if (isset($_SESSION['user_role'])): ?>
+                <!-- 4. Marketing & Broadcasts Accordion Group -->
+                <?php if (in_array($role ?? '', ['admin', 'ceo', 'employer', 'manager', 'hr', 'sales_person', 'team_leader', 'analyst'], true)): ?>
                 <li class="menu-section" data-section="marketing">
                     <div class="menu-section-header" title="Marketing">
                         <i class="fa-solid fa-share-nodes section-icon"></i>
@@ -1440,7 +1399,7 @@
                     <ul class="menu-section-items">
                         <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'email_campaigns/campaign') !== false) ? 'active' : ''; ?>">
                             <a href="index.php?route=email_campaigns/campaigns">
-                                <i class="fa-solid fa-envelope-open-text"></i><span>Email Broadcasts</span>
+                                <i class="fa-solid fa-paper-plane"></i><span>Email Broadcasts</span>
                             </a>
                         </li>
                         <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'email_campaigns/template') !== false) ? 'active' : ''; ?>">
@@ -1453,9 +1412,29 @@
                                 <i class="fa-solid fa-users-rectangle"></i><span>Audiences & Lists</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($_GET['route']) && (strpos($_GET['route'], 'email_campaigns/domain') !== false || strpos($_GET['route'], 'email_campaigns/analytic') !== false)) ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_segments') ? 'active' : ''; ?>">
+                            <a href="index.php?route=email_campaigns/segments">
+                                <i class="fa-solid fa-filter"></i><span>Audience Segments</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_suppressions') ? 'active' : ''; ?>">
+                            <a href="index.php?route=email_campaigns/suppressions">
+                                <i class="fa-solid fa-ban text-danger"></i><span>Global Suppression</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && in_array($active_tab, ['email_campaigns_domains', 'email_campaigns_guidance', 'email_campaigns_health'], true)) ? 'active' : ''; ?>">
+                            <a href="index.php?route=email_campaigns/domains">
+                                <i class="fa-solid fa-shield-halved"></i><span>Domains & DNS</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($_GET['route']) && (strpos($_GET['route'], 'email_campaigns/analytic') !== false || strpos($_GET['route'], 'email_campaigns/preflight') !== false)) ? 'active' : ''; ?>">
                             <a href="index.php?route=email_campaigns/analytics">
                                 <i class="fa-solid fa-shield-virus"></i><span>Deliverability Health</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'whatsapp') !== false) ? 'active' : ''; ?>">
+                            <a href="index.php?route=whatsapp/index">
+                                <i class="fa-brands fa-whatsapp text-success"></i><span>WhatsApp Cloud API</span>
                             </a>
                         </li>
                         <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'campaigns/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'campaigns') !== false && strpos($_GET['route'], 'email_') === false)) ? 'active' : ''; ?>">
@@ -1465,19 +1444,12 @@
                         </li>
                         <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'posts') !== false) ? 'active' : ''; ?>">
                             <a href="index.php?route=posts/index">
-                                <i class="fa-solid fa-rectangle-list"></i><span>Content Management & Analytics</span>
+                                <i class="fa-solid fa-rectangle-list"></i><span>Social Publishing</span>
                             </a>
                         </li>
-                        <?php if (in_array($_SESSION['user_role'], ['admin', 'manager'])): ?>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'social_manager') ? 'active' : ''; ?>">
-                            <a href="index.php?route=social/manager">
-                                <i class="fa-solid fa-user-gear"></i><span>Manager Performance</span>
-                            </a>
-                        </li>
-                        <?php endif; ?>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'social_admin') ? 'active' : ''; ?>">
-                            <a href="index.php?route=social/admin">
-                                <i class="fa-solid fa-folder-tree"></i><span>Accounts Directory</span>
+                        <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'journeys') !== false) ? 'active' : ''; ?>">
+                            <a href="index.php?route=journeys/index">
+                                <i class="fa-solid fa-diagram-project"></i><span>Automation Journeys</span>
                             </a>
                         </li>
                         <?php if (!Policy::isEmployee()): ?>
@@ -1491,26 +1463,124 @@
                 </li>
                 <?php endif; ?>
 
-                <!-- 5. Finance Accordion Group -->
-                <?php if (in_array($_SESSION['user_role'], ['admin', 'manager', 'finance'], true)): ?>
-                <li class="menu-section" data-section="finance">
-                    <div class="menu-section-header" title="Finance">
-                        <i class="fa-solid fa-file-invoice-dollar section-icon"></i>
-                        <span class="section-text">Finance</span>
+                <!-- 5. HR Management Accordion Group (Pure HR) -->
+                <?php if (in_array($role, ['admin', 'ceo', 'employer', 'manager', 'team_leader', 'hr', 'analyst', 'employee', 'sales_person'], true)): ?>
+                <li class="menu-section" data-section="hr">
+                    <div class="menu-section-header" title="HR Management">
+                        <i class="fa-solid fa-users section-icon"></i>
+                        <span class="section-text">HR Management</span>
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
                     </div>
                     <ul class="menu-section-items">
-                        <li class="menu-item <?php echo (strpos($data['title'], 'Invoice') !== false || $data['title'] === 'Billing Ledger | Raptor CRM') ? 'active' : ''; ?>">
-                            <a href="index.php?route=invoices/index">
-                                <i class="fa-solid fa-file-invoice-dollar"></i><span>Invoicing</span>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'hrms_dashboard') ? 'active' : ''; ?>">
+                            <a href="index.php?route=hrms/dashboard">
+                                <i class="fa-solid fa-chart-line"></i><span>HRMS Dashboard</span>
+                            </a>
+                        </li>
+                        <?php if (Policy::canManageEmployees()): ?>
+                        <li class="menu-item <?php echo (($data['title'] ?? '') === 'Employee Management | Raptor CRM' || (isset($_GET['route']) && strpos($_GET['route'], 'users') !== false)) ? 'active' : ''; ?>">
+                            <a href="index.php?route=users/index">
+                                <i class="fa-solid fa-id-badge"></i><span>Employee Directory</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <li class="menu-item <?php echo (($title ?? '') === 'Organization | Raptor CRM' || (isset($active_tab) && $active_tab === 'teams')) ? 'active' : ''; ?>">
+                            <a href="index.php?route=teams/index">
+                                <i class="fa-solid fa-sitemap"></i><span>Organization & Teams</span>
+                            </a>
+                        </li>
+                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'manager'], true)): ?>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'leave_balances') ? 'active' : ''; ?>">
+                            <a href="index.php?route=leaves/balances">
+                                <i class="fa-solid fa-scale-balanced"></i><span>Leave Balances</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'leave_approvals') ? 'active' : ''; ?>">
+                            <a href="index.php?route=leaves/approvals">
+                                <i class="fa-solid fa-file-signature"></i><span>Leave Approvals</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'leaves_calendar') ? 'active' : ''; ?>">
+                            <a href="index.php?route=leaves/calendar">
+                                <i class="fa-solid fa-calendar-check"></i><span>Leave Calendar</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (Policy::canApproveDataEdit() || Policy::canRequestDataEdit()): ?>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'edit_requests') ? 'active' : ''; ?>">
+                            <a href="index.php?route=editrequests/index">
+                                <i class="fa-solid fa-file-pen"></i><span>Data Edit Requests</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'analyst'], true)): ?>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'hrms_reports') ? 'active' : ''; ?>">
+                            <a href="index.php?route=hrms/reports">
+                                <i class="fa-solid fa-file-invoice"></i><span>HRMS Reports</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                    </ul>
+                </li>
+                <?php endif; ?>
+
+                <!-- 6. Payroll & Compensation Accordion Group (Pure Payroll) -->
+                <?php if (in_array($role, ['admin', 'ceo', 'employer', 'hr', 'finance', 'manager'], true)): ?>
+                <li class="menu-section" data-section="payroll">
+                    <div class="menu-section-header" title="Payroll">
+                        <i class="fa-solid fa-calculator section-icon"></i>
+                        <span class="section-text">Payroll</span>
+                        <i class="fa-solid fa-chevron-right section-arrow"></i>
+                    </div>
+                    <ul class="menu-section-items">
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_dashboard') ? 'active' : ''; ?>">
+                            <a href="index.php?route=payroll/dashboard">
+                                <i class="fa-solid fa-chart-pie"></i><span>Payroll Dashboard</span>
+                            </a>
+                        </li>
+                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'finance'], true)): ?>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_structures') ? 'active' : ''; ?>">
+                            <a href="index.php?route=payroll/structures">
+                                <i class="fa-solid fa-file-invoice-dollar"></i><span>Salary Structures</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_checklist') ? 'active' : ''; ?>">
+                            <a href="index.php?route=payroll/checklist">
+                                <i class="fa-solid fa-list-check"></i><span>Pre-Payroll Checklist</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_processing') ? 'active' : ''; ?>">
+                            <a href="index.php?route=payroll/processing">
+                                <i class="fa-solid fa-money-check-dollar"></i><span>Payroll Runs</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'payroll/reconciliation') !== false) ? 'active' : ''; ?>">
+                            <a href="index.php?route=payroll/reconciliation">
+                                <i class="fa-solid fa-scale-balanced"></i><span>Reconciliation Report</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_reimbursements') ? 'active' : ''; ?>">
+                            <a href="index.php?route=payroll/reimbursements">
+                                <i class="fa-solid fa-hand-holding-dollar"></i><span>Reimbursements</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_bonuses') ? 'active' : ''; ?>">
+                            <a href="index.php?route=payroll/bonuses">
+                                <i class="fa-solid fa-gift"></i><span>Bonuses & Perks</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_payslips') ? 'active' : ''; ?>">
+                            <a href="index.php?route=payroll/payslips">
+                                <i class="fa-solid fa-receipt"></i><span>Employee Payslips</span>
                             </a>
                         </li>
                     </ul>
                 </li>
                 <?php endif; ?>
 
-                <!-- 6. Operations Accordion Group -->
-                <?php if (in_array($_SESSION['user_role'], ['admin', 'manager', 'team_leader', 'employee', 'sales_person', 'analyst', 'hr', 'finance'], true)): ?>
+                <!-- 7. Operations Accordion Group (Cleaned up) -->
+                <?php if (in_array($_SESSION['user_role'], ['admin', 'ceo', 'employer', 'manager', 'team_leader', 'employee', 'sales_person', 'analyst', 'hr', 'finance'], true)): ?>
                 <li class="menu-section" data-section="operations">
                     <div class="menu-section-header" title="Operations">
                         <i class="fa-solid fa-briefcase section-icon"></i>
@@ -1518,69 +1588,66 @@
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
                     </div>
                     <ul class="menu-section-items">
-                        <?php if (in_array($_SESSION['user_role'], ['admin', 'manager', 'analyst'])): ?>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'monitoring_dashboard') ? 'active' : ''; ?>">
+                            <a href="index.php?route=dashboard/monitoring">
+                                <i class="fa-solid fa-tower-observation"></i><span>Command Center</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'attendance_approvals') ? 'active' : ''; ?>">
+                            <a href="index.php?route=attendance/approvals">
+                                <i class="fa-solid fa-user-check"></i><span>Attendance Approvals</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'attendance_report') ? 'active' : ''; ?>">
+                            <a href="index.php?route=attendance/report">
+                                <i class="fa-solid fa-clipboard-user"></i><span>Attendance Report</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (($data['title'] ?? '') === 'Task Board | Raptor CRM' || (isset($_GET['route']) && strpos($_GET['route'], 'tasks') !== false)) ? 'active' : ''; ?>">
+                            <a href="index.php?route=tasks/index">
+                                <i class="fa-solid fa-list-check"></i><span>Task Board</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'calendar' && (!isset($_GET['route']) || strpos($_GET['route'], 'posts') === false)) ? 'active' : ''; ?>">
+                            <a href="index.php?route=calendar/index">
+                                <i class="fa-solid fa-calendar-days"></i><span>Content & Event Calendar</span>
+                            </a>
+                        </li>
                         <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'clients/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'clients') !== false)) ? 'active' : ''; ?>">
                             <a href="index.php?route=clients/index">
                                 <i class="fa-solid fa-briefcase"></i><span>Clients Directory</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'calendar' && (!isset($_GET['route']) || strpos($_GET['route'], 'posts') === false)) ? 'active' : ''; ?>">
-                            <a href="index.php?route=calendar/index">
-                                <i class="fa-solid fa-calendar-days"></i><span>Content Calendar</span>
-                            </a>
-                        </li>
-                        <?php endif; ?>
-
                         <?php if (in_array($role, $salesRoles, true)): ?>
-                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'leads/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'leads') !== false)) ? 'active' : ''; ?>">
-                            <a href="index.php?route=leads/index">
-                                <i class="fa-solid fa-address-book"></i><span>Leads Manager</span>
-                            </a>
-                        </li>
-                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'customers/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'customers') !== false)) ? 'active' : ''; ?>">
-                            <a href="index.php?route=customers/index">
-                                <i class="fa-solid fa-address-card"></i><span>Customer Directory</span>
-                            </a>
-                        </li>
-                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'account_sales/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'account_sales') !== false)) ? 'active' : ''; ?>">
-                            <a href="index.php?route=account_sales/index">
-                                <i class="fa-solid fa-chart-line"></i><span>Account Sales</span>
-                            </a>
-                        </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'communications') ? 'active' : ''; ?>">
-                            <a href="index.php?route=communications/index">
-                                <i class="fa-solid fa-comments"></i><span>Communications</span>
-                            </a>
-                        </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'meetings') ? 'active' : ''; ?>">
-                            <a href="index.php?route=meetings/index">
-                                <i class="fa-solid fa-handshake"></i><span>Meetings & Demos</span>
-                            </a>
-                        </li>
-                        <?php endif; ?>
-
-                        <li class="menu-item <?php echo ($data['title'] === 'Task Board | Raptor CRM') ? 'active' : ''; ?>">
-                            <a href="index.php?route=tasks/index">
-                                <i class="fa-solid fa-list-check"></i><span>Task Board</span>
-                            </a>
-                        </li>
-                        <?php if (in_array($role, $salesRoles, true)): ?>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'targets') ? 'active' : ''; ?>">
-                            <a href="index.php?route=targets/index">
-                                <i class="fa-solid fa-bullseye"></i><span>Targets</span>
-                            </a>
-                        </li>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'performance') ? 'active' : ''; ?>">
                             <a href="index.php?route=performance/index">
-                                <i class="fa-solid fa-ranking-star"></i><span>Performance</span>
+                                <i class="fa-solid fa-ranking-star"></i><span>Team Performance</span>
                             </a>
                         </li>
                         <?php endif; ?>
                     </ul>
                 </li>
-                <?php endif; ?> <!-- end Marketing -->
+                <?php endif; ?>
 
-                <!-- 7. Reports Accordion Group -->
+                <!-- 8. Finance Accordion Group -->
+                <?php if (in_array($_SESSION['user_role'], ['admin', 'ceo', 'employer', 'manager', 'finance'], true)): ?>
+                <li class="menu-section" data-section="finance">
+                    <div class="menu-section-header" title="Finance">
+                        <i class="fa-solid fa-file-invoice-dollar section-icon"></i>
+                        <span class="section-text">Finance</span>
+                        <i class="fa-solid fa-chevron-right section-arrow"></i>
+                    </div>
+                    <ul class="menu-section-items">
+                        <li class="menu-item <?php echo (strpos($data['title'] ?? '', 'Invoice') !== false || ($data['title'] ?? '') === 'Billing Ledger | Raptor CRM' || (isset($_GET['route']) && strpos($_GET['route'], 'invoices') !== false)) ? 'active' : ''; ?>">
+                            <a href="index.php?route=invoices/index">
+                                <i class="fa-solid fa-file-invoice-dollar"></i><span>Invoicing & Billing</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <?php endif; ?>
+
+                <!-- 9. Reports Accordion Group -->
                 <?php if (!Policy::isEmployee()): ?>
                 <li class="menu-section" data-section="reports">
                     <div class="menu-section-header" title="Reports">
@@ -1589,13 +1656,11 @@
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
                     </div>
                     <ul class="menu-section-items">
-                        <?php if (!Policy::isEmployee()): ?>
-                        <li class="menu-item <?php echo ($data['title'] === 'Reports Center | Raptor CRM') ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo (($data['title'] ?? '') === 'Reports Center | Raptor CRM' || (isset($_GET['route']) && strpos($_GET['route'], 'reports') !== false)) ? 'active' : ''; ?>">
                             <a href="index.php?route=reports/index">
-                                <i class="fa-solid fa-folder-open"></i><span>Reports Module</span>
+                                <i class="fa-solid fa-folder-open"></i><span>Reports Center</span>
                             </a>
                         </li>
-                        <?php endif; ?>
                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'social_history') ? 'active' : ''; ?>">
                             <a href="index.php?route=social/history">
                                 <i class="fa-solid fa-clock-rotate-left"></i><span>Analytics History</span>
@@ -1603,114 +1668,9 @@
                         </li>
                     </ul>
                 </li>
-                <?php endif; ?> <!-- end Reports -->
-
-                <!-- 8. HR & Payroll Accordion Group -->
-                <?php if (in_array($role, ['admin', 'ceo', 'manager', 'team_leader', 'hr', 'finance', 'analyst', 'employee', 'sales_person'], true)): ?>
-                <li class="menu-section" data-section="hr">
-                    <div class="menu-section-header" title="HR & Payroll">
-                        <i class="fa-solid fa-users-gear section-icon"></i>
-                        <span class="section-text">HR & Payroll</span>
-                        <i class="fa-solid fa-chevron-right section-arrow"></i>
-                    </div>
-                    <ul class="menu-section-items">
-                        <?php if (Policy::canManageEmployees()): ?>
-                        <li class="menu-item <?php echo ($data['title'] === 'Employee Management | Raptor CRM') ? 'active' : ''; ?>">
-                            <a href="index.php?route=users/index">
-                                <i class="fa-solid fa-users"></i><span>Employee Directory</span>
-                            </a>
-                        </li>
-                        <?php endif; ?>
-                        
-                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'manager'], true)): ?>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'leave_balances') ? 'active' : ''; ?>">
-                            <a href="index.php?route=leaves/balances">
-                                <i class="fa-solid fa-scale-balanced"></i><span>Leave Balances</span>
-                            </a>
-                        </li>
-                        <?php endif; ?>
-                        
-                        <?php if (Policy::canApproveDataEdit() || Policy::canRequestDataEdit()): ?>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'edit_requests') ? 'active' : ''; ?>">
-                            <a href="index.php?route=editrequests/index">
-                                <i class="fa-solid fa-file-pen"></i><span>Data Edit Requests</span>
-                            </a>
-                        </li>
-                        <?php endif; ?>
-                        
-                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'manager', 'analyst', 'employee', 'sales_person'], true)): ?>
-                        <li class="menu-item <?php echo (($title ?? '') === 'Organization | Raptor CRM' || (isset($active_tab) && $active_tab === 'teams')) ? 'active' : ''; ?>">
-                            <a href="index.php?route=teams/index">
-                                <i class="fa-solid fa-sitemap"></i><span>Organization</span>
-                            </a>
-                        </li>
-                        <?php endif; ?>
-
-                         <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'hrms_dashboard') ? 'active' : ''; ?>">
-                            <a href="index.php?route=hrms/dashboard">
-                                <i class="fa-solid fa-chart-line"></i><span>HRMS Dashboard</span>
-                            </a>
-                        </li>
-                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'analyst'], true)): ?>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'hrms_reports') ? 'active' : ''; ?>">
-                            <a href="index.php?route=hrms/reports">
-                                <i class="fa-solid fa-file-invoice"></i><span>HRMS Reports</span>
-                            </a>
-                        </li>
-                        <?php endif; ?>
-
-                        <!-- New Payroll Items -->
-                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'finance', 'manager'], true)): ?>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_dashboard') ? 'active' : ''; ?>">
-                            <a href="index.php?route=payroll/dashboard">
-                                <i class="fa-solid fa-chart-pie"></i><span>Payroll Dashboard</span>
-                            </a>
-                        </li>
-                        <?php endif; ?>
-
-                        <?php if (in_array($role, ['admin', 'ceo', 'hr'], true)): ?>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_structures') ? 'active' : ''; ?>">
-                            <a href="index.php?route=payroll/structures">
-                                <i class="fa-solid fa-calculator"></i><span>Salary Structures</span>
-                            </a>
-                        </li>
-                        <?php endif; ?>
-
-                        <?php if (in_array($role, ['admin', 'ceo', 'hr', 'finance'], true)): ?>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_checklist') ? 'active' : ''; ?>">
-                            <a href="index.php?route=payroll/checklist">
-                                <i class="fa-solid fa-list-check"></i><span>Pre-Payroll Checklist</span>
-                            </a>
-                        </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_processing') ? 'active' : ''; ?>">
-                            <a href="index.php?route=payroll/processing">
-                                <i class="fa-solid fa-file-invoice-dollar"></i><span>Payroll Runs</span>
-                            </a>
-                        </li>
-                        <?php endif; ?>
-
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_payslips') ? 'active' : ''; ?>">
-                            <a href="index.php?route=payroll/payslips">
-                                <i class="fa-solid fa-receipt"></i><span>My Payslips</span>
-                            </a>
-                        </li>
-
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_reimbursements') ? 'active' : ''; ?>">
-                            <a href="index.php?route=payroll/reimbursements">
-                                <i class="fa-solid fa-hand-holding-dollar"></i><span>Reimbursements</span>
-                            </a>
-                        </li>
-
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'payroll_bonuses') ? 'active' : ''; ?>">
-                            <a href="index.php?route=payroll/bonuses">
-                                <i class="fa-solid fa-gift"></i><span>Bonuses & Perks</span>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
                 <?php endif; ?>
 
-                <!-- 9. Settings Accordion Group -->
+                <!-- 10. Settings Accordion Group -->
                 <li class="menu-section" data-section="settings">
                     <div class="menu-section-header" title="Settings">
                         <i class="fa-solid fa-sliders section-icon"></i>
@@ -1724,7 +1684,7 @@
                             </a>
                         </li>
                         <?php if (Policy::can('settings', 'manage')): ?>
-                        <li class="menu-item <?php echo ($data['title'] === 'Global Settings | Raptor CRM') ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo (($data['title'] ?? '') === 'Global Settings | Raptor CRM' || (isset($_GET['route']) && $_GET['route'] === 'settings/index')) ? 'active' : ''; ?>">
                             <a href="index.php?route=settings/index">
                                 <i class="fa-solid fa-sliders"></i><span>Global Settings</span>
                             </a>
@@ -1746,6 +1706,16 @@
                         <li class="menu-item <?php echo (isset($_GET['route']) && $_GET['route'] === 'settings/auditLogs') ? 'active' : ''; ?>">
                             <a href="index.php?route=settings/auditLogs">
                                 <i class="fa-solid fa-list-check"></i><span>System Audit Logs</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($_GET['route']) && $_GET['route'] === 'settings/dlq') ? 'active' : ''; ?>">
+                            <a href="index.php?route=settings/dlq">
+                                <i class="fa-solid fa-triangle-exclamation text-warning"></i><span>Dead-Letter Queue</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="index.php?route=apidocs/index" target="_blank">
+                                <i class="fa-solid fa-book-bookmark text-info"></i><span>API Documentation</span>
                             </a>
                         </li>
                         <?php endif; ?>
