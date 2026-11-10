@@ -11,6 +11,9 @@
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                 <h4 class="text-white mb-0"><i class="fa-solid fa-sliders text-primary me-2"></i>Admin Configuration Hub</h4>
                 <div class="d-flex gap-2">
+                    <a href="update.php" target="_blank" class="btn btn-sm btn-outline-success" title="Pull latest code and apply migrations">
+                        <i class="fa-solid fa-cloud-arrow-down me-1"></i> Sync Live Release
+                    </a>
                     <a href="index.php?route=settings/dlq" class="btn btn-sm btn-outline-warning">
                         <i class="fa-solid fa-triangle-exclamation me-1"></i> Dead-Letter Queue
                     </a>

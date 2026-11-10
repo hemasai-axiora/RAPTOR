@@ -1377,7 +1377,7 @@
                 <?php endif; ?>
 
                 <!-- Email Campaigns & Mass Mailing Accordion Group -->
-                <?php if (in_array($role ?? '', ['admin', 'ceo', 'manager', 'hr'], true) || (class_exists('Policy') && Policy::can('email_campaigns', 'view'))): ?>
+                <?php if (in_array($role ?? '', ['admin', 'ceo', 'employer', 'manager', 'hr', 'sales_person', 'team_leader', 'analyst'], true) || (class_exists('Policy') && Policy::can('email_campaigns', 'view'))): ?>
                 <li class="menu-section" data-section="email_campaigns">
                     <div class="menu-section-header" title="Email Campaigns">
                         <i class="fa-solid fa-paper-plane section-icon"></i>
@@ -1438,7 +1438,27 @@
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
                     </div>
                     <ul class="menu-section-items">
-                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'campaigns/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'campaigns') !== false)) ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'email_campaigns/campaign') !== false) ? 'active' : ''; ?>">
+                            <a href="index.php?route=email_campaigns/campaigns">
+                                <i class="fa-solid fa-envelope-open-text"></i><span>Email Broadcasts</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'email_campaigns/template') !== false) ? 'active' : ''; ?>">
+                            <a href="index.php?route=email_campaigns/templates">
+                                <i class="fa-solid fa-palette"></i><span>Email Templates</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'email_campaigns/contact') !== false) ? 'active' : ''; ?>">
+                            <a href="index.php?route=email_campaigns/contacts">
+                                <i class="fa-solid fa-users-rectangle"></i><span>Audiences & Lists</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($_GET['route']) && (strpos($_GET['route'], 'email_campaigns/domain') !== false || strpos($_GET['route'], 'email_campaigns/analytic') !== false)) ? 'active' : ''; ?>">
+                            <a href="index.php?route=email_campaigns/analytics">
+                                <i class="fa-solid fa-shield-virus"></i><span>Deliverability Health</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'campaigns/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'campaigns') !== false && strpos($_GET['route'], 'email_') === false)) ? 'active' : ''; ?>">
                             <a href="index.php?route=campaigns/index">
                                 <i class="fa-solid fa-bullhorn"></i><span>Campaign Registry</span>
                             </a>
