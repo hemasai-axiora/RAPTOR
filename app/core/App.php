@@ -56,6 +56,10 @@ class App {
             // Call a callback with array of params
             call_user_func_array([$this->currentController, $this->currentMethod], $this->params);
         } catch (Throwable $e) {
+            // Report to Sentry
+            if (class_exists('\Sentry\SentrySdk') && \Sentry\SentrySdk::getCurrentHub()->getClient()) {
+                \Sentry\captureException($e);
+            }
             http_response_code(200);
             echo "<div style='padding:20px;background:#fff;color:#000;'>";
             echo "<h1>Application Exception</h1>";

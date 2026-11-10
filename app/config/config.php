@@ -64,10 +64,17 @@ if ($host) {
     define('URLROOT', env('URLROOT', 'http://localhost:8080/public'));
 }
 define('SITENAME', env('SITENAME', 'RAPTOR'));
-define('APP_VERSION', env('APP_VERSION', '2.1.0'));
+define('APP_VERSION', env('APP_VERSION', '2.1.3'));
 
 // Environment: 'development' shows errors, 'production' hides them.
 define('APP_ENV', env('APP_ENV', 'development'));
+
+// Sentry Error Monitoring & Performance Tracing
+define('SENTRY_DSN', env('SENTRY_DSN', ''));
+define('SENTRY_TRACES_SAMPLE_RATE', (float) env('SENTRY_TRACES_SAMPLE_RATE', 1.0));
+define('SENTRY_PROFILES_SAMPLE_RATE', (float) env('SENTRY_PROFILES_SAMPLE_RATE', 1.0));
+define('SENTRY_SSL_VERIFY', filter_var(env('SENTRY_SSL_VERIFY', DIRECTORY_SEPARATOR !== '\\'), FILTER_VALIDATE_BOOLEAN));
+define('SENTRY_ENVIRONMENT', env('SENTRY_ENVIRONMENT', APP_ENV));
 
 // Session Settings
 define('SESSION_TIMEOUT', (int) env('SESSION_TIMEOUT', 1800)); // 30 minutes in seconds

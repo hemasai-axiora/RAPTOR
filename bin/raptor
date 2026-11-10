@@ -90,6 +90,10 @@ switch ($command) {
         runHealthCheck($root);
         break;
 
+    case 'sentry:test':
+        runSentryTest($root);
+        break;
+
     default:
         echo Ansi::c(" [ERROR] Unknown command '{$command}'.\n\n", Ansi::RED);
         renderHelp();
@@ -105,6 +109,7 @@ function renderHelp(): void {
         ['migrate:run',      'Apply all outstanding database migrations'],
         ['queue:status',     'Inspect real-time telemetry for email, WhatsApp & journey queues'],
         ['health:check',     'Perform runtime diagnostic (PHP, DB, directories, permissions)'],
+        ['sentry:test',      'Verify Sentry connectivity and trigger a test telemetry exception'],
         ['list',             'Display this command documentation menu']
     ];
 
@@ -253,4 +258,48 @@ function runHealthCheck(string $root): void {
 
     echo "\n" . Ansi::c(" Diagnostic complete.\n\n", Ansi::GREEN);
 }
+
+function runSentryTest(string $root): void {
+    echo Ansi::c(" SENTRY ERROR & TELEMETRY TEST HARNESS\n", Ansi::BOLD . Ansi::WHITE);
+    echo " ─────────────────────────────────────────────────────────────\n";
+
+    $autoload = $root . '/vendor/autoload.php';
+    if (file_exists($autoload)) {
+        require_once $autoload;
+    }
+
+    if (!class_exists('\Sentry\SentrySdk')) {
+        echo Ansi::c(" [FAIL] sentry/sentry SDK is not installed in vendor/.\n", Ansi::RED);
+        echo Ansi::c("        Run: php composer.phar require sentry/sentry\n\n", Ansi::DIM);
+        return;
+    }
+
+    $dsn = defined('SENTRY_DSN') ? SENTRY_DSN : '';
+    if (empty($dsn) || $dsn === 'your-sentry-dsn-here') {
+        echo Ansi::c(" [WARN] SENTRY_DSN is not configured in .env\n", Ansi::YELLOW);
+        echo Ansi::c("        Set SENTRY_DSN=https://<key>@<org>.ingest.sentry.io/<project> in .env\n\n", Ansi::DIM);
+        return;
+    }
+
+    echo Ansi::c(" [INFO] Initializing Sentry with configured DSN...\n", Ansi::CYAN);
+    \Sentry\init([
+        'dsn'                  => $dsn,
+        'environment'          => defined('SENTRY_ENVIRONMENT') ? SENTRY_ENVIRONMENT : 'cli-test',
+        'release'              => 'raptor@' . (defined('APP_VERSION') ? APP_VERSION : '2.1.2'),
+        'traces_sample_rate'   => defined('SENTRY_TRACES_SAMPLE_RATE') ? SENTRY_TRACES_SAMPLE_RATE : 1.0,
+        'profiles_sample_rate' => defined('SENTRY_PROFILES_SAMPLE_RATE') ? SENTRY_PROFILES_SAMPLE_RATE : 1.0,
+        'http_ssl_verify_peer' => defined('SENTRY_SSL_VERIFY') ? SENTRY_SSL_VERIFY : true,
+    ]);
+
+    echo Ansi::c(" [INFO] Dispatching verification exception to Sentry...\n", Ansi::CYAN);
+    $eventId = \Sentry\captureException(new \RuntimeException("Raptor Verification Exception: Sentry connection confirmed via bin/raptor at " . date('Y-m-d H:i:s')));
+
+    if ($eventId) {
+        echo Ansi::c(" [PASS] Test event successfully dispatched! Event ID: {$eventId}\n", Ansi::GREEN);
+        echo Ansi::c("        Check your Sentry Issues dashboard for 'Raptor Verification Exception'.\n\n", Ansi::DIM);
+    } else {
+        echo Ansi::c(" [WARN] Event dispatched, but no Event ID returned. Check your DSN.\n\n", Ansi::YELLOW);
+    }
+}
+
 

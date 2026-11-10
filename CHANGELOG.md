@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.3] - 2026-11-10
+
+### Added
+- **Sentry Error Monitoring & Performance APM**:
+  - Integrated official `sentry/sentry` (v4.36) SDK into Raptor's core bootstrap (`public/index.php`).
+  - Correlated Sentry events with Raptor's distributed `X-Request-ID` tracing and active session user context (`user_id`, role, email).
+  - Wired routing and fatal shutdown error capture in `app/core/App.php` and `public/index.php`.
+  - Added CLI test command `php bin/raptor sentry:test` with verified live event dispatch (`adca6f9823a3447788fc257f7f4d9394`).
+  - Added support for Sentry Profiling sampling rate (`SENTRY_PROFILES_SAMPLE_RATE=1.0`).
+
+---
+
 ## [2.1.2] - 2026-11-10
 
 ### Changed
