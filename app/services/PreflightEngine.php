@@ -785,6 +785,55 @@ final class PreflightEngine {
     }
 
     /**
+     * Calculate 0–100 Deliverability Health Score based on finding severities.
+     * Scale:
+     * - Base score: 100
+     * - BLOCK finding: -30 (caps overall score at maximum 50)
+     * - HIGH finding: -15
+     * - WARNING finding: -5
+     * - INFO finding: -1
+     * Bounded within [0, 100].
+     */
+    public static function calculateScore(array $summary): int {
+        $score = 100 - (($summary['block'] ?? 0) * 30)
+                     - (($summary['high'] ?? 0) * 15)
+                     - (($summary['warning'] ?? 0) * 5)
+                     - (($summary['info'] ?? 0) * 1);
+        if (($summary['block'] ?? 0) > 0 && $score > 50) {
+            $score = 50;
+        }
+        return max(0, min(100, (int)$score));
+    }
+
+    /**
+     * Get Deliverability Rule Catalog with Pillar Categorization.
+     */
+    public static function getRuleCatalog(): array {
+        return [
+            'D-001' => ['pillar' => 'auth', 'name' => 'Domain Verified', 'severity' => 'BLOCK', 'desc' => 'Sending domain must exist and be verified.'],
+            'D-002' => ['pillar' => 'auth', 'name' => 'SPF / DKIM / DMARC Alignment', 'severity' => 'BLOCK', 'desc' => 'Mandatory authentication alignment for bulk senders.'],
+            'D-003' => ['pillar' => 'legal', 'name' => 'Lawful Consent Proof', 'severity' => 'BLOCK', 'desc' => 'Audience must have documented opt-in consent.'],
+            'D-004' => ['pillar' => 'legal', 'name' => 'Global Suppression Exclusion', 'severity' => 'BLOCK', 'desc' => 'Suppressed emails must be quarantined from broadcasts.'],
+            'D-005' => ['pillar' => 'legal', 'name' => 'RFC 8058 One-Click Header', 'severity' => 'BLOCK', 'desc' => 'List-Unsubscribe and List-Unsubscribe-Post headers.'],
+            'D-006' => ['pillar' => 'legal', 'name' => 'Visible Unsubscribe Link', 'severity' => 'BLOCK', 'desc' => 'Clear body unsubscribe route with one-click landing.'],
+            'D-007' => ['pillar' => 'content', 'name' => 'Merge Variable Integrity', 'severity' => 'BLOCK', 'desc' => 'All tokens must exist in schema or fallback cleanly.'],
+            'D-008' => ['pillar' => 'content', 'name' => 'Content Intent Mismatch', 'severity' => 'HIGH', 'desc' => 'Promotional offers blocked inside operational alerts.'],
+            'D-009' => ['pillar' => 'content', 'name' => 'HTML Sanitization & Safe Scripts', 'severity' => 'BLOCK', 'desc' => 'Strips script, onload, onerror, iframe, object tags.'],
+            'D-010' => ['pillar' => 'content', 'name' => 'Complaint Spike & Spam Signals', 'severity' => 'BLOCK', 'desc' => 'Triggers warning at >=0.1% and blocks at >=0.3% complaint rate.'],
+            'D-011' => ['pillar' => 'delivery', 'name' => 'Unsafe CTA Destination', 'severity' => 'BLOCK', 'desc' => 'Prevents localhost, 127.0.0.1, or RFC1918 private IPs.'],
+            'D-012' => ['pillar' => 'delivery', 'name' => 'Public URL Shorteners', 'severity' => 'WARNING', 'desc' => 'Flags bit.ly, tinyurl and generic redirection services.'],
+            'D-013' => ['pillar' => 'content', 'name' => 'Multipart Alternative Present', 'severity' => 'BLOCK', 'desc' => 'Clean plain-text version paired with HTML broadcast.'],
+            'D-014' => ['pillar' => 'content', 'name' => 'Image Alt Text Hygiene', 'severity' => 'WARNING', 'desc' => 'All image elements must contain descriptive alt attributes.'],
+            'D-015' => ['pillar' => 'content', 'name' => 'Image-to-Text Balance', 'severity' => 'WARNING', 'desc' => 'Sufficient readable body text (>60 words if images present).'],
+            'D-016' => ['pillar' => 'auth', 'name' => 'Stale Reputation Data', 'severity' => 'HIGH', 'desc' => 'Domain DNS authentication older than 30 days.'],
+            'D-017' => ['pillar' => 'delivery', 'name' => 'Approval Snapshot Integrity', 'severity' => 'BLOCK', 'desc' => 'Cryptographic SHA-256 match between draft and approved copy.'],
+            'D-018' => ['pillar' => 'delivery', 'name' => 'Provider Quota & Ingestion', 'severity' => 'BLOCK', 'desc' => 'ESP quota remaining and webhook receiver operational.'],
+            'D-019' => ['pillar' => 'delivery', 'name' => 'Recipient Quiet Hours', 'severity' => 'BLOCK', 'desc' => 'Disallow marketing sends between 21:00 and 08:00 local time.'],
+            'D-020' => ['pillar' => 'auth', 'name' => 'Custom Asset Tracking Domain', 'severity' => 'HIGH', 'desc' => 'CDN / asset host matching sending domain alignment.']
+        ];
+    }
+
+    /**
      * Evaluate all rules against preflight context.
      * 
      * @return array{
@@ -793,6 +842,7 @@ final class PreflightEngine {
      *   artifact_sha256: string,
      *   evaluated_at: string,
      *   status: string,
+     *   score: int,
      *   summary: array{block: int, high: int, warning: int, info: int},
      *   findings: array
      * }
@@ -834,6 +884,7 @@ final class PreflightEngine {
         $runId = 'pfl_' . date('Ymd_His') . '_' . bin2hex(random_bytes(3));
         $artifactHash = self::computeArtifactHash($context);
         $evaluatedAt = date('Y-m-d H:i:s');
+        $score = self::calculateScore($summary);
 
         $findingsArray = array_map(static fn(Finding $f) => $f->toArray(), $allFindings);
 
@@ -843,6 +894,7 @@ final class PreflightEngine {
             'artifact_sha256' => $artifactHash,
             'evaluated_at' => $evaluatedAt,
             'status' => $status,
+            'score' => $score,
             'summary' => $summary,
             'findings' => $findingsArray
         ];

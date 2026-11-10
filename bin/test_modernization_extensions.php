@@ -310,6 +310,74 @@ $reconContent = file_get_contents($reconViewPath);
 assertCustom(strpos($reconContent, 'table-sticky-header') !== false, "Reconciliation view renders sticky-header matrix view");
 assertCustom(strpos($reconContent, 'csvHtml5') !== false, "Reconciliation view provides DataTables CSV export button");
 
+// ── 11. Sprint 4: Marketing AI Copilot & Deliverability Intelligence ──
+echo "\n11. Testing Sprint 4 Marketing AI Copilot & Deliverability Intelligence...\n";
+
+require_once __DIR__ . '/../app/services/PreflightEngine.php';
+require_once __DIR__ . '/../app/services/PreSendChecklistService.php';
+require_once __DIR__ . '/../app/services/AiService.php';
+require_once __DIR__ . '/../app/core/Model.php';
+require_once __DIR__ . '/../app/models/CampaignDomain.php';
+require_once __DIR__ . '/../app/models/CampaignContact.php';
+require_once __DIR__ . '/../app/models/CampaignList.php';
+require_once __DIR__ . '/../app/models/CampaignTag.php';
+require_once __DIR__ . '/../app/models/CampaignSegment.php';
+require_once __DIR__ . '/../app/models/CampaignSuppression.php';
+require_once __DIR__ . '/../app/models/CampaignTemplate.php';
+require_once __DIR__ . '/../app/models/CampaignBroadcast.php';
+require_once __DIR__ . '/../app/controllers/EmailCampaignsController.php';
+
+// Test 11.1: PreflightEngine Score Calculation
+$scorePerfect = PreflightEngine::calculateScore(['block' => 0, 'high' => 0, 'warning' => 0, 'info' => 0]);
+assertCustom($scorePerfect === 100, "PreflightEngine computes 100/100 score for pristine broadcast");
+
+$scoreWarning = PreflightEngine::calculateScore(['block' => 0, 'high' => 1, 'warning' => 2, 'info' => 0]);
+// 100 - (1*15) - (2*5) = 75
+assertCustom($scoreWarning === 75, "PreflightEngine computes 75/100 score with 1 HIGH and 2 WARNING findings");
+
+$scoreBlock = PreflightEngine::calculateScore(['block' => 1, 'high' => 0, 'warning' => 0, 'info' => 0]);
+// 100 - 30 = 70 capped at 50
+assertCustom($scoreBlock === 50, "PreflightEngine caps score at 50/100 when any BLOCK finding is present");
+
+$scoreZero = PreflightEngine::calculateScore(['block' => 5, 'high' => 5, 'warning' => 5, 'info' => 5]);
+assertCustom($scoreZero === 0, "PreflightEngine bounds score to minimum 0");
+
+// Test 11.2: Rule Catalog & 4 Pillar Categorization
+$catalog = PreflightEngine::getRuleCatalog();
+assertCustom(count($catalog) === 20, "PreflightEngine provides rule catalog for all 20 rules (D-001 through D-020)");
+assertCustom(isset($catalog['D-001']) && $catalog['D-001']['pillar'] === 'auth', "Rule D-001 correctly mapped to 'auth' pillar");
+assertCustom(isset($catalog['D-005']) && $catalog['D-005']['pillar'] === 'legal', "Rule D-005 (RFC 8058) correctly mapped to 'legal' pillar");
+assertCustom(isset($catalog['D-010']) && $catalog['D-010']['pillar'] === 'content', "Rule D-010 (Spam Signals) correctly mapped to 'content' pillar");
+assertCustom(isset($catalog['D-011']) && $catalog['D-011']['pillar'] === 'delivery', "Rule D-011 (CTA Destinations) correctly mapped to 'delivery' pillar");
+
+// Test 11.3: EmailCampaignsController Sprint 4 Actions
+$campReflect = new ReflectionClass(EmailCampaignsController::class);
+assertCustom($campReflect->hasMethod('aiSubjectLines'), "EmailCampaignsController defines aiSubjectLines() action for AI Copilot");
+assertCustom($campReflect->hasMethod('testPreview'), "EmailCampaignsController defines testPreview() action for spam scanner and preview");
+
+// Test 11.4: AI Subject Line Fallback Matrix
+$compellingSubs = EmailCampaignsController::generateFallbackSubjectLines('Product Launch', 'promotional', 'compelling');
+assertCustom(count($compellingSubs) === 5, "generateFallbackSubjectLines returns 5 compelling subject line suggestions");
+assertCustom(!empty($compellingSubs[0]['subject']) && !empty($compellingSubs[0]['preview']), "Suggestions include subject and preview text");
+
+$urgentSubs = EmailCampaignsController::generateFallbackSubjectLines('Quarterly Renewal', 'promotional', 'urgent');
+assertCustom(count($urgentSubs) === 5 && strpos($urgentSubs[0]['angle'], 'Time') !== false, "Urgent tone returns time-sensitive subject line angles");
+
+// Test 11.5: Spam Word Scanner and Highlight Engine
+$testHtml = '<p>Hello world. This is a 100% free special gift! Please act now to claim your bonus.</p>';
+$spamScore = PreSendChecklistService::calculateSpamScore('ACT NOW FOR FREE BONUS', $testHtml);
+assertCustom($spamScore['score'] > 0 && count($spamScore['triggers']) > 0, "PreSendChecklistService detects spam trigger phrases in content");
+
+// Test 11.6: UI Elements in Campaign Builder View
+$createCampView = file_get_contents(__DIR__ . '/../app/views/email_campaigns/campaigns/create.php');
+assertCustom(strpos($createCampView, 'aiSubjectModal') !== false, "Campaign builder view includes AI Subject Copilot modal");
+assertCustom(strpos($createCampView, 'AI Subject Copilot') !== false, "Campaign builder view provides AI Subject Copilot button");
+assertCustom(strpos($createCampView, 'health-meter-box') !== false, "Campaign builder view includes Deliverability Health Meter container");
+assertCustom(strpos($createCampView, 'meter-circle') !== false, "Campaign builder view renders circular SVG Deliverability Health Gauge");
+assertCustom(strpos($createCampView, 'testPreviewModal') !== false, "Campaign builder view includes 1-Click Test Broadcast Preview modal");
+assertCustom(strpos($createCampView, 'toggle-spam-highlight') !== false, "Preview modal provides toggle to highlight spam trigger words");
+assertCustom(strpos($createCampView, 'btn-view-mobile') !== false, "Preview modal provides Desktop vs Mobile 375px switcher");
+
 echo "\n=======================================================\n";
 echo "SUMMARY: {$passed} PASSED, {$failed} FAILED\n";
 echo "=======================================================\n";

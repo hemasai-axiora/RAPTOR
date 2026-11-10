@@ -599,6 +599,344 @@ class EmailCampaignsController extends Controller {
     }
 
     /**
+     * AI Subject Line & Pre-Check Copilot Generator (Sprint 4)
+     * Calls AiService::generate() to generate 5 high-converting, spam-free subject lines
+     * and preview texts with open-rate rationale, backed by a deterministic fallback matrix.
+     */
+    public function aiSubjectLines() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+            exit();
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($input)) {
+            $input = $_POST;
+        }
+
+        $topic = trim((string)($input['topic'] ?? ''));
+        $intent = trim((string)($input['intent'] ?? 'promotional'));
+        $tone = trim((string)($input['tone'] ?? 'compelling'));
+        $audience = trim((string)($input['audience'] ?? 'General Subscribers'));
+
+        if ($topic === '') {
+            $topic = 'Product Update and Exclusive Offer';
+        }
+
+        $prompt = <<<PROMPT
+You are an expert enterprise email deliverability and copywriting specialist.
+Generate 5 high-performing, spam-free email subject lines and matching preview texts.
+
+Topic: {$topic}
+Communication Intent: {$intent}
+Desired Tone: {$tone}
+Target Audience: {$audience}
+
+Strict Requirements:
+1. Avoid ALL known spam trigger words (e.g., "100% free", "guaranteed", "act now", "make money", excessive punctuation, ALL CAPS).
+2. Keep subject lines between 30 and 55 characters for optimal mobile rendering.
+3. Keep preview texts between 50 and 85 characters.
+4. Output MUST be valid JSON with this exact structure:
+{
+  "suggestions": [
+    {
+      "subject": "Compelling subject line here",
+      "preview": "Complementary preview snippet text",
+      "angle": "Curiosity / Benefit / Urgent / Social Proof / Direct",
+      "predicted_strength": "High / Very High"
+    }
+  ]
+}
+Return only JSON, no markdown formatting, no code blocks.
+PROMPT;
+
+        $suggestions = [];
+        $provider = 'rule_engine_fallback';
+        $aiError = null;
+
+        if (class_exists('AiService')) {
+            try {
+                $res = AiService::generate($prompt, ['temperature' => 0.7, 'max_tokens' => 1024]);
+                if (!empty($res['success']) && !empty($res['content'])) {
+                    $provider = $res['provider'] ?? 'ai';
+                    $cleaned = trim($res['content']);
+                    $cleaned = preg_replace('/^```(?:json)?\s*/i', '', $cleaned);
+                    $cleaned = preg_replace('/\s*```$/', '', $cleaned);
+                    $decoded = json_decode(trim($cleaned), true);
+                    if (is_array($decoded) && !empty($decoded['suggestions']) && is_array($decoded['suggestions'])) {
+                        foreach ($decoded['suggestions'] as $item) {
+                            if (!empty($item['subject'])) {
+                                $suggestions[] = [
+                                    'subject' => (string)$item['subject'],
+                                    'preview' => (string)($item['preview'] ?? ''),
+                                    'angle' => (string)($item['angle'] ?? 'Optimized'),
+                                    'predicted_strength' => (string)($item['predicted_strength'] ?? 'High')
+                                ];
+                            }
+                        }
+                    }
+                } else {
+                    $aiError = $res['error'] ?? 'AI generation returned empty response';
+                }
+            } catch (\Throwable $e) {
+                $aiError = $e->getMessage();
+            }
+        }
+
+        // If AI returned fewer than 3 suggestions or wasn't configured, use deliverability-optimized deterministic templates
+        if (count($suggestions) < 3) {
+            $suggestions = self::generateFallbackSubjectLines($topic, $intent, $tone);
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'topic' => $topic,
+            'intent' => $intent,
+            'tone' => $tone,
+            'provider' => $provider,
+            'ai_error' => $aiError,
+            'suggestions' => $suggestions
+        ]);
+        exit();
+    }
+
+    /**
+     * Fallback Subject Line Generator Matrix
+     */
+    public static function generateFallbackSubjectLines(string $topic, string $intent, string $tone): array {
+        $cleanTopic = rtrim(trim($topic), '.!');
+        switch ($tone) {
+            case 'urgent':
+                return [
+                    [
+                        'subject' => "Important timeline: {$cleanTopic}",
+                        'preview' => "Review the key milestones and deadline details inside.",
+                        'angle' => 'Time-Sensitive',
+                        'predicted_strength' => 'High'
+                    ],
+                    [
+                        'subject' => "Action needed before Friday: {$cleanTopic}",
+                        'preview' => "A quick reminder regarding upcoming updates for your team.",
+                        'angle' => 'Direct Action',
+                        'predicted_strength' => 'Very High'
+                    ],
+                    [
+                        'subject' => "Closing soon: Updates regarding {$cleanTopic}",
+                        'preview' => "Make sure your preferences are saved before the cutoff.",
+                        'angle' => 'Deadline Alert',
+                        'predicted_strength' => 'High'
+                    ],
+                    [
+                        'subject' => "Final reminder: Important details on {$cleanTopic}",
+                        'preview' => "Here is everything you need to review before tomorrow.",
+                        'angle' => 'Clarified Urgency',
+                        'predicted_strength' => 'High'
+                    ],
+                    [
+                        'subject' => "Don't miss the window for {$cleanTopic}",
+                        'preview' => "Open to see steps to keep your account in sync.",
+                        'angle' => 'Opportunity',
+                        'predicted_strength' => 'High'
+                    ]
+                ];
+            case 'curiosity':
+                return [
+                    [
+                        'subject' => "What changes with {$cleanTopic}?",
+                        'preview' => "Here is what our latest benchmark numbers show.",
+                        'angle' => 'Curiosity Hook',
+                        'predicted_strength' => 'Very High'
+                    ],
+                    [
+                        'subject' => "A different perspective on {$cleanTopic}",
+                        'preview' => "Three things most teams overlook, and how to fix them.",
+                        'angle' => 'Insight Driven',
+                        'predicted_strength' => 'High'
+                    ],
+                    [
+                        'subject' => "Behind the scenes: How we approached {$cleanTopic}",
+                        'preview' => "A walkthrough of decisions, tradeoffs, and key findings.",
+                        'angle' => 'Storytelling',
+                        'predicted_strength' => 'High'
+                    ],
+                    [
+                        'subject' => "The hidden pattern behind {$cleanTopic}",
+                        'preview' => "See the breakdown and how it impacts your daily operations.",
+                        'angle' => 'Deep Dive',
+                        'predicted_strength' => 'Very High'
+                    ],
+                    [
+                        'subject' => "What we learned from testing {$cleanTopic}",
+                        'preview' => "Key metrics, takeaways, and what you can apply right now.",
+                        'angle' => 'Case Study',
+                        'predicted_strength' => 'High'
+                    ]
+                ];
+            case 'b2b':
+            case 'professional':
+                return [
+                    [
+                        'subject' => "Executive summary: {$cleanTopic}",
+                        'preview' => "Briefing on recent enhancements and enterprise capabilities.",
+                        'angle' => 'B2B Briefing',
+                        'predicted_strength' => 'Very High'
+                    ],
+                    [
+                        'subject' => "Strategy update regarding {$cleanTopic}",
+                        'preview' => "Recommended steps to optimize efficiency and compliance.",
+                        'angle' => 'Operational',
+                        'predicted_strength' => 'High'
+                    ],
+                    [
+                        'subject' => "Resource guide: Best practices for {$cleanTopic}",
+                        'preview' => "Actionable framework tailored for enterprise teams.",
+                        'angle' => 'Value Add',
+                        'predicted_strength' => 'High'
+                    ],
+                    [
+                        'subject' => "Quarterly insights: Navigating {$cleanTopic}",
+                        'preview' => "Data-backed recommendations from our solution architects.",
+                        'angle' => 'Thought Leadership',
+                        'predicted_strength' => 'High'
+                    ],
+                    [
+                        'subject' => "Technical notes: Key considerations for {$cleanTopic}",
+                        'preview' => "Review release notes and system readiness recommendations.",
+                        'angle' => 'Technical',
+                        'predicted_strength' => 'High'
+                    ]
+                ];
+            case 'compelling':
+            default:
+                return [
+                    [
+                        'subject' => "New release: Explore {$cleanTopic}",
+                        'preview' => "Discover the newest enhancements built to streamline your workflow.",
+                        'angle' => 'Direct Benefit',
+                        'predicted_strength' => 'Very High'
+                    ],
+                    [
+                        'subject' => "Streamline your results with {$cleanTopic}",
+                        'preview' => "See how modern teams save hours every week.",
+                        'angle' => 'Outcome Focused',
+                        'predicted_strength' => 'High'
+                    ],
+                    [
+                        'subject' => "A smarter way to handle {$cleanTopic}",
+                        'preview' => "Practical guidance and new tools now available in your portal.",
+                        'angle' => 'Value Proposition',
+                        'predicted_strength' => 'Very High'
+                    ],
+                    [
+                        'subject' => "Everything you need to know about {$cleanTopic}",
+                        'preview' => "A concise overview of what is new and how to get started.",
+                        'angle' => 'Comprehensive Guide',
+                        'predicted_strength' => 'High'
+                    ],
+                    [
+                        'subject' => "Your guide to faster {$cleanTopic}",
+                        'preview' => "Simple adjustments that make a measurable difference today.",
+                        'angle' => 'Efficiency',
+                        'predicted_strength' => 'High'
+                    ]
+                ];
+        }
+    }
+
+    /**
+     * 1-Click Test Broadcast Preview with Automated Spam Trigger Word Highlighting (Sprint 4)
+     */
+    public function testPreview() {
+        $campaignId = (int)($_GET['campaign_id'] ?? ($_POST['campaign_id'] ?? 0));
+        
+        if ($campaignId > 0) {
+            $camp = (array)$this->campaignModel->getById($campaignId);
+        } else {
+            $camp = $_POST;
+        }
+
+        if (empty($camp)) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'No campaign data provided.']);
+            exit();
+        }
+
+        $subject = (string)($camp['subject_a'] ?? ($camp['name'] ?? 'Campaign Preview'));
+        $html = (string)($camp['html_content'] ?? '');
+        $plain = (string)($camp['plain_text_content'] ?? '');
+
+        // Render sample merge variables for realistic preview
+        $sampleContact = [
+            'first_name' => 'Jane',
+            'last_name' => 'Doe',
+            'company_name' => 'Acme Corporation',
+            'email' => 'jane.doe@example.com'
+        ];
+        $sampleOptions = [
+            'unsubscribe_url' => URLROOT . '/index.php?route=unsubscribe/view&token=test_preview_sample_token',
+            'company_address' => 'Axiora Global Solutions, Cyber City, Hyderabad, India'
+        ];
+
+        $renderedHtml = CampaignTemplate::renderMergeTags($html, $sampleContact, $sampleOptions);
+        $renderedPlain = CampaignTemplate::renderMergeTags($plain, $sampleContact, $sampleOptions);
+
+        // Calculate heuristic spam score and identify triggers
+        $spamAnalysis = PreSendChecklistService::calculateSpamScore($subject, $renderedHtml);
+        $score = is_array($spamAnalysis) ? ($spamAnalysis['score'] ?? 0.0) : 0.0;
+        $rawTriggers = is_array($spamAnalysis) ? ($spamAnalysis['triggers'] ?? []) : [];
+
+        // Clean trigger strings
+        $cleanTriggers = [];
+        foreach ($rawTriggers as $trig) {
+            $clean = trim((string)$trig, '"\' ');
+            if ($clean !== '') {
+                $cleanTriggers[] = $clean;
+            }
+        }
+
+        // Automated Spam Trigger Word Highlighting in HTML and Subject
+        $highlightedHtml = $renderedHtml;
+        $highlightedSubject = htmlspecialchars($subject);
+
+        $spamWordMatches = [];
+        foreach (PreSendChecklistService::SPAM_TRIGGER_WORDS as $phrase) {
+            if (stripos($renderedHtml, $phrase) !== false) {
+                $spamWordMatches[] = $phrase;
+                $pattern = '/(?!(?:[^<]+>|[^>]+<\/a>))\b(' . preg_quote($phrase, '/') . ')\b/i';
+                $replacement = '<mark class="raptor-spam-highlight" style="background:#fee2e2;color:#991b1b;padding:2px 4px;border-radius:3px;font-weight:600;text-decoration:underline wavy #ef4444;" title="Spam Trigger Word: \'$1\'">$1</mark>';
+                $highlightedHtml = (string)preg_replace($pattern, $replacement, $highlightedHtml);
+            }
+
+            if (stripos($subject, $phrase) !== false) {
+                $pattern = '/\b(' . preg_quote($phrase, '/') . ')\b/i';
+                $replacement = '<mark class="raptor-spam-highlight" style="background:#fee2e2;color:#991b1b;padding:2px 4px;border-radius:3px;font-weight:600;text-decoration:underline wavy #ef4444;" title="Spam Trigger Word">$1</mark>';
+                $highlightedSubject = (string)preg_replace($pattern, $replacement, $highlightedSubject);
+            }
+        }
+
+        $allTriggers = array_values(array_unique(array_merge($cleanTriggers, $spamWordMatches)));
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'campaign_id' => $campaignId,
+            'subject' => $subject,
+            'highlighted_subject' => $highlightedSubject,
+            'rendered_html' => $renderedHtml,
+            'highlighted_html' => $highlightedHtml,
+            'rendered_plain' => $renderedPlain,
+            'spam_score' => $score,
+            'spam_triggers' => $allTriggers,
+            'trigger_count' => count($allTriggers),
+            'from_name' => $camp['from_name'] ?? 'Axiora Global',
+            'from_email' => $camp['from_email'] ?? 'broadcast@mail.axiora.com'
+        ]);
+        exit();
+    }
+
+    /**
      * Alert Center View
      */
     public function alerts() {
