@@ -80,6 +80,51 @@ class LeadsController extends Controller {
         $this->viewWithLayout('leads/detail', 'main', $data);
     }
 
+    /**
+     * Slide-over Quick Preview API endpoint (Raptor v2.2 - Sprint 2)
+     * GET index.php?route=leads/preview&id=123 or index.php?route=leads/preview/123
+     */
+    public function preview($id = null) {
+        $leadId = (int) ($id ?? $_GET['id'] ?? 0);
+        $lead = $this->leadModel->getLeadById($leadId, $this->visibleUserIds());
+        if (!$lead) {
+            $this->jsonError('Lead record not found or access denied by policy.', 404);
+            return;
+        }
+
+        $recentCommunications = [];
+        try {
+            if ($this->communicationModel && method_exists($this->communicationModel, 'getForLead')) {
+                $recentCommunications = $this->communicationModel->getForLead($leadId) ?: [];
+            }
+        } catch (\Throwable $e) {
+            // best-effort
+        }
+
+        $this->json([
+            'success' => true,
+            'lead'    => [
+                'id'          => (int) $lead->lead_id,
+                'lead_code'   => $lead->lead_code ?: ('LD-' . date('Y') . '-' . sprintf('%05d', $lead->lead_id)),
+                'name'        => trim($lead->first_name . ' ' . ($lead->last_name ?? '')),
+                'email'       => (string) ($lead->email ?: ''),
+                'phone'       => (string) ($lead->phone ?: ''),
+                'company'     => (string) ($lead->lead_company_name ?: $lead->client_company_name ?: 'Individual'),
+                'source'      => (string) ($lead->lead_source ?: 'Direct'),
+                'quality'     => (string) ($lead->lead_quality ?: 'cold'),
+                'status'      => (string) ($lead->status ?: 'new'),
+                'priority'    => (string) ($lead->priority ?: 'medium'),
+                'value'       => (float) $lead->lead_value,
+                'probability' => (float) ($lead->probability ?? $lead->conversion_probability ?? 0),
+                'owner'       => (string) ($lead->owner_employee_name ?: $lead->assignee_name ?: 'Unassigned'),
+                'notes'       => (string) ($lead->notes ?: ''),
+                'view_url'    => 'index.php?route=leads/view/' . $lead->lead_id,
+                'edit_url'    => 'index.php?route=leads/edit/' . $lead->lead_id,
+                'recent_comm' => array_slice($recentCommunications, 0, 3)
+            ]
+        ]);
+    }
+
     public function add() {
         $this->requirePermission('crm_leads', 'create');
         $data = $this->formData([

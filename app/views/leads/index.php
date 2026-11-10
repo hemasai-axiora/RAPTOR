@@ -34,6 +34,32 @@
         </div>
     <?php endif; ?>
 
+    <!-- Quick Filter Pills (Sprint 2) -->
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+        <span class="text-secondary small fw-medium me-1"><i class="fa-solid fa-bolt text-warning me-1"></i>Quick Filters:</span>
+        <a href="index.php?route=leads/index" class="btn btn-sm <?php echo empty($filters['lead_quality']) && empty($filters['status']) ? 'btn-primary' : 'btn-outline-secondary'; ?> rounded-pill px-3 py-1">
+            All Leads
+        </a>
+        <a href="index.php?route=leads/index&lead_quality=hot" class="btn btn-sm <?php echo ($filters['lead_quality'] ?? '') === 'hot' ? 'btn-danger' : 'btn-outline-danger'; ?> rounded-pill px-3 py-1">
+            🔥 Hot Leads
+        </a>
+        <a href="index.php?route=leads/index&lead_quality=warm" class="btn btn-sm <?php echo ($filters['lead_quality'] ?? '') === 'warm' ? 'btn-warning text-dark fw-semibold' : 'btn-outline-warning'; ?> rounded-pill px-3 py-1">
+            ⚡ Warm Leads
+        </a>
+        <a href="index.php?route=leads/index&lead_quality=cold" class="btn btn-sm <?php echo ($filters['lead_quality'] ?? '') === 'cold' ? 'btn-info' : 'btn-outline-info'; ?> rounded-pill px-3 py-1">
+            ❄️ Cold Leads
+        </a>
+        <a href="index.php?route=leads/index&status=qualified" class="btn btn-sm <?php echo ($filters['status'] ?? '') === 'qualified' ? 'btn-success' : 'btn-outline-success'; ?> rounded-pill px-3 py-1">
+            🎯 Qualified
+        </a>
+        <a href="index.php?route=leads/index&status=proposal" class="btn btn-sm <?php echo ($filters['status'] ?? '') === 'proposal' ? 'btn-primary' : 'btn-outline-primary'; ?> rounded-pill px-3 py-1">
+            📄 Proposal
+        </a>
+        <a href="index.php?route=leads/index&status=converted" class="btn btn-sm <?php echo ($filters['status'] ?? '') === 'converted' ? 'btn-success' : 'btn-outline-success'; ?> rounded-pill px-3 py-1">
+            🏆 Converted
+        </a>
+    </div>
+
     <form method="GET" action="index.php" class="row g-3 mb-4">
         <input type="hidden" name="route" value="leads/index">
         <div class="col-md-2">
@@ -145,7 +171,10 @@
                             <td data-label="Status"><span class="badge bg-<?php echo $statusTone; ?>-subtle text-<?php echo $statusTone; ?> border border-<?php echo $statusTone; ?>-subtle"><?php echo strtoupper($lead->status); ?></span></td>
                             <td data-label="Actions" class="text-end">
                                 <div class="d-inline-flex gap-2">
-                                    <a href="index.php?route=leads/view/<?php echo $lead->lead_id; ?>" class="btn btn-outline-info btn-sm" title="Detail"><i class="fa-solid fa-eye"></i></a>
+                                    <button type="button" class="btn btn-outline-info btn-sm btn-lead-preview" data-id="<?php echo $lead->lead_id; ?>" title="Quick Inspect Drawer">
+                                        <i class="fa-solid fa-sidebar me-1"></i><i class="fa-solid fa-eye"></i>
+                                    </button>
+                                    <a href="index.php?route=leads/view/<?php echo $lead->lead_id; ?>" class="btn btn-outline-secondary btn-sm" title="Full Page"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
                                     <a href="index.php?route=leads/edit/<?php echo $lead->lead_id; ?>" class="btn btn-outline-light btn-sm" title="Edit"><i class="fa-solid fa-user-pen"></i></a>
                                 </div>
                             </td>
@@ -198,16 +227,184 @@
     </div>
 </div>
 
+<!-- Slide-Over Lead Preview Drawer (Sprint 2) -->
+<?php
+$this->component('drawer', [
+    'id' => 'leadPreviewDrawer',
+    'title' => 'Lead Overview',
+    'subtitle' => 'Instant slide-over inspection',
+    'size' => '540px',
+    'body' => '<div id="leadDrawerContent" class="text-center py-5 text-secondary"><i class="fa-solid fa-spinner fa-spin me-2"></i>Loading lead profile...</div>',
+    'footer' => '
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-drawer-dismiss="leadPreviewDrawer">Close</button>
+        <a href="#" id="leadDrawerEditBtn" class="btn btn-outline-light btn-sm"><i class="fa-solid fa-user-pen me-1"></i>Edit Lead</a>
+        <a href="#" id="leadDrawerFullBtn" class="btn btn-primary btn-sm"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Full Profile</a>
+    '
+]);
+?>
+
 <script>
 $(function() {
+    // 1. DataTables with HTML5 CSV & Excel Export Buttons
     if ($('#leads-table tbody tr').length > 1) {
         $('#leads-table').DataTable({
             pageLength: 10,
             lengthChange: false,
-            info: false,
+            info: true,
             searching: true,
-            language: { search: 'Search Leads:' }
+            dom: '<"d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"<"d-flex align-items-center gap-2"B><"d-flex align-items-center"f>>rt<"d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3"ip>',
+            buttons: [
+                {
+                    extend: 'csvHtml5',
+                    text: '<i class="fa-solid fa-file-csv me-1 text-info"></i> CSV Export',
+                    className: 'btn btn-sm btn-outline-secondary',
+                    exportOptions: { columns: ':not(:last-child)' }
+                },
+                {
+                    extend: 'excelHtml5',
+                    text: '<i class="fa-solid fa-file-excel me-1 text-success"></i> Excel Export',
+                    className: 'btn btn-sm btn-outline-secondary',
+                    exportOptions: { columns: ':not(:last-child)' }
+                }
+            ],
+            language: { 
+                search: '',
+                searchPlaceholder: 'Search leads...' 
+            }
         });
     }
+
+    // 2. Lead Preview Slide-Over Drawer Controller
+    const drawerBackdrop = document.getElementById('leadPreviewDrawer-backdrop');
+    const drawerElement = document.getElementById('leadPreviewDrawer');
+    const drawerContent = document.getElementById('leadDrawerContent');
+    const drawerTitle = document.getElementById('leadPreviewDrawer-title');
+    const drawerSubtitle = document.getElementById('leadPreviewDrawer-subtitle');
+    const drawerEditBtn = document.getElementById('leadDrawerEditBtn');
+    const drawerFullBtn = document.getElementById('leadDrawerFullBtn');
+
+    function openLeadDrawer(leadId) {
+        if (!drawerElement || !drawerBackdrop) return;
+        
+        drawerBackdrop.classList.add('active');
+        drawerElement.classList.add('active');
+        drawerElement.setAttribute('aria-hidden', 'false');
+        
+        if (drawerContent) {
+            drawerContent.innerHTML = `
+                <div class="text-center py-5 text-secondary">
+                    <i class="fa-solid fa-circle-notch fa-spin fa-2x text-primary mb-3 d-block"></i>
+                    <div>Fetching lead telemetry...</div>
+                </div>
+            `;
+        }
+
+        fetch('index.php?route=leads/preview&id=' + encodeURIComponent(leadId), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success || !data.lead) {
+                if (drawerContent) drawerContent.innerHTML = '<div class="alert alert-danger">Failed to load lead details or access denied.</div>';
+                return;
+            }
+            const l = data.lead;
+            if (drawerTitle) drawerTitle.textContent = l.name || 'Lead Overview';
+            if (drawerSubtitle) drawerSubtitle.textContent = (l.lead_code ? l.lead_code + ' • ' : '') + l.company;
+            if (drawerEditBtn) drawerEditBtn.href = l.edit_url;
+            if (drawerFullBtn) drawerFullBtn.href = l.view_url;
+
+            const qBadge = l.quality === 'hot' ? 'bg-danger-subtle text-danger border-danger-subtle' :
+                          (l.quality === 'warm' ? 'bg-warning-subtle text-warning border-warning-subtle' : 'bg-info-subtle text-info border-info-subtle');
+
+            let html = `
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-4">
+                    <span class="badge bg-dark border border-secondary text-primary font-monospace">${l.lead_code}</span>
+                    <span class="badge border ${qBadge} text-uppercase">${l.quality}</span>
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle text-uppercase">${l.status}</span>
+                    <span class="badge bg-dark border border-secondary text-secondary text-uppercase">${l.priority} Priority</span>
+                </div>
+
+                <div class="raptor-glass-card p-3 mb-3">
+                    <div class="row g-2 text-center">
+                        <div class="col-6 border-end border-secondary border-opacity-25">
+                            <span class="text-secondary small d-block">Deal Value</span>
+                            <span class="text-success fw-bold fs-5">$${Number(l.value || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-secondary small d-block">Win Probability</span>
+                            <span class="text-white fw-bold fs-5">${Number(l.probability || 0).toFixed(1)}%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="text-secondary small fw-medium mb-1">Company / Organization</label>
+                    <div class="p-2.5 bg-dark border border-secondary rounded text-white fw-medium">
+                        <i class="fa-solid fa-building me-2 text-primary"></i>${$('<div>').text(l.company).html()}
+                    </div>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-12 col-md-6">
+                        <label class="text-secondary small fw-medium mb-1">Email</label>
+                        <div class="p-2 bg-dark border border-secondary rounded text-white small text-truncate">
+                            ${l.email ? `<a href="mailto:${$('<div>').text(l.email).html()}" class="text-info text-decoration-none"><i class="fa-solid fa-envelope me-1.5"></i>${$('<div>').text(l.email).html()}</a>` : '<span class="text-muted">Not provided</span>'}
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="text-secondary small fw-medium mb-1">Phone</label>
+                        <div class="p-2 bg-dark border border-secondary rounded text-white small">
+                            ${l.phone ? `<a href="tel:${$('<div>').text(l.phone).html()}" class="text-success text-decoration-none"><i class="fa-solid fa-phone me-1.5"></i>${$('<div>').text(l.phone).html()}</a>` : '<span class="text-muted">Not provided</span>'}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="text-secondary small fw-medium mb-1">Lead Source</label>
+                        <div class="p-2 bg-dark border border-secondary rounded text-secondary small">${$('<div>').text(l.source).html()}</div>
+                    </div>
+                    <div class="col-6">
+                        <label class="text-secondary small fw-medium mb-1">Account Owner</label>
+                        <div class="p-2 bg-dark border border-secondary rounded text-white small text-truncate"><i class="fa-solid fa-user-tie me-1 text-warning"></i>${$('<div>').text(l.owner).html()}</div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="text-secondary small fw-medium mb-1">Notes & Remarks</label>
+                    <div class="p-3 bg-dark border border-secondary rounded text-secondary small" style="max-height: 140px; overflow-y: auto;">
+                        ${l.notes ? $('<div>').text(l.notes).html().replace(/\n/g, '<br>') : '<em>No remarks recorded yet.</em>'}
+                    </div>
+                </div>
+            `;
+            drawerContent.innerHTML = html;
+        })
+        .catch(() => {
+            if (drawerContent) drawerContent.innerHTML = '<div class="alert alert-danger">Error retrieving lead preview.</div>';
+        });
+    }
+
+    function closeLeadDrawer() {
+        if (!drawerElement || !drawerBackdrop) return;
+        drawerBackdrop.classList.remove('active');
+        drawerElement.classList.remove('active');
+        drawerElement.setAttribute('aria-hidden', 'true');
+    }
+
+    $(document).on('click', '.btn-lead-preview', function(e) {
+        e.preventDefault();
+        const id = $(this).data('id');
+        if (id) openLeadDrawer(id);
+    });
+
+    $(document).on('click', '[data-drawer-dismiss="leadPreviewDrawer"]', closeLeadDrawer);
+    if (drawerBackdrop) drawerBackdrop.addEventListener('click', closeLeadDrawer);
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && drawerElement && drawerElement.classList.contains('active')) {
+            closeLeadDrawer();
+        }
+    });
 });
 </script>

@@ -76,11 +76,77 @@
     }
 }
 
-/* 5. Reduced Transparency Fallback */
+/* 5. Slide-Over Drawer Surfaces (Raptor v2.2 - Sprint 2) */
+.raptor-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1050;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.raptor-drawer-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.raptor-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 520px;
+    background: var(--raptor-surface, #1E293B);
+    border-left: 1px solid var(--raptor-border-medium, rgba(255, 255, 255, 0.1));
+    box-shadow: -15px 0 35px -5px rgba(0, 0, 0, 0.5);
+    z-index: 1051;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.raptor-drawer.active {
+    transform: translateX(0);
+}
+
+.raptor-drawer-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--raptor-border-subtle, rgba(255, 255, 255, 0.08));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--raptor-surface-elevated, #283548);
+}
+
+.raptor-drawer-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.raptor-drawer-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--raptor-border-subtle, rgba(255, 255, 255, 0.08));
+    background: var(--raptor-surface-elevated, #283548);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+/* 6. Reduced Transparency Fallback */
 @media (prefers-reduced-transparency: reduce) {
     .raptor-glass-card,
+    .raptor-glass-panel,
     .raptor-glass-modal,
-    .raptor-glass-toast {
+    .raptor-glass-toast,
+    .raptor-drawer-backdrop {
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
         background: var(--raptor-surface) !important;

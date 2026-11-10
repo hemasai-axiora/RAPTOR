@@ -223,6 +223,48 @@ assertCustom(!in_array('index.php?route=payroll/salary_structures', $scopedUrls,
 // Clean up session mock
 unset($_SESSION['user_id'], $_SESSION['user_role'], $_SESSION['role_id'], $_SESSION['user_status']);
 
+// ── 10. Slide-Over Drawer & Component Standards (Sprint 2) ──
+echo "\n10. Testing Slide-Over Drawer & Reusable Architecture...\n";
+$drawerPath = __DIR__ . '/../app/views/components/drawer.php';
+assertCustom(file_exists($drawerPath), "app/views/components/drawer.php exists");
+
+$drawerHtml = $testController->renderTest('drawer', [
+    'id'       => 'testPreviewDrawer',
+    'title'    => 'Test Drawer',
+    'subtitle' => 'Drawer Subtitle',
+    'body'     => '<div class="test-body">Content</div>',
+    'footer'   => '<button>Action</button>'
+]);
+assertCustom(strpos($drawerHtml, 'raptor-drawer') !== false, "Drawer component renders raptor-drawer container");
+assertCustom(strpos($drawerHtml, 'testPreviewDrawer-backdrop') !== false, "Drawer component renders backdrop container");
+assertCustom(strpos($drawerHtml, 'Test Drawer') !== false, "Drawer component renders title");
+
+$glassContent = file_get_contents($glassPath);
+assertCustom(strpos($glassContent, '.raptor-drawer') !== false, "raptor-glass.css defines slide-over drawer surface");
+assertCustom(strpos($glassContent, '.raptor-drawer-backdrop') !== false, "raptor-glass.css defines drawer backdrop blur layer");
+
+// ── 11. CRM, Leads Preview & Customer 360 AI Smart Reply (Sprint 2) ──
+echo "\n11. Testing CRM Leads Preview & AI Smart Reply Engine...\n";
+require_once __DIR__ . '/../app/controllers/LeadsController.php';
+require_once __DIR__ . '/../app/controllers/CustomersController.php';
+
+$leadsReflect = new ReflectionClass(LeadsController::class);
+assertCustom($leadsReflect->hasMethod('preview'), "LeadsController defines preview() endpoint for slide-over drawer");
+
+$custReflect = new ReflectionClass(CustomersController::class);
+assertCustom($custReflect->hasMethod('smartReply'), "CustomersController defines smartReply() endpoint for AI copilot");
+
+$leadsViewPath = __DIR__ . '/../app/views/leads/index.php';
+$leadsViewContent = file_get_contents($leadsViewPath);
+assertCustom(strpos($leadsViewContent, 'Quick Filters:') !== false, "Leads index renders quick filter pills (Hot, Warm, Cold, Qualified)");
+assertCustom(strpos($leadsViewContent, 'leadPreviewDrawer') !== false, "Leads index integrates slide-over preview drawer");
+assertCustom(strpos($leadsViewContent, 'csvHtml5') !== false, "Leads index integrates DataTables CSV export button");
+
+$custDetailPath = __DIR__ . '/../app/views/customers/detail.php';
+$custDetailContent = file_get_contents($custDetailPath);
+assertCustom(strpos($custDetailContent, 'aiSmartReplyForm') !== false, "Customer detail renders AI Smart Reply Copilot form");
+assertCustom(strpos($custDetailContent, 'customers/smartReply') !== false, "Customer detail dispatches to smartReply endpoint");
+
 echo "\n=======================================================\n";
 echo "SUMMARY: {$passed} PASSED, {$failed} FAILED\n";
 echo "=======================================================\n";
