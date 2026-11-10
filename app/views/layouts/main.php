@@ -1539,6 +1539,61 @@
                 </li>
                 <?php endif; ?>
 
+                <!-- 5.5 Recruitment (ATS) Accordion Group -->
+                <?php if (Policy::canAccessRecruitment()): ?>
+                <li class="menu-section <?php echo (isset($active_tab) && strpos($active_tab, 'recruitment') !== false) ? 'open active' : ''; ?>" data-section="recruitment">
+                    <div class="menu-section-header" title="Recruitment (ATS)">
+                        <i class="fa-solid fa-user-plus section-icon"></i>
+                        <span class="section-text">Recruitment (ATS)</span>
+                        <i class="fa-solid fa-chevron-right section-arrow"></i>
+                    </div>
+                    <ul class="menu-section-items">
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'recruitment_dashboard') ? 'active' : ''; ?>">
+                            <a href="index.php?route=recruitment/dashboard">
+                                <i class="fa-solid fa-gauge-high"></i><span>Recruitment Hub</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'recruitment_requisitions') ? 'active' : ''; ?>">
+                            <a href="index.php?route=recruitment/requisitions">
+                                <i class="fa-solid fa-clipboard-list"></i><span>Job Requisitions</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'recruitment_candidates') ? 'active' : ''; ?>">
+                            <a href="index.php?route=recruitment/candidates">
+                                <i class="fa-solid fa-user-tie"></i><span>Candidate Database</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'recruitment_applications') ? 'active' : ''; ?>">
+                            <a href="index.php?route=recruitment/applications">
+                                <i class="fa-solid fa-network-wired"></i><span>Pipeline Kanban</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'recruitment_interviews') ? 'active' : ''; ?>">
+                            <a href="index.php?route=recruitment/interviews">
+                                <i class="fa-solid fa-calendar-days"></i><span>Interview Calendar</span>
+                            </a>
+                        </li>
+                        <?php if (in_array($role, ['admin', 'ceo', 'hr'], true)): ?>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'recruitment_offers') ? 'active' : ''; ?>">
+                            <a href="index.php?route=recruitment/offers">
+                                <i class="fa-solid fa-file-signature"></i><span>Offers & Approvals</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'recruitment_onboarding') ? 'active' : ''; ?>">
+                            <a href="index.php?route=recruitment/onboarding">
+                                <i class="fa-solid fa-id-card-clip"></i><span>Pre-Joining & BGV</span>
+                            </a>
+                        </li>
+                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'recruitment_reports') ? 'active' : ''; ?>">
+                            <a href="index.php?route=recruitment/reports">
+                                <i class="fa-solid fa-chart-column"></i><span>Recruitment Analytics</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                    </ul>
+                </li>
+                <?php endif; ?>
+
                 <!-- 6. Payroll & Compensation Accordion Group (Pure Payroll) -->
                 <?php if (in_array($role, ['admin', 'ceo', 'employer', 'hr', 'finance', 'manager'], true)): ?>
                 <li class="menu-section" data-section="payroll">

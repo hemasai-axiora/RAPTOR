@@ -514,6 +514,130 @@ assertCustom(strpos($specContent, 'login screen loads and theme toggle works') !
 assertCustom(strpos($specContent, 'delete routes are blocked by governance policy') !== false, "E2E suite verifies governance delete route protection");
 assertCustom(strpos($specContent, 'capture lead form has read-only Lead ID') !== false, "E2E suite verifies lead capture workflows");
 
+// ── 14. Sprint 1 (Raptor v2.3): Recruitment ATS Foundation, Schemas & RBAC ──
+echo "\n14. Testing Sprint 1 Recruitment ATS Foundation, Schemas & RBAC...\n";
+
+// Test 14.1: Recruitment Migration Files Verification (0059 through 0064)
+$migrationFiles = [
+    '0059_recruitment_core_schema.php',
+    '0060_recruitment_evaluations_and_interviews.php',
+    '0061_recruitment_offers_and_onboarding.php',
+    '0062_recruitment_queue_and_communications.php',
+    '0063_recruitment_rbac_permissions.php',
+    '0064_recruitment_default_templates.php'
+];
+foreach ($migrationFiles as $mf) {
+    $mPath = __DIR__ . '/../migrations/' . $mf;
+    assertCustom(file_exists($mPath), "Recruitment migration file {$mf} exists");
+}
+
+// Test 14.2: In-Memory SQLite Migration Execution & Schema Verification
+$mockDb = new PDO('sqlite::memory:');
+$mockDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+// Mock base tables required for foreign keys & role mapping
+$mockDb->exec("
+    CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, name VARCHAR(100), email VARCHAR(100), role_id INT);
+    CREATE TABLE IF NOT EXISTS roles (role_id INTEGER PRIMARY KEY, role_name VARCHAR(50));
+    CREATE TABLE IF NOT EXISTS permissions (permission_id INTEGER PRIMARY KEY AUTOINCREMENT, module VARCHAR(60), action VARCHAR(60), permission_name VARCHAR(100) UNIQUE, description TEXT);
+    CREATE TABLE IF NOT EXISTS role_permissions (role_id INT, permission_id INT, scope VARCHAR(20), PRIMARY KEY(role_id, permission_id));
+    CREATE TABLE IF NOT EXISTS teams (team_id INTEGER PRIMARY KEY, name VARCHAR(100));
+    CREATE TABLE IF NOT EXISTS branches (branch_id INTEGER PRIMARY KEY, name VARCHAR(100));
+    CREATE TABLE IF NOT EXISTS employees (employee_id INTEGER PRIMARY KEY, user_id INT, employee_code VARCHAR(50));
+    INSERT INTO roles (role_id, role_name) VALUES (1, 'admin'), (2, 'hr'), (3, 'manager'), (4, 'team_leader');
+    INSERT INTO users (user_id, name, email, role_id) VALUES (1, 'Admin', 'admin@raptor.test', 1);
+");
+
+// Apply recruitment migrations to mock database
+foreach ($migrationFiles as $mf) {
+    $file = __DIR__ . '/../migrations/' . $mf;
+    (function ($db) use ($file) { require $file; })($mockDb);
+}
+
+// Verify that key tables are provisioned in SQLite
+$recTables = [
+    'recruitment_requisitions',
+    'recruitment_requisition_approvals',
+    'recruitment_job_descriptions',
+    'recruitment_jobs',
+    'recruitment_candidates',
+    'recruitment_candidate_documents',
+    'recruitment_candidate_consents',
+    'recruitment_candidate_notes',
+    'recruitment_applications',
+    'recruitment_application_stages',
+    'recruitment_application_screenings',
+    'recruitment_interviews',
+    'recruitment_interview_panel',
+    'recruitment_interview_feedback',
+    'recruitment_assessments',
+    'recruitment_assessment_submissions',
+    'recruitment_offers',
+    'recruitment_offer_approvals',
+    'recruitment_background_checks',
+    'recruitment_pre_joining_checklist',
+    'recruitment_communications',
+    'recruitment_queue',
+    'recruitment_ai_logs'
+];
+foreach ($recTables as $tbl) {
+    $stmtTbl = $mockDb->prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name = :t");
+    $stmtTbl->execute([':t' => $tbl]);
+    assertCustom((int)$stmtTbl->fetchColumn() === 1, "Recruitment table {$tbl} provisioned and verified in schema");
+}
+
+// Test 14.3: RBAC Permissions Seeding Verification
+$stmtPermCnt = $mockDb->query("SELECT COUNT(*) FROM permissions WHERE module = 'recruitment'");
+$permCount = (int) $stmtPermCnt->fetchColumn();
+assertCustom($permCount === 28, "All 28 granular recruitment permissions successfully seeded in permissions table (found: {$permCount})");
+
+// Test 14.4: Default Job Description Templates Seeding Verification
+$stmtTplCnt = $mockDb->query("SELECT COUNT(*) FROM recruitment_job_descriptions");
+$tplCount = (int) $stmtTplCnt->fetchColumn();
+assertCustom($tplCount >= 3, "Standard default job description templates seeded (found: {$tplCount})");
+
+// Test 14.5: Policy RBAC Helper Extensions
+assertCustom(method_exists('Policy', 'canAccessRecruitment'), "Policy::canAccessRecruitment() helper method exists");
+assertCustom(method_exists('Policy', 'canManageRequisitions'), "Policy::canManageRequisitions() helper method exists");
+
+// Test 14.6: Recruitment Controller & Route Architecture
+require_once __DIR__ . '/../app/controllers/RecruitmentController.php';
+require_once __DIR__ . '/../app/controllers/RecruitmentDashboardController.php';
+$recReflect = new ReflectionClass('RecruitmentController');
+assertCustom($recReflect->isSubclassOf('Controller'), "RecruitmentController extends core Controller architecture");
+assertCustom($recReflect->hasMethod('dashboard'), "RecruitmentController exposes dashboard() action");
+assertCustom($recReflect->hasMethod('requisitions'), "RecruitmentController exposes requisitions() action");
+assertCustom($recReflect->hasMethod('candidates'), "RecruitmentController exposes candidates() action");
+assertCustom($recReflect->hasMethod('applications'), "RecruitmentController exposes applications() action");
+assertCustom($recReflect->hasMethod('interviews'), "RecruitmentController exposes interviews() action");
+assertCustom($recReflect->hasMethod('offers'), "RecruitmentController exposes offers() action");
+
+$recDashReflect = new ReflectionClass('RecruitmentDashboardController');
+assertCustom($recDashReflect->isSubclassOf('RecruitmentController'), "RecruitmentDashboardController provides alias route for recruitment_dashboard");
+
+// Test 14.7: Recruitment Model Architecture
+require_once __DIR__ . '/../app/models/Recruitment.php';
+$recModelReflect = new ReflectionClass('Recruitment');
+assertCustom($recModelReflect->isSubclassOf('Model'), "Recruitment model extends core Model architecture");
+assertCustom($recModelReflect->hasMethod('getDashboardStats'), "Recruitment model implements getDashboardStats() method");
+
+// Test 14.8: Navigation Sidebar Integration
+$mainLayoutContent = file_get_contents(__DIR__ . '/../app/views/layouts/main.php');
+assertCustom(strpos($mainLayoutContent, 'Recruitment (ATS)') !== false, "Sidebar navigation includes dedicated Recruitment (ATS) accordion group");
+assertCustom(strpos($mainLayoutContent, 'index.php?route=recruitment/dashboard') !== false, "Sidebar navigation links to recruitment/dashboard");
+assertCustom(strpos($mainLayoutContent, 'index.php?route=recruitment/requisitions') !== false, "Sidebar navigation links to recruitment/requisitions");
+assertCustom(strpos($mainLayoutContent, 'index.php?route=recruitment/candidates') !== false, "Sidebar navigation links to recruitment/candidates");
+assertCustom(strpos($mainLayoutContent, 'index.php?route=recruitment/applications') !== false, "Sidebar navigation links to recruitment/applications");
+
+// Test 14.9: Recruitment Dashboard View Verification
+$dashViewPath = __DIR__ . '/../app/views/recruitment/dashboard/index.php';
+assertCustom(file_exists($dashViewPath), "Recruitment dashboard view exists at app/views/recruitment/dashboard/index.php");
+$dashContent = file_get_contents($dashViewPath);
+assertCustom(strpos($dashContent, 'Recruitment Command Center') !== false, "Recruitment dashboard renders Command Center header");
+assertCustom(strpos($dashContent, 'Active Requisitions') !== false, "Recruitment dashboard renders Active Requisitions stat tile");
+assertCustom(strpos($dashContent, 'Talent Pipeline Funnel') !== false, "Recruitment dashboard renders visual Pipeline Funnel");
+assertCustom(strpos($dashContent, 'Upcoming Interviews') !== false, "Recruitment dashboard renders Upcoming Interviews operational list");
+
 echo "\n=======================================================\n";
 echo "SUMMARY: {$passed} PASSED, {$failed} FAILED\n";
 echo "=======================================================\n";
