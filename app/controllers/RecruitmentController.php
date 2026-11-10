@@ -123,10 +123,12 @@ class RecruitmentController extends Controller {
     }
 
     /**
-     * Pre-joining & Onboarding placeholder (delegates to Sprint 8).
+     * Pre-joining, BGV & Employee Conversion (Sprint 8).
      */
     public function onboarding(): void {
-        $this->redirect('index.php?route=recruitment/dashboard#onboarding');
+        require_once __DIR__ . '/RecruitmentOnboardingController.php';
+        $controller = new RecruitmentOnboardingController();
+        $controller->index();
     }
 
     /**

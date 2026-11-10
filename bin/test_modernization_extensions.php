@@ -543,7 +543,19 @@ $mockDb->exec("
     CREATE TABLE IF NOT EXISTS role_permissions (role_id INT, permission_id INT, scope VARCHAR(20), PRIMARY KEY(role_id, permission_id));
     CREATE TABLE IF NOT EXISTS teams (team_id INTEGER PRIMARY KEY, name VARCHAR(100));
     CREATE TABLE IF NOT EXISTS branches (branch_id INTEGER PRIMARY KEY, name VARCHAR(100));
-    CREATE TABLE IF NOT EXISTS employees (employee_id INTEGER PRIMARY KEY, user_id INT, employee_code VARCHAR(50));
+    CREATE TABLE IF NOT EXISTS employees (
+        employee_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INT,
+        employee_code VARCHAR(50),
+        department VARCHAR(100),
+        job_title VARCHAR(150),
+        hire_date DATE,
+        salary DECIMAL(12,2),
+        work_location VARCHAR(150),
+        employment_type VARCHAR(50),
+        reporting_manager_id INT,
+        status VARCHAR(20) DEFAULT 'active'
+    );
     INSERT INTO roles (role_id, role_name) VALUES (1, 'admin'), (2, 'hr'), (3, 'manager'), (4, 'team_leader');
     INSERT INTO users (user_id, name, email, role_id) VALUES (1, 'Admin', 'admin@raptor.test', 1);
 ");
@@ -1571,6 +1583,157 @@ assertCustom(file_exists($offShowView), "app/views/recruitment/offers/show.php e
 $offShowMarkup = file_get_contents($offShowView);
 assertCustom(strpos($offShowMarkup, 'Approval Chain Progress') !== false, "Offer show view renders approval chain progress");
 assertCustom(strpos($offShowMarkup, 'Official Offer Letter Preview') !== false, "Offer show view renders official letter preview");
+
+
+// ============================================================================
+// 21. SPRINT 8: BGV & IDEMPOTENT EMPLOYEE CONVERSION TEST SUITE
+// ============================================================================
+echo "\n--- Section 21: Sprint 8 - BGV, Pre-Joining & Idempotent Employee Conversion ---\n";
+
+require_once __DIR__ . '/../app/services/recruitment/BackgroundVerificationService.php';
+require_once __DIR__ . '/../app/services/recruitment/EmployeeConversionService.php';
+require_once __DIR__ . '/../app/controllers/RecruitmentOnboardingController.php';
+
+$bgvService = new BackgroundVerificationService();
+$convService = new EmployeeConversionService();
+
+// Setup fresh test application with candidate and job
+// Candidate
+$candStmt = $mockDb->prepare("
+    INSERT INTO recruitment_candidates (
+        candidate_code, first_name, last_name, email, phone, current_company,
+        created_at
+    ) VALUES (
+        'CAN-2026-99999', 'Aarav', 'Sharma', 'aarav.sharma@example.com', '+91 98888 77777', 'Infosys',
+        CURRENT_TIMESTAMP
+    )
+");
+$candStmt->execute();
+$bgvCandId = (int)$mockDb->lastInsertId();
+
+// Application
+$appStmt = $mockDb->prepare("
+    INSERT INTO recruitment_applications (
+        application_code, job_id, candidate_id, current_stage, created_at, updated_at
+    ) VALUES (
+        'APP-2026-99008', :job_id, :cand_id, 'offered', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+    )
+");
+$appStmt->execute([':job_id' => $testJobId, ':cand_id' => $bgvCandId]);
+$bgvAppId = (int)$mockDb->lastInsertId();
+
+// Test 21.1: Initiate BGV Checks
+$bgvResult = $bgvService->initiateChecks($mockDb, $bgvAppId, ['employment', 'criminal', 'education'], 'FirstAdvantage');
+assertCustom($bgvResult['success'] === true, "BGV checks initiated successfully");
+assertCustom(count($bgvResult['initiated']) === 3, "3 BGV checks created");
+
+// Verify stage transition to 'bgv'
+$checkAppStmt = $mockDb->prepare("SELECT current_stage FROM recruitment_applications WHERE application_id = :id");
+$checkAppStmt->execute([':id' => $bgvAppId]);
+assertCustom($checkAppStmt->fetchColumn() === 'bgv', "Application stage transitioned to 'bgv'");
+
+// Test 21.2: Check records and checklist items retrieval
+$checks = $bgvService->getChecksForApplication($mockDb, $bgvAppId);
+assertCustom(count($checks) === 3, "getChecksForApplication returns 3 checks");
+$checklist = $bgvService->getPreJoiningChecklist($mockDb, $bgvAppId);
+assertCustom(count($checklist) === count(BackgroundVerificationService::DEFAULT_CHECKLIST_ITEMS), "Pre-joining checklist initialized with default items");
+
+// Test 21.3: Update BGV Check Status
+$firstBgvId = $checks[0]['bgv_id'];
+$updateResult = $bgvService->updateCheckStatus($mockDb, $firstBgvId, 'passed', 'Candidate records verified clean with prior employer', 1);
+assertCustom($updateResult['status'] === 'passed', "BGV check updated to passed");
+
+// Verify checklist item verification
+$firstChecklistItemId = $checklist[0]['item_id'];
+$verifyResult = $bgvService->verifyChecklistItem($mockDb, $firstChecklistItemId, 1);
+assertCustom($verifyResult === true, "Checklist item marked as completed");
+
+// Test 21.4: Pre-conversion checks (cannot convert before accepted offer)
+$preCheck = $convService->canConvertApplication($mockDb, $bgvAppId);
+assertCustom($preCheck['can_convert'] === false, "canConvertApplication rejects application without accepted offer");
+
+// Now create an accepted offer for this application
+$offerStmt = $mockDb->prepare("
+    INSERT INTO recruitment_offers (
+        offer_code, application_id, job_title, department, work_location,
+        annual_ctc, fixed_salary, proposed_joining_date, offer_expiry_date,
+        status, created_by, created_at
+    ) VALUES (
+        'OFF-2026-99008', :aid, 'Senior Cloud Architect', 'Engineering', 'Bengaluru, India',
+        2400000.00, 2000000.00, '2026-12-01', '2026-12-15',
+        'accepted', 1, CURRENT_TIMESTAMP
+    )
+");
+$offerStmt->execute([':aid' => $bgvAppId]);
+$bgvOfferId = (int)$mockDb->lastInsertId();
+
+// Test 21.5: Pre-conversion check after offer accepted
+$postOfferCheck = $convService->canConvertApplication($mockDb, $bgvAppId);
+assertCustom($postOfferCheck['can_convert'] === true, "canConvertApplication confirms application is ready for conversion");
+
+// Test 21.6: Execute Employee Conversion (First Run)
+$convResult = $convService->convertCandidateToEmployee($mockDb, $bgvAppId, [], 1);
+assertCustom($convResult['success'] === true, "Candidate successfully converted to employee");
+assertCustom($convResult['already_converted'] === false, "First conversion flagged as new conversion");
+assertCustom(!empty($convResult['employee_id']), "New employee ID created");
+assertCustom(!empty($convResult['employee_code']), "Employee code generated");
+
+$newEmpId = (int)$convResult['employee_id'];
+
+// Verify DB state in employees and recruitment_applications
+$empRowStmt = $mockDb->prepare("SELECT * FROM employees WHERE employee_id = :id");
+$empRowStmt->execute([':id' => $newEmpId]);
+$empRow = $empRowStmt->fetch(PDO::FETCH_ASSOC);
+assertCustom($empRow !== false, "Employee record exists in employees table");
+assertCustom($empRow['job_title'] === 'Senior Cloud Architect', "Employee job_title preserved from offer");
+assertCustom((float)$empRow['salary'] === 2400000.00, "Employee salary matches offer CTC");
+
+$appRowStmt = $mockDb->prepare("SELECT current_stage, converted_employee_id FROM recruitment_applications WHERE application_id = :id");
+$appRowStmt->execute([':id' => $bgvAppId]);
+$appRow = $appRowStmt->fetch(PDO::FETCH_ASSOC);
+assertCustom($appRow['current_stage'] === 'hired', "Application stage transitioned to 'hired'");
+assertCustom((int)$appRow['converted_employee_id'] === $newEmpId, "Application converted_employee_id linked");
+
+// Verify Welcome Email enqueued
+$qStmt = $mockDb->prepare("SELECT * FROM recruitment_queue WHERE job_type = 'employee_welcome' ORDER BY queue_id DESC LIMIT 1");
+$qStmt->execute();
+$qRow = $qStmt->fetch(PDO::FETCH_ASSOC);
+assertCustom($qRow !== false, "Welcome email enqueued in recruitment_queue");
+$qPayload = json_decode($qRow['payload_json'], true);
+assertCustom((int)$qPayload['employee_id'] === $newEmpId, "Queue payload contains new employee ID");
+
+// Test 21.7: STRICT IDEMPOTENCY GUARD
+// Calling conversion a 2nd time must return success with already_converted=true, same employee_id, and 0 duplicate records
+$totalEmpsBefore = (int)$mockDb->query("SELECT COUNT(*) FROM employees")->fetchColumn();
+$convResult2 = $convService->convertCandidateToEmployee($mockDb, $bgvAppId, [], 1);
+$totalEmpsAfter = (int)$mockDb->query("SELECT COUNT(*) FROM employees")->fetchColumn();
+
+assertCustom($convResult2['success'] === true, "Second conversion call returns success under idempotency guard");
+assertCustom($convResult2['already_converted'] === true, "already_converted is true on duplicate call");
+assertCustom((int)$convResult2['employee_id'] === $newEmpId, "Second call returns identical employee_id");
+assertCustom($totalEmpsBefore === $totalEmpsAfter, "Zero duplicate employee records created");
+
+// Test 21.8: RecruitmentOnboardingController Reflection & Routing
+$onbControllerReflect = new ReflectionClass('RecruitmentOnboardingController');
+assertCustom($onbControllerReflect->isSubclassOf('Controller'), "RecruitmentOnboardingController extends Controller");
+assertCustom($onbControllerReflect->hasMethod('index'), "RecruitmentOnboardingController exposes index()");
+assertCustom($onbControllerReflect->hasMethod('convert'), "RecruitmentOnboardingController exposes convert()");
+assertCustom($onbControllerReflect->hasMethod('executeConversion'), "RecruitmentOnboardingController exposes executeConversion()");
+assertCustom($onbControllerReflect->hasMethod('verifyChecklist'), "RecruitmentOnboardingController exposes verifyChecklist()");
+
+assertCustom($recControllerReflect->hasMethod('onboarding'), "RecruitmentController exposes onboarding() routing");
+
+// Test 21.9: Views Existence & Content Markup
+$onbIndexView = __DIR__ . '/../app/views/recruitment/onboarding/index.php';
+assertCustom(file_exists($onbIndexView), "app/views/recruitment/onboarding/index.php exists");
+$onbIndexMarkup = file_get_contents($onbIndexView);
+assertCustom(strpos($onbIndexMarkup, 'Pre-Joining, BGV & Employee Conversion') !== false, "Onboarding index view renders header");
+
+$onbConvertView = __DIR__ . '/../app/views/recruitment/onboarding/convert.php';
+assertCustom(file_exists($onbConvertView), "app/views/recruitment/onboarding/convert.php exists");
+$onbConvertMarkup = file_get_contents($onbConvertView);
+assertCustom(strpos($onbConvertMarkup, 'CONFIRMATION GATE: Permanent Employee Conversion') !== false, "Convert view renders confirmation gate header");
+assertCustom(strpos($onbConvertMarkup, 'recruitment_onboarding/executeConversion') !== false, "Convert view defines form submission action");
 
 
 
