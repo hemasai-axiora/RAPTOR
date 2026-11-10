@@ -2445,7 +2445,7 @@
                     <span><kbd class="px-1 text-muted" style="background: var(--surface-muted); border: 1px solid var(--border-color);">↵</kbd> Select</span>
                     <span><kbd class="px-1 text-muted" style="background: var(--surface-muted); border: 1px solid var(--border-color);">ESC</kbd> Dismiss</span>
                 </div>
-                <div class="fw-semibold text-primary" style="font-size: 0.7rem; letter-spacing: 0.5px;">RAPTOR ENTERPRISE</div>
+                <div class="fw-semibold text-primary" style="font-size: 0.7rem; letter-spacing: 0.5px;">RAPTOR v<?php echo defined('APP_VERSION') ? APP_VERSION : '2.1.0'; ?></div>
             </div>
         </div>
     </div>
