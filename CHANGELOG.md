@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.4] - 2026-11-10
+
+### Added
+- **Universal AI & LLM Engine Settings Hub**:
+  - Implemented multi-provider abstraction (`app/services/AiService.php`) supporting Google Gemini (`gemini-2.5-flash`, `gemini-1.5-pro`), OpenAI GPT (`gpt-4o`, `gpt-4o-mini`, `o3-mini`), and Anthropic Claude (`claude-3-5-sonnet`, `claude-3-5-haiku`).
+  - Added dedicated Settings UI with provider selection, API key visibility toggles, model selector, temperature controls, and direct links to API key portals.
+  - Implemented live AJAX connection tester (`index.php?route=settings/test_ai`) with real-time latency ping (ms) and error diagnostics.
+
+---
+
 ## [2.1.3] - 2026-11-10
 
 ### Added

@@ -47,7 +47,17 @@ class SettingsController extends Controller {
 
             // Keys to support
             $settingKeys = [
+                // Universal AI & LLM Engine Settings
+                'ai_default_provider',
                 'gemini_api_key',
+                'gemini_model',
+                'openai_api_key',
+                'openai_model',
+                'anthropic_api_key',
+                'anthropic_model',
+                'ai_temperature',
+                'ai_max_tokens',
+
                 'ga4_measurement_id',
                 'google_ads_client_id',
                 'meta_access_token',
@@ -397,5 +407,38 @@ class SettingsController extends Controller {
             }
         }
         $this->redirect('index.php?route=settings/dlq');
+    }
+
+    /**
+     * AJAX Endpoint: Test live connection to an AI provider (Gemini, OpenAI, Anthropic).
+     * Route: index.php?route=settings/test_ai
+     */
+    public function test_ai() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->jsonError('POST request required.', 405);
+        }
+
+        $csrf = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        if (!$this->validateCsrfToken($csrf)) {
+            $this->jsonError('Security verification (CSRF) failed.', 403);
+        }
+
+        require_once APPROOT . '/services/AiService.php';
+
+        $provider = trim($_POST['provider'] ?? '');
+        $apiKey   = trim($_POST['api_key'] ?? '');
+        $model    = trim($_POST['model'] ?? '');
+
+        if (empty($provider)) {
+            $this->jsonError('Provider parameter is required.', 400);
+        }
+
+        $result = AiService::testConnection($provider, $apiKey ?: null, $model ?: null);
+
+        if ($result['success']) {
+            $this->jsonOk($result, 'AI Provider connection test successful.');
+        } else {
+            $this->jsonError($result['message'], 400, $result);
+        }
     }
 }

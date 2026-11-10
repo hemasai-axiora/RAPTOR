@@ -64,7 +64,7 @@ if ($host) {
     define('URLROOT', env('URLROOT', 'http://localhost:8080/public'));
 }
 define('SITENAME', env('SITENAME', 'RAPTOR'));
-define('APP_VERSION', env('APP_VERSION', '2.1.3'));
+define('APP_VERSION', env('APP_VERSION', '2.1.4'));
 
 // Environment: 'development' shows errors, 'production' hides them.
 define('APP_ENV', env('APP_ENV', 'development'));

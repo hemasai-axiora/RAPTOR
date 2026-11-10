@@ -27,12 +27,192 @@
                 <!-- CSRF Token -->
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
 
-                <div class="mb-4">
-                    <label for="gemini_api_key" class="form-label text-secondary">Gemini API Key</label>
-                    <input type="password" name="gemini_api_key" id="gemini_api_key" class="form-control bg-dark text-white border-secondary" 
-                           value="<?php echo htmlspecialchars($settings['gemini_api_key'] ?? ''); ?>" 
-                           placeholder="AI summary translation key">
-                    <div class="form-text text-secondary-emphasis" style="font-size:0.75rem;">Required to generate Chief Executive insights automatically from live metrics.</div>
+                <!-- Universal AI & LLM Engine Hub -->
+                <div class="p-3 mb-4 rounded-3 border border-secondary border-opacity-25" style="background: rgba(15, 23, 42, 0.45); backdrop-filter: blur(10px);">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div>
+                            <h5 class="text-white mb-1"><i class="fa-solid fa-wand-magic-sparkles text-info me-2"></i>Universal AI &amp; LLM Engine</h5>
+                            <p class="text-secondary small mb-0">Connect Google Gemini, OpenAI GPT, or Anthropic Claude to power email copywriting, subject line optimization, omnichannel smart replies, and executive insights.</p>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary bg-opacity-20 text-primary border border-primary border-opacity-25 px-2.5 py-1.5">
+                                <i class="fa-solid fa-bolt me-1"></i>Multi-Model Support
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Default Provider Selection -->
+                    <div class="mb-4 p-2.5 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-20">
+                        <label class="form-label text-white small fw-bold mb-2">Default Active AI Provider</label>
+                        <div class="d-flex gap-3 flex-wrap">
+                            <?php $activeProv = $settings['ai_default_provider'] ?? 'gemini'; ?>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="ai_default_provider" id="prov_gemini" value="gemini" <?php echo ($activeProv === 'gemini') ? 'checked' : ''; ?>>
+                                <label class="form-check-label text-light" for="prov_gemini">
+                                    <i class="fa-brands fa-google text-primary me-1"></i> Google Gemini
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="ai_default_provider" id="prov_openai" value="openai" <?php echo ($activeProv === 'openai') ? 'checked' : ''; ?>>
+                                <label class="form-check-label text-light" for="prov_openai">
+                                    <i class="fa-solid fa-robot text-success me-1"></i> OpenAI (GPT-4o)
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="ai_default_provider" id="prov_anthropic" value="anthropic" <?php echo ($activeProv === 'anthropic') ? 'checked' : ''; ?>>
+                                <label class="form-check-label text-light" for="prov_anthropic">
+                                    <i class="fa-solid fa-brain text-warning me-1"></i> Anthropic (Claude 3.5)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Provider Cards Grid -->
+                    <div class="row g-3">
+                        <!-- 1. Google Gemini Card -->
+                        <div class="col-12 col-lg-4">
+                            <div class="card h-100 bg-dark bg-opacity-75 border-secondary border-opacity-30 rounded-3 shadow-sm">
+                                <div class="card-header bg-transparent border-secondary border-opacity-20 d-flex justify-content-between align-items-center py-2.5">
+                                    <span class="text-white fw-bold"><i class="fa-brands fa-google text-primary me-2"></i>Google Gemini</span>
+                                    <?php if (!empty($settings['gemini_api_key'])): ?>
+                                        <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-25" style="font-size:0.7rem;"><i class="fa-solid fa-check me-1"></i>Configured</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary bg-opacity-20 text-secondary border border-secondary border-opacity-25" style="font-size:0.7rem;">Not set</span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="card-body p-3">
+                                    <div class="mb-2.5">
+                                        <label class="form-label text-secondary small mb-1">API Key</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="password" name="gemini_api_key" id="gemini_api_key" class="form-control bg-black text-white border-secondary"
+                                                   value="<?php echo htmlspecialchars($settings['gemini_api_key'] ?? ''); ?>" placeholder="AIzaSy...">
+                                            <button class="btn btn-outline-secondary toggle-key-visibility" type="button" data-target="gemini_api_key">
+                                                <i class="fa-regular fa-eye"></i>
+                                            </button>
+                                        </div>
+                                        <div class="d-flex justify-content-between mt-1">
+                                            <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-primary text-decoration-none" style="font-size:0.7rem;">Get Key at Google AI Studio &rarr;</a>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label text-secondary small mb-1">Model</label>
+                                        <?php $geminiModel = $settings['gemini_model'] ?? 'gemini-2.5-flash'; ?>
+                                        <select name="gemini_model" id="gemini_model" class="form-select form-select-sm bg-black text-white border-secondary">
+                                            <option value="gemini-2.5-flash" <?php echo ($geminiModel === 'gemini-2.5-flash') ? 'selected' : ''; ?>>gemini-2.5-flash (Fast &amp; Recommended)</option>
+                                            <option value="gemini-1.5-pro" <?php echo ($geminiModel === 'gemini-1.5-pro') ? 'selected' : ''; ?>>gemini-1.5-pro (Deep Reasoning)</option>
+                                            <option value="gemini-2.0-flash" <?php echo ($geminiModel === 'gemini-2.0-flash') ? 'selected' : ''; ?>>gemini-2.0-flash (Next-Gen Preview)</option>
+                                            <option value="gemini-1.5-flash" <?php echo ($geminiModel === 'gemini-1.5-flash') ? 'selected' : ''; ?>>gemini-1.5-flash (Legacy)</option>
+                                        </select>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary w-100 btn-test-ai" data-provider="gemini" data-key-id="gemini_api_key" data-model-id="gemini_model">
+                                        <i class="fa-solid fa-plug me-1"></i> Test Gemini Connection
+                                    </button>
+                                    <div class="ai-test-result mt-2 small" id="gemini-test-result" style="display:none;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. OpenAI GPT Card -->
+                        <div class="col-12 col-lg-4">
+                            <div class="card h-100 bg-dark bg-opacity-75 border-secondary border-opacity-30 rounded-3 shadow-sm">
+                                <div class="card-header bg-transparent border-secondary border-opacity-20 d-flex justify-content-between align-items-center py-2.5">
+                                    <span class="text-white fw-bold"><i class="fa-solid fa-robot text-success me-2"></i>OpenAI GPT</span>
+                                    <?php if (!empty($settings['openai_api_key'])): ?>
+                                        <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-25" style="font-size:0.7rem;"><i class="fa-solid fa-check me-1"></i>Configured</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary bg-opacity-20 text-secondary border border-secondary border-opacity-25" style="font-size:0.7rem;">Not set</span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="card-body p-3">
+                                    <div class="mb-2.5">
+                                        <label class="form-label text-secondary small mb-1">API Key</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="password" name="openai_api_key" id="openai_api_key" class="form-control bg-black text-white border-secondary"
+                                                   value="<?php echo htmlspecialchars($settings['openai_api_key'] ?? ''); ?>" placeholder="sk-proj-...">
+                                            <button class="btn btn-outline-secondary toggle-key-visibility" type="button" data-target="openai_api_key">
+                                                <i class="fa-regular fa-eye"></i>
+                                            </button>
+                                        </div>
+                                        <div class="d-flex justify-content-between mt-1">
+                                            <a href="https://platform.openai.com/api-keys" target="_blank" class="text-success text-decoration-none" style="font-size:0.7rem;">Get Key at OpenAI &rarr;</a>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label text-secondary small mb-1">Model</label>
+                                        <?php $openaiModel = $settings['openai_model'] ?? 'gpt-4o-mini'; ?>
+                                        <select name="openai_model" id="openai_model" class="form-select form-select-sm bg-black text-white border-secondary">
+                                            <option value="gpt-4o-mini" <?php echo ($openaiModel === 'gpt-4o-mini') ? 'selected' : ''; ?>>gpt-4o-mini (Fast &amp; Cost-Effective)</option>
+                                            <option value="gpt-4o" <?php echo ($openaiModel === 'gpt-4o') ? 'selected' : ''; ?>>gpt-4o (High-Intelligence Flagship)</option>
+                                            <option value="o3-mini" <?php echo ($openaiModel === 'o3-mini') ? 'selected' : ''; ?>>o3-mini (Reasoning Model)</option>
+                                            <option value="gpt-4-turbo" <?php echo ($openaiModel === 'gpt-4-turbo') ? 'selected' : ''; ?>>gpt-4-turbo</option>
+                                        </select>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-success w-100 btn-test-ai" data-provider="openai" data-key-id="openai_api_key" data-model-id="openai_model">
+                                        <i class="fa-solid fa-plug me-1"></i> Test OpenAI Connection
+                                    </button>
+                                    <div class="ai-test-result mt-2 small" id="openai-test-result" style="display:none;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Anthropic Claude Card -->
+                        <div class="col-12 col-lg-4">
+                            <div class="card h-100 bg-dark bg-opacity-75 border-secondary border-opacity-30 rounded-3 shadow-sm">
+                                <div class="card-header bg-transparent border-secondary border-opacity-20 d-flex justify-content-between align-items-center py-2.5">
+                                    <span class="text-white fw-bold"><i class="fa-solid fa-brain text-warning me-2"></i>Anthropic Claude</span>
+                                    <?php if (!empty($settings['anthropic_api_key'])): ?>
+                                        <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-25" style="font-size:0.7rem;"><i class="fa-solid fa-check me-1"></i>Configured</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary bg-opacity-20 text-secondary border border-secondary border-opacity-25" style="font-size:0.7rem;">Not set</span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="card-body p-3">
+                                    <div class="mb-2.5">
+                                        <label class="form-label text-secondary small mb-1">API Key</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="password" name="anthropic_api_key" id="anthropic_api_key" class="form-control bg-black text-white border-secondary"
+                                                   value="<?php echo htmlspecialchars($settings['anthropic_api_key'] ?? ''); ?>" placeholder="sk-ant-...">
+                                            <button class="btn btn-outline-secondary toggle-key-visibility" type="button" data-target="anthropic_api_key">
+                                                <i class="fa-regular fa-eye"></i>
+                                            </button>
+                                        </div>
+                                        <div class="d-flex justify-content-between mt-1">
+                                            <a href="https://console.anthropic.com/settings/keys" target="_blank" class="text-warning text-decoration-none" style="font-size:0.7rem;">Get Key at Anthropic &rarr;</a>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label text-secondary small mb-1">Model</label>
+                                        <?php $anthropicModel = $settings['anthropic_model'] ?? 'claude-3-5-haiku-20241022'; ?>
+                                        <select name="anthropic_model" id="anthropic_model" class="form-select form-select-sm bg-black text-white border-secondary">
+                                            <option value="claude-3-5-haiku-20241022" <?php echo ($anthropicModel === 'claude-3-5-haiku-20241022') ? 'selected' : ''; ?>>claude-3-5-haiku (Ultra Fast &amp; Cheap)</option>
+                                            <option value="claude-3-5-sonnet-20241022" <?php echo ($anthropicModel === 'claude-3-5-sonnet-20241022') ? 'selected' : ''; ?>>claude-3-5-sonnet (Highest Accuracy)</option>
+                                            <option value="claude-3-opus-20240229" <?php echo ($anthropicModel === 'claude-3-opus-20240229') ? 'selected' : ''; ?>>claude-3-opus</option>
+                                        </select>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-warning w-100 btn-test-ai" data-provider="anthropic" data-key-id="anthropic_api_key" data-model-id="anthropic_model">
+                                        <i class="fa-solid fa-plug me-1"></i> Test Claude Connection
+                                    </button>
+                                    <div class="ai-test-result mt-2 small" id="anthropic-test-result" style="display:none;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fine-Tuning Parameters (Collapsible) -->
+                    <div class="mt-3 pt-3 border-top border-secondary border-opacity-20">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-secondary small mb-1">Generation Temperature (Creativity: 0.0 - 1.0)</label>
+                                <input type="number" step="0.1" min="0.0" max="1.0" name="ai_temperature" class="form-control form-control-sm bg-black text-white border-secondary"
+                                       value="<?php echo htmlspecialchars($settings['ai_temperature'] ?? '0.7'); ?>">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-secondary small mb-1">Max Output Tokens</label>
+                                <input type="number" step="128" min="256" max="8192" name="ai_max_tokens" class="form-control form-control-sm bg-black text-white border-secondary"
+                                       value="<?php echo htmlspecialchars($settings['ai_max_tokens'] ?? '2048'); ?>">
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <hr class="border-secondary border-opacity-15 my-4">
@@ -925,6 +1105,87 @@ $(document).ready(function() {
         } else {
             $('#rotational_notice_banner').addClass('d-none');
         }
+    });
+
+    // 4. Universal AI Key Visibility Toggle
+    $('.toggle-key-visibility').on('click', function() {
+        const targetId = $(this).data('target');
+        const input = $('#' + targetId);
+        const icon = $(this).find('i');
+        if (input.attr('type') === 'password') {
+            input.attr('type', 'text');
+            icon.removeClass('fa-eye').addClass('fa-eye-slash');
+        } else {
+            input.attr('type', 'password');
+            icon.removeClass('fa-eye-slash').addClass('fa-eye');
+        }
+    });
+
+    // 5. Universal AI Live Connection Tester
+    $('.btn-test-ai').on('click', function() {
+        const btn = $(this);
+        const provider = btn.data('provider');
+        const keyId = btn.data('key-id');
+        const modelId = btn.data('model-id');
+        const resultDiv = $('#' + provider + '-test-result');
+
+        const apiKey = $('#' + keyId).val().trim();
+        const model = $('#' + modelId).val();
+        const csrf = $('input[name="csrf_token"]').val();
+
+        if (!apiKey) {
+            resultDiv.html('<div class="p-2 rounded bg-danger bg-opacity-15 text-danger border border-danger border-opacity-25"><i class="fa-solid fa-triangle-exclamation me-1"></i>Please enter an API key first.</div>').slideDown();
+            return;
+        }
+
+        const originalHtml = btn.html();
+        btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-1"></i> Pinging ' + provider + '...');
+        resultDiv.html('<div class="text-secondary small"><i class="fa-solid fa-circle-notch fa-spin me-1"></i>Testing handshake...</div>').slideDown();
+
+        $.ajax({
+            url: 'index.php?route=settings/test_ai',
+            type: 'POST',
+            data: {
+                csrf_token: csrf,
+                provider: provider,
+                api_key: apiKey,
+                model: model
+            },
+            dataType: 'json',
+            success: function(res) {
+                btn.prop('disabled', false).html(originalHtml);
+                if (res.success && res.data && res.data.success) {
+                    resultDiv.html(
+                        '<div class="p-2 rounded bg-success bg-opacity-15 text-success border border-success border-opacity-25">' +
+                        '<div class="fw-bold"><i class="fa-solid fa-circle-check me-1"></i>Connected (' + res.data.latency_ms + 'ms)</div>' +
+                        '<div class="small opacity-75">' + res.data.message + '</div>' +
+                        '</div>'
+                    );
+                } else {
+                    const msg = (res.data && res.data.message) ? res.data.message : (res.message || 'Connection failed');
+                    resultDiv.html(
+                        '<div class="p-2 rounded bg-danger bg-opacity-15 text-danger border border-danger border-opacity-25">' +
+                        '<div class="fw-bold"><i class="fa-solid fa-circle-xmark me-1"></i>Test Failed</div>' +
+                        '<div class="small">' + msg + '</div>' +
+                        '</div>'
+                    );
+                }
+            },
+            error: function(xhr) {
+                btn.prop('disabled', false).html(originalHtml);
+                let errText = 'Network error contacting endpoint.';
+                try {
+                    const parsed = JSON.parse(xhr.responseText);
+                    errText = parsed.message || (parsed.data && parsed.data.message) || errText;
+                } catch(e) {}
+                resultDiv.html(
+                    '<div class="p-2 rounded bg-danger bg-opacity-15 text-danger border border-danger border-opacity-25">' +
+                    '<div class="fw-bold"><i class="fa-solid fa-circle-xmark me-1"></i>Error</div>' +
+                    '<div class="small">' + errText + '</div>' +
+                    '</div>'
+                );
+            }
+        });
     });
 });
 </script>
