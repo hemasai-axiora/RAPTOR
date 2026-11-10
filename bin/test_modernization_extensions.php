@@ -749,6 +749,165 @@ $detailMarkup = file_get_contents($reqDetailView);
 assertCustom(strpos($detailMarkup, 'Approval Workflow Chain') !== false, "Requisition detail view renders approval timeline progress card");
 assertCustom(strpos($detailMarkup, 'approvalModal') !== false, "Requisition detail view integrates formal approval modal dialog");
 
+// ── 16. Sprint 3 (Raptor v2.3): Job Publishing, Careers Portal & Candidate Application Wizard ──
+echo "\n16. Testing Sprint 3 Job Publishing, Careers Portal & Candidate Application Wizard...\n";
+
+// Test 16.1: JobPublishingService Architecture & Codes
+require_once __DIR__ . '/../app/services/recruitment/JobPublishingService.php';
+$pubService = new JobPublishingService();
+$jobCode = $pubService->generateJobCode($mockDb);
+assertCustom((bool)preg_match('/^JOB-\d{4}-\d{4}$/', $jobCode), "JobPublishingService generates standard job code ({$jobCode})");
+
+$slug = $pubService->generateSlug('Senior Staff Backend Architect', 'Hyderabad, India');
+assertCustom(strpos($slug, 'senior-staff-backend-architect-hyderabad-india') === 0, "JobPublishingService generates SEO-friendly slug ({$slug})");
+
+// Test 16.2: Publish Approved Requisition to Career Portal
+$pubResult = $pubService->publishJob($mockDb, $testReqId, [
+    'location'              => 'Hyderabad Tech Park',
+    'show_salary_publicly'  => 1
+], 1);
+assertCustom(!empty($pubResult['job_id']), "Approved requisition successfully published to recruitment_jobs");
+assertCustom($pubResult['status'] === 'published', "Published job status is set to 'published'");
+$testJobId = (int) $pubResult['job_id'];
+
+// Test 16.3: Google Jobs JSON-LD Structured Data Validation
+$jobRecord = $pubService->getJobBySlug($mockDb, $pubResult['slug']);
+assertCustom(!empty($jobRecord), "getJobBySlug retrieves published job record");
+$jsonLd = $pubService->generateJsonLd($jobRecord, 'Raptor CRM', 'http://localhost');
+$jsonDecoded = json_decode($jsonLd, true);
+assertCustom(is_array($jsonDecoded), "generateJsonLd produces valid parseable JSON");
+assertCustom($jsonDecoded['@type'] === 'JobPosting', "JSON-LD schema type is strictly 'JobPosting'");
+assertCustom($jsonDecoded['title'] === 'Senior Staff Backend Architect', "JSON-LD schema captures exact position title");
+assertCustom(!empty($jsonDecoded['hiringOrganization']['name']), "JSON-LD schema includes hiringOrganization");
+assertCustom(!empty($jsonDecoded['baseSalary']), "JSON-LD schema embeds salary parameters when show_salary_publicly is true");
+
+// Test 16.4: Public Job Views Counter
+assertCustom((int)$jobRecord['views_count'] >= 1, "Public job detail retrieval increments views_count");
+
+// Test 16.5: Anti-Spam Honeypot Detection
+$spamSubmission = $pubService->submitCandidateApplication(
+    $mockDb,
+    $testJobId,
+    [
+        'first_name'      => 'Spam',
+        'last_name'       => 'Bot',
+        'email'           => 'spambot@auto.invalid',
+        'phone'           => '1234567890',
+        'consent_granted' => 1,
+        'company_url_hp'  => 'https://spamurl.invalid' // Honeypot populated!
+    ]
+);
+assertCustom(!empty($spamSubmission['is_spam']), "Application submission with populated honeypot is identified and blocked as spam");
+
+// Test 16.6: Mandatory Consent Verification (DPDP Act 2023)
+$consentFailed = false;
+try {
+    $pubService->submitCandidateApplication(
+        $mockDb,
+        $testJobId,
+        [
+            'first_name' => 'Alice',
+            'last_name'  => 'Smith',
+            'email'      => 'alice@example.com',
+            'phone'      => '9876543210'
+            // No consent_granted
+        ]
+    );
+} catch (InvalidArgumentException $e) {
+    $consentFailed = true;
+}
+assertCustom($consentFailed, "Application submission without explicit DPDP consent throws InvalidArgumentException");
+
+// Test 16.7: Legitimate Candidate Application Intake
+$appResult = $pubService->submitCandidateApplication(
+    $mockDb,
+    $testJobId,
+    [
+        'first_name'             => 'Priya',
+        'last_name'              => 'Sharma',
+        'email'                  => 'priya.sharma@example.com',
+        'phone'                  => '+919876543210',
+        'current_company'        => 'Tech Enterprises Ltd',
+        'current_designation'    => 'Senior Backend Engineer',
+        'total_experience_years' => 6.5,
+        'skills'                 => 'PHP 8.2, MySQL, Redis, REST APIs, Git',
+        'consent_granted'        => 1
+    ],
+    [
+        'name'     => 'Priya_Sharma_Resume.pdf',
+        'type'     => 'application/pdf',
+        'size'     => 102400,
+        'tmp_name' => '' // In-memory mock
+    ],
+    '192.168.1.100',
+    'Mozilla/5.0 Test Browser'
+);
+
+assertCustom(!empty($appResult['application_id']), "Candidate application created and assigned unique ID");
+assertCustom((bool)preg_match('/^APP-\d{4}-\d{5}$/', $appResult['application_code']), "Application assigned standard external reference code ({$appResult['application_code']})");
+
+// Verify candidate master record
+$stmtCand = $mockDb->prepare("SELECT * FROM recruitment_candidates WHERE email = 'priya.sharma@example.com'");
+$stmtCand->execute();
+$cand = $stmtCand->fetch(PDO::FETCH_ASSOC);
+assertCustom(!empty($cand), "Candidate master profile created in recruitment_candidates");
+assertCustom((float)$cand['total_experience_years'] === 6.5, "Candidate experience preserved accurately");
+
+// Verify consent record
+$stmtCons = $mockDb->prepare("SELECT * FROM recruitment_candidate_consents WHERE candidate_id = :cid");
+$stmtCons->execute([':cid' => $cand['candidate_id']]);
+$cons = $stmtCons->fetch(PDO::FETCH_ASSOC);
+assertCustom(!empty($cons) && (int)$cons['is_granted'] === 1, "Candidate DPDP consent logged with timestamp and IP");
+
+// Verify stage history & queue acknowledgement
+$stmtStg = $mockDb->prepare("SELECT * FROM recruitment_application_stages WHERE application_id = :aid");
+$stmtStg->execute([':aid' => $appResult['application_id']]);
+$stg = $stmtStg->fetch(PDO::FETCH_ASSOC);
+assertCustom(!empty($stg) && $stg['to_stage'] === 'applied', "Initial application stage recorded in history");
+
+$stmtQ = $mockDb->query("SELECT * FROM recruitment_queue WHERE job_type = 'application_acknowledgement'");
+$qJob = $stmtQ->fetch(PDO::FETCH_ASSOC);
+assertCustom(!empty($qJob), "Candidate acknowledgement email job enqueued in recruitment_queue");
+
+// Test 16.8: CareersController & RecruitmentJobController Reflection
+require_once __DIR__ . '/../app/controllers/CareersController.php';
+require_once __DIR__ . '/../app/controllers/RecruitmentJobController.php';
+
+$careersReflect = new ReflectionClass('CareersController');
+assertCustom($careersReflect->isSubclassOf('Controller'), "CareersController extends core Controller architecture");
+assertCustom($careersReflect->hasMethod('index'), "CareersController exposes index() action");
+assertCustom($careersReflect->hasMethod('job'), "CareersController exposes job() action");
+assertCustom($careersReflect->hasMethod('apply'), "CareersController exposes apply() action");
+
+$recJobReflect = new ReflectionClass('RecruitmentJobController');
+assertCustom($recJobReflect->isSubclassOf('Controller'), "RecruitmentJobController extends core Controller architecture");
+assertCustom($recJobReflect->hasMethod('index'), "RecruitmentJobController exposes index() action");
+assertCustom($recJobReflect->hasMethod('publish'), "RecruitmentJobController exposes publish() action");
+assertCustom($recJobReflect->hasMethod('pause'), "RecruitmentJobController exposes pause() action");
+assertCustom($recJobReflect->hasMethod('close'), "RecruitmentJobController exposes close() action");
+
+// Test 16.9: Careers and Job Views Verification
+$careersIndexView = __DIR__ . '/../app/views/careers/index.php';
+assertCustom(file_exists($careersIndexView), "app/views/careers/index.php exists");
+$cIndexContent = file_get_contents($careersIndexView);
+assertCustom(strpos($cIndexContent, 'RAPTOR CAREERS') !== false, "Careers index view renders header");
+
+$careersJobView = __DIR__ . '/../app/views/careers/job.php';
+assertCustom(file_exists($careersJobView), "app/views/careers/job.php exists");
+$cJobContent = file_get_contents($careersJobView);
+assertCustom(strpos($cJobContent, 'application/ld+json') !== false, "Careers job view embeds Google Jobs JSON-LD structured data");
+assertCustom(strpos($cJobContent, 'company_url_hp') !== false, "Careers application form integrates anti-spam honeypot input");
+assertCustom(strpos($cJobContent, 'DPDP Act 2023') !== false, "Careers application form integrates DPDP Act consent checkbox");
+
+$careersSuccessView = __DIR__ . '/../app/views/careers/success.php';
+assertCustom(file_exists($careersSuccessView), "app/views/careers/success.php exists");
+
+$recJobIndexView = __DIR__ . '/../app/views/recruitment/jobs/index.php';
+assertCustom(file_exists($recJobIndexView), "app/views/recruitment/jobs/index.php exists");
+$recJobMarkup = file_get_contents($recJobIndexView);
+assertCustom(strpos($recJobMarkup, 'Job Postings & Career Site Listings') !== false, "Internal job listings view renders header");
+assertCustom(strpos($recJobMarkup, 'Approved Requisitions Ready to Publish') !== false, "Internal job listings view renders pending publication banner");
+
 echo "\n=======================================================\n";
 echo "SUMMARY: {$passed} PASSED, {$failed} FAILED\n";
 echo "=======================================================\n";

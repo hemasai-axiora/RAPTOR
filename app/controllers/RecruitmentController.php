@@ -60,6 +60,15 @@ class RecruitmentController extends Controller {
     }
 
     /**
+     * Job Postings & Career Listings (Sprint 3).
+     */
+    public function jobs(): void {
+        require_once __DIR__ . '/RecruitmentJobController.php';
+        $controller = new RecruitmentJobController();
+        $controller->index();
+    }
+
+    /**
      * Candidates placeholder (delegates to Sprint 4).
      */
     public function candidates(): void {
