@@ -1,5 +1,9 @@
 <?php
-// Raptor CRM — Attendance model (Sprint 2)
+// Raptor CRM — Attendance model (Sprint 2 / Modernized Sprint 5)
+
+if (!class_exists('AttendanceService')) {
+    require_once APPROOT . '/services/AttendanceService.php';
+}
 
 class Attendance extends Model {
 
@@ -9,13 +13,14 @@ class Attendance extends Model {
         $rows = $this->resultSet();
         $cfg = [];
         foreach ($rows as $r) { $cfg[$r->setting_key] = $r->setting_value; }
-        return [
+        return AttendanceService::normalizeShiftConfig([
             'shift_start'    => $cfg['attendance.shift_start']    ?? '09:30',
             'shift_end'      => $cfg['attendance.shift_end']      ?? '18:30',
             'grace_minutes'  => (int)($cfg['attendance.grace_minutes'] ?? 15),
             'halfday_minutes'=> (int)($cfg['attendance.halfday_minutes'] ?? 240),
             'policy_version' => $cfg['attendance.policy_version'] ?? 'v1',
-        ];
+            'geofence_enabled'=> ($cfg['attendance.geofence_enabled'] ?? '0') === '1',
+        ]);
     }
 
     // ---------------- Consent ----------------
@@ -87,9 +92,10 @@ class Attendance extends Model {
         $cfg       = $this->getShiftConfig();
         $date      = date('Y-m-d');
         $now       = date('Y-m-d H:i:s');
-        $localTime = date('H:i:s');
-        $latestOk  = date('H:i:s', strtotime($cfg['shift_start']) + $cfg['grace_minutes'] * 60);
-        $isLate    = $localTime > $latestOk;
+        
+        // Delegate lateness evaluation to AttendanceService
+        $lateEvaluation = AttendanceService::evaluateLateness($now, $cfg);
+        $isLate    = !empty($lateEvaluation['is_late']);
 
         // Geofence: null = not evaluated, 1 = inside a fence, 0 = outside all fences.
         $geoOk = $this->evalGeofence($d['lat'], $d['lng']);
@@ -183,6 +189,7 @@ class Attendance extends Model {
 
     /**
      * Evaluate a coordinate against active 'office' geofences.
+     * Delegates great-circle distance math to AttendanceService.
      * @return int|null  1 inside any fence, 0 outside all, null if not evaluated
      *                   (geofencing disabled, no coords, or no fences defined).
      */
@@ -199,20 +206,12 @@ class Attendance extends Model {
         $fences = $this->resultSet();
         if (empty($fences)) { return null; }
 
-        foreach ($fences as $f) {
-            $dist = $this->haversineMeters((float) $lat, (float) $lng, (float) $f->center_lat, (float) $f->center_lng);
-            if ($dist <= (float) $f->radius_m) { return 1; }
-        }
-        return 0;
+        return AttendanceService::evaluateGeofence((float)$lat, (float)$lng, $fences, true);
     }
 
-    /** Great-circle distance in metres. */
+    /** Great-circle distance in metres (delegated to AttendanceService). */
     private function haversineMeters(float $lat1, float $lng1, float $lat2, float $lng2): float {
-        $R = 6371000.0;
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLng = deg2rad($lng2 - $lng1);
-        $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
-        return $R * 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return AttendanceService::haversineDistance($lat1, $lng1, $lat2, $lng2);
     }
 
     // ---------------- Check-out ----------------

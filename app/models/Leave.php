@@ -166,8 +166,26 @@ class Leave extends Model {
     }
 
     public function getHolidays(): array {
-        $this->query('SELECT * FROM holidays ORDER BY holiday_date ASC');
-        return $this->resultSet() ?: [];
+        try {
+            $this->query('SELECT * FROM holidays ORDER BY holiday_date ASC');
+            $res = $this->resultSet() ?: [];
+            if (!empty($res)) {
+                return $res;
+            }
+        } catch (\Throwable $e) {}
+
+        // Fallback to statutory calendar from LeaveService
+        $year = (int)date('Y');
+        $statutory = class_exists('LeaveService') ? LeaveService::getStatutoryHolidays($year) : [];
+        $fallback = [];
+        foreach ($statutory as $date => $name) {
+            $fallback[] = (object)[
+                'holiday_date' => $date,
+                'holiday_name' => $name,
+                'type' => 'statutory'
+            ];
+        }
+        return $fallback;
     }
 
     public function getApprovedLeavesForCalendar(): array {

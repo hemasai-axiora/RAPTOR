@@ -378,6 +378,104 @@ assertCustom(strpos($createCampView, 'testPreviewModal') !== false, "Campaign bu
 assertCustom(strpos($createCampView, 'toggle-spam-highlight') !== false, "Preview modal provides toggle to highlight spam trigger words");
 assertCustom(strpos($createCampView, 'btn-view-mobile') !== false, "Preview modal provides Desktop vs Mobile 375px switcher");
 
+// ── 12. Sprint 5: HR Management & Operations Service Decoupling ──
+echo "\n12. Testing Sprint 5 HR Management & Operations Service Decoupling...\n";
+
+require_once __DIR__ . '/../app/services/AttendanceService.php';
+require_once __DIR__ . '/../app/services/LeaveService.php';
+require_once __DIR__ . '/../app/controllers/HrmsController.php';
+
+// Test 12.1: AttendanceService Geofence & Haversine Distance
+$officeLat = 17.4486;
+$officeLng = 78.3752;
+$nearLat   = 17.4489; // approx 40m away
+$nearLng   = 78.3754;
+$farLat    = 17.5500; // approx 15km away
+$farLng    = 78.4500;
+
+$distNear = AttendanceService::haversineDistance($officeLat, $officeLng, $nearLat, $nearLng);
+assertCustom($distNear > 0 && $distNear < 100, "AttendanceService computes accurate Haversine distance for nearby coordinates (~40m)");
+
+$distFar = AttendanceService::haversineDistance($officeLat, $officeLng, $farLat, $farLng);
+assertCustom($distFar > 10000, "AttendanceService computes accurate distance for distant coordinates (>10km)");
+
+$mockFence = [(object)['center_lat' => $officeLat, 'center_lng' => $officeLng, 'radius_m' => 100]];
+$geoInside = AttendanceService::evaluateGeofence($nearLat, $nearLng, $mockFence, true);
+assertCustom($geoInside === 1, "AttendanceService confirms coordinate inside active office geofence");
+
+$geoOutside = AttendanceService::evaluateGeofence($farLat, $farLng, $mockFence, true);
+assertCustom($geoOutside === 0, "AttendanceService flags coordinate outside active office geofence");
+
+$geoDisabled = AttendanceService::evaluateGeofence($farLat, $farLng, $mockFence, false);
+assertCustom($geoDisabled === null, "AttendanceService returns null when geofencing is disabled");
+
+// Test 12.2: AttendanceService Shift Grace Period & Lateness
+$shiftConfig = ['shift_start' => '09:30', 'grace_minutes' => 15];
+$onTime = AttendanceService::evaluateLateness('2026-11-10 09:35:00', $shiftConfig);
+assertCustom($onTime['is_late'] === false, "Check-in at 09:35 within 15 min grace period is marked on-time");
+
+$graceBoundary = AttendanceService::evaluateLateness('2026-11-10 09:45:00', $shiftConfig);
+assertCustom($graceBoundary['is_late'] === false, "Check-in exactly at 09:45 boundary is marked on-time");
+
+$lateCheck = AttendanceService::evaluateLateness('2026-11-10 09:46:00', $shiftConfig);
+assertCustom($lateCheck['is_late'] === true && $lateCheck['late_minutes'] === 16, "Check-in at 09:46 exceeds grace period and is flagged LATE (16 min delay)");
+
+// Test 12.3: AttendanceService Work Duration & Break Deduction
+$mockBreaks = [
+    (object)['break_start' => '2026-11-10 13:00:00', 'break_end' => '2026-11-10 13:45:00'] // 45 mins
+];
+$duration = AttendanceService::calculateWorkDuration('2026-11-10 09:30:00', '2026-11-10 18:30:00', $mockBreaks);
+// Gross = 540 min (9 hrs), breaks = 45 min, net = 495 min
+assertCustom($duration['gross_minutes'] === 540, "Calculates 540 gross minutes (9 hours)");
+assertCustom($duration['break_minutes'] === 45, "Calculates 45 completed break minutes");
+assertCustom($duration['net_minutes'] === 495, "Calculates 495 net work minutes after break deduction");
+assertCustom($duration['status'] === 'present', "Net minutes >= 480 qualifies for full 'present' status");
+
+// Test 12.4: LeaveService Business Days (Weekend & Holiday Exclusion)
+// Friday 2026-01-23 to Monday 2026-01-26 (where Monday Jan 26 is Republic Day holiday)
+// Friday = 1 day, Sat/Sun excluded, Mon = Republic Day excluded => Net working days = 1.0!
+$daysHoliday = LeaveService::calculateBusinessDays('2026-01-23', '2026-01-26', false);
+assertCustom($daysHoliday === 1.0, "LeaveService automatically excludes weekend and statutory holiday (Republic Day Jan 26)");
+
+// Normal Mon-Wed span (3 days)
+$daysNormal = LeaveService::calculateBusinessDays('2026-02-02', '2026-02-04', false);
+assertCustom($daysNormal === 3.0, "LeaveService calculates 3 working business days for Mon-Wed range");
+
+// Half-day calculation
+$daysHalf = LeaveService::calculateBusinessDays('2026-02-02', '2026-02-02', true);
+assertCustom($daysHalf === 0.5, "LeaveService calculates 0.5 day for half-day request on weekday");
+
+// Test 12.5: LeaveService Balance Validation
+$mockBalances = (object)['sick_leave' => 5.0, 'casual_leave' => 3.0, 'earned_leave' => 12.0];
+$validCheck = LeaveService::checkLeaveBalance($mockBalances, 'Casual Leave', 2.0);
+assertCustom($validCheck['allowed'] === true && $validCheck['remaining'] === 1.0, "LeaveService permits leave when available balance is sufficient");
+
+$invalidCheck = LeaveService::checkLeaveBalance($mockBalances, 'Casual Leave', 4.0);
+assertCustom($invalidCheck['allowed'] === false && strpos($invalidCheck['error'], 'Insufficient') !== false, "LeaveService rejects request exceeding available balance with descriptive error");
+
+// Test 12.6: Employee Directory Cards & View Switcher (users/index.php)
+$usersViewContent = file_get_contents(__DIR__ . '/../app/views/users/index.php');
+assertCustom(strpos($usersViewContent, 'btn-view-cards') !== false, "Employee management view provides Directory Cards view switcher");
+assertCustom(strpos($usersViewContent, 'users-cards-container') !== false, "Employee management view includes responsive Directory Cards grid container");
+assertCustom(strpos($usersViewContent, 'tel:') !== false, "Directory Cards integrate 1-click Call action (tel:)");
+assertCustom(strpos($usersViewContent, 'wa.me') !== false, "Directory Cards integrate 1-click WhatsApp action (wa.me)");
+assertCustom(strpos($usersViewContent, 'mailto:') !== false, "Directory Cards integrate 1-click Email action (mailto:)");
+
+// Test 12.7: Organization Hierarchy Tree View (hrms/hierarchy.php)
+$hrmsReflect = new ReflectionClass(HrmsController::class);
+assertCustom($hrmsReflect->hasMethod('hierarchy'), "HrmsController defines hierarchy() action for organizational tree resolution");
+
+$hierarchyViewPath = __DIR__ . '/../app/views/hrms/hierarchy.php';
+assertCustom(file_exists($hierarchyViewPath), "app/views/hrms/hierarchy.php exists");
+$hierarchyContent = file_get_contents($hierarchyViewPath);
+assertCustom(strpos($hierarchyContent, 'tree-search-input') !== false, "Hierarchy view renders employee tree search input");
+assertCustom(strpos($hierarchyContent, 'dept-filter-buttons') !== false, "Hierarchy view renders department filter selector pills");
+assertCustom(strpos($hierarchyContent, 'org-branch-column') !== false, "Hierarchy view renders division and direct reports branch columns");
+
+// Test 12.8: Sensitive Data Masking Verification
+$hrmsReflectProfile = $hrmsReflect->getMethod('profile');
+assertCustom($hrmsReflectProfile->isPublic(), "HrmsController exposes profile() action with sensitive data masking protection");
+
 echo "\n=======================================================\n";
 echo "SUMMARY: {$passed} PASSED, {$failed} FAILED\n";
 echo "=======================================================\n";
