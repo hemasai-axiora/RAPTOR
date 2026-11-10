@@ -105,6 +105,15 @@ class RecruitmentController extends Controller {
     }
 
     /**
+     * Candidate Assessments & Assignments (Sprint 6).
+     */
+    public function assessments(): void {
+        require_once __DIR__ . '/RecruitmentAssessmentController.php';
+        $controller = new RecruitmentAssessmentController();
+        $controller->index();
+    }
+
+    /**
      * Offers placeholder (delegates to Sprint 7).
      */
     public function offers(): void {

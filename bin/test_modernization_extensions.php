@@ -1288,6 +1288,127 @@ $ivEvalMarkup = file_get_contents($ivEvalView);
 assertCustom(strpos($ivEvalMarkup, 'Blind Evaluation Gate Active') !== false, "Interview scorecard view displays blind evaluation governance alert");
 assertCustom(strpos($ivEvalMarkup, 'submitEvaluation') !== false, "Interview scorecard view form dispatches to submitEvaluation");
 
+// ============================================================================
+// 19. SPRINT 6: ASSESSMENTS & ASSIGNMENT EVALUATION
+// ============================================================================
+echo "\n19. Testing Sprint 6 Assessments & Assignment Evaluation...\n";
+
+require_once __DIR__ . '/../app/services/recruitment/AssessmentService.php';
+
+$assessmentService = new AssessmentService();
+
+// Test 19.1: Assessment Definition Creation
+$assId = $assessmentService->createAssessment($mockDb, [
+    'title'            => 'Enterprise PHP 8.2 & Concurrency Challenge',
+    'assessment_type'  => 'take_home_assignment',
+    'description'      => 'Build a high-throughput, queue-backed background worker with row-locking.',
+    'instructions'     => '1. Fork repository. 2. Implement worker. 3. Submit PR link.',
+    'duration_minutes' => 180,
+    'max_score'        => 100,
+    'passing_score'    => 70
+]);
+assertCustom($assId > 0, "Assessment template created with unique ID ({$assId})");
+
+$assDetail = $assessmentService->getAssessmentById($mockDb, $assId);
+assertCustom(!empty($assDetail), "getAssessmentById retrieves created assessment template");
+assertCustom($assDetail['title'] === 'Enterprise PHP 8.2 & Concurrency Challenge', "Assessment template captures title");
+assertCustom((int)$assDetail['passing_score'] === 70, "Assessment template defines passing threshold (70)");
+
+// Test 19.2: Assignment to Candidate with Due Date Validation
+$pastDateBlocked = false;
+try {
+    $assessmentService->assignAssessment($mockDb, $assId, $aaravAppId, date('Y-m-d H:i:s', time() - 3600), 1);
+} catch (InvalidArgumentException $e) {
+    $pastDateBlocked = true;
+}
+assertCustom($pastDateBlocked, "Assigning assessment with past due date throws InvalidArgumentException");
+
+// Assign with valid future due date
+$futureDueDate = date('Y-m-d H:i:s', time() + 86400 * 3); // 3 days in future
+$assignResult = $assessmentService->assignAssessment($mockDb, $assId, $aaravAppId, $futureDueDate, 1);
+assertCustom($assignResult['success'] === true, "Assessment successfully assigned to candidate application");
+assertCustom($assignResult['status'] === 'assigned', "Initial assignment status is 'assigned'");
+$submissionId = (int)$assignResult['submission_id'];
+
+// Verify candidate application stage moved to 'assessment'
+$stmtCheckAppAss = $mockDb->prepare("SELECT current_stage FROM recruitment_applications WHERE application_id = :id");
+$stmtCheckAppAss->execute([':id' => $aaravAppId]);
+assertCustom($stmtCheckAppAss->fetchColumn() === 'assessment', "Application stage auto-advanced to 'assessment'");
+
+// Verify notification enqueued in recruitment_queue
+$stmtAssQ = $mockDb->query("SELECT * FROM recruitment_queue WHERE job_type = 'assessment_assigned' ORDER BY queue_id DESC LIMIT 1");
+$assJob = $stmtAssQ->fetch(PDO::FETCH_ASSOC);
+assertCustom(!empty($assJob), "Assessment assignment notification job enqueued in recruitment_queue");
+
+// Test 19.3: On-Time Candidate Submission
+$subRes1 = $assessmentService->submitAssessmentWork($mockDb, $submissionId, 'https://github.com/aarav-patel/raptor-concurrency-eval');
+assertCustom($subRes1['success'] === true, "Candidate submission recorded successfully");
+assertCustom($subRes1['is_late'] === false, "On-time submission is identified with is_late = false");
+assertCustom($subRes1['status'] === 'submitted', "On-time submission status is set to 'submitted'");
+
+// Test 19.4: Late Candidate Submission Flagging
+// Create a separate submission with simulated past due date
+$stmtPastSub = $mockDb->prepare("
+    INSERT INTO recruitment_assessment_submissions (assessment_id, application_id, assigned_at, due_date, status, created_at)
+    VALUES (:aid, :appid, CURRENT_TIMESTAMP, :due, 'assigned', CURRENT_TIMESTAMP)
+");
+$stmtPastSub->execute([
+    ':aid'   => $assId,
+    ':appid' => $appId,
+    ':due'   => date('Y-m-d H:i:s', time() - 7200) // 2 hours ago
+]);
+$lateSubId = (int)$mockDb->lastInsertId();
+
+$subResLate = $assessmentService->submitAssessmentWork($mockDb, $lateSubId, 'https://github.com/late-submission/repo');
+assertCustom($subResLate['is_late'] === true, "Overdue submission is flagged with is_late = true");
+assertCustom($subResLate['status'] === 'submitted_late', "Overdue submission status is set to 'submitted_late'");
+
+// Test 19.5: Recruiter Grading & Rubric Evaluation
+// Evaluate Priya Sharma's late submission with failing score: 50 / 100 (Threshold 70)
+$evalFail = $assessmentService->evaluateSubmission($mockDb, $lateSubId, 50, 'Did not satisfy concurrency locking requirements.', 1);
+assertCustom($evalFail['success'] === true, "Evaluation scored successfully");
+assertCustom($evalFail['passed'] === false, "Failing grade accurately identified (50 < 70)");
+
+// Evaluate Aarav Patel's submission with passing score: 92 / 100 (Threshold 70)
+$evalPass = $assessmentService->evaluateSubmission($mockDb, $submissionId, 92, 'Exceptional concurrency design and unit test coverage.', 1);
+assertCustom($evalPass['success'] === true, "Passing evaluation scored successfully");
+assertCustom($evalPass['passed'] === true, "Passing grade accurately identified (92 >= 70)");
+
+// Verify application advisory match score updated
+$stmtAppScore = $mockDb->prepare("SELECT current_stage, match_score_advisory FROM recruitment_applications WHERE application_id = :id");
+$stmtAppScore->execute([':id' => $aaravAppId]);
+$gradedApp = $stmtAppScore->fetch(PDO::FETCH_ASSOC);
+assertCustom((int)$gradedApp['match_score_advisory'] === 92, "Application match score advisory updated to 92%");
+assertCustom($gradedApp['current_stage'] === 'technical_interview', "Passed candidate automatically advanced to 'technical_interview' stage");
+
+// Test 19.6: Controller Reflection & Route Verification
+require_once __DIR__ . '/../app/controllers/RecruitmentAssessmentController.php';
+
+$assControllerReflect = new ReflectionClass('RecruitmentAssessmentController');
+assertCustom($assControllerReflect->isSubclassOf('Controller'), "RecruitmentAssessmentController extends core Controller architecture");
+assertCustom($assControllerReflect->hasMethod('index'), "RecruitmentAssessmentController exposes index() action");
+assertCustom($assControllerReflect->hasMethod('store'), "RecruitmentAssessmentController exposes store() action");
+assertCustom($assControllerReflect->hasMethod('assign'), "RecruitmentAssessmentController exposes assign() action");
+assertCustom($assControllerReflect->hasMethod('evaluate'), "RecruitmentAssessmentController exposes evaluate() action");
+assertCustom($assControllerReflect->hasMethod('grade'), "RecruitmentAssessmentController exposes grade() action");
+
+assertCustom($recControllerReflect->hasMethod('assessments'), "RecruitmentController exposes assessments() routing");
+
+// Test 19.7: Views Existence & Content Markup
+$assIndexView = __DIR__ . '/../app/views/recruitment/assessments/index.php';
+assertCustom(file_exists($assIndexView), "app/views/recruitment/assessments/index.php exists");
+$assIndexMarkup = file_get_contents($assIndexView);
+assertCustom(strpos($assIndexMarkup, 'Candidate Assessments & Assignments') !== false, "Assessment index view renders header");
+assertCustom(strpos($assIndexMarkup, 'assignAssessmentModal') !== false, "Assessment index view integrates assign modal dialog");
+assertCustom(strpos($assIndexMarkup, 'newAssessmentModal') !== false, "Assessment index view integrates new template modal");
+
+$assEvalView = __DIR__ . '/../app/views/recruitment/assessments/evaluate.php';
+assertCustom(file_exists($assEvalView), "app/views/recruitment/assessments/evaluate.php exists");
+$assEvalMarkup = file_get_contents($assEvalView);
+assertCustom(strpos($assEvalMarkup, 'Evaluator Grading Scorecard') !== false, "Assessment evaluate view renders grading rubric");
+assertCustom(strpos($assEvalMarkup, 'recruitment_assessment/grade') !== false, "Assessment evaluate form dispatches to grade action");
+
+
 
 
 echo "\n=======================================================\n";
