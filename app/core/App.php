@@ -35,7 +35,7 @@ class App {
                 // Check for method name
                 if (isset($parts[1])) {
                     $methodName = $parts[1];
-                    $camelMethod = lcfirst(str_replace(' ', '', ucwords(str_replace('-', ' ', $methodName))));
+                    $camelMethod = lcfirst(str_replace(' ', '', ucwords(str_replace(['_', '-'], ' ', $methodName))));
                     if ($methodName !== '' && $methodName[0] !== '_' && is_callable([$this->currentController, $methodName])) {
                         $this->currentMethod = $methodName;
                         unset($parts[1]);
