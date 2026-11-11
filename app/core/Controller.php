@@ -117,13 +117,37 @@ class Controller {
         return $_SESSION['csrf_token'];
     }
 
-    // Validate CSRF token
+    // Validate CSRF token (timing-safe)
     protected function validateCsrfToken($token) {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-        if (!isset($_SESSION['csrf_token']) || $token !== $_SESSION['csrf_token']) {
+        if (empty($_SESSION['csrf_token']) || empty($token) || !is_string($token)) {
             return false;
+        }
+        return hash_equals((string)$_SESSION['csrf_token'], (string)$token);
+    }
+
+    /**
+     * Helper to validate CSRF token across POST, JSON payload, headers, or query.
+     * Enforces CSRF validation and halts with 403 on mismatch.
+     */
+    protected function validateCsrf(?string $token = null): bool {
+        $jsonInput = $this->jsonInput();
+        $token = $token
+            ?? $_POST['csrf_token']
+            ?? $_SERVER['HTTP_X_CSRF_TOKEN']
+            ?? $_SERVER['HTTP_CSRF_TOKEN']
+            ?? ($jsonInput['csrf_token'] ?? null)
+            ?? $_GET['csrf_token']
+            ?? '';
+
+        if (!$this->validateCsrfToken($token)) {
+            if ($this->isAjax()) {
+                $this->jsonError('Security Error: CSRF token validation failed.', 403);
+            }
+            http_response_code(403);
+            die('Security Error: CSRF token validation failed.');
         }
         return true;
     }
@@ -188,6 +212,9 @@ class Controller {
             $this->redirect('index.php?route=auth/login');
         }
 
+        // Guarantee active CSRF token exists for the authenticated session
+        $this->generateCsrfToken();
+
         // Force password reset gate
         if (isset($_SESSION['force_password_reset']) && $_SESSION['force_password_reset'] == 1) {
             $route = $_GET['route'] ?? '';
@@ -224,9 +251,17 @@ class Controller {
             }
         }
 
-        // Automatic CSRF token validation on all authenticated POST requests
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $csrf = $_POST['csrf_token'] ?? $_GET['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        // Automatic CSRF token validation on all authenticated state-changing requests
+        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+            $jsonInput = $this->jsonInput();
+            $csrf = $_POST['csrf_token']
+                ?? $_SERVER['HTTP_X_CSRF_TOKEN']
+                ?? $_SERVER['HTTP_CSRF_TOKEN']
+                ?? ($jsonInput['csrf_token'] ?? null)
+                ?? $_GET['csrf_token']
+                ?? '';
+
             if (!$this->validateCsrfToken($csrf)) {
                 if ($this->isAjax()) {
                     $this->jsonError('Security Error: CSRF token validation failed.', 403);
@@ -337,8 +372,11 @@ class Controller {
 
         $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
         if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+            $jsonInput = $this->jsonInput();
             $csrf = $_POST['csrf_token']
                 ?? $_SERVER['HTTP_X_CSRF_TOKEN']
+                ?? $_SERVER['HTTP_CSRF_TOKEN']
+                ?? ($jsonInput['csrf_token'] ?? null)
                 ?? $_GET['csrf_token']
                 ?? '';
             if (!$this->validateCsrfToken($csrf)) {

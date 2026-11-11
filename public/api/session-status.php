@@ -2,7 +2,21 @@
 // Session Status API Endpoint
 require_once dirname(dirname(__DIR__)) . '/app/config/config.php';
 
-session_start();
+$https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'domain' => '',
+    'secure' => $https,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 header('Content-Type: application/json');
 
