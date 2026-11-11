@@ -146,7 +146,7 @@ class DashboardController extends Controller {
             }
 
             // CSRF Validation Check
-            $csrfToken = $data['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_GET['csrf_token'] ?? '';
+            $csrfToken = $data['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_SERVER['HTTP_CSRF_TOKEN'] ?? '';
             if (!$this->validateCsrfToken($csrfToken)) {
                 echo json_encode(['success' => false, 'message' => 'Security Error: CSRF token validation failed.']);
                 exit;
