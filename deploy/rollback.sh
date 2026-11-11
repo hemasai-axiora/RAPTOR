@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # RAPTOR CRM & HRMS — Production Rollback Script
-# Reverts /var/www/raptor/current symlink to the previous working release
 # ==============================================================================
 
 set -euo pipefail
@@ -9,34 +8,51 @@ set -euo pipefail
 BASE_DIR="/var/www/raptor"
 RELEASES_DIR="${BASE_DIR}/releases"
 CURRENT_LINK="${BASE_DIR}/current"
+PREV_RELEASE_FILE="${BASE_DIR}/previous_release"
+LOG_FILE="${BASE_DIR}/deployments.log"
 
-echo "=== Initiating Emergency Rollback Protocol ==="
+echo "======================================================================"
+echo "RAPTOR CRM/HRMS EMERGENCY ROLLBACK PROTOCOL"
+echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S %Z')"
+echo "======================================================================"
 
-# Identify current and previous release directories
-RELEASES=($(ls -td ${RELEASES_DIR}/*))
+TARGET_RELEASE=""
 
-if [ ${#RELEASES[@]} -lt 2 ]; then
-  echo "Error: Cannot rollback! No previous release directory found in ${RELEASES_DIR}."
+# Check if previous_release record exists and is valid
+if [ -f "${PREV_RELEASE_FILE}" ]; then
+  CANDIDATE=$(cat "${PREV_RELEASE_FILE}")
+  if [ -d "${CANDIDATE}" ]; then
+    TARGET_RELEASE="${CANDIDATE}"
+  fi
+fi
+
+# If not found from record, find second newest release in releases/
+if [ -z "${TARGET_RELEASE}" ]; then
+  RELEASES=($(ls -dt ${RELEASES_DIR}/*/ 2>/dev/null || true))
+  if [ ${#RELEASES[@]} -ge 2 ]; then
+    TARGET_RELEASE="${RELEASES[1]}"
+  fi
+fi
+
+if [ -z "${TARGET_RELEASE}" ] || [ ! -d "${TARGET_RELEASE}" ]; then
+  echo "CRITICAL ERROR: No valid previous release directory found to rollback to!" >&2
   exit 1
 fi
 
-CURRENT_RELEASE=$(readlink -f "${CURRENT_LINK}" || echo "")
-FAILED_RELEASE="${RELEASES[0]}"
-PREVIOUS_RELEASE="${RELEASES[1]}"
+echo "Rolling back current symlink to: ${TARGET_RELEASE}"
+ln -sfn "${TARGET_RELEASE}" "${CURRENT_LINK}"
 
-echo "Current (Failed) Release: ${FAILED_RELEASE}"
-echo "Rolling back to Previous Working Release: ${PREVIOUS_RELEASE}"
+echo "Recreating raptor-web container..."
+cd "${BASE_DIR}"
+docker compose -f "${BASE_DIR}/docker-compose.prod.yml" up -d --no-deps --force-recreate web
+docker exec raptor-nginx nginx -t
+docker exec raptor-nginx nginx -s reload
 
-# 1. Switch Symlink back to Previous Release
-ln -sfn "${PREVIOUS_RELEASE}" "${CURRENT_LINK}"
-chown -h www-data:www-data "${CURRENT_LINK}"
+echo "[$(date '+%Y-%m-%d %H:%M:%S IST')] ROLLBACK: Reverted active release to ${TARGET_RELEASE}" >> "${LOG_FILE}"
 
-# 2. Reload PHP-FPM and Nginx
-sudo systemctl reload php8.3-fpm || sudo service php8.3-fpm reload
-sudo systemctl reload nginx || sudo service nginx reload
+echo "Executing health check on rolled-back release..."
+"${BASE_DIR}/health-check.sh"
 
-# 3. Remove Failed Release Directory
-echo "Removing failed release directory..."
-rm -rf "${FAILED_RELEASE}"
-
-echo "=== Rollback Successfully Completed! Active Release: ${PREVIOUS_RELEASE} ==="
+echo "======================================================================"
+echo "ROLLBACK COMPLETED SUCCESSFULLY. ACTIVE RELEASE: ${TARGET_RELEASE}"
+echo "======================================================================"

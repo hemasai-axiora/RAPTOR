@@ -1,11 +1,21 @@
 .git
+.github
+deploy
 node_modules
 playwright-report
 test-results
-Digital marketing reserch doument.pptx
+backups
+storage
 *.zip
 *.tar.gz
 *.tgz
-.env.local
-.env.development
-tests/
+*.sql.gz
+*.pem
+*.key
+*.xlsx
+*.pptx
+*.docx
+.env
+.env.*
+!.env.example
+tests/*.pdf

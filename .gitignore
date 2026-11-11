@@ -1,34 +1,56 @@
-# Local environments
+# Environments & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.pfx
+id_rsa*
+id_ed25519*
+
+# Backups & Large Data
+backups/
+*.bak
+*.bak_*
+*.sql.gz
+*.tar.gz
+*.tgz
+
+# Preserve Schema and Migrations SQL while ignoring ad-hoc DB dumps
+*.sql
+!dashboard_schema.sql
+!migrations/*.sql
+
+# Local Dependencies & Vendor
+vendor/
+node_modules/
 .venv/
 venv/
-node_modules/
-vendor/
 
-# OS / editor noise
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-!.vscode/extensions.json
-!.vscode/settings.json
-
-# Runtime data
+# Runtime Data & Storage Media
 storage/
 logs/
 *.log
 *.tmp
+*.pdf
+!public/payslip_logo.jpg
 
-# Local env files
-.env
-.env.*
-!.env.example
+# Office & Design Documents
+*.xlsx
+*.pptx
+*.docx
 
-# Build/cache artifacts
-coverage/
+# OS / Editor Artifacts
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Build & Test Reports
 dist/
 build/
+coverage/
 .phpunit.cache/
 playwright-report/
 test-results/
-*.xlsx
-tests/*.pdf

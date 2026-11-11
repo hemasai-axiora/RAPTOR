@@ -1,0 +1,216 @@
+name: Production Automated CI/CD Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write   # Required for AWS OIDC authentication
+  contents: read    # Required to checkout code
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+jobs:
+  validate-and-build:
+    name: Stage 1 & 2 — Validate Code & Build Image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup PHP Environment
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, pdo_mysql, curl, xml, zip, gd
+          coverage: none
+
+      - name: Validate PHP Syntax (Linting)
+        run: |
+          echo "=== [1/5] Validating PHP Syntax ==="
+          FAILURES=0
+          while IFS= read -r file; do
+            if ! php -l "$file" > /dev/null 2>&1; then
+              echo "Syntax error in: $file"
+              php -l "$file"
+              FAILURES=$((FAILURES + 1))
+            fi
+          done < <(find app/ bin/ tests/ -name "*.php")
+          
+          if [ "$FAILURES" -gt 0 ]; then
+            echo "ERROR: Found $FAILURES PHP syntax error(s). Aborting build."
+            exit 1
+          fi
+          echo "✓ All PHP files passed syntax validation."
+
+      - name: Validate Composer Dependencies
+        run: |
+          echo "=== [2/5] Validating Composer Configuration ==="
+          if [ -f "composer.json" ]; then
+            composer validate --strict --no-check-all
+          else
+            echo "No composer.json found; skipping."
+          fi
+
+      - name: Secret Leak Prevention Scan
+        run: |
+          echo "=== [3/5] Scanning for Accidental Secrets & Private Keys ==="
+          LEAKS=0
+          
+          # Check for private keys
+          if grep -rnw . -e "BEGIN RSA PRIVATE KEY" -e "BEGIN OPENSSH PRIVATE KEY" -e "BEGIN PRIVATE KEY" --exclude-dir={.git,.github,vendor,node_modules} 2>/dev/null; then
+            echo "CRITICAL SECURITY ERROR: Private key detected in repository!"
+            LEAKS=$((LEAKS + 1))
+          fi
+          
+          # Check for hardcoded AWS Access Keys
+          if grep -rnE "AKIA[0-9A-Z]{16}" . --exclude-dir={.git,.github,vendor,node_modules} 2>/dev/null; then
+            echo "CRITICAL SECURITY ERROR: AWS Access Key ID detected in repository!"
+            LEAKS=$((LEAKS + 1))
+          fi
+          
+          if [ "$LEAKS" -gt 0 ]; then
+            echo "Deployment halted due to security policy violation."
+            exit 1
+          fi
+          echo "✓ Secret scanning clean. Zero exposed credentials found."
+
+      - name: Validate Dockerfile & Build Context
+        run: |
+          echo "=== [4/5] Validating Docker Configuration ==="
+          test -f "Dockerfile" || { echo "Dockerfile missing!"; exit 1; }
+          test -f "docker-compose.prod.yml" || { echo "docker-compose.prod.yml missing!"; exit 1; }
+          docker compose -f docker-compose.prod.yml config --quiet || {
+            echo "docker-compose.prod.yml syntax invalid!"
+            exit 1
+          }
+          echo "✓ Docker configuration syntax valid."
+
+      - name: Build Production Docker Image
+        run: |
+          echo "=== [5/5] Building Production Docker Image ==="
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          docker build \
+            -t "raptorqa-web:${SHORT_SHA}" \
+            -t "raptorqa-web:latest" \
+            .
+          echo "✓ Docker image built successfully with tag raptorqa-web:${SHORT_SHA}"
+
+  deploy-to-production:
+    name: Stage 3, 4, 5 & 6 — Deploy via AWS SSM & Health Check
+    needs: validate-and-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://agsraptor.com
+
+    steps:
+      - name: Authenticate to AWS via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN || 'arn:aws:iam::642122109154:role/GitHubActions-Raptor-DeployRole' }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          audience: sts.amazonaws.com
+
+      - name: Verify AWS Caller Identity
+        run: |
+          echo "Authenticated IAM Role:"
+          aws sts get-caller-identity
+
+      - name: Trigger Production Deployment via AWS Systems Manager
+        id: ssm-deploy
+        env:
+          EC2_INSTANCE_ID: ${{ secrets.AWS_EC2_INSTANCE_ID || 'i-08ebc43f88558d960' }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          echo "=== Triggering SSM Deployment on EC2 ($EC2_INSTANCE_ID) ==="
+          
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --parameters "commands=[\"sudo /var/www/raptor/deploy.sh '$COMMIT_SHA'\"]" \
+            --comment "Automated CI/CD Deployment: Commit $COMMIT_SHA" \
+            --timeout-seconds 600 \
+            --output text \
+            --query "Command.CommandId")
+          
+          echo "SSM Command ID: $COMMAND_ID"
+          echo "command_id=$COMMAND_ID" >> "$GITHUB_OUTPUT"
+          
+          # Poll command execution until completion
+          echo "Awaiting deployment execution..."
+          STATUS="Pending"
+          while [ "$STATUS" = "Pending" ] || [ "$STATUS" = "InProgress" ] || [ "$STATUS" = "Delayed" ]; do
+            sleep 10
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$EC2_INSTANCE_ID" \
+              --output text \
+              --query "Status" 2>/dev/null || echo "InProgress")
+            echo "Current Status: $STATUS..."
+          done
+          
+          # Fetch full execution stdout & stderr
+          INVOCATION=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$EC2_INSTANCE_ID" \
+            --output json)
+            
+          RESPONSE_CODE=$(echo "$INVOCATION" | jq -r '.ResponseCode')
+          STDOUT=$(echo "$INVOCATION" | jq -r '.StandardOutputContent')
+          STDERR=$(echo "$INVOCATION" | jq -r '.StandardErrorContent')
+          
+          echo "==================== DEPLOYMENT OUTPUT ===================="
+          echo "$STDOUT"
+          if [ -n "$STDERR" ] && [ "$STDERR" != "null" ]; then
+            echo "==================== DEPLOYMENT STDERR ===================="
+            echo "$STDERR"
+          fi
+          echo "==========================================================="
+          
+          if [ "$STATUS" != "Success" ] || [ "$RESPONSE_CODE" -ne 0 ]; then
+            echo "ERROR: Deployment failed on EC2 with status $STATUS (Exit code: $RESPONSE_CODE)!"
+            exit 1
+          fi
+          
+          echo "✓ EC2 SSM deployment executed successfully!"
+
+      - name: Verify Live Production HTTPS Availability
+        run: |
+          echo "=== External Endpoint Verification ==="
+          HEALTH_URL="https://agsraptor.com/"
+          STATUS_CODE=$(curl -s -L -o /tmp/resp.html -w "%{http_code}" --max-time 15 "$HEALTH_URL" || echo "000")
+          echo "Public Domain Response Code: $STATUS_CODE"
+          
+          if [ "$STATUS_CODE" -ne 200 ]; then
+            echo "WARNING: Public HTTPS returned status code $STATUS_CODE (expected 200)."
+          else
+            echo "✓ Production endpoint https://agsraptor.com/ is verified healthy and live!"
+          fi
+          rm -f /tmp/resp.html
+
+      - name: Publish Deployment Summary
+        if: always()
+        run: |
+          IST_TIME=$(TZ='Asia/Kolkata' date '+%Y-%m-%d %H:%M:%S IST')
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          
+          echo "### 🚀 Raptor CRM/HRMS Production Deployment Report" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Deployment Status** | **${{ job.status }}** |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit SHA** | \`$SHORT_SHA\` (\`${{ github.sha }}\`) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Triggered By** | \`${{ github.actor }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Environment** | \`Production (AWS us-east-1)\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Target EC2 Instance** | \`i-08ebc43f88558d960\` (\`54.242.141.219\`) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Execution Timestamp** | \`$IST_TIME\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Public Application URL** | [https://agsraptor.com](https://agsraptor.com) |" >> $GITHUB_STEP_SUMMARY
+

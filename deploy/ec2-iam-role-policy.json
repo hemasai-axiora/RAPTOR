@@ -10,10 +10,8 @@
         "s3:ListBucket"
       ],
       "Resource": [
-        "arn:aws:s3:::raptor-crm-backups-847013096108",
-        "arn:aws:s3:::raptor-crm-backups-847013096108/*",
-        "arn:aws:s3:::app-frontend-hosting-dev-847013096108",
-        "arn:aws:s3:::app-frontend-hosting-dev-847013096108/*"
+        "arn:aws:s3:::raptor-crm-backups-642122109154",
+        "arn:aws:s3:::raptor-crm-backups-642122109154/*"
       ]
     },
     {
@@ -25,7 +23,7 @@
         "ssm:GetParametersByPath"
       ],
       "Resource": [
-        "arn:aws:ssm:us-east-1:847013096108:parameter/raptor/*"
+        "arn:aws:ssm:us-east-1:642122109154:parameter/raptor/*"
       ]
     },
     {
