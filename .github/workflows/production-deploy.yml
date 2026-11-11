@@ -4,6 +4,21 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'app/**'
+      - 'bin/**'
+      - 'migrations/**'
+      - 'public/**'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'Dockerfile'
+      - 'docker-compose*.yml'
+  workflow_dispatch:
+    inputs:
+      target_commit:
+        description: 'Specific Commit SHA or Branch to Deploy (default: main)'
+        required: false
+        default: 'main'
 
 permissions:
   id-token: write   # Required for AWS OIDC authentication
@@ -129,7 +144,7 @@ jobs:
         id: ssm-deploy
         env:
           EC2_INSTANCE_ID: ${{ secrets.AWS_EC2_INSTANCE_ID || 'i-08ebc43f88558d960' }}
-          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_SHA: ${{ inputs.target_commit || github.sha }}
         run: |
           echo "=== Triggering SSM Deployment on EC2 ($EC2_INSTANCE_ID) ==="
           
