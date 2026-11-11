@@ -1198,7 +1198,7 @@ $(function() {
         $('#widgetZoomModal').modal('show');
         
         var payload = Object.assign({}, w, { csrf_token: csrfToken, date_filter: activeDateFilter });
-        fetch('index.php?route=dashboard/widgetData&csrf_token=' + encodeURIComponent(csrfToken), {
+        fetch('index.php?route=dashboard/widgetData', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
             body: JSON.stringify(payload)
@@ -1306,7 +1306,7 @@ $(function() {
             processAndDownload(widgetDataCache[idx]);
         } else {
             var payload = Object.assign({}, w, { csrf_token: csrfToken, date_filter: activeDateFilter });
-            fetch('index.php?route=dashboard/widgetData&csrf_token=' + encodeURIComponent(csrfToken), {
+            fetch('index.php?route=dashboard/widgetData', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
                 body: JSON.stringify(payload)
@@ -1371,7 +1371,7 @@ $(function() {
     // Fetch Live Widget Data with CSRF Header
     function fetchWidgetData(widget, idx) {
         var payload = Object.assign({}, widget, { csrf_token: csrfToken, date_filter: activeDateFilter });
-        fetch('index.php?route=dashboard/widgetData&csrf_token=' + encodeURIComponent(csrfToken), {
+        fetch('index.php?route=dashboard/widgetData', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
@@ -1741,7 +1741,7 @@ $(function() {
 
         var $btn = $(this).prop('disabled', true).text('Saving...');
 
-        fetch('index.php?route=dashboard/saveCustomDashboard&csrf_token=' + encodeURIComponent(csrfToken), {
+        fetch('index.php?route=dashboard/saveCustomDashboard', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',

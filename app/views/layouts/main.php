@@ -119,27 +119,39 @@
                     }
                 });
             }
+
+            function isSameOrigin(targetUrl) {
+                if (!targetUrl) return true;
+                try {
+                    var parsed = new URL(targetUrl, window.location.href);
+                    return parsed.origin === window.location.origin;
+                } catch (e) {
+                    return !/^https?:\/\//i.test(String(targetUrl));
+                }
+            }
+
             if (window.fetch) {
                 var _origFetch = window.fetch;
-                window.fetch = function(url, options) {
-                    options = options || {};
-                    var m = (options.method || 'GET').toUpperCase();
-                    if (['POST', 'PUT', 'PATCH', 'DELETE'].indexOf(m) !== -1) {
-                        options.headers = options.headers || {};
-                        if (options.headers instanceof Headers) {
-                            if (!options.headers.has('X-CSRF-TOKEN') && !options.headers.has('X-CSRF-Token')) {
-                                options.headers.append('X-CSRF-TOKEN', token);
+                window.fetch = function(input, init) {
+                    init = init || {};
+                    var url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
+                    var m = (init.method || (input && input.method) || 'GET').toUpperCase();
+                    if (['POST', 'PUT', 'PATCH', 'DELETE'].indexOf(m) !== -1 && isSameOrigin(url)) {
+                        init.headers = init.headers || {};
+                        if (init.headers instanceof Headers) {
+                            if (!init.headers.has('X-CSRF-TOKEN') && !init.headers.has('X-CSRF-Token')) {
+                                init.headers.append('X-CSRF-TOKEN', token);
                             }
-                        } else if (Array.isArray(options.headers)) {
-                            var exists = options.headers.some(function(h) { return h[0].toUpperCase() === 'X-CSRF-TOKEN'; });
-                            if (!exists) options.headers.push(['X-CSRF-TOKEN', token]);
+                        } else if (Array.isArray(init.headers)) {
+                            var exists = init.headers.some(function(h) { return h[0].toUpperCase() === 'X-CSRF-TOKEN'; });
+                            if (!exists) init.headers.push(['X-CSRF-TOKEN', token]);
                         } else {
-                            if (!options.headers['X-CSRF-TOKEN'] && !options.headers['X-CSRF-Token']) {
-                                options.headers['X-CSRF-TOKEN'] = token;
+                            if (!init.headers['X-CSRF-TOKEN'] && !init.headers['X-CSRF-Token']) {
+                                init.headers['X-CSRF-TOKEN'] = token;
                             }
                         }
                     }
-                    return _origFetch(url, options);
+                    return _origFetch(input, init);
                 };
             }
         })();

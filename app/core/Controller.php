@@ -139,7 +139,6 @@ class Controller {
             ?? $_SERVER['HTTP_X_CSRF_TOKEN']
             ?? $_SERVER['HTTP_CSRF_TOKEN']
             ?? ($jsonInput['csrf_token'] ?? null)
-            ?? $_GET['csrf_token']
             ?? '';
 
         if (!$this->validateCsrfToken($token)) {
@@ -259,7 +258,6 @@ class Controller {
                 ?? $_SERVER['HTTP_X_CSRF_TOKEN']
                 ?? $_SERVER['HTTP_CSRF_TOKEN']
                 ?? ($jsonInput['csrf_token'] ?? null)
-                ?? $_GET['csrf_token']
                 ?? '';
 
             if (!$this->validateCsrfToken($csrf)) {
@@ -377,7 +375,6 @@ class Controller {
                 ?? $_SERVER['HTTP_X_CSRF_TOKEN']
                 ?? $_SERVER['HTTP_CSRF_TOKEN']
                 ?? ($jsonInput['csrf_token'] ?? null)
-                ?? $_GET['csrf_token']
                 ?? '';
             if (!$this->validateCsrfToken($csrf)) {
                 $this->jsonError('CSRF token validation failed.', 403);
