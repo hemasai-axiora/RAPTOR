@@ -2,17 +2,15 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "GitHubOIDCProviderTrustPolicy",
+      "Sid": "GitHubActionsOIDCMainBranchOnly",
       "Effect": "Allow",
       "Principal": {
-        "Federated": "arn:aws:iam::847013096108:oidc-provider/token.actions.githubusercontent.com"
+        "Federated": "arn:aws:iam::642122109154:oidc-provider/token.actions.githubusercontent.com"
       },
       "Action": "sts:AssumeRoleWithWebIdentity",
       "Condition": {
         "StringEquals": {
-          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-        },
-        "StringLike": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
           "token.actions.githubusercontent.com:sub": "repo:hemasai-axiora/RAPTOR:ref:refs/heads/main"
         }
       }

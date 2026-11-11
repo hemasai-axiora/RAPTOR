@@ -1,0 +1,10 @@
+{
+  "InstanceIds": ["i-08ebc43f88558d960"],
+  "DocumentName": "AWS-RunShellScript",
+  "Parameters": {
+    "commands": [
+      "sudo /var/www/raptor/deploy.sh main"
+    ]
+  }
+}
+

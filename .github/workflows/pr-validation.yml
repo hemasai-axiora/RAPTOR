@@ -1,0 +1,92 @@
+name: Pull Request CI Quality Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-test:
+    name: Code Validation & Quality Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout PR Code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP Environment
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, pdo_mysql, curl, xml, zip, gd
+          coverage: none
+
+      - name: Validate PHP Syntax (Linting)
+        run: |
+          echo "=== Validating PHP Syntax across all project files ==="
+          FAILURES=0
+          while IFS= read -r file; do
+            if ! php -l "$file" > /dev/null 2>&1; then
+              echo "Syntax error in: $file"
+              php -l "$file"
+              FAILURES=$((FAILURES + 1))
+            fi
+          done < <(find app/ bin/ tests/ -name "*.php")
+          
+          if [ "$FAILURES" -gt 0 ]; then
+            echo "ERROR: Found $FAILURES syntax error(s). Please fix before merging."
+            exit 1
+          fi
+          echo "✓ All PHP files passed syntax validation."
+
+      - name: Validate Composer Dependencies
+        run: |
+          echo "=== Validating Composer Configuration ==="
+          if [ -f "composer.json" ]; then
+            composer validate --strict --no-check-all
+          else
+            echo "No composer.json found; skipping."
+          fi
+
+      - name: Secret Leak Prevention Scan
+        run: |
+          echo "=== Scanning for Accidental Secrets & Private Keys ==="
+          LEAKS=0
+          if grep -rnw . -e "BEGIN RSA PRIVATE KEY" -e "BEGIN OPENSSH PRIVATE KEY" -e "BEGIN PRIVATE KEY" --exclude-dir={.git,.github,vendor,node_modules} 2>/dev/null; then
+            echo "CRITICAL SECURITY ERROR: Private key detected in PR changes!"
+            LEAKS=$((LEAKS + 1))
+          fi
+          
+          if grep -rnE "AKIA[0-9A-Z]{16}" . --exclude-dir={.git,.github,vendor,node_modules} 2>/dev/null | grep -v "EXAMPLE"; then
+            echo "CRITICAL SECURITY ERROR: AWS Access Key ID detected in PR changes!"
+            LEAKS=$((LEAKS + 1))
+          fi
+          
+          if [ "$LEAKS" -gt 0 ]; then
+            echo "Pull Request blocked due to sensitive secret detection."
+            exit 1
+          fi
+          echo "✓ Secret scan clean."
+
+      - name: Validate Docker Configuration
+        run: |
+          echo "=== Validating Dockerfile and Docker Compose syntax ==="
+          test -f "Dockerfile" || { echo "Dockerfile missing!"; exit 1; }
+          test -f "docker-compose.prod.yml" || { echo "docker-compose.prod.yml missing!"; exit 1; }
+          docker compose -f docker-compose.prod.yml config --quiet || {
+            echo "docker-compose.prod.yml syntax invalid!"
+            exit 1
+          }
+          echo "✓ Docker configuration syntax valid."
+
+      - name: Dry-Run Docker Build
+        run: |
+          echo "=== Dry-Run Docker Build Validation ==="
+          docker build -t "raptorqa-pr-check:${{ github.sha }}" .
+          echo "✓ PR Docker build succeeded."
+

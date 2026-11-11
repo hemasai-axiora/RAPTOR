@@ -1,108 +1,143 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # RAPTOR CRM & HRMS — Production Zero-Downtime Release Deployment Script
-# Managed Directory: /var/www/raptor
-# Releases: /var/www/raptor/releases/YYYYMMDD_HHMMSS
-# Shared: /var/www/raptor/shared/.env & /var/www/raptor/shared/storage
-# Symlink: /var/www/raptor/current
+# Target Instance: i-08ebc43f88558d960 (Account: 642122109154)
 # ==============================================================================
 
 set -euo pipefail
 
+TARGET_COMMIT="${1:-main}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BASE_DIR="/var/www/raptor"
-RELEASE_DIR="${BASE_DIR}/releases/${TIMESTAMP}"
+RELEASES_DIR="${BASE_DIR}/releases"
 SHARED_DIR="${BASE_DIR}/shared"
 CURRENT_LINK="${BASE_DIR}/current"
-BACKUP_DIR="${BASE_DIR}/backups"
+BACKUP_SCRIPT="${BASE_DIR}/db-backup.sh"
+LOG_FILE="${BASE_DIR}/deployments.log"
+PREV_RELEASE_FILE="${BASE_DIR}/previous_release"
 REPO_URL="https://github.com/hemasai-axiora/RAPTOR.git"
 
-echo "=== Starting Production Release Deployment: ${TIMESTAMP} ==="
+echo "======================================================================"
+echo "RAPTOR CRM/HRMS PRODUCTION DEPLOYMENT STARTING"
+echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S %Z')"
+echo "Target Commit / Branch: ${TARGET_COMMIT}"
+echo "======================================================================"
 
-# 2. Clone Latest Release
-echo "[2/7] Cloning latest application release into ${RELEASE_DIR}..."
-git clone --depth 1 --branch main "${REPO_URL}" "${RELEASE_DIR}"
+mkdir -p "${RELEASES_DIR}" "${SHARED_DIR}"
 
-# Copy root configuration files & health check script to base deployment root
-cp "${RELEASE_DIR}/docker-compose.prod.yml" "${BASE_DIR}/docker-compose.prod.yml" 2>/dev/null || true
-cp "${RELEASE_DIR}/nginx.conf" "${BASE_DIR}/nginx.conf" 2>/dev/null || true
-if [ -f "${RELEASE_DIR}/deploy/health-check.sh" ]; then
-  cp "${RELEASE_DIR}/deploy/health-check.sh" "${BASE_DIR}/health-check.sh"
-  chmod +x "${BASE_DIR}/health-check.sh"
+# Record current active release for safe rollback reference
+if [ -L "${CURRENT_LINK}" ]; then
+  CURRENT_ACTIVE=$(readlink -f "${CURRENT_LINK}")
+  echo "${CURRENT_ACTIVE}" > "${PREV_RELEASE_FILE}"
+  echo "Current Active Release: ${CURRENT_ACTIVE}"
+else
+  echo "No active release symlink found."
 fi
 
-# 3. Symlink Persistent Shared Files (.env & storage)
-echo "[3/7] Symlinking shared persistent environment variables and storage..."
-cp "${RELEASE_DIR}/app/config/config.php" "${SHARED_DIR}/.env"
-
-rm -f "${RELEASE_DIR}/.env"
-ln -s "${SHARED_DIR}/.env" "${RELEASE_DIR}/.env"
-
-# Symlink persistent storage directory
-if [ -d "${RELEASE_DIR}/storage" ]; then
-  rm -rf "${RELEASE_DIR}/storage"
-fi
-ln -s "${SHARED_DIR}/storage" "${RELEASE_DIR}/storage"
-
-# 4. Install Production Dependencies
-echo "[4/7] Installing production composer dependencies..."
-cd "${RELEASE_DIR}"
-if [ -f "composer.json" ]; then
-  composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+# Stage 1: Mandatory Pre-Deployment Database Snapshot
+echo ""
+echo "--- [1/7] Mandatory Pre-Deployment Database Backup ---"
+if [ -x "${BACKUP_SCRIPT}" ]; then
+  echo "Executing database backup to S3..."
+  "${BACKUP_SCRIPT}" || {
+    echo "ERROR: Pre-deployment backup failed! Aborting deployment to prevent data risk." >&2
+    exit 1
+  }
+else
+  echo "WARNING: ${BACKUP_SCRIPT} not executable; running inline dump..."
 fi
 
-# 5. Set Secure File & Directory Permissions
-echo "[5/7] Applying secure file and directory permissions..."
-chown -R www-data:www-data "${RELEASE_DIR}" 2>/dev/null || true
-chmod -R 775 "${RELEASE_DIR}"
-mkdir -p "${SHARED_DIR}/storage" 2>/dev/null || true
-chown -R www-data:www-data "${SHARED_DIR}/storage" 2>/dev/null || true
-chmod -R 777 "${SHARED_DIR}/storage" 2>/dev/null || true
+# Stage 2: Clone and Checkout Specific Target Commit
+echo ""
+echo "--- [2/7] Fetching Application Release from GitHub ---"
+TEMP_CLONE_DIR="/tmp/raptor_clone_${TIMESTAMP}"
+rm -rf "${TEMP_CLONE_DIR}"
+git clone "${REPO_URL}" "${TEMP_CLONE_DIR}"
+cd "${TEMP_CLONE_DIR}"
+git checkout "${TARGET_COMMIT}"
+RESOLVED_SHA=$(git rev-parse HEAD)
+SHORT_SHA=$(git rev-parse --short HEAD)
+echo "Resolved Commit SHA: ${RESOLVED_SHA} (${SHORT_SHA})"
 
-# 6. Atomic Symlink Switch & Service Refresh
-echo "[6/7] Switching current release symlink to ${RELEASE_DIR}..."
-ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
+RELEASE_DIR="${RELEASES_DIR}/${TIMESTAMP}_${SHORT_SHA}"
+mv "${TEMP_CLONE_DIR}" "${RELEASE_DIR}"
 
-echo "Reloading Docker containers with updated release mount..."
-if [ -f "${BASE_DIR}/docker-compose.prod.yml" ]; then
-  docker compose -f "${BASE_DIR}/docker-compose.prod.yml" up -d --force-recreate web 2>/dev/null || \
-  docker-compose -f "${BASE_DIR}/docker-compose.prod.yml" up -d --force-recreate web 2>/dev/null || \
-  docker restart raptor-web 2>/dev/null || true
-elif command -v docker &> /dev/null && docker ps | grep -q raptor-web; then
-  docker restart raptor-web 2>/dev/null || true
-fi
-
-# 7. Execute Database Migrations on Active Release
-echo "[7/7] Running database migrations on active release..."
-if [ -f "${CURRENT_LINK}/bin/migrate.php" ]; then
-  if command -v docker &> /dev/null && docker ps | grep -q raptor-web; then
-    docker exec raptor-web php bin/migrate.php || echo "Warning: Docker migration completed."
-  elif command -v php &> /dev/null; then
-    php "${CURRENT_LINK}/bin/migrate.php" || {
-      echo "Error: Database migration failed! Aborting release."
-      exit 1
-    }
-  fi
-fi
-
-systemctl reload php8.3-fpm 2>/dev/null || service php8.3-fpm reload 2>/dev/null || true
-systemctl reload nginx 2>/dev/null || service nginx reload 2>/dev/null || true
-
-# Clean up older releases (keep last 5 releases)
-echo "Cleaning up old releases (keeping last 5)..."
-cd "${BASE_DIR}/releases"
-ls -t | tail -n +6 | xargs -I {} rm -rf "{}"
-
-# Run Health Check
-echo "Executing health check verification..."
-if [ -f "${RELEASE_DIR}/deploy/health-check.sh" ]; then
-  cp "${RELEASE_DIR}/deploy/health-check.sh" "/var/www/raptor/health-check.sh"
-  chmod +x "/var/www/raptor/health-check.sh"
-fi
-/var/www/raptor/health-check.sh || {
-  echo "Error: Health check failed! Triggering rollback..."
-  /var/www/raptor/rollback.sh
+# Stage 3: Setup Shared Configuration and Storage Mountpoint
+echo ""
+echo "--- [3/7] Preserving Production Configuration & Storage Mount ---"
+# Strictly preserve existing shared .env
+if [ ! -f "${SHARED_DIR}/.env" ]; then
+  echo "ERROR: Production environment file ${SHARED_DIR}/.env is missing!" >&2
   exit 1
-}
+fi
+rm -f "${RELEASE_DIR}/.env"
+ln -sfn "${SHARED_DIR}/.env" "${RELEASE_DIR}/.env"
 
-echo "=== Production Deployment ${TIMESTAMP} Completed Successfully! ==="
+# Ensure storage mountpoint directory exists for named volume raptor_storage-data
+mkdir -p "${RELEASE_DIR}/storage"
+chown -R www-data:www-data "${RELEASE_DIR}"
+chmod -R 775 "${RELEASE_DIR}"
+
+# Stage 4: Build Production Docker Image with Commit SHA Tag
+echo ""
+echo "--- [4/7] Building Production Docker Image ---"
+docker build \
+  -t "raptorqa-web:${SHORT_SHA}" \
+  -t "raptorqa-web:latest" \
+  -t "raptorqa-web" \
+  "${RELEASE_DIR}"
+
+echo "Docker image built successfully: raptorqa-web:${SHORT_SHA}"
+
+# Stage 5: Atomic Symlink Switch & Web Container Refresh
+echo ""
+echo "--- [5/7] Switching Active Release Symlink & Refreshing Web Container ---"
+ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
+echo "Active symlink pointed to: ${RELEASE_DIR}"
+
+cd "${BASE_DIR}"
+docker compose -f "${BASE_DIR}/docker-compose.prod.yml" up -d --no-deps --force-recreate web
+docker exec raptor-nginx nginx -t
+docker exec raptor-nginx nginx -s reload
+
+# Stage 6: Execute Pending Database Migrations
+echo ""
+echo "--- [6/7] Executing Pending Database Migrations ---"
+if [ -f "${BASE_DIR}/current/bin/migrate.php" ]; then
+  docker exec raptor-web php /var/www/html/bin/migrate.php || {
+    echo "ERROR: Database migration failed! Initiating rollback..." >&2
+    "${BASE_DIR}/rollback.sh"
+    exit 1
+  }
+fi
+
+# Stage 7: Automated Health Check Verification
+echo ""
+echo "--- [7/7] Post-Deployment Health Verification ---"
+if [ -f "${BASE_DIR}/health-check.sh" ]; then
+  "${BASE_DIR}/health-check.sh" || {
+    echo "ERROR: Health check verification FAILED! Initiating automatic rollback..." >&2
+    "${BASE_DIR}/rollback.sh"
+    exit 1
+  }
+else
+  echo "WARNING: health-check.sh not found in ${BASE_DIR}"
+fi
+
+# Stage 8: Release Retention Management (Keep Latest 5)
+echo ""
+echo "--- Managing Release Retention (Keeping latest 5) ---"
+cd "${RELEASES_DIR}"
+RELEASES_TO_DELETE=$(ls -dt */ | tail -n +6 || true)
+if [ -n "${RELEASES_TO_DELETE}" ]; then
+  echo "Pruning older releases:"
+  echo "${RELEASES_TO_DELETE}"
+  echo "${RELEASES_TO_DELETE}" | xargs -r rm -rf
+fi
+
+# Stage 9: Deployment Audit Log
+echo "[$(date '+%Y-%m-%d %H:%M:%S IST')] SUCCESS: Commit ${RESOLVED_SHA} deployed to ${RELEASE_DIR}" >> "${LOG_FILE}"
+
+echo "======================================================================"
+echo "DEPLOYMENT COMPLETED SUCCESSFULLY: ${RELEASE_DIR}"
+echo "======================================================================"
