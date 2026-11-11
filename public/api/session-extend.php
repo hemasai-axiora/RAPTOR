@@ -2,13 +2,35 @@
 // Session Extend API Endpoint
 require_once dirname(dirname(__DIR__)) . '/app/config/config.php';
 
-session_start();
+$https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'domain' => '',
+    'secure' => $https,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+    exit();
+}
+
+// CSRF validation on session extension
+$csrf = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? '';
+if (empty($_SESSION['csrf_token']) || empty($csrf) || !hash_equals((string)$_SESSION['csrf_token'], (string)$csrf)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Security Error: CSRF token validation failed.']);
     exit();
 }
 

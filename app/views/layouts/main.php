@@ -24,6 +24,7 @@
     <link rel="icon" type="image/png" href="<?php echo URLROOT; ?>/logo.png">
     <link rel="manifest" href="<?php echo URLROOT; ?>/manifest.json">
     <meta name="theme-color" content="#2563EB">
+    <meta name="csrf-token" content="<?php echo htmlspecialchars($csrf_token ?? ($_SESSION['csrf_token'] ?? '')); ?>">
     <!-- Raptor v2.2 Design Tokens & Glass Surfaces -->
     <link href="<?php echo URLROOT; ?>/assets/css/raptor-tokens.css?v=2.2.0" rel="stylesheet">
     <link href="<?php echo URLROOT; ?>/assets/css/raptor-glass.css?v=2.2.0" rel="stylesheet">
@@ -106,6 +107,55 @@
 
     <!-- Script Libraries loaded in Head to support inline view scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Global CSRF Header Setup for all jQuery and fetch requests
+        (function() {
+            var token = <?php echo json_encode($csrf_token ?? ($_SESSION['csrf_token'] ?? '')); ?>;
+            window.RAPTOR_CSRF_TOKEN = token;
+            if (typeof jQuery !== 'undefined') {
+                jQuery.ajaxSetup({
+                    headers: {
+                        'X-CSRF-TOKEN': token
+                    }
+                });
+            }
+
+            function isSameOrigin(targetUrl) {
+                if (!targetUrl) return true;
+                try {
+                    var parsed = new URL(targetUrl, window.location.href);
+                    return parsed.origin === window.location.origin;
+                } catch (e) {
+                    return !/^https?:\/\//i.test(String(targetUrl));
+                }
+            }
+
+            if (window.fetch) {
+                var _origFetch = window.fetch;
+                window.fetch = function(input, init) {
+                    init = init || {};
+                    var url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
+                    var m = (init.method || (input && input.method) || 'GET').toUpperCase();
+                    if (['POST', 'PUT', 'PATCH', 'DELETE'].indexOf(m) !== -1 && isSameOrigin(url)) {
+                        init.headers = init.headers || {};
+                        if (init.headers instanceof Headers) {
+                            if (!init.headers.has('X-CSRF-TOKEN') && !init.headers.has('X-CSRF-Token')) {
+                                init.headers.append('X-CSRF-TOKEN', token);
+                            }
+                        } else if (Array.isArray(init.headers)) {
+                            var exists = init.headers.some(function(h) { return h[0].toUpperCase() === 'X-CSRF-TOKEN'; });
+                            if (!exists) init.headers.push(['X-CSRF-TOKEN', token]);
+                        } else {
+                            if (!init.headers['X-CSRF-TOKEN'] && !init.headers['X-CSRF-Token']) {
+                                init.headers['X-CSRF-TOKEN'] = token;
+                            }
+                        }
+                    }
+                    return _origFetch(input, init);
+                };
+            }
+        })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
@@ -2222,7 +2272,7 @@
     <script>
     (function () {
         if (!navigator.geolocation) return;
-        var CSRF = <?php echo json_encode($_SESSION['csrf_token']); ?>;
+        var CSRF = <?php echo json_encode($csrf_token ?? ($_SESSION['csrf_token'] ?? '')); ?>;
         var FLUSH_MS = 120000;      // send batched points every 2 minutes
         var buffer = [], watchId = null, timer = null, stopped = false;
 

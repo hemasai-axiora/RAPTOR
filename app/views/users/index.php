@@ -1929,7 +1929,7 @@ $(document).ready(function() {
 
         $.ajax({
 
-            url: 'index.php?route=users/bulkUpload&csrf_token=<?php echo $_SESSION['csrf_token']; ?>',
+            url: 'index.php?route=users/bulkUpload',
 
             type: 'POST',
 
@@ -2171,7 +2171,7 @@ $(document).ready(function() {
 
         $.ajax({
 
-            url: 'index.php?route=users/bulkImport&csrf_token=<?php echo $_SESSION['csrf_token']; ?>',
+            url: 'index.php?route=users/bulkImport',
 
             type: 'POST',
 

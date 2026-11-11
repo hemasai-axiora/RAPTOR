@@ -1647,7 +1647,7 @@ class PayrollController extends Controller {
 
 
 
-        $csrf = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_GET['csrf_token'] ?? '';
+        $csrf = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_SERVER['HTTP_CSRF_TOKEN'] ?? '';
 
         if (!$this->validateCsrfToken($csrf)) {
 
@@ -2293,7 +2293,7 @@ class PayrollController extends Controller {
 
         $input = $this->jsonInput();
 
-        $csrf = $input['csrf_token'] ?? $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_GET['csrf_token'] ?? '';
+        $csrf = $input['csrf_token'] ?? $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_SERVER['HTTP_CSRF_TOKEN'] ?? '';
 
         if (!$this->validateCsrfToken($csrf)) {
 
