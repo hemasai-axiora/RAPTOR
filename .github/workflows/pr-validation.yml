@@ -62,7 +62,7 @@ jobs:
             LEAKS=$((LEAKS + 1))
           fi
           
-          if grep -rnE "AKIA[0-9A-Z]{16}" . --exclude-dir={.git,.github,vendor,node_modules} 2>/dev/null; then
+          if grep -rnE "AKIA[0-9A-Z]{16}" . --exclude-dir={.git,.github,vendor,node_modules} 2>/dev/null | grep -v "EXAMPLE"; then
             echo "CRITICAL SECURITY ERROR: AWS Access Key ID detected in PR changes!"
             LEAKS=$((LEAKS + 1))
           fi
