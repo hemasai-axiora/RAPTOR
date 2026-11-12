@@ -187,8 +187,11 @@ class PreSendChecklistService {
 
             // Incorporate Preflight BLOCK findings into blockers
             foreach ($preflightResult['findings'] as $finding) {
-                if ($finding['severity'] === 'BLOCK') {
-                    $blockers[] = "[{$finding['rule_id']}] {$finding['message']}";
+                $sev = is_object($finding) ? ($finding->severity ?? '') : ($finding['severity'] ?? '');
+                $rId = is_object($finding) ? ($finding->ruleId ?? '') : ($finding['rule_id'] ?? '');
+                $msg = is_object($finding) ? ($finding->message ?? '') : ($finding['message'] ?? '');
+                if ($sev === 'BLOCK') {
+                    $blockers[] = "[{$rId}] {$msg}";
                 }
             }
 

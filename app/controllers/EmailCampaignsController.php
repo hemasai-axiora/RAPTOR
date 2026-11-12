@@ -517,7 +517,11 @@ class EmailCampaignsController extends Controller {
             $_SESSION['flash_success'] = 'Campaign successfully verified and launched! ' . $res['message'];
             $this->redirect('index.php?route=email_campaigns/campaigns');
         } else {
-            $_SESSION['flash_error'] = 'Launch Blocked: ' . ($res['error'] ?? 'Unknown error');
+            $errMsg = $res['error'] ?? 'Unknown error';
+            if (!empty($res['blockers']) && is_array($res['blockers'])) {
+                $errMsg .= ' [' . implode(' | ', $res['blockers']) . ']';
+            }
+            $_SESSION['flash_error'] = 'Launch Blocked: ' . $errMsg;
             $this->redirect('index.php?route=email_campaigns/campaignEdit&id=' . $campaignId);
         }
     }
