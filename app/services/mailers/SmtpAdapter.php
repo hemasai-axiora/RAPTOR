@@ -14,15 +14,23 @@ class SmtpAdapter implements MailerAdapterInterface {
     private array $config;
 
     public function __construct(array $config = []) {
-        $this->config = array_merge([
-            'host' => $_ENV['SMTP_HOST'] ?? '127.0.0.1',
-            'port' => (int)($_ENV['SMTP_PORT'] ?? 587),
-            'username' => $_ENV['SMTP_USER'] ?? '',
-            'password' => $_ENV['SMTP_PASS'] ?? '',
-            'encryption' => $_ENV['SMTP_ENCRYPTION'] ?? PHPMailer::ENCRYPTION_STARTTLS,
-            'timeout' => (int)($_ENV['SMTP_TIMEOUT'] ?? 15),
+        $mailConfig = class_exists('EmailService') ? EmailService::getConfig() : [];
+
+        $host = !empty($config['host']) ? $config['host'] : (!empty($mailConfig['host']) ? $mailConfig['host'] : ($_ENV['SMTP_HOST'] ?? '127.0.0.1'));
+        $port = !empty($config['port']) ? (int)$config['port'] : (!empty($mailConfig['port']) ? (int)$mailConfig['port'] : (int)($_ENV['SMTP_PORT'] ?? 587));
+        $username = isset($config['username']) ? $config['username'] : ($mailConfig['username'] ?? ($_ENV['SMTP_USER'] ?? ''));
+        $password = isset($config['password']) ? $config['password'] : ($mailConfig['password'] ?? ($_ENV['SMTP_PASS'] ?? ''));
+        $encryption = isset($config['encryption']) ? $config['encryption'] : ($mailConfig['encryption'] ?? ($_ENV['SMTP_ENCRYPTION'] ?? 'tls'));
+
+        $this->config = [
+            'host' => $host,
+            'port' => $port,
+            'username' => $username,
+            'password' => $password,
+            'encryption' => $encryption,
+            'timeout' => (int)($config['timeout'] ?? $_ENV['SMTP_TIMEOUT'] ?? 15),
             'keepalive' => true
-        ], $config);
+        ];
     }
 
     public function getName(): string {
@@ -39,7 +47,17 @@ class SmtpAdapter implements MailerAdapterInterface {
             $mail->SMTPAuth = !empty($this->config['username']);
             $mail->Username = $this->config['username'];
             $mail->Password = $this->config['password'];
-            $mail->SMTPSecure = $this->config['encryption'];
+
+            $enc = strtolower(trim((string)($this->config['encryption'] ?? '')));
+            if ($enc === 'ssl' || $this->config['port'] === 465) {
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+            } elseif ($enc === 'tls' || $this->config['port'] === 587) {
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            } else {
+                $mail->SMTPSecure = '';
+                $mail->SMTPAutoTLS = false;
+            }
+
             $mail->Port = $this->config['port'];
             $mail->Timeout = $this->config['timeout'];
             $mail->CharSet = 'UTF-8';

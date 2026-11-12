@@ -152,6 +152,7 @@
                                 <label class="form-label small fw-semibold">Select Subscriber List</label>
                                 <select name="list_id" id="audience_list" class="form-select">
                                     <option value="">-- None / Use Dynamic Segment --</option>
+                                    <option value="-1" <?php echo (($campaign->list_id ?? 0) == -1) ? 'selected' : ''; ?>>★ All Active Subscribers (Broadcast to All Contacts)</option>
                                     <?php foreach ($lists as $l): ?>
                                         <option value="<?php echo $l->list_id; ?>" <?php echo (($campaign->list_id ?? 0) == $l->list_id) ? 'selected' : ''; ?>>
                                             <?php echo htmlspecialchars($l->name); ?> (<?php echo number_format($l->active_subscribers); ?> subscribers)
@@ -318,6 +319,27 @@
                                     <i class="fa-solid fa-rocket me-2"></i>Verify & Launch Campaign
                                 </button>
                             <?php endif; ?>
+
+                            <?php if ($campaign && in_array($campaign->status, ['queued', 'sending'])): ?>
+                                <button type="button" class="btn btn-primary shadow-sm" onclick="document.getElementById('form-process-queue').submit();">
+                                    <i class="fa-solid fa-bolt me-2"></i>Process Queue Now
+                                </button>
+                                <button type="button" class="btn btn-warning shadow-sm" onclick="if(confirm('Pause this campaign?')) document.getElementById('form-pause-campaign').submit();">
+                                    <i class="fa-solid fa-pause me-2"></i>Pause Campaign
+                                </button>
+                            <?php endif; ?>
+
+                            <?php if ($campaign && $campaign->status === 'paused'): ?>
+                                <button type="button" class="btn btn-info text-white shadow-sm" onclick="document.getElementById('form-resume-campaign').submit();">
+                                    <i class="fa-solid fa-play me-2"></i>Resume Campaign
+                                </button>
+                            <?php endif; ?>
+
+                            <?php if ($campaign && in_array($campaign->status, ['queued', 'sending', 'paused'])): ?>
+                                <button type="button" class="btn btn-outline-danger btn-sm shadow-sm" onclick="if(confirm('Cancel campaign and discard remaining queue?')) document.getElementById('form-cancel-campaign').submit();">
+                                    <i class="fa-solid fa-xmark me-2"></i>Cancel Campaign
+                                </button>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -336,6 +358,25 @@
         </div>
     </form>
 </div>
+
+<?php if ($campaign): ?>
+<form id="form-process-queue" method="POST" action="index.php?route=email_campaigns/queueProcess" style="display:none;">
+    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
+    <input type="hidden" name="campaign_id" value="<?php echo $campaign->campaign_id; ?>">
+</form>
+<form id="form-pause-campaign" method="POST" action="index.php?route=email_campaigns/campaignPause" style="display:none;">
+    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
+    <input type="hidden" name="campaign_id" value="<?php echo $campaign->campaign_id; ?>">
+</form>
+<form id="form-resume-campaign" method="POST" action="index.php?route=email_campaigns/campaignResume" style="display:none;">
+    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
+    <input type="hidden" name="campaign_id" value="<?php echo $campaign->campaign_id; ?>">
+</form>
+<form id="form-cancel-campaign" method="POST" action="index.php?route=email_campaigns/campaignCancel" style="display:none;">
+    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
+    <input type="hidden" name="campaign_id" value="<?php echo $campaign->campaign_id; ?>">
+</form>
+<?php endif; ?>
 
 <!-- Modal 1: AI Subject Line & Pre-Check Copilot -->
 <div class="modal fade" id="aiSubjectModal" tabindex="-1" aria-labelledby="aiSubjectModalLabel" aria-hidden="true">

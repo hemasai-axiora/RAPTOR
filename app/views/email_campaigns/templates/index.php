@@ -34,7 +34,7 @@
         </li>
         <li class="nav-item">
             <a class="nav-link fw-medium" href="index.php?route=email_campaigns/lists">
-                <i class="fa-solid fa-list me-1"></i>Lists & Payroll Sync
+                <i class="fa-solid fa-layer-group me-1"></i>Contact Lists
             </a>
         </li>
         <li class="nav-item">
@@ -96,6 +96,13 @@
                                 <a href="index.php?route=email_campaigns/templateEdit&id=<?php echo $t->template_id; ?>" class="btn btn-sm btn-outline-primary">
                                     <i class="fa-solid fa-pen-to-square me-1"></i>Edit / Preview
                                 </a>
+                                <form method="POST" action="index.php?route=email_campaigns/templateDuplicate" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
+                                    <input type="hidden" name="template_id" value="<?php echo $t->template_id; ?>">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary" title="Duplicate template">
+                                        <i class="fa-solid fa-copy me-1"></i>Duplicate
+                                    </button>
+                                </form>
                                 <?php if (!$t->is_prebuilt): ?>
                                     <form method="POST" action="index.php?route=email_campaigns/templateDelete" onsubmit="return confirm('Delete this custom template?');" class="d-inline">
                                         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">

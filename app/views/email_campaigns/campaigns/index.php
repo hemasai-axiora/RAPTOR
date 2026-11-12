@@ -34,7 +34,7 @@
         </li>
         <li class="nav-item">
             <a class="nav-link fw-medium" href="index.php?route=email_campaigns/lists">
-                <i class="fa-solid fa-list me-1"></i>Lists & Payroll Sync
+                <i class="fa-solid fa-layer-group me-1"></i>Contact Lists
             </a>
         </li>
         <li class="nav-item">
