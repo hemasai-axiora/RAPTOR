@@ -665,17 +665,17 @@
 
                 <hr class="border-secondary border-opacity-15 my-4">
 
-                <!-- 9. Email & SMTP Integration (Payroll Payslips & System Alerts) -->
+                <!-- 9. Corporate & Payroll SMTP Integration (Payslips & System Alerts) -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="text-white mb-0" style="font-size:1.05rem;">
-                        <i class="fa-solid fa-envelope-circle-check text-success me-2"></i>Email &amp; SMTP Integration
+                        <i class="fa-solid fa-envelope-circle-check text-success me-2"></i>Corporate &amp; Payroll SMTP (Payslips &amp; Alerts)
                     </h5>
                     <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#testEmailModal">
-                        <i class="fa-solid fa-paper-plane me-1"></i>Test SMTP Connection
+                        <i class="fa-solid fa-paper-plane me-1"></i>Test Payroll SMTP
                     </button>
                 </div>
                 <p class="text-secondary small mb-3">
-                    Configure your corporate SMTP mail server (Gmail, Google Workspace, Microsoft 365, AWS SES, Brevo, SendGrid, or cPanel/Postfix) to automatically email vector PDF payslips to employees when salary slips are generated or released.
+                    Configure your corporate SMTP mail server (Zoho Workplace, Google Workspace, Microsoft 365, or cPanel/Postfix) to automatically email vector PDF payslips to employees when salary slips are generated or released.
                 </p>
 
                 <div class="row g-3 mb-4">
@@ -690,7 +690,7 @@
                         <label class="form-label text-secondary">SMTP Host</label>
                         <input type="text" name="mail.host" id="mail_host" class="form-control bg-dark text-white border-secondary font-monospace"
                                value="<?php echo htmlspecialchars($settings['mail.host'] ?? ''); ?>"
-                               placeholder="e.g. smtp.gmail.com or smtp.office365.com">
+                               placeholder="e.g. smtppro.zoho.in or smtp.gmail.com">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label text-secondary">SMTP Port</label>
@@ -718,7 +718,7 @@
                         <div class="input-group">
                             <input type="password" name="mail.password" id="mail_password" class="form-control bg-dark text-white border-secondary font-monospace"
                                    value="<?php echo htmlspecialchars($settings['mail.password'] ?? ''); ?>"
-                                   placeholder="Enter SMTP password or Google App Password">
+                                   placeholder="Enter SMTP password or App Password">
                             <button class="btn btn-outline-secondary" type="button" onclick="togglePassVisibility('mail_password')">
                                 <i class="fa-solid fa-eye" id="mail_password_icon"></i>
                             </button>
@@ -734,7 +734,7 @@
                     <div class="col-md-4">
                         <label class="form-label text-secondary">Sender "From" Name</label>
                         <input type="text" name="mail.from_name" id="mail_from_name" class="form-control bg-dark text-white border-secondary"
-                               value="<?php echo htmlspecialchars($settings['mail.from_name'] ?? 'Axiora Global Solutions'); ?>"
+                               value="<?php echo htmlspecialchars($settings['mail.from_name'] ?? 'Axiora Global Solutions - Payroll'); ?>"
                                placeholder="Axiora Global Solutions - Payroll">
                     </div>
                     <div class="col-md-4">
@@ -744,6 +744,96 @@
                             <div class="form-check form-switch mb-0">
                                 <input class="form-check-input" type="checkbox" name="mail.auto_send_on_generation" id="mail_auto_send_on_generation" <?php echo (($settings['mail.auto_send_on_generation'] ?? '1') === '1') ? 'checked' : ''; ?>>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-secondary border-opacity-15 my-4">
+
+                <!-- 10. Marketing & Bulk Email SMTP (Dedicated Campaign Dispatcher) -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="text-white mb-0" style="font-size:1.05rem;">
+                            <i class="fa-solid fa-bullhorn text-warning me-2"></i>Marketing &amp; Bulk Email SMTP (Dedicated Campaign Dispatcher)
+                        </h5>
+                        <p class="text-secondary small mb-0 mt-1">
+                            Isolate mass marketing broadcasts (promotions, invites, newsletters) on a dedicated SMTP server (e.g. AWS SES, Brevo, SendGrid, or dedicated marketing account) to protect corporate payroll deliverability.
+                        </p>
+                    </div>
+                    <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#testMarketingEmailModal">
+                        <i class="fa-solid fa-paper-plane me-1"></i>Test Marketing SMTP
+                    </button>
+                </div>
+
+                <div class="p-3 mb-4 rounded bg-dark border border-secondary">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <span class="text-white fw-semibold">Use Dedicated SMTP Server for Marketing Campaigns</span>
+                            <div class="text-secondary small">When enabled, campaign broadcasts bypass the corporate payslip mailer and route through these credentials. When disabled, marketing safely uses corporate SMTP.</div>
+                        </div>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" name="mail.marketing.enabled" id="mail_marketing_enabled" <?php echo (($settings['mail.marketing.enabled'] ?? '0') === '1') ? 'checked' : ''; ?> onchange="toggleMarketingSmtp(this.checked)">
+                        </div>
+                    </div>
+
+                    <div id="marketing_smtp_fields" class="row g-3 <?php echo (($settings['mail.marketing.enabled'] ?? '0') === '1') ? '' : 'd-none'; ?>">
+                        <div class="col-md-3">
+                            <label class="form-label text-secondary">Mail Protocol / Driver</label>
+                            <select name="mail.marketing.driver" id="mail_marketing_driver" class="form-select bg-dark text-white border-secondary">
+                                <option value="smtp" <?php echo (($settings['mail.marketing.driver'] ?? 'smtp') === 'smtp') ? 'selected' : ''; ?>>SMTP Socket (Recommended)</option>
+                                <option value="mail" <?php echo (($settings['mail.marketing.driver'] ?? '') === 'mail') ? 'selected' : ''; ?>>PHP Native mail()</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-secondary">Marketing SMTP Host</label>
+                            <input type="text" name="mail.marketing.host" id="mail_marketing_host" class="form-control bg-dark text-white border-secondary font-monospace"
+                                   value="<?php echo htmlspecialchars($settings['mail.marketing.host'] ?? ''); ?>"
+                                   placeholder="e.g. email-smtp.us-east-1.amazonaws.com or smtppro.zoho.in">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label text-secondary">SMTP Port</label>
+                            <input type="number" name="mail.marketing.port" id="mail_marketing_port" class="form-control bg-dark text-white border-secondary font-monospace"
+                                   value="<?php echo htmlspecialchars($settings['mail.marketing.port'] ?? '587'); ?>"
+                                   placeholder="587 / 465">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-secondary">Encryption Type</label>
+                            <select name="mail.marketing.encryption" id="mail_marketing_encryption" class="form-select bg-dark text-white border-secondary">
+                                <option value="tls" <?php echo (($settings['mail.marketing.encryption'] ?? 'tls') === 'tls') ? 'selected' : ''; ?>>TLS / STARTTLS (Port 587)</option>
+                                <option value="ssl" <?php echo (($settings['mail.marketing.encryption'] ?? '') === 'ssl') ? 'selected' : ''; ?>>SSL (Port 465)</option>
+                                <option value="none" <?php echo (($settings['mail.marketing.encryption'] ?? '') === 'none') ? 'selected' : ''; ?>>None / Plain (Port 25)</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary">Marketing SMTP Username / Email</label>
+                            <input type="text" name="mail.marketing.username" id="mail_marketing_username" class="form-control bg-dark text-white border-secondary font-monospace"
+                                   value="<?php echo htmlspecialchars($settings['mail.marketing.username'] ?? ''); ?>"
+                                   placeholder="e.g. contacts@axioraglobalsolutions.com">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary">Marketing SMTP Password / Secret</label>
+                            <div class="input-group">
+                                <input type="password" name="mail.marketing.password" id="mail_marketing_password" class="form-control bg-dark text-white border-secondary font-monospace"
+                                       value="<?php echo htmlspecialchars($settings['mail.marketing.password'] ?? ''); ?>"
+                                       placeholder="Enter marketing SMTP password or App Password">
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassVisibility('mail_marketing_password')">
+                                    <i class="fa-solid fa-eye" id="mail_marketing_password_icon"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary">Marketing Sender "From" Email</label>
+                            <input type="email" name="mail.marketing.from_address" id="mail_marketing_from_address" class="form-control bg-dark text-white border-secondary font-monospace"
+                                   value="<?php echo htmlspecialchars($settings['mail.marketing.from_address'] ?? 'contacts@axioraglobalsolutions.com'); ?>"
+                                   placeholder="contacts@axioraglobalsolutions.com">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary">Marketing Sender "From" Name</label>
+                            <input type="text" name="mail.marketing.from_name" id="mail_marketing_from_name" class="form-control bg-dark text-white border-secondary"
+                                   value="<?php echo htmlspecialchars($settings['mail.marketing.from_name'] ?? 'Axiora Global'); ?>"
+                                   placeholder="Axiora Global">
                         </div>
                     </div>
                 </div>
@@ -901,7 +991,63 @@
     </div>
 </div>
 
+<!-- Test Marketing SMTP Connection Modal -->
+<div class="modal fade" id="testMarketingEmailModal" tabindex="-1" aria-labelledby="testMarketingEmailModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-white border-secondary shadow-lg" style="border-radius:12px;">
+            <div class="modal-header border-secondary py-3">
+                <h5 class="modal-title fs-6 d-flex align-items-center gap-2" id="testMarketingEmailModalLabel">
+                    <i class="fa-solid fa-bullhorn text-warning"></i>
+                    <span>Test Marketing SMTP Delivery</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-secondary small mb-3">
+                    Send a live test verification email using the marketing SMTP configuration to ensure bulk broadcasts and campaign invitations reach recipient inboxes.
+                </p>
+
+                <div id="test-marketing-email-alert" class="d-none alert mb-3 small" role="alert"></div>
+
+                <div class="mb-3">
+                    <label class="form-label text-secondary small font-weight-bold">Recipient Test Email *</label>
+                    <input type="email" id="test_marketing_recipient" class="form-control bg-black bg-opacity-50 border-secondary text-white font-monospace" 
+                           value="<?php echo htmlspecialchars($_SESSION['user_email'] ?? 'admin@raptor.local'); ?>" placeholder="admin@yourdomain.com" required>
+                </div>
+
+                <div class="p-3 rounded bg-black bg-opacity-25 border border-secondary small text-secondary">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Marketing Host:</span>
+                        <strong class="text-white font-monospace" id="lbl-test-marketing-host"><?php echo htmlspecialchars(!empty($settings['mail.marketing.host']) ? $settings['mail.marketing.host'] : ($settings['mail.host'] ?? 'Local/Empty')); ?></strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Port &amp; Protocol:</span>
+                        <strong class="text-white font-monospace" id="lbl-test-marketing-port"><?php echo htmlspecialchars(!empty($settings['mail.marketing.port']) ? $settings['mail.marketing.port'] : ($settings['mail.port'] ?? '587')); ?> (<?php echo strtoupper(!empty($settings['mail.marketing.encryption']) ? $settings['mail.marketing.encryption'] : ($settings['mail.encryption'] ?? 'TLS')); ?>)</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>From Address:</span>
+                        <strong class="text-white font-monospace"><?php echo htmlspecialchars($settings['mail.marketing.from_address'] ?? 'contacts@axioraglobalsolutions.com'); ?></strong>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary py-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-warning btn-sm px-3" id="btn-run-test-marketing-email">
+                    <i class="fa-solid fa-paper-plane me-1"></i> <span id="btn-test-marketing-text">Dispatch Test Email</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+function toggleMarketingSmtp(checked) {
+    if (checked) {
+        $('#marketing_smtp_fields').removeClass('d-none');
+    } else {
+        $('#marketing_smtp_fields').addClass('d-none');
+    }
+}
 function togglePassVisibility(inputId) {
     const input = document.getElementById(inputId);
     const icon = document.getElementById(inputId + '_icon');
@@ -970,6 +1116,65 @@ $(document).ready(function() {
             error: function(xhr) {
                 btn.prop('disabled', false);
                 $('#btn-test-text').html('<i class="fa-solid fa-paper-plane me-1"></i> Dispatch Test Email');
+                alertBox.removeClass('d-none alert-success').addClass('alert-danger').html('<i class="fa-solid fa-triangle-exclamation me-1"></i> Request failed (HTTP ' + xhr.status + '). Check server logs.');
+            }
+        });
+    });
+
+    // Dynamic updates for marketing test modal labels
+    $('#mail_marketing_host').on('input', function() {
+        $('#lbl-test-marketing-host').text($(this).val() || 'Local/Empty');
+    });
+    $('#mail_marketing_port, #mail_marketing_encryption').on('input change', function() {
+        $('#lbl-test-marketing-port').text(($('#mail_marketing_port').val() || '587') + ' (' + ($('#mail_marketing_encryption').val() || 'TLS').toUpperCase() + ')');
+    });
+
+    // Test Marketing Email AJAX handler
+    $('#btn-run-test-marketing-email').on('click', function() {
+        const btn = $(this);
+        const alertBox = $('#test-marketing-email-alert');
+        const recipient = $('#test_marketing_recipient').val().trim();
+
+        if (!recipient) {
+            alertBox.removeClass('d-none alert-success').addClass('alert-danger').text('Please provide a valid recipient email.');
+            return;
+        }
+
+        btn.prop('disabled', true);
+        $('#btn-test-marketing-text').html('<i class="fa-solid fa-spinner fa-spin me-1"></i> Testing Marketing SMTP...');
+        alertBox.addClass('d-none');
+
+        const postData = {
+            csrf_token: $('input[name="csrf_token"]').val(),
+            test_email_recipient: recipient,
+            mail_marketing_driver: $('#mail_marketing_driver').val(),
+            mail_marketing_host: $('#mail_marketing_host').val(),
+            mail_marketing_port: $('#mail_marketing_port').val(),
+            mail_marketing_username: $('#mail_marketing_username').val(),
+            mail_marketing_password: $('#mail_marketing_password').val(),
+            mail_marketing_encryption: $('#mail_marketing_encryption').val(),
+            mail_marketing_from_address: $('#mail_marketing_from_address').val(),
+            mail_marketing_from_name: $('#mail_marketing_from_name').val()
+        };
+
+        $.ajax({
+            url: 'index.php?route=settings/test_marketing_email',
+            type: 'POST',
+            data: postData,
+            dataType: 'json',
+            success: function(resp) {
+                btn.prop('disabled', false);
+                $('#btn-test-marketing-text').html('<i class="fa-solid fa-paper-plane me-1"></i> Dispatch Test Email');
+                if (resp && resp.success) {
+                    alertBox.removeClass('d-none alert-danger').addClass('alert-success').html('<i class="fa-solid fa-circle-check me-1"></i> <strong>Success!</strong> Marketing test email dispatched successfully to ' + recipient + '.');
+                } else {
+                    const err = (resp && resp.error) ? resp.error : 'Failed to connect to Marketing SMTP server.';
+                    alertBox.removeClass('d-none alert-success').addClass('alert-danger').html('<i class="fa-solid fa-circle-exclamation me-1"></i> <strong>Marketing SMTP Error:</strong> ' + err);
+                }
+            },
+            error: function(xhr) {
+                btn.prop('disabled', false);
+                $('#btn-test-marketing-text').html('<i class="fa-solid fa-paper-plane me-1"></i> Dispatch Test Email');
                 alertBox.removeClass('d-none alert-success').addClass('alert-danger').html('<i class="fa-solid fa-triangle-exclamation me-1"></i> Request failed (HTTP ' + xhr.status + '). Check server logs.');
             }
         });

@@ -134,9 +134,22 @@ assertCondition(strpos($listsView, 'syncPayrollModal') === false, 'Payroll sync 
 assertCondition(strpos($listsView, 'Internal Corporate Employee Synchronization') === false, 'Payroll sync card completely purged from Marketing Lists view');
 
 // -----------------------------------------------------------------------------
-// GROUP 4: SmtpAdapter Configuration & Encryption Logic
+// GROUP 4: SmtpAdapter Configuration & Dual SMTP Isolation
 // -----------------------------------------------------------------------------
 echo "\n[GROUP 4] SmtpAdapter & Settings Integration:\n";
+
+// Use SQLite in-memory for testing
+$pdo = new PDO("sqlite::memory:");
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_OBJ);
+Database::setMockConnection($pdo);
+
+$pdo->exec("
+    CREATE TABLE IF NOT EXISTS settings (
+        setting_key TEXT PRIMARY KEY,
+        setting_value TEXT
+    );
+");
 
 $adapter587 = new SmtpAdapter(['port' => 587, 'encryption' => 'tls']);
 assertCondition($adapter587->getName() === 'smtp', 'SmtpAdapter reports provider name "smtp"');
@@ -144,15 +157,30 @@ assertCondition($adapter587->getName() === 'smtp', 'SmtpAdapter reports provider
 $adapter465 = new SmtpAdapter(['port' => 465, 'encryption' => 'ssl']);
 assertCondition($adapter465->getName() === 'smtp', 'SmtpAdapter supports port 465 (SMTPS)');
 
+// Dual SMTP architecture verification:
+require_once APPROOT . '/services/EmailService.php';
+assertCondition(method_exists('EmailService', 'getMarketingConfig'), 'EmailService defines getMarketingConfig() method');
+
+// 1. When dedicated marketing SMTP is disabled, falls back to corporate
+$pdo->exec("
+    INSERT OR REPLACE INTO settings (setting_key, setting_value) VALUES
+    ('mail.host', 'corporate.zoho.in'),
+    ('mail.from_address', 'accounts@axioraglobalsolutions.com'),
+    ('mail.marketing.enabled', '0'),
+    ('mail.marketing.host', 'bulk.ses.amazonaws.com');
+");
+$fallbackConfig = EmailService::getMarketingConfig();
+assertCondition($fallbackConfig['host'] === 'corporate.zoho.in', 'Falls back to corporate host when marketing SMTP is disabled');
+
+// 2. When dedicated marketing SMTP is enabled, strictly uses dedicated host
+$pdo->exec("UPDATE settings SET setting_value = '1' WHERE setting_key = 'mail.marketing.enabled'");
+$dedicatedConfig = EmailService::getMarketingConfig();
+assertCondition($dedicatedConfig['host'] === 'bulk.ses.amazonaws.com', 'Uses dedicated marketing host when marketing SMTP is enabled');
+
 // -----------------------------------------------------------------------------
 // GROUP 5: Bulk Recipient Selection & Deduplication
 // -----------------------------------------------------------------------------
 echo "\n[GROUP 5] Bulk Email Recipient Selection & Deduplication:\n";
-
-// Use SQLite in-memory for testing model logic
-$pdo = new PDO("sqlite::memory:");
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_OBJ);
 
 $pdo->exec("
     CREATE TABLE campaign_contacts (
