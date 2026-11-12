@@ -261,6 +261,18 @@ class SettingsController extends Controller {
                 'timeout'      => 10
             ];
 
+            if (empty($testConfig['host'])) {
+                $err = 'Marketing SMTP Host cannot be empty. Marketing test emails cannot use Corporate SMTP.';
+                if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'error' => $err]);
+                    exit;
+                }
+                $_SESSION['settings_error'] = $err;
+                $this->redirect('index.php?route=settings/index');
+                return;
+            }
+
             $result = EmailService::testConnection($recipient, $testConfig);
 
             if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {

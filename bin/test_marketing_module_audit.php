@@ -157,11 +157,11 @@ assertCondition($adapter587->getName() === 'smtp', 'SmtpAdapter reports provider
 $adapter465 = new SmtpAdapter(['port' => 465, 'encryption' => 'ssl']);
 assertCondition($adapter465->getName() === 'smtp', 'SmtpAdapter supports port 465 (SMTPS)');
 
-// Dual SMTP architecture verification:
+// Dual SMTP architecture & Strict Routing verification:
 require_once APPROOT . '/services/EmailService.php';
 assertCondition(method_exists('EmailService', 'getMarketingConfig'), 'EmailService defines getMarketingConfig() method');
 
-// 1. When dedicated marketing SMTP is disabled, falls back to corporate
+// 1. When dedicated marketing SMTP is disabled, STRICTLY DO NOT fall back to corporate SMTP
 $pdo->exec("
     INSERT OR REPLACE INTO settings (setting_key, setting_value) VALUES
     ('mail.host', 'corporate.zoho.in'),
@@ -169,13 +169,29 @@ $pdo->exec("
     ('mail.marketing.enabled', '0'),
     ('mail.marketing.host', 'bulk.ses.amazonaws.com');
 ");
-$fallbackConfig = EmailService::getMarketingConfig();
-assertCondition($fallbackConfig['host'] === 'corporate.zoho.in', 'Falls back to corporate host when marketing SMTP is disabled');
+$disabledConfig = EmailService::getMarketingConfig();
+assertCondition($disabledConfig['enabled'] === false, 'Strict routing: Marketing SMTP disabled reports enabled=false');
+assertCondition(empty($disabledConfig['host']), 'Strict routing: Marketing SMTP disabled does NOT return corporate host');
+assertCondition($disabledConfig['host'] !== 'corporate.zoho.in', 'Strict routing: Corporate SMTP host is strictly isolated and never returned');
 
-// 2. When dedicated marketing SMTP is enabled, strictly uses dedicated host
+// 2. Corporate config remains independent and unaffected
+$corpConfig = EmailService::getConfig();
+assertCondition($corpConfig['host'] === 'corporate.zoho.in', 'Corporate SMTP host remains corporate.zoho.in');
+assertCondition($corpConfig['from_address'] === 'accounts@axioraglobalsolutions.com', 'Corporate from_address remains accounts@axioraglobalsolutions.com');
+
+// 3. SmtpAdapter strictly blocks delivery when marketing SMTP is disabled
+$disabledAdapter = new SmtpAdapter();
+$sendRes = $disabledAdapter->send(['to' => 'test@example.com', 'subject' => 'Test', 'html' => '<p>Hi</p>']);
+assertCondition($sendRes->isSuccess() === false, 'SmtpAdapter fails delivery when marketing SMTP is disabled');
+assertCondition($sendRes->getErrorCode() === 'MARKETING_SMTP_DISABLED', 'SmtpAdapter returns MARKETING_SMTP_DISABLED error code');
+assertCondition($sendRes->isTransient() === true, 'SmtpAdapter error is transient/retryable so recipients stay queued');
+
+// 4. When dedicated marketing SMTP is enabled, strictly uses dedicated host and marketing from address
 $pdo->exec("UPDATE settings SET setting_value = '1' WHERE setting_key = 'mail.marketing.enabled'");
 $dedicatedConfig = EmailService::getMarketingConfig();
+assertCondition($dedicatedConfig['enabled'] === true, 'Marketing SMTP enabled reports enabled=true');
 assertCondition($dedicatedConfig['host'] === 'bulk.ses.amazonaws.com', 'Uses dedicated marketing host when marketing SMTP is enabled');
+assertCondition($dedicatedConfig['from_address'] === 'contacts@axioraglobalsolutions.com', 'Uses contacts@axioraglobalsolutions.com for marketing dispatches');
 
 // -----------------------------------------------------------------------------
 // GROUP 5: Bulk Recipient Selection & Deduplication

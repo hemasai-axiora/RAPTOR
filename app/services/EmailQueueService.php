@@ -78,6 +78,22 @@ class EmailQueueService {
         ];
 
         $mailer = MailerFactory::getAdapter();
+
+        // Strict Routing Policy: If using SMTP and Marketing SMTP is disabled or unconfigured, halt batch
+        if ($mailer instanceof SmtpAdapter) {
+            $mktConfig = class_exists('EmailService') ? EmailService::getMarketingConfig() : ['enabled' => false];
+            if (empty($mktConfig['enabled']) || empty($mktConfig['host'])) {
+                $disabledErr = $mktConfig['error'] ?? 'Marketing SMTP is disabled or unconfigured in Global Settings. Delivery halted.';
+                foreach ($items as $item) {
+                    self::unlockQueueItem((int)$item->queue_id);
+                    $db->prepare("UPDATE campaign_email_queue SET last_error = :err WHERE queue_id = :qid")
+                       ->execute([':err' => $disabledErr, ':qid' => $item->queue_id]);
+                }
+                $stats['error'] = $disabledErr;
+                return $stats;
+            }
+        }
+
         $suppressionModel = new CampaignSuppression();
         $delayMicroseconds = $rateLimitPerSec > 0 ? (int)(1000000 / $rateLimitPerSec) : 0;
 

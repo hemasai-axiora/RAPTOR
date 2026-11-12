@@ -59,7 +59,9 @@ class EmailService {
     }
 
     /**
-     * Retrieve dedicated email marketing mail settings, falling back to corporate mail settings.
+     * Retrieve dedicated email marketing mail settings.
+     * STRICT ROUTING POLICY: Marketing campaigns MUST NOT fall back to Corporate SMTP!
+     * If disabled or unconfigured, returns enabled => false and error details.
      */
     public static function getMarketingConfig(): array {
         $dbSettings = [];
@@ -79,6 +81,7 @@ class EmailService {
         if ($isDedicated && !empty($mHost)) {
             $defaultDriver = $dbSettings['mail.marketing.driver'] ?? 'smtp';
             return [
+                'enabled'         => true,
                 'driver'          => $defaultDriver,
                 'host'            => $mHost,
                 'port'            => (int)($dbSettings['mail.marketing.port'] ?? (getenv('SMTP_MARKETING_PORT') ?: 587)),
@@ -92,12 +95,21 @@ class EmailService {
             ];
         }
 
-        // Fallback to corporate mail settings
-        $corpConfig = self::getConfig();
-        if ($corpConfig['from_address'] === 'accounts@axioraglobalsolutions.com') {
-            $corpConfig['marketing_from_address'] = 'contacts@axioraglobalsolutions.com';
-        }
-        return $corpConfig;
+        // STRICT POLICY: Do NOT fall back to corporate SMTP. Return unconfigured/disabled state.
+        return [
+            'enabled'         => false,
+            'error'           => 'Dedicated Marketing SMTP is disabled or not configured in Global Settings. Mass email dispatch aborted to preserve Corporate SMTP reputation.',
+            'driver'          => 'smtp',
+            'host'            => '',
+            'port'            => 587,
+            'username'        => '',
+            'password'        => '',
+            'encryption'      => 'tls',
+            'from_address'    => $dbSettings['mail.marketing.from_address'] ?? 'contacts@axioraglobalsolutions.com',
+            'from_name'       => $dbSettings['mail.marketing.from_name'] ?? 'Axiora Global',
+            'auto_send'       => '0',
+            'timeout'         => 15
+        ];
     }
 
     /**

@@ -12,25 +12,51 @@ use PHPMailer\PHPMailer\Exception as PHPMailerException;
 class SmtpAdapter implements MailerAdapterInterface {
 
     private array $config;
+    private bool $enabled = true;
+    private string $disabledReason = '';
 
     public function __construct(array $config = []) {
-        $mailConfig = class_exists('EmailService') ? EmailService::getMarketingConfig() : [];
-
-        $host = !empty($config['host']) ? $config['host'] : (!empty($mailConfig['host']) ? $mailConfig['host'] : ($_ENV['SMTP_MARKETING_HOST'] ?? $_ENV['SMTP_HOST'] ?? '127.0.0.1'));
-        $port = !empty($config['port']) ? (int)$config['port'] : (!empty($mailConfig['port']) ? (int)$mailConfig['port'] : (int)($_ENV['SMTP_MARKETING_PORT'] ?? $_ENV['SMTP_PORT'] ?? 587));
-        $username = isset($config['username']) ? $config['username'] : ($mailConfig['username'] ?? ($_ENV['SMTP_MARKETING_USER'] ?? $_ENV['SMTP_USER'] ?? ''));
-        $password = isset($config['password']) ? $config['password'] : ($mailConfig['password'] ?? ($_ENV['SMTP_MARKETING_PASS'] ?? $_ENV['SMTP_PASS'] ?? ''));
-        $encryption = isset($config['encryption']) ? $config['encryption'] : ($mailConfig['encryption'] ?? ($_ENV['SMTP_MARKETING_ENCRYPTION'] ?? $_ENV['SMTP_ENCRYPTION'] ?? 'tls'));
-
-        $this->config = [
-            'host' => $host,
-            'port' => $port,
-            'username' => $username,
-            'password' => $password,
-            'encryption' => $encryption,
-            'timeout' => (int)($config['timeout'] ?? $_ENV['SMTP_TIMEOUT'] ?? 15),
-            'keepalive' => true
-        ];
+        if (!empty($config)) {
+            $this->config = [
+                'host' => trim($config['host'] ?? ''),
+                'port' => (int)($config['port'] ?? 587),
+                'username' => $config['username'] ?? '',
+                'password' => $config['password'] ?? '',
+                'encryption' => $config['encryption'] ?? 'tls',
+                'timeout' => (int)($config['timeout'] ?? $_ENV['SMTP_TIMEOUT'] ?? 15),
+                'keepalive' => true
+            ];
+            if (empty($this->config['host'])) {
+                $this->enabled = false;
+                $this->disabledReason = 'Marketing SMTP host is empty or unconfigured.';
+            }
+        } else {
+            $mailConfig = class_exists('EmailService') ? EmailService::getMarketingConfig() : ['enabled' => false];
+            if (empty($mailConfig['enabled']) || empty($mailConfig['host'])) {
+                $this->enabled = false;
+                $this->disabledReason = $mailConfig['error'] ?? 'Dedicated Marketing SMTP is disabled or unconfigured in Global Settings. Delivery aborted to protect Corporate SMTP reputation.';
+                $this->config = [
+                    'host' => '',
+                    'port' => 587,
+                    'username' => '',
+                    'password' => '',
+                    'encryption' => 'tls',
+                    'timeout' => 15,
+                    'keepalive' => true
+                ];
+            } else {
+                $this->enabled = true;
+                $this->config = [
+                    'host' => $mailConfig['host'],
+                    'port' => (int)($mailConfig['port'] ?? 587),
+                    'username' => $mailConfig['username'] ?? '',
+                    'password' => $mailConfig['password'] ?? '',
+                    'encryption' => $mailConfig['encryption'] ?? 'tls',
+                    'timeout' => (int)($mailConfig['timeout'] ?? 15),
+                    'keepalive' => true
+                ];
+            }
+        }
     }
 
     public function getName(): string {
@@ -38,6 +64,14 @@ class SmtpAdapter implements MailerAdapterInterface {
     }
 
     public function send(array $message): MailerSendResult {
+        if (!$this->enabled || empty($this->config['host'])) {
+            return MailerSendResult::failure(
+                $this->disabledReason ?: 'Dedicated Marketing SMTP is disabled or unconfigured in Global Settings. Delivery aborted to protect Corporate SMTP reputation.',
+                'MARKETING_SMTP_DISABLED',
+                true
+            );
+        }
+
         if (!class_exists('PHPMailer\PHPMailer\PHPMailer')) {
             $fromEmail = str_replace(["\r", "\n"], '', $message['from_email'] ?? $this->config['username'] ?? '');
             $fromName = str_replace(["\r", "\n"], '', $message['from_name'] ?? 'Axiora Global Solutions');

@@ -364,6 +364,26 @@ class CampaignBroadcast extends Model {
             }
         }
 
+        // 0. Verify Dedicated Marketing SMTP is Enabled & Configured
+        $isExplicitlyDisabled = false;
+        try {
+            $dbCheck = Database::getInstance()->getConnection();
+            $stmt = $dbCheck->query("SELECT setting_value FROM settings WHERE setting_key = 'mail.marketing.enabled'");
+            $val = $stmt->fetchColumn();
+            if ($val !== false && ($val === '0' || $val === 0)) {
+                $isExplicitlyDisabled = true;
+            }
+        } catch (Throwable $t) {
+            // Table doesn't exist or not queryable (e.g. isolated mock test)
+        }
+
+        if ($isExplicitlyDisabled) {
+            return [
+                'success' => false,
+                'error' => 'Launch Blocked: Dedicated Marketing SMTP is disabled or unconfigured in Global Settings. Configure and enable Marketing SMTP in Settings before launching bulk campaigns to protect Corporate SMTP reputation.'
+            ];
+        }
+
         // 1. Run Pre-Send Deliverability & Compliance Checklist
         $checklistResult = PreSendChecklistService::run((array)$camp);
         

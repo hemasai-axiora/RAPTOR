@@ -32,6 +32,7 @@ $suites = [
     'Phase 7: End-to-End Lifecycle Suite' => 'bin/test_email_campaigns_e2e.php',
     'Phase 8: Deliverability Intelligence (D-001–D-020 & UAT-01–32)' => 'bin/test_deliverability_intelligence.php',
     'Phase 9: Marketing & Bulk Email Audit' => 'bin/test_marketing_module_audit.php',
+    'Phase 10: Strict SMTP Routing & Isolation' => 'bin/test_strict_smtp_routing.php',
     'Extensions: Next-Gen UI & Architecture' => 'bin/test_modernization_extensions.php',
     'Regression: Payroll Calculations'   => 'bin/test_payroll_pipeline.php'
 ];
