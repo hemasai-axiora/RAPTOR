@@ -845,9 +845,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
             fetch('index.php?route=email_campaigns/preflightAjax', {
                 method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
                 body: fd
             })
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) {
+                    return res.text().then(text => { throw new Error(text || ('HTTP ' + res.status)); });
+                }
+                return res.json();
+            })
             .then(data => {
                 const score = (typeof data.score === 'number') ? data.score : 85;
                 const summary = data.summary || { block: 0, high: 0, warning: 0, info: 0 };
@@ -864,8 +873,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     heading.innerHTML = '<span class="text-warning"><i class="fa-solid fa-triangle-exclamation me-1"></i>Review Needed: ' + summary.high + ' Warning(s)</span>';
                 }
             })
-            .catch(() => {
-                items.innerHTML = '<div class="text-danger">Failed to connect to preflight endpoint.</div>';
+            .catch((err) => {
+                const msg = (err && err.message) ? err.message : 'Failed to connect to preflight endpoint.';
+                items.innerHTML = '<div class="text-danger">' + msg + '</div>';
             });
         });
     }

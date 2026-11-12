@@ -131,9 +131,10 @@ class AlertService {
      */
     public static function syncFindingsToAlerts(string $objectType, int $objectId, array $findings): void {
         foreach ($findings as $f) {
-            $ruleId = $f['rule_id'] ?? '';
-            $severity = $f['severity'] ?? 'INFO';
-            $message = $f['message'] ?? '';
+            $ruleId = is_object($f) ? ($f->ruleId ?? '') : ($f['rule_id'] ?? '');
+            $severity = is_object($f) ? ($f->severity ?? 'INFO') : ($f['severity'] ?? 'INFO');
+            $message = is_object($f) ? ($f->message ?? '') : ($f['message'] ?? '');
+            $evidence = is_object($f) ? ($f->evidence ?? []) : ($f['evidence'] ?? []);
             $dedupKey = hash('sha256', "{$objectType}:{$objectId}:{$ruleId}");
 
             self::recordAlert(
@@ -143,7 +144,7 @@ class AlertService {
                 ruleId: $ruleId,
                 severity: $severity,
                 message: $message,
-                evidence: $f['evidence'] ?? []
+                evidence: $evidence
             );
         }
     }
