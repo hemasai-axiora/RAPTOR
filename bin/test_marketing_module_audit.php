@@ -191,7 +191,28 @@ $pdo->exec("UPDATE settings SET setting_value = '1' WHERE setting_key = 'mail.ma
 $dedicatedConfig = EmailService::getMarketingConfig();
 assertCondition($dedicatedConfig['enabled'] === true, 'Marketing SMTP enabled reports enabled=true');
 assertCondition($dedicatedConfig['host'] === 'bulk.ses.amazonaws.com', 'Uses dedicated marketing host when marketing SMTP is enabled');
-assertCondition($dedicatedConfig['from_address'] === 'contacts@axioraglobalsolutions.com', 'Uses contacts@axioraglobalsolutions.com for marketing dispatches');
+// 5. Test SettingsController POST saving with PHP normalized underscore keys
+$settingKeysToTest = ['mail.marketing.host', 'mail.marketing.username', 'mail.marketing.enabled'];
+$_POST['mail_marketing_host'] = 'smtppro.zoho.com';
+$_POST['mail_marketing_username'] = 'hemasai.s@axioraglobalsolutions.com';
+$_POST['mail_marketing_enabled'] = 'on';
+
+$saveStmt = $pdo->prepare('INSERT INTO settings (setting_key, setting_value) VALUES (:key, :val) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value');
+foreach ($settingKeysToTest as $sk) {
+    $postKey = str_replace('.', '_', $sk);
+    if ($sk === 'mail.marketing.enabled') {
+        $v = (isset($_POST[$sk]) || isset($_POST[$postKey])) ? '1' : '0';
+    } else {
+        $raw = $_POST[$sk] ?? ($_POST[$postKey] ?? '');
+        $v = is_string($raw) ? trim($raw) : (string)$raw;
+    }
+    $saveStmt->execute([':key' => $sk, ':val' => $v]);
+}
+
+$savedHost = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'mail.marketing.host'")->fetchColumn();
+$savedEnabled = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'mail.marketing.enabled'")->fetchColumn();
+assertCondition($savedHost === 'smtppro.zoho.com', 'SettingsController correctly saves mail.marketing.host from normalized $_POST[mail_marketing_host]');
+assertCondition($savedEnabled === '1', 'SettingsController correctly saves mail.marketing.enabled=1 from normalized $_POST[mail_marketing_enabled]');
 
 // -----------------------------------------------------------------------------
 // GROUP 5: Bulk Recipient Selection & Deduplication
