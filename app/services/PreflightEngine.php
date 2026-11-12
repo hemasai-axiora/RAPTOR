@@ -289,7 +289,7 @@ class RuleD007MergeVariables implements MarketingRule {
         }
 
         // Check for malformed merge tags like {{contact. or unclosed tags
-        if (preg_match('/\{\{[a-zA-Z0-9_]+(?!\}\})/i', $html, $m)) {
+        if (preg_match('/\{\{[a-zA-Z0-9_]++(?!\}\})/i', $html, $m)) {
             return [new Finding(
                 ruleId: 'D-007',
                 severity: 'BLOCK',
