@@ -154,6 +154,7 @@
                                 <td class="text-end">
                                     <?php if (in_array($_SESSION['user_role'] ?? '', ['admin', 'ceo'], true)): ?>
                                         <form method="POST" action="index.php?route=email_campaigns/suppressionRemove" onsubmit="return confirm('WARNING: Removing an email from suppression can damage domain sender reputation if the recipient previously marked mail as spam or bounced. Proceed only if legitimate consent is re-verified.');" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
                                             <input type="hidden" name="email" value="<?php echo htmlspecialchars($s->email); ?>">
                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Un-suppress address">
                                                 <i class="fa-solid fa-trash me-1"></i>Un-suppress
@@ -196,6 +197,7 @@
 <div class="modal fade" id="addSuppressionModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <form method="POST" action="index.php?route=email_campaigns/suppressionAdd">
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title fw-bold text-danger"><i class="fa-solid fa-ban me-2"></i>Add Address to Global Suppression</h5>

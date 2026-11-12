@@ -16,6 +16,11 @@ class Controller {
 
     // Render view
     public function view($view, $data = []) {
+        $csrf_token = $_SESSION['csrf_token'] ?? '';
+        if (!isset($data['csrf_token'])) {
+            $data['csrf_token'] = $csrf_token;
+        }
+
         // Extract data to make variables available in view
         extract($data);
 
@@ -66,6 +71,10 @@ class Controller {
         $this->initCorrelationId();
         // Ensure CSRF token is generated and active in session
         $this->generateCsrfToken();
+        $csrf_token = $_SESSION['csrf_token'] ?? '';
+        if (!isset($data['csrf_token'])) {
+            $data['csrf_token'] = $csrf_token;
+        }
 
         // Extract data
         extract($data);

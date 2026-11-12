@@ -105,6 +105,7 @@
 <div class="modal fade" id="newScoringRuleModal" tabindex="-1" aria-labelledby="newScoringRuleModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <form action="index.php?route=journeys/saveScoringRule" method="POST" class="modal-content bg-dark text-white border-secondary">
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
             <div class="modal-header border-secondary">
                 <h5 class="modal-title" id="newScoringRuleModalLabel"><i class="fa-solid fa-star text-warning me-2"></i>Configure Lead Scoring Rule</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>

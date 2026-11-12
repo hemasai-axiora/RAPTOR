@@ -181,6 +181,7 @@
                                         </a>
                                         <?php if ($c->status === 'draft'): ?>
                                             <form method="POST" action="index.php?route=email_campaigns/campaignDelete" onsubmit="return confirm('Delete this campaign draft?');" class="d-inline">
+                                                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
                                                 <input type="hidden" name="campaign_id" value="<?php echo $c->campaign_id; ?>">
                                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Draft">
                                                     <i class="fa-solid fa-trash"></i>

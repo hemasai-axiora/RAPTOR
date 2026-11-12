@@ -212,6 +212,7 @@
                                             </li>
                                             <li>
                                                 <form method="POST" action="index.php?route=email_campaigns/contactDelete" onsubmit="return confirm('Are you sure? This will delete the contact and all associated logs per GDPR Right to be Forgotten.');">
+                                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
                                                     <input type="hidden" name="contact_id" value="<?php echo $c->contact_id; ?>">
                                                     <button type="submit" class="dropdown-item text-danger">
                                                         <i class="fa-solid fa-trash me-2"></i>Delete Contact

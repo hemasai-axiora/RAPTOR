@@ -86,6 +86,7 @@
                     <?php if ($is_session_active): ?>
                         <!-- Active 24-hr window: Free-form messaging permitted -->
                         <form method="POST" action="index.php?route=whatsapp/send" class="d-flex gap-2">
+                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
                             <input type="hidden" name="conversation_id" value="<?= $conversation->conversation_id; ?>">
                             <input type="text" name="body" class="form-control bg-dark text-white border-secondary" placeholder="Type your WhatsApp reply (Free 24-hr session)..." autocomplete="off" required>
                             <button type="submit" class="btn btn-success px-4">
@@ -99,6 +100,7 @@
                             <strong>24-Hour Window Expired:</strong> To re-open a conversation with this prospect, Meta requires sending an approved Message Template.
                         </div>
                         <form method="POST" action="index.php?route=whatsapp/send" class="d-flex gap-2">
+                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
                             <input type="hidden" name="conversation_id" value="<?= $conversation->conversation_id; ?>">
                             <select name="template_id" class="form-select form-select-sm bg-dark text-white border-secondary" required>
                                 <option value="">Select an Approved Message Template...</option>

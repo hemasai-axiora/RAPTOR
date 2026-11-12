@@ -178,6 +178,7 @@
                                             <i class="fa-solid fa-rotate me-1"></i>Verify
                                         </a>
                                         <form method="POST" action="index.php?route=email_campaigns/domainDelete" class="d-inline" onsubmit="return confirm('Are you sure you want to delete domain <?php echo htmlspecialchars($d->domain_name); ?>?');">
+                                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
                                             <input type="hidden" name="domain_id" value="<?php echo $d->domain_id; ?>">
                                             <button type="submit" class="btn btn-outline-danger" title="Delete Domain">
                                                 <i class="fa-solid fa-trash"></i>
@@ -198,6 +199,7 @@
 <div class="modal fade" id="addDomainModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <form method="POST" action="index.php?route=email_campaigns/domainCreate">
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title fw-bold"><i class="fa-solid fa-plus-circle text-primary me-2"></i>Add Dedicated Sending Domain</h5>

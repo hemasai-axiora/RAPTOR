@@ -85,6 +85,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content bg-dark text-white border-secondary">
             <form method="POST" action="index.php?route=whatsapp/saveTemplate">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
                 <div class="modal-header border-secondary">
                     <h5 class="modal-title" id="newTemplateModalLabel"><i class="fa-solid fa-plus-circle me-2 text-primary"></i>Create Message Template</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>

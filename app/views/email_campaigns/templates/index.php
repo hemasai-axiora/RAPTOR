@@ -98,6 +98,7 @@
                                 </a>
                                 <?php if (!$t->is_prebuilt): ?>
                                     <form method="POST" action="index.php?route=email_campaigns/templateDelete" onsubmit="return confirm('Delete this custom template?');" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
                                         <input type="hidden" name="template_id" value="<?php echo $t->template_id; ?>">
                                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete template">
                                             <i class="fa-solid fa-trash"></i>
