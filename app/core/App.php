@@ -22,6 +22,19 @@ class App {
                     if (!file_exists(APPROOT . '/controllers/' . $controllerName . '.php')) {
                         $controllerName = ucfirst($rawName) . 'Controller';
                     }
+                    if (!file_exists(APPROOT . '/controllers/' . $controllerName . '.php')) {
+                        // Case-insensitive lookup fallback for Linux environments (e.g. WhatsAppController vs WhatsappController)
+                        $targetLower = strtolower($rawName . 'controller.php');
+                        $ctrlDir = APPROOT . '/controllers';
+                        if (is_dir($ctrlDir)) {
+                            foreach (scandir($ctrlDir) as $f) {
+                                if (strtolower($f) === $targetLower) {
+                                    $controllerName = substr($f, 0, -4);
+                                    break;
+                                }
+                            }
+                        }
+                    }
                     if (file_exists(APPROOT . '/controllers/' . $controllerName . '.php')) {
                         $this->currentController = $controllerName;
                         unset($parts[0]);

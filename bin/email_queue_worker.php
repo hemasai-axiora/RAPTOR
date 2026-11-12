@@ -17,7 +17,9 @@ if (php_sapi_name() !== 'cli') {
 }
 
 require_once __DIR__ . '/../app/config/config.php';
-require_once __DIR__ . '/../vendor/autoload.php';
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    require_once __DIR__ . '/../vendor/autoload.php';
+}
 require_once __DIR__ . '/../app/core/Database.php';
 require_once __DIR__ . '/../app/core/Model.php';
 

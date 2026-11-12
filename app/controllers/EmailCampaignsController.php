@@ -438,65 +438,57 @@ class EmailCampaignsController extends Controller {
             'company_address' => 'Axiora Global Solutions, Cyber City, Hyderabad, India'
         ]);
 
-        // Attempt test send via PHPMailer or Provider Adapter
+        // Dispatch test email via configured Mailer Adapter
         $sent = false;
         $sendError = null;
+        $messageId = null;
+        $mailer = MailerFactory::getAdapter();
 
         try {
-            if (class_exists('PHPMailer\PHPMailer\PHPMailer')) {
-                $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-                // Check if SMTP is configured in .env
-                if (!empty($_ENV['SMTP_HOST'])) {
-                    $mail->isSMTP();
-                    $mail->Host = $_ENV['SMTP_HOST'];
-                    $mail->SMTPAuth = true;
-                    $mail->Username = $_ENV['SMTP_USER'] ?? '';
-                    $mail->Password = $_ENV['SMTP_PASS'] ?? '';
-                    $mail->SMTPSecure = $_ENV['SMTP_ENCRYPTION'] ?? PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-                    $mail->Port = (int)($_ENV['SMTP_PORT'] ?? 587);
-                }
-                $mail->setFrom($campaign->from_email, $campaign->from_name);
-                $mail->addAddress($testEmail);
-                if (!empty($campaign->reply_to)) {
-                    $mail->addReplyTo($campaign->reply_to);
-                }
-                $mail->Subject = '[TEST] ' . $campaign->subject_a;
-                $mail->isHTML(true);
-                $mail->Body = $renderedHtml;
-                $mail->AltBody = $renderedPlain;
+            $messagePayload = [
+                'to' => $testEmail,
+                'to_name' => 'Test Recipient',
+                'from_email' => $campaign->from_email,
+                'from_name' => $campaign->from_name,
+                'reply_to' => $campaign->reply_to,
+                'subject' => '[TEST] ' . $campaign->subject_a,
+                'html' => $renderedHtml,
+                'text' => $renderedPlain,
+                'headers' => [
+                    'X-Raptor-Test-Send' => '1',
+                    'Precedence' => 'bulk'
+                ]
+            ];
 
-                // Deliverability headers
-                $mail->addCustomHeader('X-Raptor-Test-Send', '1');
-                $mail->addCustomHeader('Precedence', 'bulk');
-
-                // If no external SMTP configured, record simulated test send in local dev
-                if (empty($_ENV['SMTP_HOST']) || $_ENV['APP_ENV'] === 'development' || $_ENV['APP_ENV'] === 'local') {
-                    $sent = true;
-                } else {
-                    $sent = $mail->send();
-                }
+            $result = $mailer->send($messagePayload);
+            if ($result->isSuccess()) {
+                $sent = true;
+                $messageId = $result->getMessageId();
             } else {
-                $sent = true; // Simulated local test send
+                $sent = false;
+                $sendError = $result->getErrorMessage();
             }
         } catch (Throwable $e) {
+            $sent = false;
             $sendError = $e->getMessage();
-            // If dev environment without live SMTP credentials, treat as simulated test pass
-            $sent = true;
         }
 
-        // Record test send in campaign checklist
-        $db = Database::getInstance()->getConnection();
-        $db->prepare('UPDATE campaigns_broadcast 
-                      SET pre_send_checklist_json = JSON_SET(COALESCE(pre_send_checklist_json, "{}"), "$.checks.test_email_sent.passed", true, "$.test_sent_at", NOW(), "$.test_recipient", :email)
-                      WHERE campaign_id = :id')
-           ->execute([':email' => $testEmail, ':id' => $campaignId]);
+        if ($sent) {
+            // Record test send in campaign checklist
+            $db = Database::getInstance()->getConnection();
+            $db->prepare('UPDATE campaigns_broadcast 
+                          SET pre_send_checklist_json = JSON_SET(COALESCE(pre_send_checklist_json, "{}"), "$.checks.test_email_sent.passed", true, "$.test_sent_at", NOW(), "$.test_recipient", :email)
+                          WHERE campaign_id = :id')
+               ->execute([':email' => $testEmail, ':id' => $campaignId]);
+        }
 
         header('Content-Type: application/json');
         echo json_encode([
             'success' => $sent,
             'message' => $sent 
-                ? "Test email successfully dispatched to {$testEmail}. Check your inbox and verify rendering across mobile and desktop clients." 
-                : "Failed to dispatch test email: {$sendError}"
+                ? "Test email successfully dispatched to {$testEmail}. Check your inbox! (Provider: {$mailer->getName()}, Message ID: {$messageId})" 
+                : "Failed to dispatch test email: {$sendError}",
+            'error' => $sent ? null : $sendError
         ]);
         exit();
     }
@@ -514,7 +506,20 @@ class EmailCampaignsController extends Controller {
         $res = $this->campaignModel->launchCampaign($campaignId, (int)($_SESSION['user_id'] ?? 0));
 
         if ($res['success']) {
-            $_SESSION['flash_success'] = 'Campaign successfully verified and launched! ' . $res['message'];
+            // Immediately dispatch queued batch via SMTP so recipients receive emails right away
+            $batchResult = EmailQueueService::processBatch(100, 10);
+            $dispatchedCount = $batchResult['sent'] ?? 0;
+            $failedCount = $batchResult['failed'] ?? 0;
+
+            $msg = 'Campaign successfully verified and launched! ' . $res['message'];
+            if ($dispatchedCount > 0) {
+                $msg .= " ({$dispatchedCount} messages sent immediately via SMTP)";
+            }
+            if ($failedCount > 0) {
+                $msg .= " [Notice: {$failedCount} messages deferred or rejected by provider - review Deliverability Health]";
+            }
+
+            $_SESSION['flash_success'] = $msg;
             $this->redirect('index.php?route=email_campaigns/campaigns');
         } else {
             $errMsg = $res['error'] ?? 'Unknown error';
@@ -524,6 +529,103 @@ class EmailCampaignsController extends Controller {
             $_SESSION['flash_error'] = 'Launch Blocked: ' . $errMsg;
             $this->redirect('index.php?route=email_campaigns/campaignEdit&id=' . $campaignId);
         }
+    }
+
+    /**
+     * Process pending queue batch on-demand (Manual Admin trigger or Cron hook)
+     */
+    public function queueProcess() {
+        $this->requireAuth();
+        $this->requirePermission('marketing.campaigns.manage');
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->validateCsrf();
+        }
+
+        $batchSize = max(1, min(200, (int)($_REQUEST['batch_size'] ?? 100)));
+        $stats = EmailQueueService::processBatch($batchSize, 10);
+
+        $msg = sprintf(
+            "Queue processed: %d sent, %d failed, %d suppressed, %d throttled (out of %d processed).",
+            $stats['sent'],
+            $stats['failed'],
+            $stats['suppressed'],
+            $stats['throttled'],
+            $stats['processed']
+        );
+
+        if ($this->isAjax()) {
+            header('Content-Type: application/json');
+            echo json_encode(array_merge(['success' => true, 'message' => $msg], $stats));
+            exit();
+        }
+
+        $_SESSION['flash_success'] = $msg;
+        $campaignId = (int)($_REQUEST['campaign_id'] ?? 0);
+        if ($campaignId > 0) {
+            $this->redirect('index.php?route=email_campaigns/campaignEdit&id=' . $campaignId);
+        } else {
+            $this->redirect('index.php?route=email_campaigns/campaigns');
+        }
+    }
+
+    /**
+     * Pause an active / sending campaign
+     */
+    public function campaignPause() {
+        $this->requireAuth();
+        $this->requirePermission('marketing.campaigns.manage');
+        $this->validateCsrf();
+
+        $campaignId = (int)($_POST['campaign_id'] ?? 0);
+        $reason = trim($_POST['reason'] ?? 'Manually paused by administrator');
+        $res = $this->campaignModel->pauseCampaign($campaignId, $reason, (int)($_SESSION['user_id'] ?? 0));
+
+        if ($res['success']) {
+            $_SESSION['flash_success'] = 'Campaign paused successfully.';
+        } else {
+            $_SESSION['flash_error'] = 'Failed to pause campaign: ' . ($res['error'] ?? 'Unknown error');
+        }
+        $this->redirect('index.php?route=email_campaigns/campaignEdit&id=' . $campaignId);
+    }
+
+    /**
+     * Resume a paused campaign
+     */
+    public function campaignResume() {
+        $this->requireAuth();
+        $this->requirePermission('marketing.campaigns.manage');
+        $this->validateCsrf();
+
+        $campaignId = (int)($_POST['campaign_id'] ?? 0);
+        $res = $this->campaignModel->resumeCampaign($campaignId, (int)($_SESSION['user_id'] ?? 0));
+
+        if ($res['success']) {
+            $_SESSION['flash_success'] = 'Campaign resumed successfully. Processing queued emails...';
+            EmailQueueService::processBatch(50, 10);
+        } else {
+            $_SESSION['flash_error'] = 'Failed to resume campaign: ' . ($res['error'] ?? 'Unknown error');
+        }
+        $this->redirect('index.php?route=email_campaigns/campaignEdit&id=' . $campaignId);
+    }
+
+    /**
+     * Cancel an active campaign
+     */
+    public function campaignCancel() {
+        $this->requireAuth();
+        $this->requirePermission('marketing.campaigns.manage');
+        $this->validateCsrf();
+
+        $campaignId = (int)($_POST['campaign_id'] ?? 0);
+        $res = $this->campaignModel->cancelCampaign($campaignId, (int)($_SESSION['user_id'] ?? 0));
+
+        if ($res['success']) {
+            $_SESSION['flash_success'] = 'Campaign cancelled and remaining queued messages discarded.';
+        } else {
+            $_SESSION['flash_error'] = 'Failed to cancel campaign: ' . ($res['error'] ?? 'Unknown error');
+        }
+        $this->redirect('index.php?route=email_campaigns/campaigns');
     }
 
     /**
@@ -1068,6 +1170,38 @@ PROMPT;
         if ($templateId > 0) {
             $this->templateModel->deleteTemplate($templateId);
             $_SESSION['flash_success'] = 'Template deleted successfully.';
+        }
+
+        $this->redirect('index.php?route=email_campaigns/templates');
+    }
+
+    public function templateDuplicate() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('index.php?route=email_campaigns/templates');
+            return;
+        }
+
+        $templateId = (int)($_POST['template_id'] ?? 0);
+        $template = $this->templateModel->getById($templateId);
+
+        if (!$template) {
+            $_SESSION['flash_error'] = 'Template not found.';
+            $this->redirect('index.php?route=email_campaigns/templates');
+            return;
+        }
+
+        try {
+            $newId = $this->templateModel->saveTemplate([
+                'name' => $template->name . ' (Copy)',
+                'category' => $template->category,
+                'subject_default' => $template->subject_default,
+                'html_content' => $template->html_content,
+                'plain_text_content' => $template->plain_text_content
+            ], (int)($_SESSION['user_id'] ?? 0));
+
+            $_SESSION['flash_success'] = 'Template duplicated successfully.';
+        } catch (Throwable $e) {
+            $_SESSION['flash_error'] = 'Error duplicating template: ' . $e->getMessage();
         }
 
         $this->redirect('index.php?route=email_campaigns/templates');

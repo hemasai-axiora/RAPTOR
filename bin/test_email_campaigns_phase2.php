@@ -14,7 +14,9 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../app/config/config.php';
-require_once __DIR__ . '/../vendor/autoload.php';
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    require_once __DIR__ . '/../vendor/autoload.php';
+}
 require_once __DIR__ . '/../app/core/Database.php';
 require_once __DIR__ . '/../app/core/Model.php';
 
@@ -218,7 +220,7 @@ $csvData = "Email,First Name,Last Name,Company,City\n"
          . "info@corporate.com,General,Desk,Desk Co,Tokyo\n" // Role account
          . "valid.user2@example.com,Bob,Jones,Jones LLC,New York\n";
 
-$tmpCsvPath = sys_get_temp_dir() . '/test_contacts_' . bin2hex(random_bytes(4)) . '.csv';
+$tmpCsvPath = __DIR__ . DIRECTORY_SEPARATOR . 'test_contacts_' . bin2hex(random_bytes(4)) . '.csv';
 file_put_contents($tmpCsvPath, $csvData);
 
 // Load models

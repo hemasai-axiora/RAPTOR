@@ -83,16 +83,16 @@ class ContactImportService {
      * @return array [success, imported, skipped, rejected, error_file]
      */
     public static function processCsv(string $filePath, array $options = [], ?int $userId = null): array {
-        if (!file_exists($filePath) || !is_readable($filePath)) {
+        if (!file_exists($filePath)) {
             return [
                 'success' => false,
-                'error' => 'CSV file does not exist or is unreadable'
+                'error' => 'CSV file does not exist'
             ];
         }
 
-        $handle = fopen($filePath, 'r');
+        $handle = @fopen($filePath, 'r');
         if (!$handle) {
-            return ['success' => false, 'error' => 'Failed to open CSV stream'];
+            return ['success' => false, 'error' => 'Failed to open CSV stream (file is unreadable or permission denied)'];
         }
 
         // Detect BOM and read header

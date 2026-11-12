@@ -295,21 +295,37 @@ class CampaignBroadcast extends Model {
                 $contacts = $stmt->fetchAll(PDO::FETCH_OBJ);
             }
         } elseif (!empty($camp->list_id)) {
-            $stmt = $db->prepare('SELECT c.contact_id, c.email, c.first_name, c.last_name, c.company_name, c.custom_fields, c.status
-                                  FROM campaign_contacts c
-                                  JOIN campaign_list_contacts lc ON c.contact_id = lc.contact_id
-                                  WHERE lc.list_id = :lid AND lc.status = "active" AND c.status = "subscribed"');
-            $stmt->execute([':lid' => (int)$camp->list_id]);
-            $contacts = $stmt->fetchAll(PDO::FETCH_OBJ);
+            if ((int)$camp->list_id === -1) {
+                $stmt = $db->query('SELECT c.contact_id, c.email, c.first_name, c.last_name, c.company_name, c.custom_fields, c.status
+                                    FROM campaign_contacts c
+                                    WHERE c.status = "subscribed"');
+                $contacts = $stmt->fetchAll(PDO::FETCH_OBJ);
+            } else {
+                $stmt = $db->prepare('SELECT c.contact_id, c.email, c.first_name, c.last_name, c.company_name, c.custom_fields, c.status
+                                      FROM campaign_contacts c
+                                      JOIN campaign_list_contacts lc ON c.contact_id = lc.contact_id
+                                      WHERE lc.list_id = :lid AND lc.status = "active" AND c.status = "subscribed"');
+                $stmt->execute([':lid' => (int)$camp->list_id]);
+                $contacts = $stmt->fetchAll(PDO::FETCH_OBJ);
+            }
         }
 
-        // 2. Cross-reference against Global Suppression List
+        // 2. Cross-reference against Global Suppression List & Deduplicate
         $suppressionModel = new CampaignSuppression();
         $reachable = [];
+        $seenEmails = [];
         $suppressedCount = 0;
 
         foreach ($contacts as $c) {
             $cleanEmail = strtolower(trim($c->email));
+            if (empty($cleanEmail) || !filter_var($cleanEmail, FILTER_VALIDATE_EMAIL)) {
+                continue;
+            }
+            if (isset($seenEmails[$cleanEmail])) {
+                continue; // Prevent duplicates in broadcast
+            }
+            $seenEmails[$cleanEmail] = true;
+
             if ($suppressionModel->isSuppressed($cleanEmail)) {
                 $suppressedCount++;
                 continue;
@@ -456,6 +472,64 @@ class CampaignBroadcast extends Model {
                 'success' => false,
                 'error' => 'Failed to queue campaign: ' . $e->getMessage()
             ];
+        }
+    }
+
+    /**
+     * Pause an active or queued campaign
+     */
+    public function pauseCampaign(int $campaignId, string $reason = '', ?int $userId = null): array {
+        $db = Database::getInstance()->getConnection();
+        $stmt = $db->prepare("UPDATE campaigns_broadcast SET status = 'paused', paused_reason = :reason WHERE campaign_id = :id AND status IN ('queued', 'sending')");
+        $stmt->execute([':reason' => $reason, ':id' => $campaignId]);
+        if ($stmt->rowCount() > 0) {
+            if (class_exists('CampaignAudit')) {
+                CampaignAudit::log($userId, 'campaign.paused', 'campaign', $campaignId, ['reason' => $reason]);
+            }
+            return ['success' => true];
+        }
+        return ['success' => false, 'error' => 'Campaign is not currently in an active or queued state.'];
+    }
+
+    /**
+     * Resume a paused campaign
+     */
+    public function resumeCampaign(int $campaignId, ?int $userId = null): array {
+        $db = Database::getInstance()->getConnection();
+        $stmt = $db->prepare("UPDATE campaigns_broadcast SET status = 'queued', paused_reason = NULL WHERE campaign_id = :id AND status = 'paused'");
+        $stmt->execute([':id' => $campaignId]);
+        if ($stmt->rowCount() > 0) {
+            if (class_exists('CampaignAudit')) {
+                CampaignAudit::log($userId, 'campaign.resumed', 'campaign', $campaignId);
+            }
+            return ['success' => true];
+        }
+        return ['success' => false, 'error' => 'Campaign is not currently paused.'];
+    }
+
+    /**
+     * Cancel a campaign and flush remaining pending queue items
+     */
+    public function cancelCampaign(int $campaignId, ?int $userId = null): array {
+        $db = Database::getInstance()->getConnection();
+        try {
+            $db->beginTransaction();
+            $stmt = $db->prepare("UPDATE campaigns_broadcast SET status = 'cancelled' WHERE campaign_id = :id AND status IN ('draft', 'scheduled', 'queued', 'sending', 'paused')");
+            $stmt->execute([':id' => $campaignId]);
+
+            $db->prepare("UPDATE campaign_email_queue SET status = 'cancelled', last_error = 'Campaign cancelled by user' WHERE campaign_id = :id AND status IN ('pending', 'processing')")
+               ->execute([':id' => $campaignId]);
+
+            $db->commit();
+            if (class_exists('CampaignAudit')) {
+                CampaignAudit::log($userId, 'campaign.cancelled', 'campaign', $campaignId);
+            }
+            return ['success' => true];
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            return ['success' => false, 'error' => $e->getMessage()];
         }
     }
 }

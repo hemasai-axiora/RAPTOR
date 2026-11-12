@@ -210,7 +210,7 @@ class EmailQueueService {
 
                 // Update campaign counters
                 $db->prepare("UPDATE campaigns_broadcast 
-                              SET sent_count = sent_count + 1, status = IF(status = 'queued', 'sending', status) 
+                              SET sent_count = sent_count + 1, status = CASE WHEN status = 'queued' THEN 'sending' ELSE status END 
                               WHERE campaign_id = :cid")
                    ->execute([':cid' => $item->campaign_id]);
 

@@ -1492,63 +1492,63 @@
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
                     </div>
                     <ul class="menu-section-items">
-                        <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'email_campaigns/campaign') !== false) ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo ((isset($_GET['route']) && (strpos($_GET['route'], 'email_campaigns/campaign') === 0 || $_GET['route'] === 'email_campaigns/index')) || (isset($active_tab) && $active_tab === 'email_campaigns_broadcasts')) ? 'active' : ''; ?>">
                             <a href="index.php?route=email_campaigns/campaigns">
                                 <i class="fa-solid fa-paper-plane"></i><span>Email Broadcasts</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'email_campaigns/template') !== false) ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo ((isset($_GET['route']) && strpos($_GET['route'], 'email_campaigns/template') === 0) || (isset($active_tab) && $active_tab === 'email_campaigns_templates')) ? 'active' : ''; ?>">
                             <a href="index.php?route=email_campaigns/templates">
                                 <i class="fa-solid fa-palette"></i><span>Email Templates</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'email_campaigns/contact') !== false) ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo ((isset($_GET['route']) && (strpos($_GET['route'], 'email_campaigns/contact') === 0 || strpos($_GET['route'], 'email_campaigns/list') === 0 || strpos($_GET['route'], 'email_campaigns/import') === 0)) || (isset($active_tab) && in_array($active_tab, ['email_campaigns_contacts', 'email_campaigns_lists'], true))) ? 'active' : ''; ?>">
                             <a href="index.php?route=email_campaigns/contacts">
                                 <i class="fa-solid fa-users-rectangle"></i><span>Audiences & Lists</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_segments') ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo ((isset($_GET['route']) && strpos($_GET['route'], 'email_campaigns/segment') === 0) || (isset($active_tab) && $active_tab === 'email_campaigns_segments')) ? 'active' : ''; ?>">
                             <a href="index.php?route=email_campaigns/segments">
                                 <i class="fa-solid fa-filter"></i><span>Audience Segments</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'email_campaigns_suppressions') ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo ((isset($_GET['route']) && strpos($_GET['route'], 'email_campaigns/suppression') === 0) || (isset($active_tab) && $active_tab === 'email_campaigns_suppressions')) ? 'active' : ''; ?>">
                             <a href="index.php?route=email_campaigns/suppressions">
                                 <i class="fa-solid fa-ban text-danger"></i><span>Global Suppression</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && in_array($active_tab, ['email_campaigns_domains', 'email_campaigns_guidance', 'email_campaigns_health'], true)) ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo ((isset($_GET['route']) && strpos($_GET['route'], 'email_campaigns/domain') === 0) || (isset($active_tab) && in_array($active_tab, ['email_campaigns_domains', 'email_campaigns_guidance', 'email_campaigns_health'], true))) ? 'active' : ''; ?>">
                             <a href="index.php?route=email_campaigns/domains">
                                 <i class="fa-solid fa-shield-halved"></i><span>Domains & DNS</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($_GET['route']) && (strpos($_GET['route'], 'email_campaigns/analytic') !== false || strpos($_GET['route'], 'email_campaigns/preflight') !== false)) ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo ((isset($_GET['route']) && (strpos($_GET['route'], 'email_campaigns/analytic') === 0 || strpos($_GET['route'], 'email_campaigns/preflight') === 0 || strpos($_GET['route'], 'email_campaigns/health') === 0)) || (isset($active_tab) && $active_tab === 'email_campaigns_analytics')) ? 'active' : ''; ?>">
                             <a href="index.php?route=email_campaigns/analytics">
                                 <i class="fa-solid fa-shield-virus"></i><span>Deliverability Health</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'whatsapp') !== false) ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo ((isset($_GET['route']) && strpos($_GET['route'], 'whatsapp') === 0) || (isset($active_tab) && $active_tab === 'whatsapp')) ? 'active' : ''; ?>">
                             <a href="index.php?route=whatsapp/index">
                                 <i class="fa-brands fa-whatsapp text-success"></i><span>WhatsApp Cloud API</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'campaigns/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'campaigns') !== false && strpos($_GET['route'], 'email_') === false)) ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo ((isset($_GET['route']) && strpos($_GET['route'], 'campaigns') === 0 && strpos($_GET['route'], 'email_campaigns') === false) || (isset($active_tab) && $active_tab === 'campaigns')) ? 'active' : ''; ?>">
                             <a href="index.php?route=campaigns/index">
                                 <i class="fa-solid fa-bullhorn"></i><span>Campaign Registry</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'posts') !== false) ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo ((isset($_GET['route']) && strpos($_GET['route'], 'posts') === 0) || (isset($active_tab) && $active_tab === 'posts')) ? 'active' : ''; ?>">
                             <a href="index.php?route=posts/index">
                                 <i class="fa-solid fa-rectangle-list"></i><span>Social Publishing</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($_GET['route']) && strpos($_GET['route'], 'journeys') !== false) ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo ((isset($_GET['route']) && strpos($_GET['route'], 'journeys') === 0) || (isset($active_tab) && $active_tab === 'journeys')) ? 'active' : ''; ?>">
                             <a href="index.php?route=journeys/index">
                                 <i class="fa-solid fa-diagram-project"></i><span>Automation Journeys</span>
                             </a>
                         </li>
                         <?php if (!Policy::isEmployee()): ?>
-                        <li class="menu-item <?php echo (strpos($_SERVER['REQUEST_URI'] ?? '', 'website_analytics/') !== false || (isset($_GET['route']) && strpos($_GET['route'], 'website_analytics') !== false)) ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo ((isset($_GET['route']) && strpos($_GET['route'], 'website_analytics') === 0) || (isset($active_tab) && $active_tab === 'website_analytics')) ? 'active' : ''; ?>">
                             <a href="index.php?route=website_analytics/index">
                                 <i class="fa-solid fa-chart-pie"></i><span>Website Analytics</span>
                             </a>

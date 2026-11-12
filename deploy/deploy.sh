@@ -111,6 +111,12 @@ if [ -f "${BASE_DIR}/current/bin/migrate.php" ]; then
   }
 fi
 
+# Stage 6.5: Configure Email Queue Background Worker Crontab
+echo ""
+echo "--- Configuring Background Email Queue Worker Crontab ---"
+CRON_CMD="* * * * * docker exec raptor-web php /var/www/html/bin/email_queue_worker.php --once >> /var/log/raptor_email_worker.log 2>&1"
+(crontab -l 2>/dev/null | grep -F "email_queue_worker.php") || (crontab -l 2>/dev/null; echo "$CRON_CMD") | crontab - || true
+
 # Stage 7: Automated Health Check Verification
 echo ""
 echo "--- [7/7] Post-Deployment Health Verification ---"
