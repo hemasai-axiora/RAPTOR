@@ -65,6 +65,11 @@ $jobs = [
         'schedule' => '0 0 * * *',
         'file' => 'backup_to_s3.php',
         'desc' => 'Nightly database and storage S3 backup'
+    ],
+    'email_queue_worker' => [
+        'schedule' => '* * * * *',
+        'file' => 'email_queue_worker.php',
+        'desc' => 'Dispatch pending marketing email queue items'
     ]
 ];
 

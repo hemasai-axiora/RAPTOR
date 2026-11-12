@@ -59,6 +59,48 @@ class EmailService {
     }
 
     /**
+     * Retrieve dedicated email marketing mail settings, falling back to corporate mail settings.
+     */
+    public static function getMarketingConfig(): array {
+        $dbSettings = [];
+        try {
+            if (class_exists('Database')) {
+                $db = Database::getInstance()->getConnection();
+                $stmt = $db->query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'mail.marketing.%'");
+                while ($row = $stmt->fetch(PDO::FETCH_OBJ)) {
+                    $dbSettings[$row->setting_key] = $row->setting_value;
+                }
+            }
+        } catch (Throwable $t) {}
+
+        $isDedicated = !empty($dbSettings['mail.marketing.enabled']) && ($dbSettings['mail.marketing.enabled'] === '1' || $dbSettings['mail.marketing.enabled'] === 1);
+        $mHost = trim($dbSettings['mail.marketing.host'] ?? (getenv('SMTP_MARKETING_HOST') ?: ''));
+
+        if ($isDedicated && !empty($mHost)) {
+            $defaultDriver = $dbSettings['mail.marketing.driver'] ?? 'smtp';
+            return [
+                'driver'          => $defaultDriver,
+                'host'            => $mHost,
+                'port'            => (int)($dbSettings['mail.marketing.port'] ?? (getenv('SMTP_MARKETING_PORT') ?: 587)),
+                'username'        => $dbSettings['mail.marketing.username'] ?? (getenv('SMTP_MARKETING_USER') ?: ''),
+                'password'        => $dbSettings['mail.marketing.password'] ?? (getenv('SMTP_MARKETING_PASS') ?: ''),
+                'encryption'      => strtolower($dbSettings['mail.marketing.encryption'] ?? (getenv('SMTP_MARKETING_ENCRYPTION') ?: 'tls')),
+                'from_address'    => $dbSettings['mail.marketing.from_address'] ?? 'contacts@axioraglobalsolutions.com',
+                'from_name'       => $dbSettings['mail.marketing.from_name'] ?? 'Axiora Global',
+                'auto_send'       => '1',
+                'timeout'         => 15
+            ];
+        }
+
+        // Fallback to corporate mail settings
+        $corpConfig = self::getConfig();
+        if ($corpConfig['from_address'] === 'accounts@axioraglobalsolutions.com') {
+            $corpConfig['marketing_from_address'] = 'contacts@axioraglobalsolutions.com';
+        }
+        return $corpConfig;
+    }
+
+    /**
      * Send email with optional attachments.
      * 
      * @param string $toEmail Recipient email address

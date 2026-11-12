@@ -117,6 +117,17 @@ class SettingsController extends Controller {
                 'mail.from_name',
                 'mail.auto_send_on_generation',
 
+                // Marketing & Bulk Broadcast SMTP Configurations (Dedicated Mailer)
+                'mail.marketing.enabled',
+                'mail.marketing.driver',
+                'mail.marketing.host',
+                'mail.marketing.port',
+                'mail.marketing.username',
+                'mail.marketing.password',
+                'mail.marketing.encryption',
+                'mail.marketing.from_address',
+                'mail.marketing.from_name',
+
                 // Payroll Lifecycle & Calculation Configurations
                 'payroll.cycle_type',
                 'payroll.cycle_start_day',
@@ -144,7 +155,7 @@ class SettingsController extends Controller {
                         $value = isset($_POST[$key]) ? trim($_POST[$key]) : '';
                     }
 
-                    if (in_array($key, ['attendance.geofence_enabled', 'location.tracking_enabled', 'alerts.cron_enabled', 'alerts.web_push_enabled', 'alerts.email_enabled', 'reports.email_enabled', 'attendance.allow_week_off_override', 'mail.auto_send_on_generation', 'payroll.pt_enabled', 'payroll.auto_email_payslips'], true)) {
+                    if (in_array($key, ['attendance.geofence_enabled', 'location.tracking_enabled', 'alerts.cron_enabled', 'alerts.web_push_enabled', 'alerts.email_enabled', 'reports.email_enabled', 'attendance.allow_week_off_override', 'mail.auto_send_on_generation', 'mail.marketing.enabled', 'payroll.pt_enabled', 'payroll.auto_email_payslips'], true)) {
                         $value = isset($_POST[$key]) ? '1' : '0';
                     }
 
@@ -214,6 +225,54 @@ class SettingsController extends Controller {
                 $_SESSION['settings_success'] = "Test email sent successfully to {$recipient}!";
             } else {
                 $_SESSION['settings_error'] = "Failed to send test email: " . ($result['error'] ?? 'Unknown error');
+            }
+        }
+        $this->redirect('index.php?route=settings/index');
+    }
+
+    // Send diagnostic test email to verify Marketing SMTP configuration
+    public function test_marketing_email() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+                if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'error' => 'CSRF validation failed']);
+                    exit;
+                }
+                die('CSRF validation failed.');
+            }
+
+            require_once APPROOT . '/services/EmailService.php';
+
+            $recipient = trim($_POST['test_email_recipient'] ?? '');
+            if (empty($recipient)) {
+                $recipient = $_SESSION['user_email'] ?? 'admin@raptor.local';
+            }
+
+            $testConfig = [
+                'driver'       => trim($_POST['mail_marketing_driver'] ?? 'smtp'),
+                'host'         => trim($_POST['mail_marketing_host'] ?? ''),
+                'port'         => (int)($_POST['mail_marketing_port'] ?? 587),
+                'username'     => trim($_POST['mail_marketing_username'] ?? ''),
+                'password'     => $_POST['mail_marketing_password'] ?? '',
+                'encryption'   => trim($_POST['mail_marketing_encryption'] ?? 'tls'),
+                'from_address' => trim($_POST['mail_marketing_from_address'] ?? 'contacts@axioraglobalsolutions.com'),
+                'from_name'    => trim($_POST['mail_marketing_from_name'] ?? 'Axiora Global'),
+                'timeout'      => 10
+            ];
+
+            $result = EmailService::testConnection($recipient, $testConfig);
+
+            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                header('Content-Type: application/json');
+                echo json_encode($result);
+                exit;
+            }
+
+            if ($result['success']) {
+                $_SESSION['settings_success'] = "Marketing test email sent successfully to {$recipient}!";
+            } else {
+                $_SESSION['settings_error'] = "Failed to send marketing test email: " . ($result['error'] ?? 'Unknown error');
             }
         }
         $this->redirect('index.php?route=settings/index');
