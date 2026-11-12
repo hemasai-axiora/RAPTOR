@@ -21,6 +21,7 @@
             </span>
 
             <form action="index.php?route=journeys/toggleStatus" method="POST" class="d-inline">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
                 <input type="hidden" name="journey_id" value="<?= $journey->journey_id; ?>">
                 <?php if ($journey->status === 'active'): ?>
                     <input type="hidden" name="status" value="paused">
@@ -41,6 +42,7 @@
     <div class="row g-4">
         <div class="col-lg-8">
             <form action="index.php?route=journeys/saveSteps" method="POST" id="journeyStepsForm">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
                 <input type="hidden" name="journey_id" value="<?= $journey->journey_id; ?>">
 
                 <!-- Trigger Card (Step 0) -->

@@ -125,6 +125,7 @@
                                         <i class="fa-solid fa-diagram-project"></i> Builder
                                     </a>
                                     <form action="index.php?route=journeys/toggleStatus" method="POST" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
                                         <input type="hidden" name="journey_id" value="<?= $j->journey_id; ?>">
                                         <?php if ($j->status === 'active'): ?>
                                             <input type="hidden" name="status" value="paused">
@@ -152,6 +153,7 @@
 <div class="modal fade" id="newJourneyModal" tabindex="-1" aria-labelledby="newJourneyModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <form action="index.php?route=journeys/create" method="POST" class="modal-content bg-dark text-white border-secondary">
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
             <div class="modal-header border-secondary">
                 <h5 class="modal-title" id="newJourneyModalLabel"><i class="fa-solid fa-route text-primary me-2"></i>Create New Automation Journey</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>

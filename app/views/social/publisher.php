@@ -139,6 +139,7 @@
 <div class="modal fade" id="composePostModal" tabindex="-1" aria-labelledby="composePostModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <form action="index.php?route=socialPublisher/schedule" method="POST" class="modal-content bg-dark text-white border-secondary">
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
             <div class="modal-header border-secondary">
                 <h5 class="modal-title" id="composePostModalLabel"><i class="fa-solid fa-pen-nib text-primary me-2"></i>Compose & Schedule Social Post</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>

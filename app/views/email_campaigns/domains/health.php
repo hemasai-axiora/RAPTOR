@@ -213,6 +213,7 @@ $q = $health['queue'];
 <div class="modal fade" id="sendTestReportModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <form method="POST" action="index.php?route=email_campaigns/healthReportSendTest">
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title fw-bold"><i class="fa-solid fa-paper-plane text-primary me-2"></i>Dispatch Deliverability Health Report</h5>

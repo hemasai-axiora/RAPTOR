@@ -19,6 +19,7 @@
     <?php endif; ?>
 
     <form method="POST" action="index.php?route=email_campaigns/importProcess" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
         <div class="row g-4">
             <!-- Left: File upload & settings -->
             <div class="col-lg-8">

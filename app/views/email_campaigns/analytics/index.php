@@ -264,6 +264,7 @@
 <div class="modal fade" id="reengageModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <form method="POST" action="index.php?route=email_campaigns/reengageInactive">
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title fw-bold text-warning"><i class="fa-solid fa-user-clock me-2"></i>Subscriber Re-Engagement Policy</h5>

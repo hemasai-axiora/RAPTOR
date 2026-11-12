@@ -25,6 +25,7 @@
     <?php endif; ?>
 
     <form method="POST" action="index.php?route=email_campaigns/campaignSave" id="campaign-form">
+        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
         <?php if ($campaign): ?>
             <input type="hidden" name="campaign_id" value="<?php echo $campaign->campaign_id; ?>">
         <?php endif; ?>
@@ -527,9 +528,11 @@
 <!-- Forms: Launch and Approve Campaign Confirmation -->
 <?php if ($campaign): ?>
 <form method="POST" action="index.php?route=email_campaigns/campaignLaunch" id="launch-form">
+    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
     <input type="hidden" name="campaign_id" value="<?php echo $campaign->campaign_id; ?>">
 </form>
 <form method="POST" action="index.php?route=email_campaigns/campaignApprove" id="approve-form">
+    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
     <input type="hidden" name="campaign_id" value="<?php echo $campaign->campaign_id; ?>">
 </form>
 <?php endif; ?>

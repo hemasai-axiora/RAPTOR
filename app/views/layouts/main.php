@@ -154,6 +154,36 @@
                     return _origFetch(input, init);
                 };
             }
+
+            // Automatically ensure any native POST form includes csrf_token before submission
+            function ensureFormCsrf(form) {
+                if (!form || form.tagName !== 'FORM') return;
+                var m = (form.method || '').toUpperCase();
+                if (m === 'POST' && isSameOrigin(form.action || window.location.href)) {
+                    var existing = form.querySelector('input[name="csrf_token"]');
+                    if (!existing) {
+                        var input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'csrf_token';
+                        input.value = token;
+                        form.appendChild(input);
+                    } else if (!existing.value) {
+                        existing.value = token;
+                    }
+                }
+            }
+
+            document.addEventListener('submit', function(e) {
+                ensureFormCsrf(e.target);
+            }, true);
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    document.querySelectorAll('form[method="POST"], form[method="post"]').forEach(ensureFormCsrf);
+                });
+            } else {
+                document.querySelectorAll('form[method="POST"], form[method="post"]').forEach(ensureFormCsrf);
+            }
         })();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>

@@ -117,6 +117,7 @@
                                 </td>
                                 <td class="text-end">
                                     <form method="POST" action="index.php?route=email_campaigns/segmentDelete" onsubmit="return confirm('Delete this dynamic segment? Contacts themselves will not be affected.');" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
                                         <input type="hidden" name="segment_id" value="<?php echo $s->segment_id; ?>">
                                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Segment">
                                             <i class="fa-solid fa-trash"></i>
@@ -136,6 +137,7 @@
 <div class="modal fade" id="createSegmentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <form method="POST" action="index.php?route=email_campaigns/segmentSave">
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title fw-bold">Create Dynamic Audience Segment</h5>

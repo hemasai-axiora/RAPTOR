@@ -19,6 +19,7 @@
     <?php endif; ?>
 
     <form method="POST" action="index.php?route=email_campaigns/templateSave">
+        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
         <?php if ($template): ?>
             <input type="hidden" name="template_id" value="<?php echo $template->template_id; ?>">
         <?php endif; ?>

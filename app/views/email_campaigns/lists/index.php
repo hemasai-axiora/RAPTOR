@@ -144,6 +144,7 @@
                                             </li>
                                             <li>
                                                 <form method="POST" action="index.php?route=email_campaigns/listDelete" onsubmit="return confirm('Delete this list? Contacts assigned to other lists or global suppression will remain intact.');">
+                                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
                                                     <input type="hidden" name="list_id" value="<?php echo $l->list_id; ?>">
                                                     <button type="submit" class="dropdown-item text-danger">
                                                         <i class="fa-solid fa-trash me-2"></i>Delete List
@@ -166,6 +167,7 @@
 <div class="modal fade" id="createListModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <form method="POST" action="index.php?route=email_campaigns/listSave">
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title fw-bold">Create Email Audience List</h5>
@@ -206,6 +208,7 @@
 <div class="modal fade" id="syncPayrollModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <form method="POST" action="index.php?route=email_campaigns/syncInternal">
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title fw-bold text-info"><i class="fa-solid fa-building-user me-2"></i>Sync Active Payroll Employees</h5>

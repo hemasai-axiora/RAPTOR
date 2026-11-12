@@ -150,6 +150,7 @@
                                     </td>
                                     <td class="text-end">
                                         <form method="POST" action="index.php?route=email_campaigns/alertAction" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
                                             <input type="hidden" name="alert_id" value="<?php echo $a->id; ?>">
                                             <?php if ($a->state === 'OPEN' || $a->state === 'REOPENED'): ?>
                                                 <input type="hidden" name="action" value="acknowledge">

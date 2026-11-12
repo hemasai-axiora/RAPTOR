@@ -81,6 +81,7 @@
     <div class="modal-dialog">
         <div class="modal-content bg-dark text-white border-secondary">
             <form method="POST" action="index.php?route=whatsapp/createBroadcast">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
                 <div class="modal-header border-secondary">
                     <h5 class="modal-title" id="newBroadcastModalLabel"><i class="fa-solid fa-bullhorn me-2 text-primary"></i>Schedule Broadcast</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
