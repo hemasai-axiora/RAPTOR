@@ -38,6 +38,56 @@ class SmtpAdapter implements MailerAdapterInterface {
     }
 
     public function send(array $message): MailerSendResult {
+        if (!class_exists('PHPMailer\PHPMailer\PHPMailer')) {
+            $fromEmail = str_replace(["\r", "\n"], '', $message['from_email'] ?? $this->config['username'] ?? '');
+            $fromName = str_replace(["\r", "\n"], '', $message['from_name'] ?? 'Axiora Global Solutions');
+            $toEmail = str_replace(["\r", "\n"], '', $message['to'] ?? '');
+            $toName = !empty($message['to_name']) ? str_replace(["\r", "\n"], '', $message['to_name']) : '';
+            $subject = str_replace(["\r", "\n"], '', $message['subject'] ?? '');
+
+            $customConfig = [
+                'driver' => 'smtp',
+                'host' => $this->config['host'] ?? '',
+                'port' => (int)($this->config['port'] ?? 587),
+                'username' => $this->config['username'] ?? '',
+                'password' => $this->config['password'] ?? '',
+                'encryption' => $this->config['encryption'] ?? 'tls',
+                'from_address' => $fromEmail,
+                'from_name' => $fromName,
+                'timeout' => (int)($this->config['timeout'] ?? 15)
+            ];
+
+            try {
+                $res = EmailService::send(
+                    $toEmail,
+                    $toName,
+                    $subject,
+                    $message['html'] ?? '',
+                    $message['text'] ?? strip_tags($message['html'] ?? ''),
+                    [],
+                    $customConfig
+                );
+
+                if (!empty($res['success'])) {
+                    return MailerSendResult::success($res['message_id'] ?? ('smtp-' . bin2hex(random_bytes(10))));
+                }
+
+                $err = $res['error'] ?? 'SMTP delivery failed';
+                $isTransient = (stripos($err, 'timeout') !== false ||
+                                stripos($err, 'connection refused') !== false ||
+                                stripos($err, 'rate limit') !== false ||
+                                stripos($err, 'temporarily deferred') !== false ||
+                                stripos($err, 'try again') !== false ||
+                                stripos($err, '421') !== false ||
+                                stripos($err, '450') !== false ||
+                                stripos($err, '451') !== false);
+
+                return MailerSendResult::failure($err, 'SMTP_ERROR', $isTransient);
+            } catch (Throwable $t) {
+                return MailerSendResult::failure($t->getMessage(), 'SYSTEM_ERROR', true);
+            }
+        }
+
         $mail = new PHPMailer(true);
 
         try {
