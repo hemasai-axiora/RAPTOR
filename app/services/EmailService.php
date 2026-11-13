@@ -140,6 +140,28 @@ class EmailService {
             } catch (Throwable $e) {
                 // If SMTP fails, record exact error
                 $smtpError = $e->getMessage();
+
+                // If SMTP rejected due to sender relay restrictions, automatically retry on a FRESH connection
+                // with the verified authenticated sender address while preserving the user's campaign email as Reply-To:
+                $isRelayErr = (stripos($smtpError, 'relay') !== false || stripos($smtpError, '550') !== false || stripos($smtpError, 'not allowed') !== false);
+                $authSender = (!empty($config['authenticated_from']) && filter_var($config['authenticated_from'], FILTER_VALIDATE_EMAIL))
+                    ? $config['authenticated_from']
+                    : ((!empty($config['username']) && filter_var($config['username'], FILTER_VALIDATE_EMAIL)) ? $config['username'] : 'contacts@axioraglobalsolutions.com');
+
+                if ($isRelayErr && !empty($authSender) && strtolower($config['from_address'] ?? '') !== strtolower($authSender)) {
+                    try {
+                        $retryConfig = $config;
+                        $retryConfig['reply_to'] = !empty($config['from_address']) ? $config['from_address'] : ($retryConfig['reply_to'] ?? '');
+                        $retryConfig['from_address'] = $authSender;
+                        $retryRes = self::sendViaSmtp($toEmail, $toName, $subject, $htmlBody, $textBody, $attachments, $retryConfig);
+                        if (!empty($retryRes['success'])) {
+                            return $retryRes;
+                        }
+                    } catch (Throwable $eRetry) {
+                        $smtpError = $eRetry->getMessage();
+                    }
+                }
+
                 // If in dev environment or mail fallback allowed, try PHP mail() as fallback
                 $fallbackRes = self::sendViaPhpMail($toEmail, $toName, $subject, $htmlBody, $textBody, $attachments, $config);
                 if ($fallbackRes['success']) {

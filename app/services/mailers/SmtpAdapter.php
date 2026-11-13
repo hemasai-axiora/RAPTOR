@@ -86,6 +86,20 @@ class SmtpAdapter implements MailerAdapterInterface {
             $toName = !empty($message['to_name']) ? str_replace(["\r", "\n"], '', $message['to_name']) : '';
             $subject = str_replace(["\r", "\n"], '', $message['subject'] ?? '');
 
+            $authFrom = $this->config['from_address'] ?? $this->config['username'] ?? 'contacts@axioraglobalsolutions.com';
+            $effectiveFrom = $fromEmail;
+            $effectiveReplyTo = !empty($message['reply_to']) ? $message['reply_to'] : $fromEmail;
+
+            // Anti-relay safeguard: If SMTP host is Zoho Mail or domain differs from authenticated sender,
+            // automatically route transport From via verified address to prevent 550 5.7.1 relay errors.
+            $isZoho = (stripos($this->config['host'] ?? '', 'zoho') !== false);
+            $fromDomain = substr(strrchr($fromEmail, "@"), 1);
+            $authDomain = substr(strrchr($authFrom, "@"), 1);
+
+            if (($isZoho || (!empty($fromDomain) && !empty($authDomain) && strcasecmp($fromDomain, $authDomain) !== 0)) && !empty($authFrom)) {
+                $effectiveFrom = $authFrom;
+            }
+
             $customConfig = [
                 'driver' => 'smtp',
                 'host' => $this->config['host'] ?? '',
@@ -93,10 +107,10 @@ class SmtpAdapter implements MailerAdapterInterface {
                 'username' => $this->config['username'] ?? '',
                 'password' => $this->config['password'] ?? '',
                 'encryption' => $this->config['encryption'] ?? 'tls',
-                'from_address' => $fromEmail,
+                'from_address' => $effectiveFrom,
                 'from_name' => $fromName,
-                'authenticated_from' => $this->config['from_address'] ?? $this->config['username'] ?? 'contacts@axioraglobalsolutions.com',
-                'reply_to' => $message['reply_to'] ?? '',
+                'authenticated_from' => $authFrom,
+                'reply_to' => $effectiveReplyTo,
                 'custom_headers' => $message['headers'] ?? [],
                 'timeout' => (int)($this->config['timeout'] ?? 15)
             ];
