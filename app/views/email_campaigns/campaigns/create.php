@@ -1133,8 +1133,39 @@ ${bodyContent}
         if (meterWarningsCount) meterWarningsCount.textContent = warnings;
     }
 
+    function ensureComplianceFooter() {
+        if (htmlArea && htmlArea.value && htmlArea.value.trim()) {
+            const val = htmlArea.value.trim();
+            if (!val.includes('{{unsubscribe_url}}') && !val.toLowerCase().includes('unsubscribe')) {
+                const footer = '\n\n<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12px;color:#718096;text-align:center;">' +
+                    'Axiora Global Solutions, Cyber City, Hyderabad, India | <a href="{{unsubscribe_url}}" style="color:#4a5568;text-decoration:underline;">Unsubscribe</a>' +
+                    '</div>';
+                if (val.toLowerCase().includes('</body>')) {
+                    htmlArea.value = val.replace(/<\/body>/i, footer + '</body>');
+                } else {
+                    htmlArea.value = val + footer;
+                }
+                updateCampPreview();
+            }
+        }
+        if (plainArea && plainArea.value && plainArea.value.trim()) {
+            const pVal = plainArea.value.trim();
+            if (!pVal.includes('{{unsubscribe_url}}') && !pVal.toLowerCase().includes('unsubscribe')) {
+                plainArea.value = pVal + '\n\nAxiora Global Solutions, Cyber City, Hyderabad, India | Unsubscribe: {{unsubscribe_url}}';
+            }
+        }
+    }
+
+    const campaignFormEl = document.getElementById('campaign-form');
+    if (campaignFormEl) {
+        campaignFormEl.addEventListener('submit', function() {
+            ensureComplianceFooter();
+        });
+    }
+
     if (btnRunAudit) {
         btnRunAudit.addEventListener('click', function() {
+            ensureComplianceFooter();
             const cid = this.getAttribute('data-campaign-id');
             const card = document.getElementById('audit-results-card');
             const heading = document.getElementById('audit-status-heading');
@@ -1448,6 +1479,7 @@ ${bodyContent}
     const btnLaunch = document.getElementById('btn-launch-campaign');
     if (btnLaunch) {
         btnLaunch.addEventListener('click', function() {
+            ensureComplianceFooter();
             if (confirm('Launch this campaign? The pre-send deliverability checklist will be verified and messages will be queued for worker dispatch.')) {
                 document.getElementById('launch-form').submit();
             }

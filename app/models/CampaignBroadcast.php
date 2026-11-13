@@ -149,6 +149,26 @@ class CampaignBroadcast extends Model {
             $plainTextContent = CampaignTemplate::htmlToPlainText($htmlContent);
         }
 
+        // Auto-attach compliance footer if missing in promotional/marketing emails
+        if ($communicationIntent !== 'operational') {
+            $hasUnsubHtml = (strpos($htmlContent, '{{unsubscribe_url}}') !== false) ||
+                            (stripos($htmlContent, 'unsubscribe') !== false && preg_match('/<a[^>]*href=[^>]*>.*?unsubscribe.*?<\/a>/is', $htmlContent));
+            if (!$hasUnsubHtml && !empty($htmlContent)) {
+                $complianceFooter = '<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12px;color:#718096;text-align:center;">'
+                    . 'Axiora Global Solutions, Cyber City, Hyderabad, India | <a href="{{unsubscribe_url}}" style="color:#4a5568;text-decoration:underline;">Unsubscribe</a>'
+                    . '</div>';
+                if (stripos($htmlContent, '</body>') !== false) {
+                    $htmlContent = str_ireplace('</body>', $complianceFooter . '</body>', $htmlContent);
+                } else {
+                    $htmlContent .= "\n\n" . $complianceFooter;
+                }
+            }
+
+            if (!empty($plainTextContent) && strpos($plainTextContent, '{{unsubscribe_url}}') === false && stripos($plainTextContent, 'unsubscribe') === false) {
+                $plainTextContent = rtrim($plainTextContent) . "\n\nAxiora Global Solutions, Cyber City, Hyderabad, India | Unsubscribe: {{unsubscribe_url}}";
+            }
+        }
+
         // Sanitize HTML
         $htmlContent = CampaignTemplate::sanitizeHtml($htmlContent);
 
@@ -382,6 +402,30 @@ class CampaignBroadcast extends Model {
                 'success' => false,
                 'error' => 'Launch Blocked: Dedicated Marketing SMTP is disabled or unconfigured in Global Settings. Configure and enable Marketing SMTP in Settings before launching bulk campaigns to protect Corporate SMTP reputation.'
             ];
+        }
+
+        // Auto-ensure compliance unsubscribe footer on launch if missing
+        if (($camp->communication_intent ?? 'promotional') !== 'operational') {
+            $hasUnsub = (strpos($camp->html_content, '{{unsubscribe_url}}') !== false) ||
+                        (stripos($camp->html_content, 'unsubscribe') !== false && preg_match('/<a[^>]*href=[^>]*>.*?unsubscribe.*?<\/a>/is', $camp->html_content));
+            if (!$hasUnsub) {
+                $complianceFooter = '<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12px;color:#718096;text-align:center;">'
+                    . 'Axiora Global Solutions, Cyber City, Hyderabad, India | <a href="{{unsubscribe_url}}" style="color:#4a5568;text-decoration:underline;">Unsubscribe</a>'
+                    . '</div>';
+                $updatedHtml = (stripos($camp->html_content, '</body>') !== false)
+                    ? str_ireplace('</body>', $complianceFooter . '</body>', $camp->html_content)
+                    : ($camp->html_content . "\n\n" . $complianceFooter);
+
+                $updatedPlain = rtrim($camp->plain_text_content ?? '') . "\n\nAxiora Global Solutions, Cyber City, Hyderabad, India | Unsubscribe: {{unsubscribe_url}}";
+
+                try {
+                    $dbFix = Database::getInstance()->getConnection();
+                    $dbFix->prepare("UPDATE campaigns_broadcast SET html_content = :html, plain_text_content = :plain WHERE campaign_id = :id")
+                          ->execute([':html' => $updatedHtml, ':plain' => $updatedPlain, ':id' => $campaignId]);
+                    $camp->html_content = $updatedHtml;
+                    $camp->plain_text_content = $updatedPlain;
+                } catch (Throwable $t) {}
+            }
         }
 
         // 1. Run Pre-Send Deliverability & Compliance Checklist

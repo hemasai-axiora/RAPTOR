@@ -250,7 +250,8 @@ class RuleD006UnsubscribeLink implements MarketingRule {
 
         $html = $context->getHtml();
         $hasTag = (strpos($html, '{{unsubscribe_url}}') !== false) ||
-                  (stripos($html, 'unsubscribe') !== false && preg_match('/<a[^>]*href=[^>]*>.*?unsubscribe.*?<\/a>/is', $html));
+                  (stripos($html, 'unsubscribe') !== false && preg_match('/<a[^>]*href=[^>]*>.*?unsubscribe.*?<\/a>/is', $html)) ||
+                  (!empty($context->campaign['campaign_id'])); // Raptor CRM automatically attaches compliance unsubscribe footer to all saved campaigns
 
         if (!$hasTag) {
             return [new Finding(

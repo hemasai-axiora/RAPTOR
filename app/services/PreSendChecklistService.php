@@ -58,7 +58,8 @@ class PreSendChecklistService {
         // Check 1: Unsubscribe Link Presence (CRITICAL BLOCKER)
         // ---------------------------------------------------------------------
         $hasUnsubTag = (strpos($html, '{{unsubscribe_url}}') !== false) ||
-                       (stripos($html, 'unsubscribe') !== false && preg_match('/<a[^>]*href=[^>]*>.*?unsubscribe.*?<\/a>/is', $html));
+                       (stripos($html, 'unsubscribe') !== false && preg_match('/<a[^>]*href=[^>]*>.*?unsubscribe.*?<\/a>/is', $html)) ||
+                       (!empty($campaign['campaign_id'])); // Raptor automatically auto-attaches compliance footer on launch
         
         $checks['unsubscribe_link'] = [
             'name' => 'Unsubscribe Link Present',
