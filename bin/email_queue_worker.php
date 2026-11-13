@@ -29,6 +29,7 @@ require_once __DIR__ . '/../app/models/CampaignTemplate.php';
 require_once __DIR__ . '/../app/models/CampaignSuppression.php';
 require_once __DIR__ . '/../app/services/UnsubscribeService.php';
 require_once __DIR__ . '/../app/services/WarmupScheduleService.php';
+require_once __DIR__ . '/../app/services/EmailService.php';
 require_once __DIR__ . '/../app/services/EmailQueueService.php';
 
 // Load Mailers

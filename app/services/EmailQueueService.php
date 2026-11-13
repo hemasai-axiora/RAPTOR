@@ -27,6 +27,13 @@ class EmailQueueService {
 
         $nowSql = ($driver === 'sqlite') ? "datetime('now')" : "NOW()";
 
+        if (!class_exists('EmailService')) {
+            $emailServiceFile = defined('APPROOT') ? (APPROOT . '/services/EmailService.php') : (dirname(__DIR__) . '/EmailService.php');
+            if (file_exists($emailServiceFile)) {
+                require_once $emailServiceFile;
+            }
+        }
+
         // 1. Safe Row Locking to prevent double sends across concurrent workers
         $lockedItemIds = self::lockPendingQueueItems($batchSize, $worker);
         if (empty($lockedItemIds)) {
@@ -303,6 +310,14 @@ class EmailQueueService {
         $db = Database::getInstance()->getConnection();
         $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
         $nowSql = ($driver === 'sqlite') ? "datetime('now')" : "NOW()";
+
+        // Auto-recover stale locked items (> 5 minutes old from unexpected worker crash or restart)
+        try {
+            $staleThreshold = ($driver === 'sqlite') ? "datetime('now', '-5 minutes')" : "DATE_SUB(NOW(), INTERVAL 5 MINUTE)";
+            $db->exec("UPDATE campaign_email_queue 
+                       SET status = 'pending', locked_at = NULL, locked_by = NULL 
+                       WHERE status = 'processing' AND locked_at < {$staleThreshold}");
+        } catch (Throwable $e) {}
 
         // In MySQL 8+: use SELECT ... FOR UPDATE SKIP LOCKED
         // In SQLite / fallback: atomic update then select locked by worker

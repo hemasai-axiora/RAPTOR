@@ -31,6 +31,12 @@ class SmtpAdapter implements MailerAdapterInterface {
                 $this->disabledReason = 'Marketing SMTP host is empty or unconfigured.';
             }
         } else {
+            if (!class_exists('EmailService')) {
+                $emailServiceFile = defined('APPROOT') ? (APPROOT . '/services/EmailService.php') : (dirname(__DIR__) . '/EmailService.php');
+                if (file_exists($emailServiceFile)) {
+                    require_once $emailServiceFile;
+                }
+            }
             $mailConfig = class_exists('EmailService') ? EmailService::getMarketingConfig() : ['enabled' => false];
             if (empty($mailConfig['enabled']) || empty($mailConfig['host'])) {
                 $this->enabled = false;

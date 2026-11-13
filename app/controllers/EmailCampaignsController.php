@@ -669,12 +669,20 @@ class EmailCampaignsController extends Controller {
         // Create immutable cryptographic snapshot
         $hash = CampaignSnapshotService::createSnapshot($campaignId, $userId, (array)$campaign);
 
-        // Update campaign status to approved
+        // Update campaign approval record and cryptographic snapshot
         $db = Database::getInstance()->getConnection();
-        $db->prepare('UPDATE campaigns_broadcast 
-                      SET status = "approved", approved_by = :uid, approved_at = NOW(), 
+        $hasApprovedEnum = false;
+        try {
+            $colCheck = $db->query("SHOW COLUMNS FROM campaigns_broadcast LIKE 'status'")->fetch(PDO::FETCH_ASSOC);
+            $hasApprovedEnum = (strpos($colCheck['Type'] ?? '', "'approved'") !== false);
+        } catch (Throwable $e) {}
+
+        $statusSql = $hasApprovedEnum ? 'status = "approved",' : '';
+
+        $db->prepare("UPDATE campaigns_broadcast 
+                      SET {$statusSql} approved_by = :uid, approved_at = NOW(), 
                           approved_snapshot_hash = :hash, content_sha256 = :hash 
-                      WHERE campaign_id = :cid')
+                      WHERE campaign_id = :cid")
            ->execute([':uid' => $userId, ':hash' => $hash, ':cid' => $campaignId]);
 
         $_SESSION['flash_success'] = 'Campaign approved successfully with immutable cryptographic snapshot (' . substr($hash, 0, 12) . '...). Ready to queue or schedule.';
