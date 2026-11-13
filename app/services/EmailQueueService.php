@@ -33,6 +33,12 @@ class EmailQueueService {
                 require_once $emailServiceFile;
             }
         }
+        if (!class_exists('TrackingService')) {
+            $tsFile = defined('APPROOT') ? (APPROOT . '/services/TrackingService.php') : (dirname(__DIR__) . '/TrackingService.php');
+            if (file_exists($tsFile)) {
+                require_once $tsFile;
+            }
+        }
 
         // 1. Safe Row Locking to prevent double sends across concurrent workers
         $lockedItemIds = self::lockPendingQueueItems($batchSize, $worker);
@@ -107,9 +113,10 @@ class EmailQueueService {
         foreach ($items as $item) {
             $stats['processed']++;
 
-            // -----------------------------------------------------------------
-            // Check A: Campaign Status & Auto-Pause Safeguards
-            // -----------------------------------------------------------------
+            try {
+                // -----------------------------------------------------------------
+                // Check A: Campaign Status & Auto-Pause Safeguards
+                // -----------------------------------------------------------------
             if ($item->campaign_status === CampaignBroadcast::STATUS_PAUSED || $item->campaign_status === CampaignBroadcast::STATUS_CANCELLED) {
                 self::unlockQueueItem((int)$item->queue_id);
                 continue;
@@ -289,6 +296,11 @@ class EmailQueueService {
                                   WHERE recipient_id = :rid")
                        ->execute([':err' => $errorMsg, ':rid' => $item->recipient_id]);
                 }
+            }
+            } catch (Throwable $itemErr) {
+                $stats['failed']++;
+                $db->prepare("UPDATE campaign_email_queue SET status = 'failed', last_error = :err, locked_at = NULL, locked_by = NULL WHERE queue_id = :qid")
+                   ->execute([':err' => $itemErr->getMessage(), ':qid' => $item->queue_id]);
             }
 
             // Domain-level rate pacing

@@ -8,7 +8,8 @@ if ($driver === 'sqlite') {
 } else {
     try {
         $check = $db->query("SHOW COLUMNS FROM campaigns_broadcast LIKE 'status'")->fetch();
-        if ($check && strpos($check['Type'] ?? '', "'approved'") === false) {
+        $typeStr = is_object($check) ? ($check->Type ?? '') : ($check['Type'] ?? '');
+        if ($check && strpos($typeStr, "'approved'") === false) {
             $db->exec("ALTER TABLE campaigns_broadcast MODIFY COLUMN status ENUM('draft','approved','scheduled','queued','sending','paused','completed','cancelled') NOT NULL DEFAULT 'draft'");
             echo "    + campaigns_broadcast.status enum expanded to include 'approved'\n";
         }
