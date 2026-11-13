@@ -176,28 +176,49 @@
                 </div>
 
                 <!-- 4. Template & Content Editor -->
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <div class="card border-0 shadow-sm mb-4" id="email-editor-card">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <h6 class="fw-bold mb-0 text-primary"><i class="fa-solid fa-envelope-open-text me-2"></i>4. Email Content & Design</h6>
-                        <div class="dropdown">
-                            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                Load Starter Template
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <?php foreach ($templates as $t): ?>
-                                    <li>
-                                        <a class="dropdown-item btn-load-tpl" href="#" data-id="<?php echo $t->template_id; ?>" data-html="<?php echo htmlspecialchars($t->html_content); ?>" data-plain="<?php echo htmlspecialchars($t->plain_text_content); ?>">
-                                            <?php echo htmlspecialchars($t->name); ?>
-                                        </a>
-                                    </li>
-                                <?php endforeach; ?>
+                        <div class="d-flex align-items-center gap-2">
+                            <!-- Editor mode tabs in header -->
+                            <ul class="nav nav-pills nav-sm mb-0" id="editor-mode-tabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active py-1 px-3 small fw-bold" id="tab-visual-btn" data-bs-toggle="pill" data-bs-target="#tab-visual" type="button" role="tab" aria-selected="true">
+                                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Visual
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link py-1 px-3 small fw-bold" id="c-html-tab" data-bs-toggle="pill" data-bs-target="#tab-c-html" type="button" role="tab" aria-selected="false">
+                                        <i class="fa-solid fa-code me-1"></i>HTML Source
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link py-1 px-3 small fw-bold" id="c-plain-tab" data-bs-toggle="pill" data-bs-target="#tab-c-plain" type="button" role="tab" aria-selected="false">
+                                        <i class="fa-solid fa-align-left me-1"></i>Plain Text
+                                    </button>
+                                </li>
                             </ul>
+                            <!-- Load Template dropdown -->
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fa-solid fa-file-import me-1"></i>Load Template
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <?php foreach ($templates as $t): ?>
+                                        <li>
+                                            <a class="dropdown-item btn-load-tpl" href="#" data-id="<?php echo $t->template_id; ?>" data-html="<?php echo htmlspecialchars($t->html_content); ?>" data-plain="<?php echo htmlspecialchars($t->plain_text_content); ?>">
+                                                <?php echo htmlspecialchars($t->name); ?>
+                                            </a>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
                         </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-0">
                         <!-- Merge tags picker bar -->
-                        <div class="mb-3 p-2 bg-light rounded d-flex flex-wrap align-items-center gap-1">
-                            <span class="small fw-bold text-muted me-2"><i class="fa-solid fa-tags me-1"></i>Insert:</span>
+                        <div class="px-3 pt-3 pb-2 border-bottom bg-light d-flex flex-wrap align-items-center gap-1">
+                            <span class="small fw-bold text-muted me-2"><i class="fa-solid fa-tags me-1"></i>Insert merge tag:</span>
                             <?php foreach ($merge_tags as $tag => $label): ?>
                                 <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2 btn-insert-camp-tag" data-tag="<?php echo htmlspecialchars($tag); ?>" title="<?php echo htmlspecialchars($label); ?>" style="font-size: 0.75rem;">
                                     <code><?php echo htmlspecialchars($tag); ?></code>
@@ -205,29 +226,96 @@
                             <?php endforeach; ?>
                         </div>
 
-                        <!-- Tabs: HTML vs Plain Text -->
-                        <ul class="nav nav-tabs mb-3" role="tablist">
-                            <li class="nav-item">
-                                <button class="nav-link active small fw-bold" id="c-html-tab" data-bs-toggle="tab" data-bs-target="#tab-c-html" type="button">HTML Source</button>
-                            </li>
-                            <li class="nav-item">
-                                <button class="nav-link small fw-bold" id="c-plain-tab" data-bs-toggle="tab" data-bs-target="#tab-c-plain" type="button">Mandatory Plain-Text</button>
-                            </li>
-                        </ul>
-
+                        <!-- Tab Panes -->
                         <div class="tab-content">
-                            <div class="tab-pane fade show active" id="tab-c-html">
-                                <textarea name="html_content" id="camp_html" rows="18" class="form-control font-monospace small" required><?php echo htmlspecialchars($campaign->html_content ?? CampaignTemplate::getPrebuiltTemplateAnnouncement()); ?></textarea>
-                            </div>
-                            <div class="tab-pane fade" id="tab-c-plain">
-                                <div class="d-flex justify-content-end mb-2">
-                                    <button type="button" class="btn btn-outline-primary btn-xs" id="btn-sync-camp-plain"><i class="fa-solid fa-arrows-rotate me-1"></i>Auto-Sync Plain Text</button>
+
+                            <!-- ===== TAB: VISUAL EDITOR ===== -->
+                            <div class="tab-pane fade show active" id="tab-visual" role="tabpanel">
+                                <div class="d-flex" style="height:540px;">
+
+                                    <!-- Block Palette (left) -->
+                                    <div id="block-palette" style="width:170px;min-width:170px;border-right:1px solid #e2e8f0;overflow-y:auto;padding:10px;background:#f8fafc;">
+                                        <div class="text-muted small fw-bold mb-2 text-uppercase" style="font-size:0.68rem;letter-spacing:.05em;">Blocks</div>
+                                        <div class="d-grid gap-1">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm text-start py-1 px-2 ve-add-block" data-block-type="header" style="font-size:0.78rem;">
+                                                <i class="fa-solid fa-heading me-1 text-primary"></i>Header
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm text-start py-1 px-2 ve-add-block" data-block-type="hero" style="font-size:0.78rem;">
+                                                <i class="fa-solid fa-star me-1 text-warning"></i>Hero Text
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm text-start py-1 px-2 ve-add-block" data-block-type="text" style="font-size:0.78rem;">
+                                                <i class="fa-solid fa-paragraph me-1 text-secondary"></i>Text Block
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm text-start py-1 px-2 ve-add-block" data-block-type="image" style="font-size:0.78rem;">
+                                                <i class="fa-solid fa-image me-1 text-success"></i>Image
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm text-start py-1 px-2 ve-add-block" data-block-type="button" style="font-size:0.78rem;">
+                                                <i class="fa-solid fa-hand-pointer me-1 text-info"></i>Button / CTA
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm text-start py-1 px-2 ve-add-block" data-block-type="divider" style="font-size:0.78rem;">
+                                                <i class="fa-solid fa-minus me-1 text-secondary"></i>Divider
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm text-start py-1 px-2 ve-add-block" data-block-type="columns" style="font-size:0.78rem;">
+                                                <i class="fa-solid fa-table-columns me-1 text-purple"></i>2-Column
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm text-start py-1 px-2 ve-add-block" data-block-type="footer" style="font-size:0.78rem;">
+                                                <i class="fa-solid fa-link-slash me-1 text-danger"></i>Unsub Footer
+                                            </button>
+                                        </div>
+                                        <hr class="my-2">
+                                        <div class="text-muted small fw-bold mb-1 text-uppercase" style="font-size:0.68rem;letter-spacing:.05em;">Actions</div>
+                                        <button type="button" class="btn btn-outline-danger btn-sm w-100 py-1" id="ve-clear-canvas" style="font-size:0.75rem;">
+                                            <i class="fa-solid fa-trash-can me-1"></i>Clear All
+                                        </button>
+                                    </div>
+
+                                    <!-- Canvas (right) -->
+                                    <div id="email-canvas" style="flex:1;overflow-y:auto;padding:16px;background:#f0f4f8;">
+                                        <div id="canvas-empty-hint" class="text-center text-muted py-5" style="pointer-events:none;">
+                                            <i class="fa-solid fa-wand-magic-sparkles fa-2x mb-3 opacity-25"></i>
+                                            <div class="small">Click a block on the left to add it to your email canvas.</div>
+                                        </div>
+                                        <div id="canvas-blocks"></div>
+                                    </div>
                                 </div>
-                                <textarea name="plain_text_content" id="camp_plain" rows="18" class="form-control font-monospace small"><?php echo htmlspecialchars($campaign->plain_text_content ?? ''); ?></textarea>
                             </div>
-                        </div>
-                    </div>
-                </div>
+
+                            <!-- ===== TAB: HTML SOURCE ===== -->
+                            <div class="tab-pane fade" id="tab-c-html" role="tabpanel">
+                                <div class="p-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                        <span class="small fw-bold text-muted"><i class="fa-solid fa-code me-1"></i>Email HTML Source</span>
+                                        <button type="button" class="btn btn-outline-success btn-sm shadow-sm" id="btn-convert-raw-to-html">
+                                            <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Convert Text / Draft to Clean Email HTML
+                                        </button>
+                                    </div>
+                                    <textarea name="html_content" id="camp_html" rows="20" class="form-control font-monospace small" required><?php echo htmlspecialchars($campaign->html_content ?? CampaignTemplate::getPrebuiltTemplateAnnouncement()); ?></textarea>
+                                    <div class="form-text small mt-1 text-muted"><i class="fa-solid fa-circle-info me-1"></i>Paste plain text or raw HTML above and click <strong>Convert Text to Clean Email HTML</strong> to auto-wrap it into a responsive, mobile-optimized template with RFC 8058 unsubscribe tags.</div>
+                                </div>
+                            </div>
+
+                            <!-- ===== TAB: PLAIN TEXT ===== -->
+                            <div class="tab-pane fade" id="tab-c-plain" role="tabpanel">
+                                <div class="p-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                        <span class="small fw-bold text-muted"><i class="fa-solid fa-align-left me-1"></i>Plain Text Alternative</span>
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn btn-outline-success btn-sm shadow-sm" id="btn-convert-plain-to-html">
+                                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Convert Plain Text to Email HTML
+                                            </button>
+                                            <button type="button" class="btn btn-outline-primary btn-sm" id="btn-sync-camp-plain">
+                                                <i class="fa-solid fa-arrows-rotate me-1"></i>Auto-Sync from HTML
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <textarea name="plain_text_content" id="camp_plain" rows="20" class="form-control font-monospace small"><?php echo htmlspecialchars($campaign->plain_text_content ?? ''); ?></textarea>
+                                    <div class="form-text small mt-1 text-muted"><i class="fa-solid fa-circle-info me-1"></i>Draft your email text here and click <strong>Convert Plain Text to Email HTML</strong> to generate professional email markup automatically.</div>
+                                </div>
+                            </div>
+
+                        </div><!-- /.tab-content -->
+                    </div><!-- /.card-body -->
+                </div><!-- /#email-editor-card -->
             </div>
 
             <!-- Right 4 Cols: Live Preview & Deliverability Health Meter Action Center -->
@@ -692,13 +780,188 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Load starter template
+    // Convert Plain Text / Draft into Clean, Responsive Email HTML
+    function convertRawTextToEmailHtml(rawText) {
+        if (!rawText || !rawText.trim()) return '';
+
+        const trimmed = rawText.trim();
+        const hasFullTable = /<table[^>]*role=["']presentation["']/i.test(trimmed);
+
+        if (hasFullTable) {
+            let out = trimmed;
+            if (!/\{\{\s*unsubscribe_url\s*\}\}/i.test(out)) {
+                const footer = '\n\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;border-top:1px solid #e2e8f0;padding-top:16px;text-align:center;font-size:12px;color:#64748b;">' +
+                    '<tr><td>{{company_address}}</td></tr>' +
+                    '<tr><td style="padding-top:6px;"><a href="{{unsubscribe_url}}" style="color:#475569;text-decoration:underline;">Unsubscribe</a></td></tr>' +
+                    '</table>';
+                if (/<\/body>/i.test(out)) {
+                    out = out.replace(/<\/body>/i, footer + '</body>');
+                } else {
+                    out += footer;
+                }
+            }
+            return out;
+        }
+
+        const lines = trimmed.split(/\r?\n/);
+        let htmlLines = [];
+        let inList = false;
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            if (!line) {
+                if (inList) {
+                    htmlLines.push('</ul>');
+                    inList = false;
+                }
+                continue;
+            }
+
+            // Detect Bullet points
+            if (/^[•\-\*\+]\s+/.test(line)) {
+                if (!inList) {
+                    htmlLines.push('<ul style="margin:8px 0 16px 20px;padding:0;color:#334155;font-size:15px;line-height:1.6;">');
+                    inList = true;
+                }
+                let itemText = line.replace(/^[•\-\*\+]\s+/, '');
+                itemText = itemText.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" style="color:#2563eb;text-decoration:underline;">$1</a>');
+                htmlLines.push('<li style="margin-bottom:6px;">' + itemText + '</li>');
+                continue;
+            } else if (inList) {
+                htmlLines.push('</ul>');
+                inList = false;
+            }
+
+            // Detect Headings (# or <title> or ALL-CAPS short line)
+            if (/^#+\s+/.test(line)) {
+                let hText = line.replace(/^#+\s+/, '');
+                htmlLines.push('<h2 style="color:#0f172a;font-size:20px;font-weight:700;margin:24px 0 12px 0;line-height:1.3;">' + hText + '</h2>');
+                continue;
+            }
+
+            // Linkify URLs
+            line = line.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" style="color:#2563eb;font-weight:600;text-decoration:underline;">$1</a>');
+
+            // Regular paragraph
+            htmlLines.push('<p style="margin:0 0 14px 0;color:#334155;font-size:15px;line-height:1.6;">' + line + '</p>');
+        }
+
+        if (inList) {
+            htmlLines.push('</ul>');
+        }
+
+        const bodyContent = htmlLines.join('\n');
+
+        return `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Broadcast</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f1f5f9;padding:24px 12px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+                    <!-- Brand Header -->
+                    <tr>
+                        <td style="padding:24px 32px 16px;border-bottom:1px solid #f1f5f9;">
+                            <span style="font-size:18px;font-weight:700;color:#0f172a;letter-spacing:-0.02em;">Axiora Global</span>
+                        </td>
+                    </tr>
+                    <!-- Main Body -->
+                    <tr>
+                        <td style="padding:28px 32px;">
+${bodyContent}
+                        </td>
+                    </tr>
+                    <!-- Compliance Footer -->
+                    <tr>
+                        <td style="padding:20px 32px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;font-size:12px;color:#64748b;line-height:1.5;">
+                            <div>{{company_address}}</div>
+                            <div style="margin-top:8px;">
+                                You received this email because you are a registered subscriber.
+                                <br>
+                                <a href="{{unsubscribe_url}}" style="color:#475569;text-decoration:underline;">Unsubscribe</a>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>`;
+    }
+
+    const btnConvertRaw = document.getElementById('btn-convert-raw-to-html');
+    if (btnConvertRaw) {
+        btnConvertRaw.addEventListener('click', function() {
+            const raw = htmlArea.value.trim();
+            if (!raw) {
+                alert('Please enter or paste some text or email draft into the HTML Source area first.');
+                return;
+            }
+            const formatted = convertRawTextToEmailHtml(raw);
+            htmlArea.value = formatted;
+            updateCampPreview();
+            if (typeof veParseHtmlToBlocks === 'function') {
+                const parsed = veParseHtmlToBlocks(formatted);
+                if (parsed && parsed.length && window.emailBlocks) {
+                    window.emailBlocks = parsed;
+                    if (typeof veRenderCanvas === 'function') veRenderCanvas();
+                }
+            }
+            alert('Text converted into clean, responsive email HTML with compliant unsubscribe tags!');
+        });
+    }
+
+    const btnConvertPlain = document.getElementById('btn-convert-plain-to-html');
+    if (btnConvertPlain) {
+        btnConvertPlain.addEventListener('click', function() {
+            const raw = plainArea.value.trim();
+            if (!raw) {
+                alert('Please enter or paste text into the Plain Text area first.');
+                return;
+            }
+            const formatted = convertRawTextToEmailHtml(raw);
+            htmlArea.value = formatted;
+            updateCampPreview();
+            if (typeof veParseHtmlToBlocks === 'function') {
+                const parsed = veParseHtmlToBlocks(formatted);
+                if (parsed && parsed.length && window.emailBlocks) {
+                    window.emailBlocks = parsed;
+                    if (typeof veRenderCanvas === 'function') veRenderCanvas();
+                }
+            }
+            // Switch to HTML tab to show user
+            const htmlTabBtn = document.getElementById('c-html-tab');
+            if (htmlTabBtn) {
+                const tab = new bootstrap.Tab(htmlTabBtn);
+                tab.show();
+            }
+            alert('Plain text converted to clean email HTML! You can inspect the HTML code or preview below.');
+        });
+    }
+
+    // Load starter template  – also parse into visual blocks if possible
     document.querySelectorAll('.btn-load-tpl').forEach(item => {
         item.addEventListener('click', function(e) {
             e.preventDefault();
-            htmlArea.value = this.getAttribute('data-html');
-            plainArea.value = this.getAttribute('data-plain');
+            const html  = this.getAttribute('data-html');
+            const plain = this.getAttribute('data-plain');
+            htmlArea.value  = html;
+            plainArea.value = plain;
             updateCampPreview();
+            // Try to seed visual canvas from loaded template HTML
+            if (typeof veParseHtmlToBlocks === 'function') {
+                const parsed = veParseHtmlToBlocks(html);
+                if (parsed && parsed.length) {
+                    emailBlocks = parsed;
+                    veRenderCanvas();
+                }
+            }
         });
     });
 
@@ -1200,6 +1463,527 @@ document.addEventListener('DOMContentLoaded', function() {
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
     }
+
+    // =========================================================================
+    // VISUAL DRAG-AND-DROP EMAIL EDITOR
+    // =========================================================================
+    (function() {
+        'use strict';
+
+        // ── State ──────────────────────────────────────────────────────────────
+        let emailBlocks = [];
+        let veBlockCounter = 0;
+        let veEditingId = null; // block currently being edited inline
+
+        // Expose globally so btn-load-tpl handler above can call them
+        window.emailBlocks = emailBlocks;
+
+        function genId() { return 'blk_' + (++veBlockCounter); }
+
+        // ── Default data for each block type ──────────────────────────────────
+        const blockDefaults = {
+            header:  { logo_url: '', company_name: 'Axiora Global', bg_color: '#1a56db', text_color: '#ffffff' },
+            hero:    { heading: 'Welcome, {{first_name}}!', subtext: 'Thanks for being with us. Here\'s what\'s new.', bg_color: '#f0f7ff', text_color: '#1e293b' },
+            text:    { content: 'Dear {{first_name}},\n\nWe have an important update to share with you.\n\nBest regards,\nThe Axiora Team' },
+            image:   { src: 'https://placehold.co/560x200/e2e8f0/94a3b8?text=Email+Banner', alt: 'Email image', link: '' },
+            button:  { label: 'View Details', url: '#', bg_color: '#1a56db', text_color: '#ffffff' },
+            divider: { color: '#e2e8f0', height: '1' },
+            columns: { left: 'Left column text goes here.', right: 'Right column text goes here.' },
+            footer:  { company_name: 'Axiora Global Solutions', address: '{{company_address}}', extra: '' }
+        };
+
+        // ── HTML Generator ────────────────────────────────────────────────────
+        function generateEmailHtml(blocks) {
+            if (!blocks || blocks.length === 0) {
+                return document.getElementById('camp_html') ? document.getElementById('camp_html').value : '';
+            }
+
+            let rows = '';
+            blocks.forEach(function(blk) {
+                rows += renderBlockHtmlRow(blk);
+            });
+
+            return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<title>Email</title>\n</head>\n' +
+                '<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;">\n' +
+                '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f4f5;">\n' +
+                '<tbody><tr><td align="center" style="padding:16px 8px;">\n' +
+                '<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">\n' +
+                '<tbody>\n' + rows + '</tbody>\n</table>\n' +
+                '</td></tr></tbody>\n</table>\n</body>\n</html>';
+        }
+
+        function renderBlockHtmlRow(blk) {
+            const d = blk.data || {};
+            switch (blk.type) {
+                case 'header': {
+                    const bg   = d.bg_color   || '#1a56db';
+                    const tc   = d.text_color  || '#ffffff';
+                    const name = d.company_name || 'Axiora Global';
+                    const logo = d.logo_url ? '<img src="' + escHtml(d.logo_url) + '" alt="Logo" style="height:40px;vertical-align:middle;margin-right:10px;">' : '';
+                    return '<tr><td style="background:' + bg + ';padding:20px 24px;text-align:left;">' +
+                        logo + '<span style="color:' + tc + ';font-size:20px;font-weight:700;vertical-align:middle;">' + escHtml(name) + '</span>' +
+                        '</td></tr>\n';
+                }
+                case 'hero': {
+                    const bg  = d.bg_color  || '#f0f7ff';
+                    const tc  = d.text_color || '#1e293b';
+                    return '<tr><td style="background:' + bg + ';padding:36px 32px;text-align:center;">' +
+                        '<h1 style="margin:0 0 12px;font-size:28px;font-weight:700;color:' + tc + ';line-height:1.3;">' + escHtml(d.heading || 'Welcome!') + '</h1>' +
+                        '<p style="margin:0;font-size:16px;color:' + tc + ';line-height:1.6;opacity:.85;">' + escHtml(d.subtext || '') + '</p>' +
+                        '</td></tr>\n';
+                }
+                case 'text': {
+                    const lines = (d.content || '').split('\n').map(function(l){ return l ? '<p style="margin:0 0 10px;">' + escHtml(l) + '</p>' : '<br>'; }).join('');
+                    return '<tr><td style="padding:24px 32px;font-size:15px;color:#374151;line-height:1.7;">' + lines + '</td></tr>\n';
+                }
+                case 'image': {
+                    const wrap = d.link ? '<a href="' + escHtml(d.link) + '" style="display:block;">' : '';
+                    const wrapEnd = d.link ? '</a>' : '';
+                    return '<tr><td style="padding:0;text-align:center;">' + wrap +
+                        '<img src="' + escHtml(d.src || '') + '" alt="' + escHtml(d.alt || '') + '" style="width:100%;max-width:600px;display:block;border:0;">' +
+                        wrapEnd + '</td></tr>\n';
+                }
+                case 'button': {
+                    const bg = d.bg_color   || '#1a56db';
+                    const tc = d.text_color  || '#ffffff';
+                    return '<tr><td style="padding:20px 32px;text-align:center;">' +
+                        '<a href="' + escHtml(d.url || '#') + '" style="display:inline-block;background:' + bg + ';color:' + tc + ';text-decoration:none;font-size:16px;font-weight:600;padding:12px 32px;border-radius:6px;">' +
+                        escHtml(d.label || 'Click Here') + '</a>' +
+                        '</td></tr>\n';
+                }
+                case 'divider': {
+                    const color = d.color || '#e2e8f0';
+                    return '<tr><td style="padding:4px 32px;"><hr style="border:none;border-top:' + escHtml(d.height || '1') + 'px solid ' + color + ';margin:0;"></td></tr>\n';
+                }
+                case 'columns': {
+                    return '<tr><td style="padding:20px 24px;">' +
+                        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tbody><tr>' +
+                        '<td width="50%" style="padding:0 8px 0 0;vertical-align:top;font-size:14px;color:#374151;line-height:1.6;">' + escHtml(d.left || '') + '</td>' +
+                        '<td width="50%" style="padding:0 0 0 8px;vertical-align:top;font-size:14px;color:#374151;line-height:1.6;">' + escHtml(d.right || '') + '</td>' +
+                        '</tr></tbody></table></td></tr>\n';
+                }
+                case 'footer': {
+                    const companyName = d.company_name || 'Axiora Global Solutions';
+                    const address     = d.address      || '{{company_address}}';
+                    const extra       = d.extra        || '';
+                    return '<tr><td style="background:#f8fafc;padding:20px 32px;text-align:center;border-top:1px solid #e2e8f0;">' +
+                        '<p style="margin:0 0 6px;font-size:12px;color:#94a3b8;">' + escHtml(companyName) + (extra ? '<br>' + escHtml(extra) : '') + '</p>' +
+                        '<p style="margin:0 0 6px;font-size:12px;color:#94a3b8;">' + escHtml(address) + '</p>' +
+                        '<p style="margin:0;font-size:12px;"><a href="{{unsubscribe_url}}" style="color:#6366f1;text-decoration:underline;">Unsubscribe</a> &nbsp;|&nbsp; <a href="#" style="color:#6366f1;text-decoration:underline;">View in Browser</a></p>' +
+                        '</td></tr>\n';
+                }
+                default: return '';
+            }
+        }
+
+        function escHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+
+        // ── Sync HTML textarea ────────────────────────────────────────────────
+        function syncHtmlFromBlocks() {
+            const area = document.getElementById('camp_html');
+            if (!area) return;
+            if (emailBlocks.length === 0) return; // Don't wipe a hand-written template
+            area.value = generateEmailHtml(emailBlocks);
+            if (typeof updateCampPreview === 'function') updateCampPreview();
+        }
+
+        // ── Canvas Rendering ──────────────────────────────────────────────────
+        function veRenderCanvas() {
+            const canvas   = document.getElementById('canvas-blocks');
+            const emptyHint = document.getElementById('canvas-empty-hint');
+            if (!canvas) return;
+
+            if (emailBlocks.length === 0) {
+                canvas.innerHTML = '';
+                if (emptyHint) emptyHint.style.display = 'block';
+                return;
+            }
+            if (emptyHint) emptyHint.style.display = 'none';
+
+            canvas.innerHTML = '';
+            emailBlocks.forEach(function(blk, idx) {
+                const card = document.createElement('div');
+                card.className = 'mb-2 border rounded bg-white position-relative';
+                card.setAttribute('data-block-id', blk.id);
+                card.style.cssText = 'transition:box-shadow .15s;';
+
+                // ── toolbar ──
+                const toolbar = document.createElement('div');
+                toolbar.className = 'd-flex align-items-center gap-1 px-2 py-1 border-bottom bg-light';
+                toolbar.style.cssText = 'border-radius:4px 4px 0 0;';
+                toolbar.innerHTML =
+                    '<span class="badge bg-primary-subtle text-primary small" style="font-size:0.68rem;">' + blk.type.toUpperCase() + '</span>' +
+                    '<div class="ms-auto d-flex gap-1">' +
+                    (idx > 0 ? '<button type="button" class="btn btn-xs btn-outline-secondary py-0 px-1 ve-move-up" data-id="' + blk.id + '" title="Move up" style="font-size:0.72rem;">&#8593;</button>' : '') +
+                    (idx < emailBlocks.length - 1 ? '<button type="button" class="btn btn-xs btn-outline-secondary py-0 px-1 ve-move-down" data-id="' + blk.id + '" title="Move down" style="font-size:0.72rem;">&#8595;</button>' : '') +
+                    '<button type="button" class="btn btn-xs btn-outline-primary py-0 px-1 ve-edit-block" data-id="' + blk.id + '" title="Edit block" style="font-size:0.72rem;">&#9998; Edit</button>' +
+                    '<button type="button" class="btn btn-xs btn-outline-danger py-0 px-1 ve-delete-block" data-id="' + blk.id + '" title="Delete block" style="font-size:0.72rem;">&#128465;</button>' +
+                    '</div>';
+                card.appendChild(toolbar);
+
+                // ── preview ──
+                const preview = document.createElement('div');
+                preview.className = 'p-2';
+                preview.style.cssText = 'pointer-events:none;overflow:hidden;max-height:120px;';
+                preview.innerHTML = renderBlockPreview(blk);
+                card.appendChild(preview);
+
+                // ── inline edit panel (hidden initially) ──
+                const editPanel = document.createElement('div');
+                editPanel.className = 've-edit-panel p-2 border-top bg-light';
+                editPanel.style.display = (veEditingId === blk.id) ? 'block' : 'none';
+                editPanel.innerHTML = buildEditFields(blk);
+                card.appendChild(editPanel);
+
+                canvas.appendChild(card);
+            });
+
+            wireCanvasEvents();
+            syncHtmlFromBlocks();
+        }
+
+        // ── Block canvas preview ──────────────────────────────────────────────
+        function renderBlockPreview(blk) {
+            const d = blk.data || {};
+            switch (blk.type) {
+                case 'header':
+                    return '<div style="background:' + (d.bg_color||'#1a56db') + ';padding:10px 14px;border-radius:4px;">' +
+                        (d.logo_url ? '<img src="' + escHtml(d.logo_url) + '" style="height:28px;vertical-align:middle;margin-right:8px;">' : '<i class="fa-solid fa-building" style="color:' + (d.text_color||'#fff') + ';margin-right:8px;"></i>') +
+                        '<strong style="color:' + (d.text_color||'#fff') + ';font-size:14px;">' + escHtml(d.company_name||'Company Name') + '</strong></div>';
+                case 'hero':
+                    return '<div style="background:' + (d.bg_color||'#f0f7ff') + ';padding:14px;border-radius:4px;text-align:center;">' +
+                        '<div style="font-weight:700;font-size:16px;color:' + (d.text_color||'#1e293b') + ';">' + escHtml(d.heading||'Hero Heading') + '</div>' +
+                        '<div style="font-size:12px;color:' + (d.text_color||'#1e293b') + ';opacity:.75;margin-top:4px;">' + escHtml((d.subtext||'').substring(0,80)) + '</div></div>';
+                case 'text':
+                    return '<div style="font-size:13px;color:#374151;line-height:1.5;">' + escHtml((d.content||'').substring(0,120)) + (((d.content||'').length>120)?'…':'') + '</div>';
+                case 'image':
+                    return '<div style="text-align:center;"><img src="' + escHtml(d.src||'') + '" style="max-width:100%;max-height:80px;border-radius:4px;" onerror="this.src=\'https://placehold.co/400x80/e2e8f0/94a3b8?text=Image\'"></div>';
+                case 'button':
+                    return '<div style="text-align:center;padding:6px 0;"><span style="display:inline-block;background:' + (d.bg_color||'#1a56db') + ';color:' + (d.text_color||'#fff') + ';padding:7px 20px;border-radius:5px;font-size:13px;font-weight:600;">' + escHtml(d.label||'Button') + '</span></div>';
+                case 'divider':
+                    return '<hr style="border:none;border-top:' + escHtml(d.height||'1') + 'px solid ' + (d.color||'#e2e8f0') + ';margin:4px 0;">';
+                case 'columns':
+                    return '<table width="100%" style="font-size:12px;color:#374151;"><tr>' +
+                        '<td width="50%" style="padding-right:8px;border-right:1px dashed #e2e8f0;">' + escHtml((d.left||'').substring(0,60)) + '</td>' +
+                        '<td width="50%" style="padding-left:8px;">' + escHtml((d.right||'').substring(0,60)) + '</td>' +
+                        '</tr></table>';
+                case 'footer':
+                    return '<div style="background:#f8fafc;padding:8px;text-align:center;border-radius:4px;font-size:11px;color:#94a3b8;">' +
+                        escHtml(d.company_name||'Company') + ' &bull; ' + escHtml(d.address||'{{company_address}}') +
+                        '<br><span style="color:#6366f1;text-decoration:underline;">Unsubscribe</span></div>';
+                default: return '<span class="text-muted small">' + blk.type + '</span>';
+            }
+        }
+
+        // ── Inline edit field builder ─────────────────────────────────────────
+        function buildEditFields(blk) {
+            const d = blk.data || {};
+            const id = blk.id;
+            let html = '<div class="row g-2" style="font-size:0.8rem;">';
+
+            const fld = function(label, name, val, type) {
+                type = type || 'text';
+                if (type === 'textarea') {
+                    return '<div class="col-12"><label class="form-label small mb-1 fw-semibold">' + label + '</label>' +
+                        '<textarea class="form-control form-control-sm ve-field" data-block-id="' + id + '" data-field="' + name + '" rows="3">' + escHtml(val||'') + '</textarea></div>';
+                }
+                return '<div class="col-md-6"><label class="form-label small mb-1 fw-semibold">' + label + '</label>' +
+                    '<input type="' + type + '" class="form-control form-control-sm ve-field" data-block-id="' + id + '" data-field="' + name + '" value="' + escHtml(val||'') + '"></div>';
+            };
+            const colorFld = function(label, name, val) {
+                return '<div class="col-md-6"><label class="form-label small mb-1 fw-semibold">' + label + '</label>' +
+                    '<div class="d-flex gap-1"><input type="color" class="form-control form-control-sm form-control-color ve-field" data-block-id="' + id + '" data-field="' + name + '" value="' + escHtml(val||'#000000') + '" style="width:40px;padding:1px 2px;">' +
+                    '<input type="text" class="form-control form-control-sm ve-field-color-text" data-block-id="' + id + '" data-field="' + name + '" value="' + escHtml(val||'#000000') + '"></div></div>';
+            };
+
+            switch (blk.type) {
+                case 'header':
+                    html += fld('Logo URL', 'logo_url', d.logo_url) + fld('Company Name', 'company_name', d.company_name) + colorFld('Background', 'bg_color', d.bg_color) + colorFld('Text Color', 'text_color', d.text_color);
+                    break;
+                case 'hero':
+                    html += fld('Heading', 'heading', d.heading) + fld('Subtext', 'subtext', d.subtext) + colorFld('Background', 'bg_color', d.bg_color) + colorFld('Text Color', 'text_color', d.text_color);
+                    break;
+                case 'text':
+                    html += fld('Content', 'content', d.content, 'textarea').replace('col-12', 'col-12');
+                    // Fix: make textarea full-width
+                    html = html.replace('col-md-6', 'col-12');
+                    break;
+                case 'image':
+                    html += fld('Image URL', 'src', d.src) + fld('Alt Text', 'alt', d.alt) + fld('Link URL (optional)', 'link', d.link);
+                    break;
+                case 'button':
+                    html += fld('Button Label', 'label', d.label) + fld('URL', 'url', d.url) + colorFld('Background', 'bg_color', d.bg_color) + colorFld('Text Color', 'text_color', d.text_color);
+                    break;
+                case 'divider':
+                    html += fld('Line Color', 'color', d.color) + fld('Height (px)', 'height', d.height);
+                    break;
+                case 'columns':
+                    html += fld('Left Column', 'left', d.left, 'textarea') + fld('Right Column', 'right', d.right, 'textarea');
+                    break;
+                case 'footer':
+                    html += fld('Company Name', 'company_name', d.company_name) + fld('Address', 'address', d.address) + fld('Extra Line', 'extra', d.extra);
+                    break;
+            }
+
+            html += '</div>';
+            html += '<div class="mt-2 d-flex gap-1"><button type="button" class="btn btn-primary btn-sm ve-apply-edit" data-id="' + id + '"><i class="fa-solid fa-check me-1"></i>Apply</button>' +
+                '<button type="button" class="btn btn-outline-secondary btn-sm ve-cancel-edit" data-id="' + id + '">Cancel</button></div>';
+            return html;
+        }
+
+        // ── Wire canvas event listeners ───────────────────────────────────────
+        function wireCanvasEvents() {
+            // Move up
+            document.querySelectorAll('.ve-move-up').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    const idx = emailBlocks.findIndex(function(b){ return b.id === id; });
+                    if (idx > 0) {
+                        const tmp = emailBlocks[idx - 1];
+                        emailBlocks[idx - 1] = emailBlocks[idx];
+                        emailBlocks[idx] = tmp;
+                        veRenderCanvas();
+                    }
+                });
+            });
+
+            // Move down
+            document.querySelectorAll('.ve-move-down').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    const idx = emailBlocks.findIndex(function(b){ return b.id === id; });
+                    if (idx < emailBlocks.length - 1) {
+                        const tmp = emailBlocks[idx + 1];
+                        emailBlocks[idx + 1] = emailBlocks[idx];
+                        emailBlocks[idx] = tmp;
+                        veRenderCanvas();
+                    }
+                });
+            });
+
+            // Delete
+            document.querySelectorAll('.ve-delete-block').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    emailBlocks = emailBlocks.filter(function(b){ return b.id !== id; });
+                    if (veEditingId === id) veEditingId = null;
+                    veRenderCanvas();
+                });
+            });
+
+            // Open edit panel
+            document.querySelectorAll('.ve-edit-block').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    veEditingId = (veEditingId === id) ? null : id;
+                    veRenderCanvas();
+                    // Scroll to card
+                    const card = document.querySelector('[data-block-id="' + id + '"]');
+                    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                });
+            });
+
+            // Apply edit
+            document.querySelectorAll('.ve-apply-edit').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    const blk = emailBlocks.find(function(b){ return b.id === id; });
+                    if (!blk) return;
+
+                    // Gather all ve-field inputs for this block
+                    const card = document.querySelector('[data-block-id="' + id + '"]');
+                    if (card) {
+                        card.querySelectorAll('.ve-field').forEach(function(input) {
+                            const field = input.getAttribute('data-field');
+                            if (field) blk.data[field] = input.value;
+                        });
+                    }
+                    veEditingId = null;
+                    veRenderCanvas();
+                });
+            });
+
+            // Cancel edit
+            document.querySelectorAll('.ve-cancel-edit').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    veEditingId = null;
+                    veRenderCanvas();
+                });
+            });
+
+            // Sync color pickers ↔ text inputs
+            document.querySelectorAll('input[type="color"].ve-field').forEach(function(picker) {
+                picker.addEventListener('input', function() {
+                    const field = this.getAttribute('data-field');
+                    const blockId = this.getAttribute('data-block-id');
+                    const textInput = this.closest('.d-flex') ? this.closest('.d-flex').querySelector('.ve-field-color-text') : null;
+                    if (textInput) textInput.value = this.value;
+                });
+            });
+        }
+
+        // ── Add block from palette ─────────────────────────────────────────────
+        function addBlock(type) {
+            const defaults = JSON.parse(JSON.stringify(blockDefaults[type] || {}));
+            emailBlocks.push({ id: genId(), type: type, data: defaults });
+            veEditingId = null;
+            veRenderCanvas();
+        }
+
+        // ── Palette click handlers ─────────────────────────────────────────────
+        document.querySelectorAll('.ve-add-block').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                addBlock(this.getAttribute('data-block-type'));
+            });
+        });
+
+        // Clear canvas
+        const veClearBtn = document.getElementById('ve-clear-canvas');
+        if (veClearBtn) {
+            veClearBtn.addEventListener('click', function() {
+                if (emailBlocks.length === 0) return;
+                if (confirm('Clear all blocks from the canvas? The HTML Source tab will retain its content.')) {
+                    emailBlocks = [];
+                    veEditingId = null;
+                    veRenderCanvas();
+                }
+            });
+        }
+
+        // ── Tab switch: Visual → HTML: sync blocks → html ─────────────────────
+        const htmlTabBtn = document.getElementById('c-html-tab');
+        if (htmlTabBtn) {
+            htmlTabBtn.addEventListener('click', function() {
+                if (emailBlocks.length > 0) syncHtmlFromBlocks();
+            });
+        }
+
+        // ── Tab switch: HTML → Visual: parse HTML → blocks (best effort) ──────
+        const visualTabBtn = document.getElementById('tab-visual-btn');
+        if (visualTabBtn) {
+            visualTabBtn.addEventListener('click', function() {
+                if (emailBlocks.length === 0) {
+                    // try to seed from current HTML
+                    const area = document.getElementById('camp_html');
+                    if (area && area.value && area.value.trim()) {
+                        const parsed = veParseHtmlToBlocks(area.value);
+                        if (parsed && parsed.length) {
+                            emailBlocks = parsed;
+                            veRenderCanvas();
+                        }
+                    }
+                }
+            });
+        }
+
+        // ── Best-effort HTML parser ───────────────────────────────────────────
+        function veParseHtmlToBlocks(html) {
+            // We detect known Raptor-generated block markers via inline-style signatures
+            const blocks = [];
+            try {
+                const parser = new DOMParser();
+                const doc    = parser.parseFromString(html, 'text/html');
+
+                doc.querySelectorAll('table[role="presentation"] > tbody > tr > td[style]').forEach(function(td) {
+                    const style = td.getAttribute('style') || '';
+                    const text  = (td.textContent || '').trim();
+
+                    // Header: contains strong + bg color in blue-ish range
+                    if (style.includes('background:#1a56db') || style.includes('background: #1a56db')) {
+                        const strong = td.querySelector('strong');
+                        blocks.push({ id: genId(), type: 'header', data: Object.assign({}, blockDefaults.header, {
+                            company_name: strong ? strong.textContent.trim() : 'Company',
+                            bg_color: '#1a56db'
+                        })});
+                        return;
+                    }
+                    // Hero: has h1
+                    if (td.querySelector('h1')) {
+                        const h1  = td.querySelector('h1');
+                        const sub = td.querySelector('p');
+                        blocks.push({ id: genId(), type: 'hero', data: Object.assign({}, blockDefaults.hero, {
+                            heading: h1 ? h1.textContent.trim() : '',
+                            subtext: sub ? sub.textContent.trim() : ''
+                        })});
+                        return;
+                    }
+                    // Button: has an <a> with display:inline-block
+                    const a = td.querySelector('a[style*="display:inline-block"]');
+                    if (a) {
+                        blocks.push({ id: genId(), type: 'button', data: Object.assign({}, blockDefaults.button, {
+                            label: a.textContent.trim(),
+                            url: a.getAttribute('href') || '#'
+                        })});
+                        return;
+                    }
+                    // Image: has img and no other significant text
+                    if (td.querySelector('img') && text.length < 5) {
+                        const img = td.querySelector('img');
+                        blocks.push({ id: genId(), type: 'image', data: Object.assign({}, blockDefaults.image, {
+                            src: img.getAttribute('src') || '',
+                            alt: img.getAttribute('alt') || ''
+                        })});
+                        return;
+                    }
+                    // Divider: has hr
+                    if (td.querySelector('hr')) {
+                        blocks.push({ id: genId(), type: 'divider', data: Object.assign({}, blockDefaults.divider)});
+                        return;
+                    }
+                    // Footer: has unsubscribe link
+                    if (html.toLowerCase().includes('unsubscribe') && style.includes('background:#f8fafc')) {
+                        blocks.push({ id: genId(), type: 'footer', data: Object.assign({}, blockDefaults.footer)});
+                        return;
+                    }
+                    // 2-column: has nested table with 2 tds width=50%
+                    const innerTable = td.querySelector('table');
+                    if (innerTable) {
+                        const cols = innerTable.querySelectorAll('td[width="50%"]');
+                        if (cols.length === 2) {
+                            blocks.push({ id: genId(), type: 'columns', data: {
+                                left:  cols[0].textContent.trim(),
+                                right: cols[1].textContent.trim()
+                            }});
+                            return;
+                        }
+                    }
+                    // Generic text block (has non-trivial text)
+                    if (text.length > 10) {
+                        blocks.push({ id: genId(), type: 'text', data: { content: text.substring(0, 800) }});
+                    }
+                });
+            } catch(e) {
+                // Parsing failed; return empty so canvas keeps existing HTML
+                return [];
+            }
+            return blocks;
+        }
+
+        // Expose for btn-load-tpl handler
+        window.veParseHtmlToBlocks = veParseHtmlToBlocks;
+        window.emailBlocks = emailBlocks; // keep reference
+
+        // ── Init: if editing an existing campaign, seed from stored HTML ───────
+        (function initVisualEditor() {
+            const area = document.getElementById('camp_html');
+            if (area && area.value && area.value.trim()) {
+                const parsed = veParseHtmlToBlocks(area.value);
+                if (parsed && parsed.length) {
+                    emailBlocks = parsed;
+                }
+            }
+            veRenderCanvas();
+        })();
+
+    })(); // end IIFE visual editor
+    // =========================================================================
+    // END VISUAL EDITOR
+    // =========================================================================
 });
 </script>
 

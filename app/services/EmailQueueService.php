@@ -39,6 +39,30 @@ class EmailQueueService {
                 require_once $tsFile;
             }
         }
+        if (!class_exists('MailerFactory')) {
+            $mfFile = defined('APPROOT') ? (APPROOT . '/services/mailers/MailerFactory.php') : (__DIR__ . '/mailers/MailerFactory.php');
+            if (file_exists($mfFile)) {
+                require_once $mfFile;
+            }
+        }
+        if (!class_exists('MailerSendResult')) {
+            $msrFile = defined('APPROOT') ? (APPROOT . '/services/mailers/MailerSendResult.php') : (__DIR__ . '/mailers/MailerSendResult.php');
+            if (file_exists($msrFile)) {
+                require_once $msrFile;
+            }
+        }
+        if (!interface_exists('MailerAdapterInterface')) {
+            $maiFile = defined('APPROOT') ? (APPROOT . '/services/mailers/MailerAdapterInterface.php') : (__DIR__ . '/mailers/MailerAdapterInterface.php');
+            if (file_exists($maiFile)) {
+                require_once $maiFile;
+            }
+        }
+        if (!class_exists('SmtpAdapter')) {
+            $smtpFile = defined('APPROOT') ? (APPROOT . '/services/mailers/SmtpAdapter.php') : (__DIR__ . '/mailers/SmtpAdapter.php');
+            if (file_exists($smtpFile)) {
+                require_once $smtpFile;
+            }
+        }
 
         // 1. Safe Row Locking to prevent double sends across concurrent workers
         $lockedItemIds = self::lockPendingQueueItems($batchSize, $worker);

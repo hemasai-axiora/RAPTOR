@@ -91,26 +91,16 @@ class PreSendChecklistService {
             }
         } catch (Throwable $e) {}
 
-        if (!$hasAddress && !empty($companyAddress)) {
-            $hasAddress = true;
-            $checks['physical_address'] = [
-                'name' => 'Physical Postal Address Present',
-                'passed' => true,
-                'critical' => true,
-                'message' => 'Sender postal address (' . $companyAddress . ') will be automatically included in compliance footer.'
-            ];
-        } else {
-            $checks['physical_address'] = [
-                'name' => 'Physical Postal Address Present',
-                'passed' => (bool)$hasAddress,
-                'critical' => true,
-                'message' => $hasAddress
-                    ? 'Found physical sender address in email body or footer.'
-                    : 'CRITICAL: Sender physical postal address is missing. Required by CAN-SPAM, GDPR, and Indian DPDP.'
-            ];
-            if (!$hasAddress) {
-                $blockers[] = $checks['physical_address']['message'];
-            }
+        $checks['physical_address'] = [
+            'name' => 'Physical Postal Address Present',
+            'passed' => (bool)$hasAddress,
+            'critical' => true,
+            'message' => $hasAddress
+                ? 'Found physical sender address in email body or footer.'
+                : 'CRITICAL: Sender physical postal address is missing. Required by CAN-SPAM, GDPR, and Indian DPDP.'
+        ];
+        if (!$hasAddress) {
+            $blockers[] = $checks['physical_address']['message'];
         }
 
         // ---------------------------------------------------------------------
