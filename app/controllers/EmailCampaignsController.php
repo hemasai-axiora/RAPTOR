@@ -7,6 +7,9 @@
  * Internal Payroll Employee Synchronization, and Global Suppression.
  */
 
+require_once APPROOT . '/services/PreflightEngine.php';
+require_once APPROOT . '/services/PreSendChecklistService.php';
+
 class EmailCampaignsController extends Controller {
 
     private CampaignContact $contactModel;

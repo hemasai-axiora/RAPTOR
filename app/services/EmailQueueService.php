@@ -184,6 +184,22 @@ class EmailQueueService {
                 $renderedHtml = TrackingService::injectTracking($renderedHtml, $unsubToken, $trackOpens, $trackClicks);
             }
 
+            // Ensure CAN-SPAM / GDPR compliance physical postal address footer is included
+            $hasAddressInRendered = (stripos($renderedHtml, 'Cyber City') !== false ||
+                                     stripos($renderedHtml, 'Hyderabad') !== false ||
+                                     preg_match('/\b(?:suite|street|road|st|ave|blvd|lane|floor|building|box|city|india|usa|state|pin|zip)\b/i', $renderedHtml));
+            if (!$hasAddressInRendered && !empty($context['company_address'])) {
+                $complianceFooter = '<div style="margin-top:24px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:12px;color:#718096;text-align:center;">'
+                    . htmlspecialchars($context['company_address'])
+                    . ' | <a href="' . htmlspecialchars($unsubUrl) . '" style="color:#4a5568;text-decoration:underline;">Unsubscribe</a>'
+                    . '</div>';
+                if (stripos($renderedHtml, '</body>') !== false) {
+                    $renderedHtml = str_ireplace('</body>', $complianceFooter . '</body>', $renderedHtml);
+                } else {
+                    $renderedHtml .= $complianceFooter;
+                }
+            }
+
             // Construct RFC 8058 & anti-spam deliverability headers
             $headers = [
                 'List-Unsubscribe' => "<mailto:unsub@{$fromDomain}?subject=unsubscribe-{$unsubToken}>, <{$oneClickUrl}>",

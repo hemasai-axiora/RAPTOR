@@ -113,6 +113,11 @@ try {
 
     // Simple autoloader for core classes
     spl_autoload_register(function ($className) {
+        if ($className === 'PreflightContext' || $className === 'Finding' || $className === 'MarketingRule') {
+            require_once APPROOT . '/services/PreflightEngine.php';
+            return;
+        }
+
         $corePath = APPROOT . '/core/' . $className . '.php';
         $modelPath = APPROOT . '/models/' . $className . '.php';
         $servicePath = APPROOT . '/services/' . $className . '.php';
