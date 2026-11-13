@@ -15,6 +15,7 @@ class CampaignBroadcast extends Model {
     public const STATUS_PAUSED = 'paused';
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_FAILED = 'failed';
 
     private function hasCampaignColumn(string $column): bool {
         static $cols = null;
@@ -44,17 +45,33 @@ class CampaignBroadcast extends Model {
     }
 
     public function getAllCampaigns(array $filters = [], int $limit = 25, int $offset = 0): array {
-        $sql = 'SELECT c.*, 
+        $hasQueueTable = false;
+        try {
+            $db = Database::getInstance()->getConnection();
+            $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+            if ($driver === 'sqlite') {
+                $hasQueueTable = (bool)$db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='campaign_email_queue'")->fetch();
+            } else {
+                $hasQueueTable = (bool)$db->query("SHOW TABLES LIKE 'campaign_email_queue'")->fetch();
+            }
+        } catch (Throwable $e) {}
+
+        $queueSubquery = $hasQueueTable 
+            ? '(SELECT last_error FROM campaign_email_queue q WHERE q.campaign_id = c.campaign_id AND q.last_error IS NOT NULL AND q.last_error != "" ORDER BY q.queue_id DESC LIMIT 1) as latest_queue_error'
+            : 'NULL as latest_queue_error';
+
+        $sql = "SELECT c.*, 
                        l.name as list_name, 
                        s.name as segment_name, 
                        t.name as template_name,
-                       u.name as creator_name
+                       u.name as creator_name,
+                       {$queueSubquery}
                 FROM campaigns_broadcast c
                 LEFT JOIN campaign_lists l ON c.list_id = l.list_id
                 LEFT JOIN campaign_segments s ON c.segment_id = s.segment_id
                 LEFT JOIN campaign_templates t ON c.template_id = t.template_id
                 LEFT JOIN users u ON c.created_by = u.user_id
-                WHERE 1=1 ';
+                WHERE 1=1 ";
         $params = [];
 
         if (!empty($filters['status'])) {
@@ -74,6 +91,58 @@ class CampaignBroadcast extends Model {
             $this->bind($k, $v);
         }
         return $this->resultSet() ?: [];
+    }
+
+    /**
+     * Retrieve aggregated statistics for top KPI metric cards
+     */
+    public function getBroadcastStats(): array {
+        $stats = [
+            'total_campaigns' => 0,
+            'active_campaigns' => 0,
+            'scheduled_campaigns' => 0,
+            'completed_campaigns' => 0,
+            'total_sent' => 0,
+            'total_delivered' => 0,
+            'total_opened' => 0,
+            'total_clicked' => 0,
+            'avg_open_rate' => 0.0,
+            'avg_click_rate' => 0.0
+        ];
+
+        try {
+            $sql = "SELECT 
+                        COUNT(*) as total_count,
+                        SUM(CASE WHEN status IN ('sending', 'queued') THEN 1 ELSE 0 END) as active_count,
+                        SUM(CASE WHEN status = 'scheduled' THEN 1 ELSE 0 END) as scheduled_count,
+                        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_count,
+                        SUM(sent_count) as sum_sent,
+                        SUM(delivered_count) as sum_delivered,
+                        SUM(opened_count) as sum_opened,
+                        SUM(clicked_count) as sum_clicked
+                    FROM campaigns_broadcast";
+            $this->query($sql);
+            $row = $this->single();
+            if ($row) {
+                $stats['total_campaigns'] = (int)($row->total_count ?? 0);
+                $stats['active_campaigns'] = (int)($row->active_count ?? 0);
+                $stats['scheduled_campaigns'] = (int)($row->scheduled_count ?? 0);
+                $stats['completed_campaigns'] = (int)($row->completed_count ?? 0);
+                $stats['total_sent'] = (int)($row->sum_sent ?? 0);
+                $stats['total_delivered'] = (int)($row->sum_delivered ?? 0);
+                $stats['total_opened'] = (int)($row->sum_opened ?? 0);
+                $stats['total_clicked'] = (int)($row->sum_clicked ?? 0);
+
+                if ($stats['total_sent'] > 0) {
+                    $stats['avg_open_rate'] = round(($stats['total_opened'] / $stats['total_sent']) * 100, 1);
+                }
+                if ($stats['total_opened'] > 0) {
+                    $stats['avg_click_rate'] = round(($stats['total_clicked'] / $stats['total_opened']) * 100, 1);
+                }
+            }
+        } catch (Throwable $e) {}
+
+        return $stats;
     }
 
     public function countCampaigns(array $filters = []): int {

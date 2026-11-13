@@ -379,7 +379,8 @@ assertCondition($dispatched === true, 'Successfully dispatched daily health repo
 // ====================================================================
 echo "\n[GROUP 8] CLI Daily Health Report Command:\n";
 
-$cliOutput = shell_exec('php bin/daily_health_report.php --dry-run 2>&1');
+$phpBin = PHP_BINARY ?: 'php';
+$cliOutput = shell_exec(escapeshellarg($phpBin) . ' bin/daily_health_report.php --dry-run 2>&1');
 assertCondition(str_contains((string)$cliOutput, 'Starting Daily Deliverability Health Check'), 'CLI script starts execution');
 assertCondition(str_contains((string)$cliOutput, '[DRY RUN] Email dispatch skipped'), 'CLI script supports --dry-run flag');
 assertCondition(str_contains((string)$cliOutput, 'Sent past 24h'), 'CLI script prints metrics summary');

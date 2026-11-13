@@ -279,11 +279,13 @@ class EmailCampaignsController extends Controller {
         $totalCount = $this->campaignModel->countCampaigns($filters);
         $campaigns = $this->campaignModel->getAllCampaigns($filters, $limit, $offset);
         $totalPages = (int)ceil($totalCount / $limit);
+        $broadcastStats = $this->campaignModel->getBroadcastStats();
 
         $data = [
             'title' => 'Email Campaigns & Broadcasts | Raptor CRM',
             'active_tab' => 'email_campaigns_broadcasts',
             'campaigns' => $campaigns,
+            'stats' => $broadcastStats,
             'total_count' => $totalCount,
             'current_page' => $page,
             'total_pages' => $totalPages,
@@ -513,16 +515,19 @@ class EmailCampaignsController extends Controller {
             $batchResult = EmailQueueService::processBatch(100, 10);
             $dispatchedCount = $batchResult['sent'] ?? 0;
             $failedCount = $batchResult['failed'] ?? 0;
+            $lastErr = $batchResult['last_error'] ?? null;
 
-            $msg = 'Campaign successfully verified and launched! ' . $res['message'];
-            if ($dispatchedCount > 0) {
-                $msg .= " ({$dispatchedCount} messages sent immediately via SMTP)";
-            }
-            if ($failedCount > 0) {
-                $msg .= " [Notice: {$failedCount} messages deferred or rejected by provider - review Deliverability Health]";
+            if ($dispatchedCount > 0 && $failedCount === 0) {
+                $_SESSION['flash_success'] = "Campaign successfully verified and launched! {$dispatchedCount} recipient message(s) sent immediately via SMTP.";
+            } elseif ($dispatchedCount > 0 && $failedCount > 0) {
+                $errNote = $lastErr ? " (Provider message: {$lastErr})" : "";
+                $_SESSION['flash_warning'] = "Campaign launched with partial delivery: {$dispatchedCount} message(s) dispatched, but {$failedCount} deferred/rejected by provider{$errNote}. Review Deliverability Health.";
+            } else {
+                // 0 dispatched, all failed
+                $errNote = $lastErr ? ": {$lastErr}" : " - recipient messages rejected or deferred by provider";
+                $_SESSION['flash_error'] = "Campaign was launched, but email dispatch failed{$errNote}. Please verify your SMTP credentials in Settings > Marketing SMTP.";
             }
 
-            $_SESSION['flash_success'] = $msg;
             $this->redirect('index.php?route=email_campaigns/campaigns');
         } else {
             $errMsg = $res['error'] ?? 'Unknown error';

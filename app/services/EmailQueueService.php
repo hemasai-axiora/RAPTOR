@@ -292,6 +292,7 @@ class EmailQueueService {
             } else {
                 $stats['failed']++;
                 $errorMsg = $result->getErrorMessage();
+                $stats['last_error'] = $errorMsg;
                 $isTransient = $result->isTransient();
                 $newAttempts = (int)$item->attempts + 1;
 
@@ -323,8 +324,10 @@ class EmailQueueService {
             }
             } catch (Throwable $itemErr) {
                 $stats['failed']++;
+                $errorMsg = $itemErr->getMessage();
+                $stats['last_error'] = $errorMsg;
                 $db->prepare("UPDATE campaign_email_queue SET status = 'failed', last_error = :err, locked_at = NULL, locked_by = NULL WHERE queue_id = :qid")
-                   ->execute([':err' => $itemErr->getMessage(), ':qid' => $item->queue_id]);
+                   ->execute([':err' => $errorMsg, ':qid' => $item->queue_id]);
             }
 
             // Domain-level rate pacing
@@ -433,15 +436,54 @@ class EmailQueueService {
 
     private static function checkAndMarkCompletedCampaigns(): void {
         $db = Database::getInstance()->getConnection();
-        $sql = "UPDATE campaigns_broadcast c
+        
+        // 1. Mark campaigns with successfully dispatched messages as completed when queue finishes
+        $sqlCompleted = "UPDATE campaigns_broadcast c
                 SET status = 'completed', completed_at = CURRENT_TIMESTAMP
                 WHERE c.status IN ('queued', 'sending')
+                  AND c.sent_count > 0
                   AND NOT EXISTS (
                       SELECT 1 FROM campaign_email_queue q 
                       WHERE q.campaign_id = c.campaign_id AND q.status IN ('pending', 'processing')
                   )";
+        
+        // 2. If sent_count is 0 and all queue items failed, mark as failed (or paused) with the provider failure reason
+        $sqlFailed = "UPDATE campaigns_broadcast c
+                SET status = 'failed', 
+                    paused_reason = COALESCE(
+                        (SELECT last_error FROM campaign_email_queue q WHERE q.campaign_id = c.campaign_id AND q.status = 'failed' AND q.last_error IS NOT NULL AND q.last_error != '' LIMIT 1),
+                        'Delivery failed: All recipient messages deferred or rejected by provider'
+                    )
+                WHERE c.status IN ('queued', 'sending')
+                  AND c.sent_count = 0
+                  AND NOT EXISTS (
+                      SELECT 1 FROM campaign_email_queue q 
+                      WHERE q.campaign_id = c.campaign_id AND q.status IN ('pending', 'processing')
+                  )
+                  AND EXISTS (
+                      SELECT 1 FROM campaign_email_queue q 
+                      WHERE q.campaign_id = c.campaign_id AND q.status = 'failed'
+                  )";
         try {
-            $db->exec($sql);
+            $db->exec($sqlCompleted);
+            try {
+                $db->exec($sqlFailed);
+            } catch (Throwable $eFail) {
+                // If 'failed' enum is not yet present on older schema, gracefully fall back to 'paused'
+                $db->exec("UPDATE campaigns_broadcast c
+                           SET status = 'paused', 
+                               paused_reason = 'Delivery failed: Provider rejected or deferred all recipient messages'
+                           WHERE c.status IN ('queued', 'sending')
+                             AND c.sent_count = 0
+                             AND NOT EXISTS (
+                                 SELECT 1 FROM campaign_email_queue q 
+                                 WHERE q.campaign_id = c.campaign_id AND q.status IN ('pending', 'processing')
+                             )
+                             AND EXISTS (
+                                 SELECT 1 FROM campaign_email_queue q 
+                                 WHERE q.campaign_id = c.campaign_id AND q.status = 'failed'
+                             )");
+            }
         } catch (Throwable $e) {}
     }
 

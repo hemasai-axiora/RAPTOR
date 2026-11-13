@@ -94,6 +94,8 @@ class SmtpAdapter implements MailerAdapterInterface {
                 'encryption' => $this->config['encryption'] ?? 'tls',
                 'from_address' => $fromEmail,
                 'from_name' => $fromName,
+                'reply_to' => $message['reply_to'] ?? '',
+                'custom_headers' => $message['headers'] ?? [],
                 'timeout' => (int)($this->config['timeout'] ?? 15)
             ];
 

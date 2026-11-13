@@ -171,7 +171,9 @@ class EmailService {
             'ssl' => [
                 'verify_peer' => false,
                 'verify_peer_name' => false,
-                'allow_self_signed' => true
+                'allow_self_signed' => true,
+                'SNI_enabled' => true,
+                'peer_name' => $host
             ]
         ]);
 
@@ -250,8 +252,34 @@ class EmailService {
             $sendCommand(base64_encode($password), [235]);
         }
 
-        // 5. MAIL FROM
-        $sendCommand("MAIL FROM:<{$fromEmail}>", [250]);
+        // 5. MAIL FROM with Envelope-Sender Fallback
+        // First try configured From address. If rejected by server (e.g. 550 sender rejected, 553 relaying disallowed by Zoho/SES/Resend),
+        // automatically fallback to authenticated username or verified system address as envelope sender while keeping From: header intact.
+        $envelopeCandidates = array_unique(array_filter([
+            $fromEmail,
+            (!empty($username) && filter_var($username, FILTER_VALIDATE_EMAIL)) ? $username : null,
+            trim($config['system_from_address'] ?? ''),
+            trim($config['default_from'] ?? ''),
+            'contacts@axioraglobalsolutions.com',
+            'accounts@axioraglobalsolutions.com'
+        ]));
+
+        $mailFromAccepted = false;
+        $lastMailFromErr = null;
+        foreach ($envelopeCandidates as $candidate) {
+            try {
+                $sendCommand("MAIL FROM:<{$candidate}>", [250]);
+                $mailFromAccepted = true;
+                break;
+            } catch (Exception $mfe) {
+                $lastMailFromErr = $mfe;
+                // If rejected, try next candidate
+                continue;
+            }
+        }
+        if (!$mailFromAccepted) {
+            throw $lastMailFromErr ?? new Exception("MAIL FROM rejected by SMTP server for all sender candidates");
+        }
 
         // 6. RCPT TO
         $sendCommand("RCPT TO:<{$toEmail}>", [250, 251]);
@@ -260,7 +288,9 @@ class EmailService {
         $sendCommand("DATA", [354]);
 
         // 8. Build and Send MIME Payload
-        $messageData = self::buildMimeMessage($toEmail, $toName, $fromEmail, $fromName, $subject, $htmlBody, $textBody, $attachments);
+        $replyTo = !empty($config['reply_to']) ? trim($config['reply_to']) : $fromEmail;
+        $customHeaders = !empty($config['custom_headers']) && is_array($config['custom_headers']) ? $config['custom_headers'] : [];
+        $messageData = self::buildMimeMessage($toEmail, $toName, $fromEmail, $fromName, $subject, $htmlBody, $textBody, $attachments, $replyTo, $customHeaders);
         
         // Escape lone dots on a line per RFC 2821
         $messageData = preg_replace('/^\./m', '..', $messageData);
@@ -293,6 +323,7 @@ class EmailService {
     private static function sendViaPhpMail(string $toEmail, string $toName, string $subject, string $htmlBody, string $textBody, array $attachments, array $config): array {
         $fromEmail = trim($config['from_address'] ?: 'accounts@axioraglobalsolutions.com');
         $fromName = trim($config['from_name'] ?: 'Axiora Global Solutions');
+        $replyTo = !empty($config['reply_to']) ? trim($config['reply_to']) : $fromEmail;
 
         $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
         $recipientHeader = !empty($toName) ? "=?UTF-8?B?" . base64_encode($toName) . "?= <{$toEmail}>" : $toEmail;
@@ -302,8 +333,17 @@ class EmailService {
 
         $headers = [];
         $headers[] = "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$fromEmail}>";
-        $headers[] = "Reply-To: <{$fromEmail}>";
+        $headers[] = "Reply-To: <{$replyTo}>";
         $headers[] = "MIME-Version: 1.0";
+        if (!empty($config['custom_headers']) && is_array($config['custom_headers'])) {
+            foreach ($config['custom_headers'] as $hk => $hv) {
+                $cleanK = trim(str_replace(["\r", "\n"], '', (string)$hk));
+                $cleanV = trim(str_replace(["\r", "\n"], '', (string)$hv));
+                if (!empty($cleanK) && !empty($cleanV) && !in_array(strtolower($cleanK), ['from', 'to', 'reply-to', 'subject', 'mime-version', 'content-type'], true)) {
+                    $headers[] = "{$cleanK}: {$cleanV}";
+                }
+            }
+        }
         $headers[] = "Content-Type: multipart/mixed; boundary=\"{$boundaryMixed}\"";
         $headers[] = "X-Mailer: RaptorCRM-Mailer/2.0";
 
@@ -361,22 +401,36 @@ class EmailService {
     /**
      * Build complete RFC 2822 MIME message string.
      */
-    private static function buildMimeMessage(string $toEmail, string $toName, string $fromEmail, string $fromName, string $subject, string $htmlBody, string $textBody, array $attachments): string {
+    private static function buildMimeMessage(string $toEmail, string $toName, string $fromEmail, string $fromName, string $subject, string $htmlBody, string $textBody, array $attachments, string $replyTo = '', array $customHeaders = []): string {
         $boundaryMixed = '=_mix_' . md5(uniqid((string)mt_rand(), true));
         $boundaryAlt   = '=_alt_' . md5(uniqid((string)mt_rand(), true));
 
         $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
         $encodedFromName = '=?UTF-8?B?' . base64_encode($fromName) . '?=';
         $encodedToName = !empty($toName) ? '=?UTF-8?B?' . base64_encode($toName) . '?=' : '';
+        $effectiveReplyTo = !empty($replyTo) ? $replyTo : $fromEmail;
+        $fromDomain = substr(strrchr($fromEmail, "@"), 1) ?: 'axioraglobalsolutions.com';
 
         $lines = [];
         $lines[] = "Date: " . date('r');
         $lines[] = "From: {$encodedFromName} <{$fromEmail}>";
         $lines[] = !empty($encodedToName) ? "To: {$encodedToName} <{$toEmail}>" : "To: <{$toEmail}>";
-        $lines[] = "Reply-To: <{$fromEmail}>";
+        $lines[] = "Reply-To: <{$effectiveReplyTo}>";
         $lines[] = "Subject: {$encodedSubject}";
-        $lines[] = "Message-ID: <" . md5(uniqid((string)mt_rand(), true)) . "@axioraglobalsolutions.com>";
+        $lines[] = "Message-ID: <" . md5(uniqid((string)mt_rand(), true)) . "@{$fromDomain}>";
         $lines[] = "MIME-Version: 1.0";
+
+        // Inject custom headers (List-Unsubscribe, Feedback-ID, etc.)
+        if (!empty($customHeaders)) {
+            foreach ($customHeaders as $hKey => $hVal) {
+                $cleanKey = trim(str_replace(["\r", "\n"], '', (string)$hKey));
+                $cleanVal = trim(str_replace(["\r", "\n"], '', (string)$hVal));
+                if (!empty($cleanKey) && !empty($cleanVal) && !in_array(strtolower($cleanKey), ['date', 'from', 'to', 'reply-to', 'subject', 'message-id', 'mime-version', 'content-type'], true)) {
+                    $lines[] = "{$cleanKey}: {$cleanVal}";
+                }
+            }
+        }
+
         $lines[] = "Content-Type: multipart/mixed; boundary=\"{$boundaryMixed}\"";
         $lines[] = "X-Mailer: RaptorCRM-SMTP/2.0";
         $lines[] = "";

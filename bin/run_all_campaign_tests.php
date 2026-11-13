@@ -49,7 +49,8 @@ foreach ($suites as $title => $script) {
     echo "Running [{$title}]...\n";
     $output = [];
     $returnVar = 0;
-    exec("php " . escapeshellarg($script) . " 2>&1", $output, $returnVar);
+    $phpBin = PHP_BINARY ?: 'php';
+    exec(escapeshellarg($phpBin) . " " . escapeshellarg($script) . " 2>&1", $output, $returnVar);
 
     $outputText = implode("\n", $output);
     $passed = 0;
