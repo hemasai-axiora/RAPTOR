@@ -69,7 +69,8 @@ $stats = $stats ?? [
         <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm rounded-4 mb-4" role="alert">
             <div class="d-flex align-items-center">
                 <i class="fa-solid fa-circle-check fs-5 me-2 text-success"></i>
-                <div><?php echo $_SESSION['flash_success']; unset($_SESSION['flash_success']); ?></div>
+                <div><?php echo $_SESSION['flash_success'];
+                        unset($_SESSION['flash_success']); ?></div>
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
@@ -78,7 +79,8 @@ $stats = $stats ?? [
         <div class="alert alert-warning alert-dismissible fade show border-0 shadow-sm rounded-4 mb-4" role="alert">
             <div class="d-flex align-items-center">
                 <i class="fa-solid fa-triangle-exclamation fs-5 me-2 text-warning"></i>
-                <div><?php echo $_SESSION['flash_warning']; unset($_SESSION['flash_warning']); ?></div>
+                <div><?php echo $_SESSION['flash_warning'];
+                        unset($_SESSION['flash_warning']); ?></div>
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
@@ -87,7 +89,8 @@ $stats = $stats ?? [
         <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm rounded-4 mb-4" role="alert">
             <div class="d-flex align-items-center">
                 <i class="fa-solid fa-circle-xmark fs-5 me-2 text-danger"></i>
-                <div><?php echo $_SESSION['flash_error']; unset($_SESSION['flash_error']); ?></div>
+                <div><?php echo $_SESSION['flash_error'];
+                        unset($_SESSION['flash_error']); ?></div>
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
@@ -236,7 +239,7 @@ $stats = $stats ?? [
                 $clickRate = $opened > 0 ? round(($clicked / $opened) * 100, 1) : 0;
 
                 // Status styling
-                $statusConfig = match($c->status) {
+                $statusConfig = match ($c->status) {
                     'sending', 'queued' => ['badge' => 'success', 'icon' => 'fa-bolt', 'label' => 'Active'],
                     'completed' => ['badge' => 'primary', 'icon' => 'fa-check', 'label' => 'Completed'],
                     'scheduled' => ['badge' => 'warning', 'icon' => 'fa-clock', 'label' => 'Scheduled'],
@@ -296,8 +299,21 @@ $stats = $stats ?? [
                                             <i class="fa-solid fa-chart-line me-2 text-info"></i>Detailed Analytics
                                         </a>
                                     </li>
+                                    <?php if ($c->status === 'draft' || $c->status === 'paused' || $c->status === 'failed' || ($c->status === 'completed' && $sent === 0)): ?>
+                                        <li>
+                                            <form method="POST" action="index.php?route=email_campaigns/campaignLaunch" onsubmit="return confirm('Launch broadcast for <?php echo htmlspecialchars(addslashes($c->name)); ?> now?');">
+                                                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
+                                                <input type="hidden" name="campaign_id" value="<?php echo $c->campaign_id; ?>">
+                                                <button type="submit" class="dropdown-item small text-success fw-medium">
+                                                    <i class="fa-solid fa-paper-plane me-2 text-success"></i>Launch / Dispatch Now
+                                                </button>
+                                            </form>
+                                        </li>
+                                    <?php endif; ?>
                                     <?php if ($c->status === 'draft'): ?>
-                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <hr class="dropdown-divider">
+                                        </li>
                                         <li>
                                             <form method="POST" action="index.php?route=email_campaigns/campaignDelete" onsubmit="return confirm('Delete this draft campaign permanently?');">
                                                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
@@ -374,13 +390,21 @@ $stats = $stats ?? [
                         </div>
 
                         <?php if ($hasDeliveryIssue): ?>
-                            <?php 
+                            <?php
                             $noticeMsg = !empty($c->latest_queue_error) ? $c->latest_queue_error : ($c->paused_reason ?: 'Messages deferred or rejected by provider');
-                            // Clean notice snippet
-                            $cleanSnippet = strlen($noticeMsg) > 75 ? substr($noticeMsg, 0, 75) . '...' : $noticeMsg;
+                            $cleanSnippet = strlen($noticeMsg) > 55 ? substr($noticeMsg, 0, 55) . '...' : $noticeMsg;
                             ?>
-                            <div class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-2 small fw-normal d-flex align-items-center" title="<?php echo htmlspecialchars($noticeMsg); ?>">
-                                <i class="fa-solid fa-triangle-exclamation me-1"></i>Notice: <?php echo htmlspecialchars($cleanSnippet); ?>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <div class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-2 small fw-normal d-flex align-items-center" title="<?php echo htmlspecialchars($noticeMsg); ?>">
+                                    <i class="fa-solid fa-triangle-exclamation me-1"></i>Notice: <?php echo htmlspecialchars($cleanSnippet); ?>
+                                </div>
+                                <form method="POST" action="index.php?route=email_campaigns/campaignLaunch" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ($csrf_token ?? ''); ?>">
+                                    <input type="hidden" name="campaign_id" value="<?php echo $c->campaign_id; ?>">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-medium shadow-sm">
+                                        <i class="fa-solid fa-rotate me-1"></i>Retry Dispatch
+                                    </button>
+                                </form>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -411,14 +435,16 @@ $stats = $stats ?? [
 </div>
 
 <style>
-.campaign-card {
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-.campaign-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01) !important;
-}
-.text-hover-primary:hover {
-    color: #4f46e5 !important;
-}
+    .campaign-card {
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .campaign-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01) !important;
+    }
+
+    .text-hover-primary:hover {
+        color: #4f46e5 !important;
+    }
 </style>

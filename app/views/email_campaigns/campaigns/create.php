@@ -65,8 +65,8 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold">From Email Address <span class="text-danger">*</span></label>
-                                <input type="email" name="from_email" id="from_email" class="form-control" placeholder="updates@mail.axiora.in" value="<?php echo htmlspecialchars($campaign->from_email ?? 'noreply@axiora.in'); ?>" required>
-                                <div class="form-text small">Recommended: Use a dedicated subdomain (e.g. <code>mail.company.com</code>) to isolate domain reputation.</div>
+                                <input type="email" name="from_email" id="from_email" class="form-control font-monospace" placeholder="contacts@axioraglobalsolutions.com" value="<?php echo htmlspecialchars((!empty($campaign->from_email) && $campaign->from_email !== 'noreply@axiora.in') ? $campaign->from_email : 'contacts@axioraglobalsolutions.com'); ?>" required>
+                                <div class="form-text small"><i class="fa-solid fa-circle-check text-success me-1"></i>Verified sender: <code>contacts@axioraglobalsolutions.com</code></div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold">Reply-To Email</label>

@@ -439,7 +439,12 @@ class CampaignBroadcast extends Model {
             return ['success' => false, 'error' => 'Campaign not found'];
         }
 
-        if ($camp->status !== self::STATUS_DRAFT && $camp->status !== self::STATUS_SCHEDULED && $camp->status !== 'approved') {
+        if ($camp->status !== self::STATUS_DRAFT && 
+            $camp->status !== self::STATUS_SCHEDULED && 
+            $camp->status !== 'approved' &&
+            $camp->status !== self::STATUS_PAUSED &&
+            $camp->status !== self::STATUS_FAILED &&
+            !($camp->status === self::STATUS_COMPLETED && (int)$camp->sent_count === 0)) {
             return ['success' => false, 'error' => 'Campaign is not in a launchable state (status: ' . $camp->status . ')'];
         }
 
@@ -533,6 +538,10 @@ class CampaignBroadcast extends Model {
         // 3. Seed campaign_recipients & campaign_email_queue in transaction
         try {
             $db->beginTransaction();
+
+            // Clear any prior queue items and recipient rows if re-launching
+            $db->prepare('DELETE FROM campaign_email_queue WHERE campaign_id = :cid')->execute([':cid' => $campaignId]);
+            $db->prepare('DELETE FROM campaign_recipients WHERE campaign_id = :cid')->execute([':cid' => $campaignId]);
 
             $rIns = $db->prepare('INSERT INTO campaign_recipients 
                                   (campaign_id, contact_id, email, subject_variant, status, unsubscribe_token)
