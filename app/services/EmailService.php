@@ -298,6 +298,38 @@ class EmailService {
 
         $dataRes = $readResponse();
         $code = (int)substr($dataRes, 0, 3);
+
+        // If provider (e.g. Zoho/SES/Resend) rejects DATA due to relaying restriction on custom from_email
+        if ($code !== 250) {
+            $isRelayErr = (stripos($dataRes, 'relay') !== false || stripos($dataRes, '550') !== false || stripos($dataRes, 'not allowed') !== false);
+            $authSender = (!empty($config['authenticated_from']) && filter_var($config['authenticated_from'], FILTER_VALIDATE_EMAIL))
+                ? $config['authenticated_from']
+                : ((!empty($username) && filter_var($username, FILTER_VALIDATE_EMAIL)) ? $username : 'contacts@axioraglobalsolutions.com');
+
+            if ($isRelayErr && !empty($authSender) && strtolower($fromEmail) !== strtolower($authSender)) {
+                // Recover: Send RSET, switch From: to authenticated sender, preserve user's campaign email as Reply-To:
+                try {
+                    @fwrite($socket, "RSET\r\n");
+                    $readResponse();
+                    $sendCommand("MAIL FROM:<{$authSender}>", [250]);
+                    $sendCommand("RCPT TO:<{$toEmail}>", [250, 251]);
+                    $sendCommand("DATA", [354]);
+
+                    $fallbackReplyTo = !empty($replyTo) ? $replyTo : $fromEmail;
+                    $retryMsgData = self::buildMimeMessage($toEmail, $toName, $authSender, $fromName, $subject, $htmlBody, $textBody, $attachments, $fallbackReplyTo, $customHeaders);
+                    $retryMsgData = preg_replace('/^\./m', '..', $retryMsgData);
+                    fwrite($socket, $retryMsgData . "\r\n.\r\n");
+
+                    $retryRes = $readResponse();
+                    $retryCode = (int)substr($retryRes, 0, 3);
+                    if ($retryCode === 250) {
+                        $code = 250;
+                        $dataRes = $retryRes;
+                    }
+                } catch (Throwable $ignoreRetry) {}
+            }
+        }
+
         if ($code !== 250) {
             fclose($socket);
             throw new Exception("SMTP DATA send failed: {$dataRes}");

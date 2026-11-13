@@ -58,6 +58,7 @@ class SmtpAdapter implements MailerAdapterInterface {
                     'username' => $mailConfig['username'] ?? '',
                     'password' => $mailConfig['password'] ?? '',
                     'encryption' => $mailConfig['encryption'] ?? 'tls',
+                    'from_address' => $mailConfig['from_address'] ?? 'contacts@axioraglobalsolutions.com',
                     'timeout' => (int)($mailConfig['timeout'] ?? 15),
                     'keepalive' => true
                 ];
@@ -94,6 +95,7 @@ class SmtpAdapter implements MailerAdapterInterface {
                 'encryption' => $this->config['encryption'] ?? 'tls',
                 'from_address' => $fromEmail,
                 'from_name' => $fromName,
+                'authenticated_from' => $this->config['from_address'] ?? $this->config['username'] ?? 'contacts@axioraglobalsolutions.com',
                 'reply_to' => $message['reply_to'] ?? '',
                 'custom_headers' => $message['headers'] ?? [],
                 'timeout' => (int)($this->config['timeout'] ?? 15)
