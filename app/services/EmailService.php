@@ -61,6 +61,7 @@ class EmailService {
     /**
      * Retrieve dedicated email marketing mail settings.
      * STRICT ROUTING POLICY: Marketing campaigns MUST NOT fall back to Corporate SMTP!
+     * Supports Amazon SES, SMTP Socket, and PHP Native drivers.
      * If disabled or unconfigured, returns enabled => false and error details.
      */
     public static function getMarketingConfig(): array {
@@ -68,7 +69,7 @@ class EmailService {
         try {
             if (class_exists('Database')) {
                 $db = Database::getInstance()->getConnection();
-                $stmt = $db->query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'mail.marketing.%'");
+                $stmt = $db->query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'mail.marketing.%' OR setting_key = 'mail.warmup_enabled'");
                 while ($row = $stmt->fetch(PDO::FETCH_OBJ)) {
                     $dbSettings[$row->setting_key] = $row->setting_value;
                 }
@@ -76,39 +77,55 @@ class EmailService {
         } catch (Throwable $t) {}
 
         $isDedicated = !empty($dbSettings['mail.marketing.enabled']) && ($dbSettings['mail.marketing.enabled'] === '1' || $dbSettings['mail.marketing.enabled'] === 1);
+        $driver = strtolower(trim($dbSettings['mail.marketing.driver'] ?? (getenv('MAIL_MARKETING_DRIVER') ?: 'smtp')));
+        $sesRegion = trim($dbSettings['mail.marketing.ses_region'] ?? (getenv('AWS_REGION') ?: 'us-east-1'));
+        $sesConfigSet = trim($dbSettings['mail.marketing.ses_configuration_set'] ?? (getenv('SES_CONFIGURATION_SET') ?: ''));
+        $pacingSeconds = max(120, (int)($dbSettings['mail.marketing.pacing_seconds'] ?? (getenv('MAIL_MARKETING_PACING') ?: 120)));
+        $warmupEnabled = !isset($dbSettings['mail.warmup_enabled']) || ($dbSettings['mail.warmup_enabled'] === '1' || $dbSettings['mail.warmup_enabled'] === 1);
+
         $mHost = trim($dbSettings['mail.marketing.host'] ?? (getenv('SMTP_MARKETING_HOST') ?: ''));
+        if (empty($mHost) && ($driver === 'ses' || $driver === 'aws_ses' || $driver === 'amazon_ses')) {
+            $mHost = "email-smtp.{$sesRegion}.amazonaws.com";
+        }
 
         if ($isDedicated && !empty($mHost)) {
-            $defaultDriver = $dbSettings['mail.marketing.driver'] ?? 'smtp';
             return [
-                'enabled'         => true,
-                'driver'          => $defaultDriver,
-                'host'            => $mHost,
-                'port'            => (int)($dbSettings['mail.marketing.port'] ?? (getenv('SMTP_MARKETING_PORT') ?: 587)),
-                'username'        => $dbSettings['mail.marketing.username'] ?? (getenv('SMTP_MARKETING_USER') ?: ''),
-                'password'        => $dbSettings['mail.marketing.password'] ?? (getenv('SMTP_MARKETING_PASS') ?: ''),
-                'encryption'      => strtolower($dbSettings['mail.marketing.encryption'] ?? (getenv('SMTP_MARKETING_ENCRYPTION') ?: 'tls')),
-                'from_address'    => $dbSettings['mail.marketing.from_address'] ?? 'contacts@axioraglobalsolutions.com',
-                'from_name'       => $dbSettings['mail.marketing.from_name'] ?? 'Axiora Global',
-                'auto_send'       => '1',
-                'timeout'         => 15
+                'enabled'                => true,
+                'driver'                 => $driver,
+                'host'                   => $mHost,
+                'port'                   => (int)($dbSettings['mail.marketing.port'] ?? (getenv('SMTP_MARKETING_PORT') ?: 587)),
+                'username'               => $dbSettings['mail.marketing.username'] ?? (getenv('SMTP_MARKETING_USER') ?: ''),
+                'password'               => $dbSettings['mail.marketing.password'] ?? (getenv('SMTP_MARKETING_PASS') ?: ''),
+                'encryption'             => strtolower($dbSettings['mail.marketing.encryption'] ?? (getenv('SMTP_MARKETING_ENCRYPTION') ?: 'tls')),
+                'from_address'           => $dbSettings['mail.marketing.from_address'] ?? 'contacts@axioraglobalsolutions.com',
+                'from_name'              => $dbSettings['mail.marketing.from_name'] ?? 'Axiora Global',
+                'ses_region'             => $sesRegion,
+                'ses_configuration_set'  => $sesConfigSet ?: null,
+                'pacing_seconds'         => $pacingSeconds,
+                'warmup_enabled'         => $warmupEnabled,
+                'auto_send'              => '1',
+                'timeout'                => 15
             ];
         }
 
         // STRICT POLICY: Do NOT fall back to corporate SMTP. Return unconfigured/disabled state.
         return [
-            'enabled'         => false,
-            'error'           => 'Dedicated Marketing SMTP is disabled or not configured in Global Settings. Mass email dispatch aborted to preserve Corporate SMTP reputation.',
-            'driver'          => 'smtp',
-            'host'            => '',
-            'port'            => 587,
-            'username'        => '',
-            'password'        => '',
-            'encryption'      => 'tls',
-            'from_address'    => $dbSettings['mail.marketing.from_address'] ?? 'contacts@axioraglobalsolutions.com',
-            'from_name'       => $dbSettings['mail.marketing.from_name'] ?? 'Axiora Global',
-            'auto_send'       => '0',
-            'timeout'         => 15
+            'enabled'                => false,
+            'error'                  => 'Dedicated Marketing SMTP is disabled or not configured in Global Settings. Mass email dispatch aborted to preserve Corporate SMTP reputation.',
+            'driver'                 => $driver,
+            'host'                   => '',
+            'port'                   => (int)($dbSettings['mail.marketing.port'] ?? 587),
+            'username'               => $dbSettings['mail.marketing.username'] ?? '',
+            'password'               => $dbSettings['mail.marketing.password'] ?? '',
+            'encryption'             => 'tls',
+            'from_address'           => $dbSettings['mail.marketing.from_address'] ?? 'contacts@axioraglobalsolutions.com',
+            'from_name'              => $dbSettings['mail.marketing.from_name'] ?? 'Axiora Global',
+            'ses_region'             => $sesRegion,
+            'ses_configuration_set'  => $sesConfigSet ?: null,
+            'pacing_seconds'         => $pacingSeconds,
+            'warmup_enabled'         => $warmupEnabled,
+            'auto_send'              => '0',
+            'timeout'                => 15
         ];
     }
 

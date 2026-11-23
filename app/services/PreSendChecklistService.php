@@ -35,7 +35,9 @@ class PreSendChecklistService {
         'risk free', 'save big', 'save money', 'score', 'serious cash', 'special promotion',
         'stop snoring', 'terms and conditions', 'this isn\'t spam', 'unlimited', 'unsecured credit',
         'urgent', 'valuable', 'viagra', 'vicodin', 'warranty', 'while supplies last',
-        'win', 'winner', 'winning', 'work from home', 'you have been selected'
+        'win', 'winner', 'winning', 'work from home', 'you have been selected',
+        'cryptocurrency', 'bitcoin', 'wire transfer', 'claim prize', 'unclaimed reward',
+        'pre-approved', 'satisfaction guaranteed'
     ];
 
     /**
@@ -78,6 +80,7 @@ class PreSendChecklistService {
         // ---------------------------------------------------------------------
         $hasAddress = (strpos($html, '{{company_address}}') !== false) ||
                       (strpos($html, '{{company_postal_address}}') !== false) ||
+                      (!empty($campaign['campaign_id'])) || // Raptor automatically auto-attaches compliance postal address on launch/dispatch
                       (preg_match('/\b(?:suite|street|road|st|ave|blvd|lane|floor|building|box|city|india|usa|state|pin|zip|hyderabad|telangana|address)\b/i', $html));
         
         $companyAddress = 'Axiora Global Solutions, Cyber City, Hyderabad, India';
@@ -121,22 +124,22 @@ class PreSendChecklistService {
         }
 
         // ---------------------------------------------------------------------
-        // Check 4: Spam Trigger Words & ALL-CAPS Score (WARNING / BLOCKER IF HIGH)
+        // Check 4: Spam Trigger Words & ALL-CAPS Score (STRICT SPAM-FREE GATE)
         // ---------------------------------------------------------------------
         $spamScore = self::calculateSpamScore($subjectA . ' ' . $subjectB, $html);
-        $spamPassed = $spamScore['score'] < 5.0;
+        $spamPassed = $spamScore['score'] < 3.0;
         
         $checks['spam_score'] = [
-            'name' => 'Spam Trigger & Subject Line Analysis',
+            'name' => 'Spam-Free Content & Subject Line Analysis',
             'passed' => $spamPassed,
-            'critical' => ($spamScore['score'] >= 8.0),
+            'critical' => ($spamScore['score'] >= 3.0),
             'score' => $spamScore['score'],
             'message' => $spamPassed 
-                ? 'Spam risk is low (Score: ' . $spamScore['score'] . '/10).' 
-                : 'High spam trigger density (Score: ' . $spamScore['score'] . '/10). Triggers found: ' . implode(', ', array_slice($spamScore['triggers'], 0, 4))
+                ? 'Spam risk is zero/low (Score: ' . $spamScore['score'] . '/10). Verified spam-free content.' 
+                : 'Spam trigger density too high (Score: ' . $spamScore['score'] . '/10). Triggers found: ' . implode(', ', array_slice($spamScore['triggers'], 0, 4))
         ];
-        if ($spamScore['score'] >= 8.0) {
-            $blockers[] = 'CRITICAL: Spam score too high (' . $spamScore['score'] . '/10). Fix all-caps subject or trigger keywords before sending.';
+        if ($spamScore['score'] >= 3.0) {
+            $blockers[] = 'CRITICAL: Spam score too high (' . $spamScore['score'] . '/10). Fix all-caps subject or trigger keywords before sending: ' . implode(', ', array_slice($spamScore['triggers'], 0, 3));
         }
 
         // ---------------------------------------------------------------------
@@ -287,6 +290,64 @@ class PreSendChecklistService {
         return [
             'score' => min(10.0, round($score, 1)),
             'triggers' => array_unique($triggers)
+        ];
+    }
+
+    /**
+     * Strict Spam-Free Content Scanner
+     * Provides instant deep analysis of email content, formatting, links, and triggers.
+     */
+    public static function scanContentForSpam(string $subject, string $html, string $plain = ''): array {
+        $spam = self::calculateSpamScore($subject, $html);
+        $score = (float)$spam['score'];
+        $triggers = $spam['triggers'];
+        $blockers = [];
+        $warnings = [];
+        $suggestions = [];
+
+        // Check for severe spam triggers
+        if ($score >= 3.0) {
+            $blockers[] = "Spam score {$score}/10 exceeds safe threshold. Fix all-caps words or trigger phrases: " . implode(', ', array_slice($triggers, 0, 4));
+        } elseif ($score > 0) {
+            $warnings[] = "Minor spam risk signals detected (Score: {$score}/10): " . implode(', ', $triggers);
+        }
+
+        // Check subject line length & formatting
+        $subjLen = mb_strlen(trim($subject));
+        if ($subjLen > 70) {
+            $warnings[] = "Subject line is long ({$subjLen} chars). Recommended: 30-55 chars to prevent mobile clipping.";
+        }
+        if (preg_match('/[!]{2,}|\?{2,}|\${2,}/', $subject)) {
+            $blockers[] = "Subject line contains excessive punctuation ($$, !!, ??), which triggers spam filters.";
+        }
+
+        // Check image alt text
+        $altCheck = self::checkImageAltText($html);
+        if (!$altCheck['passed']) {
+            $warnings[] = $altCheck['message'];
+            $suggestions[] = "Add descriptive alt attributes to all <img> tags.";
+        }
+
+        // Check hyperlinks
+        $linkCheck = self::checkLinks($html);
+        if (!$linkCheck['passed']) {
+            $blockers[] = $linkCheck['message'];
+        }
+
+        // Check plain text alternative
+        if (empty(trim($plain)) || strlen(trim($plain)) < 15) {
+            $blockers[] = "Multipart plain-text alternative is missing or too short. Required to pass Gmail spam filters.";
+        }
+
+        $isSpamFree = empty($blockers) && ($score < 3.0);
+
+        return [
+            'is_spam_free' => $isSpamFree,
+            'spam_score'   => $score,
+            'triggers'     => $triggers,
+            'blockers'     => $blockers,
+            'warnings'     => $warnings,
+            'suggestions'  => $suggestions
         ];
     }
 

@@ -35,6 +35,18 @@ class UnsubscribeController extends Controller {
         $recip = $stmt->fetch(PDO::FETCH_OBJ);
 
         if (!$recip) {
+            $tokenData = UnsubscribeService::verifyToken($token);
+            if ($tokenData && ($token === 'test_preview_sample_token' || $tokenData['email'] === 'test-preview@raptor.internal' || $tokenData['contact_id'] === 0)) {
+                $viewData = [
+                    'token' => $token,
+                    'email' => $tokenData['email'] ?? 'test-preview@raptor.internal',
+                    'campaign_name' => 'Test Preview Broadcast',
+                    'list_name' => 'Test Preview Audience',
+                    'list_id' => 0
+                ];
+                parent::view('email_campaigns/public/unsubscribe', $viewData);
+                return;
+            }
             die('Unsubscribe link is invalid or has expired.');
         }
 

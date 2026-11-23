@@ -113,6 +113,16 @@ class UnsubscribeService {
         $stmt->execute([':token' => $cleanToken]);
         $recip = $stmt->fetch(PDO::FETCH_OBJ);
 
+        // Safe test preview simulation: verify token cryptographically, but do NOT suppress real contacts or testers
+        if (!$recip && ($cleanToken === 'test_preview_sample_token' || ($tokenData && ($tokenData['contact_id'] === 0 || str_starts_with($tokenData['email'], 'test-preview@'))))) {
+            return [
+                'success' => true,
+                'email' => $tokenData['email'] ?? 'test-preview@raptor.internal',
+                'scope' => 'test_preview',
+                'message' => 'Test simulation: unsubscribe token verified successfully. Real contacts are unaffected.'
+            ];
+        }
+
         if (!$recip && !$tokenData) {
             return ['success' => false, 'error' => 'Unsubscribe link is invalid or expired'];
         }

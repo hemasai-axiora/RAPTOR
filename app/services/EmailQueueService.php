@@ -72,6 +72,11 @@ class EmailQueueService {
 
         // 2. Fetch locked items with full campaign, recipient, and contact data
         $inClause = implode(',', array_map('intval', $lockedItemIds));
+        $hasWarmupCol = self::hasCampaignColumn('is_warmup_enabled');
+        $warmupSelect = $hasWarmupCol ? 'c.is_warmup_enabled,' : '1 as is_warmup_enabled,';
+        $hasPacingCol = self::hasCampaignColumn('send_interval_seconds');
+        $pacingSelect = $hasPacingCol ? 'c.send_interval_seconds,' : '120 as send_interval_seconds,';
+
         $sql = "SELECT q.*, 
                        r.email as recipient_email, 
                        r.subject_variant, 
@@ -87,8 +92,10 @@ class EmailQueueService {
                        c.reply_to,
                        c.html_content,
                        c.plain_text_content,
-                       1 as track_opens,
-                       1 as track_clicks,
+                       c.track_opens,
+                       c.track_clicks,
+                       {$warmupSelect}
+                       {$pacingSelect}
                        c.status as campaign_status,
                        c.bounced_count,
                        c.complained_count,
@@ -177,16 +184,19 @@ class EmailQueueService {
             }
 
             // -----------------------------------------------------------------
-            // Check D: Domain Warm-Up Daily Cap
+            // Check D: Domain Warm-Up Daily Cap (If Warmup Mode Enabled)
             // -----------------------------------------------------------------
-            $fromDomain = substr(strrchr($item->from_email, "@"), 1);
-            if (!WarmupScheduleService::canSend($fromDomain)) {
-                $stats['throttled']++;
-                // Reschedule for next day 09:00 UTC
-                $tomorrow = date('Y-m-d 09:00:00', strtotime('+1 day'));
-                $db->prepare("UPDATE campaign_email_queue SET status = 'pending', scheduled_at = :next, locked_at = NULL WHERE queue_id = :qid")
-                   ->execute([':next' => $tomorrow, ':qid' => $item->queue_id]);
-                continue;
+            $isWarmup = !isset($item->is_warmup_enabled) || (bool)$item->is_warmup_enabled;
+            if ($isWarmup) {
+                $fromDomain = substr(strrchr($item->from_email, "@"), 1);
+                if (!WarmupScheduleService::canSend($fromDomain)) {
+                    $stats['throttled']++;
+                    // Reschedule for next day 09:00 UTC
+                    $tomorrow = date('Y-m-d 09:00:00', strtotime('+1 day'));
+                    $db->prepare("UPDATE campaign_email_queue SET status = 'pending', scheduled_at = :next, locked_at = NULL WHERE queue_id = :qid")
+                       ->execute([':next' => $tomorrow, ':qid' => $item->queue_id]);
+                    continue;
+                }
             }
 
             // -----------------------------------------------------------------
@@ -240,7 +250,7 @@ class EmailQueueService {
 
             // Construct RFC 8058 & anti-spam deliverability headers
             $headers = [
-                'List-Unsubscribe' => "<mailto:unsub@{$fromDomain}?subject=unsubscribe-{$unsubToken}>, <{$oneClickUrl}>",
+                'List-Unsubscribe' => "<{$oneClickUrl}>",
                 'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click',
                 'Feedback-ID' => "camp_{$item->campaign_id}:raptor:{$fromDomain}",
                 'Precedence' => 'bulk',
@@ -499,6 +509,33 @@ class EmailQueueService {
                 ':payload' => json_encode($payload, JSON_UNESCAPED_UNICODE)
             ]);
         } catch (Throwable $e) {}
+    }
+
+    private static function hasCampaignColumn(string $column): bool {
+        static $cols = null;
+        if ($cols === null) {
+            $cols = [];
+            try {
+                $db = Database::getInstance()->getConnection();
+                $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+                if ($driver === 'sqlite') {
+                    $stmt = $db->query("PRAGMA table_info(campaigns_broadcast)");
+                    if ($stmt) {
+                        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                            $cols[$row['name']] = true;
+                        }
+                    }
+                } else {
+                    $stmt = $db->query("SHOW COLUMNS FROM campaigns_broadcast");
+                    if ($stmt) {
+                        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                            $cols[$row['Field']] = true;
+                        }
+                    }
+                }
+            } catch (Throwable $e) {}
+        }
+        return isset($cols[$column]);
     }
 }
 

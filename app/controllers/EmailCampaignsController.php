@@ -433,13 +433,18 @@ class EmailCampaignsController extends Controller {
             'email' => $testEmail
         ];
 
+        // Generate safe test preview unsubscribe token
+        $testToken = UnsubscribeService::generateToken($campaignId, 0, 'test-preview@raptor.internal');
+        $testUnsubUrl = UnsubscribeService::buildUnsubscribeUrl($testToken, $campaignId);
+        $testOneClickUrl = UnsubscribeService::buildOneClickUrl($testToken);
+
         $renderedHtml = CampaignTemplate::renderMergeTags($campaign->html_content, $sampleContact, [
-            'unsubscribe_url' => URLROOT . '/index.php?route=unsubscribe/view&token=test_preview_sample_token',
+            'unsubscribe_url' => $testUnsubUrl,
             'company_address' => 'Axiora Global Solutions, Cyber City, Hyderabad, India'
         ]);
 
         $renderedPlain = CampaignTemplate::renderMergeTags($campaign->plain_text_content, $sampleContact, [
-            'unsubscribe_url' => URLROOT . '/index.php?route=unsubscribe/view&token=test_preview_sample_token',
+            'unsubscribe_url' => $testUnsubUrl,
             'company_address' => 'Axiora Global Solutions, Cyber City, Hyderabad, India'
         ]);
 
@@ -461,7 +466,9 @@ class EmailCampaignsController extends Controller {
                 'text' => $renderedPlain,
                 'headers' => [
                     'X-Raptor-Test-Send' => '1',
-                    'Precedence' => 'bulk'
+                    'Precedence' => 'bulk',
+                    'List-Unsubscribe' => "<{$testOneClickUrl}>",
+                    'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click'
                 ]
             ];
 
@@ -499,6 +506,30 @@ class EmailCampaignsController extends Controller {
     }
 
     /**
+     * Real-time Spam-Free Content Verification (AJAX)
+     */
+    public function scanSpam() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['error' => 'Method not allowed']);
+            exit();
+        }
+
+        $subject = trim($_POST['subject'] ?? ($_POST['subject_a'] ?? ''));
+        $html = $_POST['html_content'] ?? '';
+        $plain = $_POST['plain_text_content'] ?? '';
+
+        $analysis = PreSendChecklistService::scanContentForSpam($subject, $html, $plain);
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'analysis' => $analysis
+        ]);
+        exit();
+    }
+
+    /**
      * Launch Campaign (Final Execution: Quality Gate & Queue Seeding)
      */
     public function campaignLaunch() {
@@ -511,14 +542,15 @@ class EmailCampaignsController extends Controller {
         $res = $this->campaignModel->launchCampaign($campaignId, (int)($_SESSION['user_id'] ?? 0));
 
         if ($res['success']) {
-            // Immediately dispatch queued batch via SMTP so recipients receive emails right away
-            $batchResult = EmailQueueService::processBatch(100, 10);
+            // Process the first queued item immediately (non-bulk safe dispatch)
+            // Subsequent queued items are spaced 120 seconds apart according to scheduled_at
+            $batchResult = EmailQueueService::processBatch(1, 1);
             $dispatchedCount = $batchResult['sent'] ?? 0;
             $failedCount = $batchResult['failed'] ?? 0;
             $lastErr = $batchResult['last_error'] ?? null;
 
             if ($dispatchedCount > 0 && $failedCount === 0) {
-                $_SESSION['flash_success'] = "Campaign successfully verified and launched! {$dispatchedCount} recipient message(s) sent immediately via SMTP.";
+                $_SESSION['flash_success'] = "Campaign verified & launched! 1st message dispatched safely via SMTP/SES. Remaining recipients are scheduled with strict 120s pacing (non-bulk delivery).";
             } elseif ($dispatchedCount > 0 && $failedCount > 0) {
                 $errNote = $lastErr ? " (Provider message: {$lastErr})" : "";
                 $_SESSION['flash_warning'] = "Campaign launched with partial delivery: {$dispatchedCount} message(s) dispatched, but {$failedCount} deferred/rejected by provider{$errNote}. Review Deliverability Health.";

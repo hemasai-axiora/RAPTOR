@@ -76,6 +76,31 @@
                                 <label class="form-label small fw-semibold">Preheader Snippet</label>
                                 <input type="text" name="preheader" class="form-control" placeholder="Preview text shown next to subject line in inbox" value="<?php echo htmlspecialchars($campaign->preheader ?? ''); ?>">
                             </div>
+                            <!-- Deliverability Guardrails: Warm-Up & Anti-Bulk Pacing -->
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">
+                                    <i class="fa-solid fa-stopwatch text-warning me-1"></i>Dispatch Pacing (Time Gap Between Emails)
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" min="120" step="10" name="send_interval_seconds" id="send_interval_seconds" class="form-control font-monospace" value="<?php echo htmlspecialchars($campaign->send_interval_seconds ?? '120'); ?>" required>
+                                    <span class="input-group-text bg-light text-muted small">Seconds</span>
+                                </div>
+                                <div class="form-text small text-muted"><i class="fa-solid fa-shield-halved text-success me-1"></i>Strictly minimum 120s. Eliminates bulk bursts to protect Gmail inbox placement.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">
+                                    <i class="fa-solid fa-temperature-arrow-up text-info me-1"></i>Email Warmup Option
+                                </label>
+                                <div class="p-2 border rounded d-flex justify-content-between align-items-center bg-light">
+                                    <div>
+                                        <div class="fw-semibold small">Enforce Warm-Up Schedule</div>
+                                        <div class="text-muted" style="font-size:0.75rem;">Daily stage caps (50/day up to 10k/day) protect domain sender reputation.</div>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" name="is_warmup_enabled" id="is_warmup_enabled" value="1" <?php echo (!isset($campaign->is_warmup_enabled) || (int)$campaign->is_warmup_enabled === 1) ? 'checked' : ''; ?>>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

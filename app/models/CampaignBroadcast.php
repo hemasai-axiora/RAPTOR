@@ -254,6 +254,11 @@ class CampaignBroadcast extends Model {
 
         $hasIntent = $this->hasCampaignColumn('communication_intent');
         $hasCHash = $this->hasCampaignColumn('content_sha256');
+        $hasWarmup = $this->hasCampaignColumn('is_warmup_enabled');
+        $hasPacing = $this->hasCampaignColumn('send_interval_seconds');
+
+        $isWarmup = isset($data['is_warmup_enabled']) ? (int)$data['is_warmup_enabled'] : 1;
+        $pacingSec = isset($data['send_interval_seconds']) ? max(120, (int)$data['send_interval_seconds']) : 120;
 
         $campaignId = (int)($data['campaign_id'] ?? 0);
         if ($campaignId > 0) {
@@ -268,6 +273,12 @@ class CampaignBroadcast extends Model {
             }
             if ($hasCHash) {
                 $sql .= ', content_sha256 = :chash, approved_snapshot_hash = NULL';
+            }
+            if ($hasWarmup) {
+                $sql .= ', is_warmup_enabled = :warmup';
+            }
+            if ($hasPacing) {
+                $sql .= ', send_interval_seconds = :pacing';
             }
             $sql .= ', updated_at = CURRENT_TIMESTAMP WHERE campaign_id = :id';
 
@@ -292,6 +303,12 @@ class CampaignBroadcast extends Model {
             if ($hasCHash) {
                 $this->bind(':chash', $contentHash);
             }
+            if ($hasWarmup) {
+                $this->bind(':warmup', $isWarmup);
+            }
+            if ($hasPacing) {
+                $this->bind(':pacing', $pacingSec);
+            }
             $this->bind(':id', $campaignId);
             $this->execute();
             return $campaignId;
@@ -313,6 +330,14 @@ class CampaignBroadcast extends Model {
         if ($hasCHash) {
             $insCols .= ', content_sha256';
             $insVals .= ', :chash';
+        }
+        if ($hasWarmup) {
+            $insCols .= ', is_warmup_enabled';
+            $insVals .= ', :warmup';
+        }
+        if ($hasPacing) {
+            $insCols .= ', send_interval_seconds';
+            $insVals .= ', :pacing';
         }
 
         $insCols .= ', status, created_by';
@@ -339,6 +364,12 @@ class CampaignBroadcast extends Model {
         }
         if ($hasCHash) {
             $this->bind(':chash', $contentHash);
+        }
+        if ($hasWarmup) {
+            $this->bind(':warmup', $isWarmup);
+        }
+        if ($hasPacing) {
+            $this->bind(':pacing', $pacingSec);
         }
         $this->bind(':uid', $userId);
         $this->execute();
@@ -478,19 +509,36 @@ class CampaignBroadcast extends Model {
             ];
         }
 
-        // Auto-ensure compliance unsubscribe footer on launch if missing
+        // Auto-ensure compliance unsubscribe and postal address footer on launch if missing
         if (($camp->communication_intent ?? 'promotional') !== 'operational') {
             $hasUnsub = (strpos($camp->html_content, '{{unsubscribe_url}}') !== false) ||
                         (stripos($camp->html_content, 'unsubscribe') !== false && preg_match('/<a[^>]*href=[^>]*>.*?unsubscribe.*?<\/a>/is', $camp->html_content));
-            if (!$hasUnsub) {
+            $hasAddress = (strpos($camp->html_content, '{{company_address}}') !== false) ||
+                          (strpos($camp->html_content, '{{company_postal_address}}') !== false) ||
+                          (preg_match('/\b(?:suite|street|road|st|ave|blvd|lane|floor|building|box|city|india|usa|state|pin|zip|hyderabad|telangana|address)\b/i', $camp->html_content));
+
+            if (!$hasUnsub || !$hasAddress) {
+                $footerParts = [];
+                if (!$hasAddress) {
+                    $footerParts[] = 'Axiora Global Solutions, Cyber City, Hyderabad, India';
+                }
+                if (!$hasUnsub) {
+                    $footerParts[] = '<a href="{{unsubscribe_url}}" style="color:#4a5568;text-decoration:underline;">Unsubscribe</a>';
+                }
                 $complianceFooter = '<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12px;color:#718096;text-align:center;">'
-                    . 'Axiora Global Solutions, Cyber City, Hyderabad, India | <a href="{{unsubscribe_url}}" style="color:#4a5568;text-decoration:underline;">Unsubscribe</a>'
+                    . implode(' | ', $footerParts)
                     . '</div>';
                 $updatedHtml = (stripos($camp->html_content, '</body>') !== false)
                     ? str_ireplace('</body>', $complianceFooter . '</body>', $camp->html_content)
                     : ($camp->html_content . "\n\n" . $complianceFooter);
 
-                $updatedPlain = rtrim($camp->plain_text_content ?? '') . "\n\nAxiora Global Solutions, Cyber City, Hyderabad, India | Unsubscribe: {{unsubscribe_url}}";
+                $updatedPlain = rtrim($camp->plain_text_content ?? '');
+                if (!$hasAddress) {
+                    $updatedPlain .= "\n\nAxiora Global Solutions, Cyber City, Hyderabad, India";
+                }
+                if (!$hasUnsub) {
+                    $updatedPlain .= "\n\nUnsubscribe: {{unsubscribe_url}}";
+                }
 
                 try {
                     $dbFix = Database::getInstance()->getConnection();
@@ -549,11 +597,15 @@ class CampaignBroadcast extends Model {
 
             $qIns = $db->prepare('INSERT INTO campaign_email_queue 
                                   (campaign_id, recipient_id, status, priority, scheduled_at)
-                                  VALUES (:cid, :rid, "pending", 10, CURRENT_TIMESTAMP)');
+                                  VALUES (:cid, :rid, "pending", 10, :sched)');
 
             $hasAb = (!empty($camp->subject_b) && $camp->ab_split_percent > 0);
             $abSplitCount = $hasAb ? (int)ceil(count($recipients) * ($camp->ab_split_percent / 100)) : 0;
             $seededCount = 0;
+            $pacingSeconds = (isset($camp->send_interval_seconds) && (int)$camp->send_interval_seconds > 0)
+                ? (int)$camp->send_interval_seconds 
+                : 0;
+            $baseTimestamp = time();
 
             foreach ($recipients as $idx => $r) {
                 $cleanEmail = strtolower(trim($r->email));
@@ -577,9 +629,18 @@ class CampaignBroadcast extends Model {
 
                 $recipientId = (int)$db->lastInsertId();
 
+                // Strict 120-second minimum dispatch pacing per recipient to prevent bulk bursts
+                // Use UTC (gmdate) to ensure seamless compatibility with SQLite datetime('now') and MySQL UTC
+                if ($pacingSeconds > 0) {
+                    $scheduledAt = gmdate('Y-m-d H:i:s', $baseTimestamp + ($seededCount * $pacingSeconds));
+                } else {
+                    $scheduledAt = gmdate('Y-m-d H:i:s', $baseTimestamp);
+                }
+
                 $qIns->execute([
                     ':cid' => $campaignId,
-                    ':rid' => $recipientId
+                    ':rid' => $recipientId,
+                    ':sched' => $scheduledAt
                 ]);
 
                 $seededCount++;

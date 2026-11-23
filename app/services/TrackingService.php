@@ -72,12 +72,13 @@ class TrackingService {
     public static function injectTracking(string $html, string $token, bool $trackOpens = true, bool $trackClicks = true): string {
         $trackedHtml = $html;
 
-        // 1. Wrap <a> links (excluding unsubscribe links and mailto)
+        // 1. Wrap <a> links (excluding unsubscribe links, mailto, and raw URL anchor texts)
         if ($trackClicks) {
-            $trackedHtml = preg_replace_callback('/<a\s+([^>]*?)href=["\']([^"\']+)["\']([^>]*?)>/is', function($matches) use ($token) {
+            $trackedHtml = preg_replace_callback('/<a\s+([^>]*?)href=["\']([^"\']+)["\']([^>]*?)>(.*?)<\/a>/is', function($matches) use ($token) {
                 $beforeHref = $matches[1];
                 $url = trim($matches[2]);
                 $afterHref = $matches[3];
+                $innerText = $matches[4];
 
                 // Skip internal anchor jumps, unsubscribe links, mailto, tel
                 if (str_starts_with($url, '#') || 
@@ -87,8 +88,18 @@ class TrackingService {
                     return $matches[0];
                 }
 
+                // DELIVERABILITY & ANTI-PHISHING SAFEGUARD:
+                // If the visible anchor text looks like an explicit URL (e.g. "https://...", "http://...", "www..."),
+                // rewriting the href into a tracking redirect produces a "URL Display Mismatch",
+                // triggering aggressive phishing classification in Gmail, Microsoft Defender, and SpamAssassin.
+                // In such cases, preserve the raw, clean URL without redirect wrapping.
+                $cleanText = trim(strip_tags($innerText));
+                if (preg_match('/^(?:https?:\/\/|www\.)[^\s]+$/i', $cleanText)) {
+                    return $matches[0];
+                }
+
                 $clickUrl = self::buildClickUrl($token, $url);
-                return '<a ' . $beforeHref . 'href="' . htmlspecialchars($clickUrl) . '"' . $afterHref . '>';
+                return '<a ' . $beforeHref . 'href="' . htmlspecialchars($clickUrl) . '"' . $afterHref . '>' . $innerText . '</a>';
             }, $trackedHtml);
         }
 

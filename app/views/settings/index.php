@@ -778,13 +778,39 @@
 
                     <div id="marketing_smtp_fields" class="row g-3 <?php echo (($settings['mail.marketing.enabled'] ?? '0') === '1') ? '' : 'd-none'; ?>">
                         <div class="col-md-3">
-                            <label class="form-label text-secondary">Mail Protocol / Driver</label>
-                            <select name="mail.marketing.driver" id="mail_marketing_driver" class="form-select bg-dark text-white border-secondary">
-                                <option value="smtp" <?php echo (($settings['mail.marketing.driver'] ?? 'smtp') === 'smtp') ? 'selected' : ''; ?>>SMTP Socket (Recommended)</option>
+                            <label class="form-label text-secondary">Mail Protocol / Provider</label>
+                            <select name="mail.marketing.driver" id="mail_marketing_driver" class="form-select bg-dark text-white border-secondary" onchange="onMarketingDriverChange(this.value)">
+                                <option value="ses" <?php echo (($settings['mail.marketing.driver'] ?? 'smtp') === 'ses') ? 'selected' : ''; ?>>Amazon SES (AWS SES)</option>
+                                <option value="smtp" <?php echo (($settings['mail.marketing.driver'] ?? 'smtp') === 'smtp') ? 'selected' : ''; ?>>Custom SMTP Socket</option>
                                 <option value="mail" <?php echo (($settings['mail.marketing.driver'] ?? '') === 'mail') ? 'selected' : ''; ?>>PHP Native mail()</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3" id="ses_region_wrapper" style="<?php echo (($settings['mail.marketing.driver'] ?? '') === 'ses') ? '' : 'display:none;'; ?>">
+                            <label class="form-label text-secondary">AWS SES Region</label>
+                            <select name="mail.marketing.ses_region" id="mail_marketing_ses_region" class="form-select bg-dark text-white border-secondary" onchange="onSesRegionChange(this.value)">
+                                <?php 
+                                $currentRegion = $settings['mail.marketing.ses_region'] ?? 'us-east-1';
+                                $sesRegions = [
+                                    'us-east-1' => 'US East (N. Virginia) [us-east-1]',
+                                    'us-east-2' => 'US East (Ohio) [us-east-2]',
+                                    'us-west-2' => 'US West (Oregon) [us-west-2]',
+                                    'ap-south-1' => 'Asia Pacific (Mumbai) [ap-south-1]',
+                                    'eu-west-1' => 'Europe (Ireland) [eu-west-1]',
+                                    'eu-central-1' => 'Europe (Frankfurt) [eu-central-1]',
+                                    'ap-southeast-1' => 'Asia Pacific (Singapore) [ap-southeast-1]'
+                                ];
+                                foreach ($sesRegions as $rCode => $rName): ?>
+                                    <option value="<?php echo $rCode; ?>" <?php echo ($currentRegion === $rCode) ? 'selected' : ''; ?>><?php echo $rName; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-3" id="ses_config_set_wrapper" style="<?php echo (($settings['mail.marketing.driver'] ?? '') === 'ses') ? '' : 'display:none;'; ?>">
+                            <label class="form-label text-secondary">SES Configuration Set (Optional)</label>
+                            <input type="text" name="mail.marketing.ses_configuration_set" id="mail_marketing_ses_configuration_set" class="form-control bg-dark text-white border-secondary font-monospace"
+                                   value="<?php echo htmlspecialchars($settings['mail.marketing.ses_configuration_set'] ?? ''); ?>"
+                                   placeholder="e.g. raptor-marketing-set">
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label text-secondary">Marketing SMTP Host</label>
                             <input type="text" name="mail.marketing.host" id="mail_marketing_host" class="form-control bg-dark text-white border-secondary font-monospace"
                                    value="<?php echo htmlspecialchars($settings['mail.marketing.host'] ?? ''); ?>"
@@ -806,17 +832,17 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label text-secondary">Marketing SMTP Username / Email</label>
+                            <label class="form-label text-secondary">Marketing SMTP / SES Username</label>
                             <input type="text" name="mail.marketing.username" id="mail_marketing_username" class="form-control bg-dark text-white border-secondary font-monospace"
                                    value="<?php echo htmlspecialchars($settings['mail.marketing.username'] ?? ''); ?>"
-                                   placeholder="e.g. contacts@axioraglobalsolutions.com">
+                                   placeholder="e.g. AKIA... or contacts@axioraglobalsolutions.com">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-secondary">Marketing SMTP Password / Secret</label>
+                            <label class="form-label text-secondary">Marketing SMTP / SES Password</label>
                             <div class="input-group">
                                 <input type="password" name="mail.marketing.password" id="mail_marketing_password" class="form-control bg-dark text-white border-secondary font-monospace"
                                        value="<?php echo htmlspecialchars($settings['mail.marketing.password'] ?? ''); ?>"
-                                       placeholder="Enter marketing SMTP password or App Password">
+                                       placeholder="Enter marketing SMTP / AWS SES IAM SMTP password">
                                 <button class="btn btn-outline-secondary" type="button" onclick="togglePassVisibility('mail_marketing_password')">
                                     <i class="fa-solid fa-eye" id="mail_marketing_password_icon"></i>
                                 </button>
@@ -834,6 +860,35 @@
                             <input type="text" name="mail.marketing.from_name" id="mail_marketing_from_name" class="form-control bg-dark text-white border-secondary"
                                    value="<?php echo htmlspecialchars($settings['mail.marketing.from_name'] ?? 'Axiora Global'); ?>"
                                    placeholder="Axiora Global">
+                        </div>
+
+                        <!-- Deliverability Pacing & Warmup Configuration -->
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary">
+                                <i class="fa-solid fa-stopwatch text-warning me-1"></i>Dispatch Rate Pacing (Time Gap Between Emails)
+                            </label>
+                            <div class="input-group">
+                                <input type="number" min="120" step="10" name="mail.marketing.pacing_seconds" id="mail_marketing_pacing_seconds" class="form-control bg-dark text-white border-secondary font-monospace"
+                                       value="<?php echo htmlspecialchars($settings['mail.marketing.pacing_seconds'] ?? '120'); ?>">
+                                <span class="input-group-text bg-dark border-secondary text-secondary">seconds</span>
+                            </div>
+                            <div class="form-text text-secondary small">
+                                <i class="fa-solid fa-shield-halved text-success me-1"></i>Minimum 120 seconds required. Eliminates bulk blasts to prevent spam filters.
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary">
+                                <i class="fa-solid fa-temperature-arrow-up text-info me-1"></i>Email Domain Warmup Engine
+                            </label>
+                            <div class="p-2 bg-dark rounded border border-secondary d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="text-white small fw-semibold">Enforce Domain Warmup Schedule</div>
+                                    <div class="text-secondary" style="font-size:0.75rem;">Daily caps ramp from 50/day up to 10k/day to build sender reputation.</div>
+                                </div>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" name="mail.warmup_enabled" id="mail_warmup_enabled" <?php echo (($settings['mail.warmup_enabled'] ?? '1') === '1') ? 'checked' : ''; ?>>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1121,6 +1176,27 @@ $(document).ready(function() {
         });
     });
 
+    // Marketing Provider Driver & Region handler
+    window.onMarketingDriverChange = function(driver) {
+        if (driver === 'ses') {
+            $('#ses_region_wrapper').show();
+            $('#ses_config_set_wrapper').show();
+            const region = $('#mail_marketing_ses_region').val() || 'us-east-1';
+            $('#mail_marketing_host').val('email-smtp.' + region + '.amazonaws.com').trigger('input');
+            $('#mail_marketing_port').val('587').trigger('change');
+            $('#mail_marketing_encryption').val('tls').trigger('change');
+        } else {
+            $('#ses_region_wrapper').hide();
+            $('#ses_config_set_wrapper').hide();
+        }
+    };
+
+    window.onSesRegionChange = function(region) {
+        if ($('#mail_marketing_driver').val() === 'ses') {
+            $('#mail_marketing_host').val('email-smtp.' + region + '.amazonaws.com').trigger('input');
+        }
+    };
+
     // Dynamic updates for marketing test modal labels
     $('#mail_marketing_host').on('input', function() {
         $('#lbl-test-marketing-host').text($(this).val() || 'Local/Empty');
@@ -1148,6 +1224,7 @@ $(document).ready(function() {
             csrf_token: $('input[name="csrf_token"]').val(),
             test_email_recipient: recipient,
             mail_marketing_driver: $('#mail_marketing_driver').val(),
+            mail_marketing_ses_region: $('#mail_marketing_ses_region').val(),
             mail_marketing_host: $('#mail_marketing_host').val(),
             mail_marketing_port: $('#mail_marketing_port').val(),
             mail_marketing_username: $('#mail_marketing_username').val(),

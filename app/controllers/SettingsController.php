@@ -127,6 +127,10 @@ class SettingsController extends Controller {
                 'mail.marketing.encryption',
                 'mail.marketing.from_address',
                 'mail.marketing.from_name',
+                'mail.marketing.ses_region',
+                'mail.marketing.ses_configuration_set',
+                'mail.marketing.pacing_seconds',
+                'mail.warmup_enabled',
 
                 // Payroll Lifecycle & Calculation Configurations
                 'payroll.cycle_type',
@@ -249,9 +253,16 @@ class SettingsController extends Controller {
                 $recipient = $_SESSION['user_email'] ?? 'admin@raptor.local';
             }
 
+            $driver = trim($_POST['mail_marketing_driver'] ?? 'smtp');
+            $host = trim($_POST['mail_marketing_host'] ?? '');
+            $sesRegion = trim($_POST['mail_marketing_ses_region'] ?? 'us-east-1');
+            if (empty($host) && ($driver === 'ses' || $driver === 'aws_ses' || $driver === 'amazon_ses')) {
+                $host = "email-smtp.{$sesRegion}.amazonaws.com";
+            }
+
             $testConfig = [
-                'driver'       => trim($_POST['mail_marketing_driver'] ?? 'smtp'),
-                'host'         => trim($_POST['mail_marketing_host'] ?? ''),
+                'driver'       => $driver,
+                'host'         => $host,
                 'port'         => (int)($_POST['mail_marketing_port'] ?? 587),
                 'username'     => trim($_POST['mail_marketing_username'] ?? ''),
                 'password'     => $_POST['mail_marketing_password'] ?? '',
