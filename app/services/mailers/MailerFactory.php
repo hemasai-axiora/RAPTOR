@@ -5,6 +5,10 @@
  * Instantiates the configured MailerAdapter based on MAIL_PROVIDER setting.
  */
 
+if (!interface_exists('MailerAdapterInterface')) {
+    require_once __DIR__ . '/MailerAdapterInterface.php';
+}
+
 if (!class_exists('SesAdapter')) {
     $sesFile = defined('APPROOT') ? (APPROOT . '/services/mailers/SesAdapter.php') : (__DIR__ . '/SesAdapter.php');
     if (file_exists($sesFile)) {

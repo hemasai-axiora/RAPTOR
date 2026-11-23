@@ -7,6 +7,10 @@
  * dedicated SES Configuration Sets, and anti-spam deliverability headers.
  */
 
+if (!interface_exists('MailerAdapterInterface')) {
+    require_once __DIR__ . '/MailerAdapterInterface.php';
+}
+
 class SesAdapter implements MailerAdapterInterface {
 
     private array $config;
