@@ -38,6 +38,7 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.target_commit || github.sha }}
           fetch-depth: 1
 
       - name: Setup PHP Environment
@@ -146,12 +147,29 @@ jobs:
           EC2_INSTANCE_ID: ${{ secrets.AWS_EC2_INSTANCE_ID || 'i-08ebc43f88558d960' }}
           COMMIT_SHA: ${{ inputs.target_commit || github.sha }}
         run: |
+          echo "=== Preparing Deployment Payload for Commit: $COMMIT_SHA ==="
+          cat << 'EOF' > /tmp/deploy_payload.json
+          {
+            "commands": [
+              "TMP_PREP=$(mktemp -d)",
+              "git clone --depth 1 --branch 'TARGET_COMMIT_PLACEHOLDER' https://github.com/hemasai-axiora/RAPTOR.git \"$TMP_PREP\" 2>/dev/null || git clone --depth 1 https://github.com/hemasai-axiora/RAPTOR.git \"$TMP_PREP\"",
+              "if [ -f \"$TMP_PREP/deploy/db-backup.sh\" ]; then sudo cp \"$TMP_PREP/deploy/db-backup.sh\" /var/www/raptor/db-backup.sh && sudo chmod +x /var/www/raptor/db-backup.sh; fi",
+              "if [ -f \"$TMP_PREP/deploy/deploy.sh\" ]; then sudo cp \"$TMP_PREP/deploy/deploy.sh\" /var/www/raptor/deploy.sh && sudo chmod +x /var/www/raptor/deploy.sh; fi",
+              "if [ -f \"$TMP_PREP/deploy/rollback.sh\" ]; then sudo cp \"$TMP_PREP/deploy/rollback.sh\" /var/www/raptor/rollback.sh && sudo chmod +x /var/www/raptor/rollback.sh; fi",
+              "if [ -f \"$TMP_PREP/deploy/health-check.sh\" ]; then sudo cp \"$TMP_PREP/deploy/health-check.sh\" /var/www/raptor/health-check.sh && sudo chmod +x /var/www/raptor/health-check.sh; fi",
+              "rm -rf \"$TMP_PREP\"",
+              "sudo /var/www/raptor/deploy.sh 'TARGET_COMMIT_PLACEHOLDER'"
+            ]
+          }
+          EOF
+          sed -i "s|TARGET_COMMIT_PLACEHOLDER|$COMMIT_SHA|g" /tmp/deploy_payload.json
+
           echo "=== Triggering SSM Deployment on EC2 ($EC2_INSTANCE_ID) ==="
           
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$EC2_INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
-            --parameters "commands=[\"sudo /var/www/raptor/deploy.sh '$COMMIT_SHA'\"]" \
+            --parameters file:///tmp/deploy_payload.json \
             --comment "Automated CI/CD Deployment: Commit $COMMIT_SHA" \
             --timeout-seconds 600 \
             --output text \

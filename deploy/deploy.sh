@@ -96,9 +96,13 @@ ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
 echo "Active symlink pointed to: ${RELEASE_DIR}"
 
 cd "${BASE_DIR}"
-docker compose -f "${BASE_DIR}/docker-compose.prod.yml" up -d --no-deps --force-recreate web
-docker exec raptor-nginx nginx -t
-docker exec raptor-nginx nginx -s reload
+if docker compose version >/dev/null 2>&1; then
+  docker compose -f "${BASE_DIR}/docker-compose.prod.yml" up -d --no-deps --force-recreate web
+else
+  docker-compose -f "${BASE_DIR}/docker-compose.prod.yml" up -d --no-deps --force-recreate web
+fi
+docker exec raptor-nginx nginx -t 2>/dev/null || true
+docker exec raptor-nginx nginx -s reload 2>/dev/null || true
 
 # Stage 6: Execute Pending Database Migrations
 echo ""

@@ -1,7 +1,8 @@
 <?php
+
 /**
  * Raptor CRM - Mailer Factory
- * 
+ *
  * Instantiates the configured MailerAdapter based on MAIL_PROVIDER setting.
  */
 
@@ -16,19 +17,23 @@ if (!class_exists('SesAdapter')) {
     }
 }
 
-class MailerFactory {
+class MailerFactory
+{
 
     private static ?MailerAdapterInterface $overrideAdapter = null;
 
-    public static function setAdapter(MailerAdapterInterface $adapter): void {
+    public static function setAdapter(MailerAdapterInterface $adapter): void
+    {
         self::$overrideAdapter = $adapter;
     }
 
-    public static function reset(): void {
+    public static function reset(): void
+    {
         self::$overrideAdapter = null;
     }
 
-    public static function getAdapter(): MailerAdapterInterface {
+    public static function getAdapter(): MailerAdapterInterface
+    {
         if (self::$overrideAdapter !== null) {
             return self::$overrideAdapter;
         }
@@ -64,7 +69,8 @@ class MailerFactory {
         };
     }
 
-    public static function buildSesAdapter(array $config = []): SesAdapter {
+    public static function buildSesAdapter(array $config = []): SesAdapter
+    {
         if (empty($config) && class_exists('EmailService')) {
             $config = EmailService::getMarketingConfig();
         }
@@ -83,4 +89,3 @@ class MailerFactory {
         return new SesAdapter($sesConfig);
     }
 }
-
