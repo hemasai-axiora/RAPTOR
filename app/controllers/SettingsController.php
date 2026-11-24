@@ -269,6 +269,7 @@ class SettingsController extends Controller {
                 'encryption'   => trim($_POST['mail_marketing_encryption'] ?? 'tls'),
                 'from_address' => trim($_POST['mail_marketing_from_address'] ?? 'contacts@axioraglobalsolutions.com'),
                 'from_name'    => trim($_POST['mail_marketing_from_name'] ?? 'Axiora Global'),
+                'is_marketing' => true,
                 'timeout'      => 10
             ];
 
