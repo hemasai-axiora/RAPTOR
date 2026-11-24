@@ -1238,6 +1238,7 @@ $(document).ready(function() {
             url: 'index.php?route=settings/test_marketing_email',
             type: 'POST',
             data: postData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
             dataType: 'json',
             success: function(resp) {
                 btn.prop('disabled', false);
@@ -1252,7 +1253,17 @@ $(document).ready(function() {
             error: function(xhr) {
                 btn.prop('disabled', false);
                 $('#btn-test-marketing-text').html('<i class="fa-solid fa-paper-plane me-1"></i> Dispatch Test Email');
-                alertBox.removeClass('d-none alert-success').addClass('alert-danger').html('<i class="fa-solid fa-triangle-exclamation me-1"></i> Request failed (HTTP ' + xhr.status + '). Check server logs.');
+                let errText = 'Failed to execute test email request.';
+                if (xhr.responseText) {
+                    try {
+                        const parsed = JSON.parse(xhr.responseText);
+                        if (parsed.error) errText = parsed.error;
+                    } catch(e) {
+                        const clean = xhr.responseText.replace(/<[^>]*>?/gm, '').trim();
+                        if (clean) errText = clean;
+                    }
+                }
+                alertBox.removeClass('d-none alert-success').addClass('alert-danger').html('<i class="fa-solid fa-triangle-exclamation me-1"></i> ' + errText);
             }
         });
     });

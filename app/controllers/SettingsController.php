@@ -236,16 +236,22 @@ class SettingsController extends Controller {
 
     // Send diagnostic test email to verify Marketing SMTP configuration
     public function test_marketing_email() {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-                if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
-                    header('Content-Type: application/json');
-                    echo json_encode(['success' => false, 'error' => 'CSRF validation failed']);
-                    exit;
-                }
-                die('CSRF validation failed.');
-            }
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/json');
 
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Method not allowed.']);
+            exit;
+        }
+
+        if (!isset($_POST['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+            echo json_encode(['success' => false, 'error' => 'CSRF security token expired. Please refresh the page and try again.']);
+            exit;
+        }
+
+        try {
             require_once APPROOT . '/services/EmailService.php';
 
             $recipient = trim($_POST['test_email_recipient'] ?? '');
@@ -274,32 +280,17 @@ class SettingsController extends Controller {
             ];
 
             if (empty($testConfig['host'])) {
-                $err = 'Marketing SMTP Host cannot be empty. Marketing test emails cannot use Corporate SMTP.';
-                if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
-                    header('Content-Type: application/json');
-                    echo json_encode(['success' => false, 'error' => $err]);
-                    exit;
-                }
-                $_SESSION['settings_error'] = $err;
-                $this->redirect('index.php?route=settings/index');
-                return;
-            }
-
-            $result = EmailService::testConnection($recipient, $testConfig);
-
-            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
-                header('Content-Type: application/json');
-                echo json_encode($result);
+                echo json_encode(['success' => false, 'error' => 'Marketing SMTP Host cannot be empty. Marketing test emails cannot use Corporate SMTP.']);
                 exit;
             }
 
-            if ($result['success']) {
-                $_SESSION['settings_success'] = "Marketing test email sent successfully to {$recipient}!";
-            } else {
-                $_SESSION['settings_error'] = "Failed to send marketing test email: " . ($result['error'] ?? 'Unknown error');
-            }
+            $result = EmailService::testConnection($recipient, $testConfig);
+            echo json_encode($result);
+            exit;
+        } catch (Throwable $t) {
+            echo json_encode(['success' => false, 'error' => 'Execution error: ' . $t->getMessage()]);
+            exit;
         }
-        $this->redirect('index.php?route=settings/index');
     }
 
     // List users for Access Control management
