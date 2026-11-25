@@ -29,7 +29,7 @@ class RecruitmentAssessmentController extends Controller {
      * Assessment catalog & submissions overview.
      */
     public function index(): void {
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
 
         $statusFilter = $_GET['status'] ?? '';
         $submissions = $this->assessmentService->listSubmissions($db, ['status' => $statusFilter]);
@@ -65,7 +65,7 @@ class RecruitmentAssessmentController extends Controller {
     public function store(): void {
         $this->validateCsrf();
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
 
         $payload = [
             'title'            => trim($_POST['title'] ?? ''),
@@ -92,7 +92,7 @@ class RecruitmentAssessmentController extends Controller {
     public function assign(): void {
         $this->validateCsrf();
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $userId = (int)$_SESSION['user_id'];
 
         $assessmentId  = (int)($_POST['assessment_id'] ?? 0);
@@ -123,7 +123,7 @@ class RecruitmentAssessmentController extends Controller {
             return;
         }
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $submission = $this->assessmentService->getSubmissionById($db, $submissionId);
 
         if (!$submission) {
@@ -147,7 +147,7 @@ class RecruitmentAssessmentController extends Controller {
     public function grade(): void {
         $this->validateCsrf();
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $userId = (int)$_SESSION['user_id'];
 
         $submissionId = (int)($_POST['submission_id'] ?? 0);

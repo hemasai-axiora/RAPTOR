@@ -32,7 +32,7 @@ class RecruitmentOnboardingController extends Controller {
      * Onboarding, BGV, and pre-joining dashboard.
      */
     public function index(): void {
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
 
         // Fetch applications currently in bgv, pre_joining, offer_accepted, or hired
         $stmtApps = $db->query("
@@ -69,7 +69,7 @@ class RecruitmentOnboardingController extends Controller {
             return;
         }
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $check = $this->conversionService->canConvertApplication($db, $applicationId);
 
         if (!$check['can_convert']) {
@@ -109,7 +109,7 @@ class RecruitmentOnboardingController extends Controller {
     public function executeConversion(): void {
         $this->validateCsrf();
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $userId = (int)$_SESSION['user_id'];
 
         $applicationId = (int)($_POST['application_id'] ?? 0);
@@ -141,7 +141,7 @@ class RecruitmentOnboardingController extends Controller {
     public function verifyChecklist(): void {
         $this->validateCsrf();
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $userId = (int)$_SESSION['user_id'];
 
         $itemId        = (int)($_POST['item_id'] ?? 0);
