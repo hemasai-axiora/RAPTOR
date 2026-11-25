@@ -33,7 +33,7 @@ class RecruitmentCandidateController extends Controller {
      * Candidate master directory.
      */
     public function index(): void {
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $filters = [
             'search'         => $_GET['search'] ?? '',
             'source'         => $_GET['source'] ?? '',
@@ -71,7 +71,7 @@ class RecruitmentCandidateController extends Controller {
             return;
         }
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $userId = (int) $_SESSION['user_id'];
         $role   = (string) ($_SESSION['user_role'] ?? 'employee');
 
@@ -118,7 +118,7 @@ class RecruitmentCandidateController extends Controller {
     public function store(): void {
         $this->validateCsrf();
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $userId = (int) $_SESSION['user_id'];
 
         $payload = [
@@ -184,7 +184,7 @@ class RecruitmentCandidateController extends Controller {
             return;
         }
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $userId = (int) $_SESSION['user_id'];
 
         $this->candidateService->addNote($db, $candidateId, $noteText, $userId, $applicationId, $isConfidential);
@@ -200,7 +200,7 @@ class RecruitmentCandidateController extends Controller {
         $reason = trim($_POST['reason'] ?? 'Flagged by recruiter');
 
         if ($candidateId > 0) {
-            $db = Database::getInstance();
+            $db = Database::getInstance()->getConnection();
             $userId = (int) $_SESSION['user_id'];
             $this->candidateService->blacklistCandidate($db, $candidateId, $reason, $userId);
         }
@@ -225,7 +225,7 @@ class RecruitmentCandidateController extends Controller {
             die("Document not found.");
         }
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $doc = $this->candidateService->getDocumentById($db, $documentId);
 
         if (!$doc) {

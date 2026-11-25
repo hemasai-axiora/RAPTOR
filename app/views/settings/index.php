@@ -9,7 +9,7 @@
 
         <div class="pulse-card">
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-                <h4 class="text-white mb-0"><i class="fa-solid fa-sliders text-primary me-2"></i>Admin Configuration Hub</h4>
+                <h4 class="mb-0 fw-bold" style="color: var(--text-primary);"><i class="fa-solid fa-sliders text-primary me-2"></i>Admin Configuration Hub</h4>
                 <div class="d-flex gap-2">
                     <a href="update.php" target="_blank" class="btn btn-sm btn-outline-success" title="Pull latest code and apply migrations">
                         <i class="fa-solid fa-cloud-arrow-down me-1"></i> Sync Live Release
@@ -28,39 +28,39 @@
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
 
                 <!-- Universal AI & LLM Engine Hub -->
-                <div class="p-3 mb-4 rounded-3 border border-secondary border-opacity-25" style="background: rgba(15, 23, 42, 0.45); backdrop-filter: blur(10px);">
+                <div class="p-3 mb-4 rounded-3 border" style="background: var(--surface-soft); border-color: var(--border-color) !important;">
                     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                         <div>
-                            <h5 class="text-white mb-1"><i class="fa-solid fa-wand-magic-sparkles text-info me-2"></i>Universal AI &amp; LLM Engine</h5>
-                            <p class="text-secondary small mb-0">Connect Google Gemini, OpenAI GPT, or Anthropic Claude to power email copywriting, subject line optimization, omnichannel smart replies, and executive insights.</p>
+                            <h5 class="mb-1 fw-bold" style="color: var(--text-primary);"><i class="fa-solid fa-wand-magic-sparkles text-primary me-2"></i>Universal AI &amp; LLM Engine</h5>
+                            <p class="small mb-0" style="color: var(--text-secondary);">Connect Google Gemini, OpenAI GPT, or Anthropic Claude to power email copywriting, subject line optimization, omnichannel smart replies, and executive insights.</p>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-primary bg-opacity-20 text-primary border border-primary border-opacity-25 px-2.5 py-1.5">
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2.5 py-1.5">
                                 <i class="fa-solid fa-bolt me-1"></i>Multi-Model Support
                             </span>
                         </div>
                     </div>
 
                     <!-- Default Provider Selection -->
-                    <div class="mb-4 p-2.5 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-20">
-                        <label class="form-label text-white small fw-bold mb-2">Default Active AI Provider</label>
+                    <div class="mb-4 p-3 rounded border" style="background: var(--panel-dark); border-color: var(--border-color) !important;">
+                        <label class="form-label small fw-bold mb-2" style="color: var(--text-primary);">Default Active AI Provider</label>
                         <div class="d-flex gap-3 flex-wrap">
                             <?php $activeProv = $settings['ai_default_provider'] ?? 'gemini'; ?>
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="radio" name="ai_default_provider" id="prov_gemini" value="gemini" <?php echo ($activeProv === 'gemini') ? 'checked' : ''; ?>>
-                                <label class="form-check-label text-light" for="prov_gemini">
+                                <label class="form-check-label fw-medium" style="color: var(--text-primary);" for="prov_gemini">
                                     <i class="fa-brands fa-google text-primary me-1"></i> Google Gemini
                                 </label>
                             </div>
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="radio" name="ai_default_provider" id="prov_openai" value="openai" <?php echo ($activeProv === 'openai') ? 'checked' : ''; ?>>
-                                <label class="form-check-label text-light" for="prov_openai">
+                                <label class="form-check-label fw-medium" style="color: var(--text-primary);" for="prov_openai">
                                     <i class="fa-solid fa-robot text-success me-1"></i> OpenAI (GPT-4o)
                                 </label>
                             </div>
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="radio" name="ai_default_provider" id="prov_anthropic" value="anthropic" <?php echo ($activeProv === 'anthropic') ? 'checked' : ''; ?>>
-                                <label class="form-check-label text-light" for="prov_anthropic">
+                                <label class="form-check-label fw-medium" style="color: var(--text-primary);" for="prov_anthropic">
                                     <i class="fa-solid fa-brain text-warning me-1"></i> Anthropic (Claude 3.5)
                                 </label>
                             </div>
@@ -71,20 +71,20 @@
                     <div class="row g-3">
                         <!-- 1. Google Gemini Card -->
                         <div class="col-12 col-lg-4">
-                            <div class="card h-100 bg-dark bg-opacity-75 border-secondary border-opacity-30 rounded-3 shadow-sm">
-                                <div class="card-header bg-transparent border-secondary border-opacity-20 d-flex justify-content-between align-items-center py-2.5">
-                                    <span class="text-white fw-bold"><i class="fa-brands fa-google text-primary me-2"></i>Google Gemini</span>
+                            <div class="card h-100 border rounded-3 shadow-sm" style="background: var(--panel-dark); border-color: var(--border-color) !important;">
+                                <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-2.5" style="border-color: var(--border-color) !important;">
+                                    <span class="fw-bold" style="color: var(--text-primary);"><i class="fa-brands fa-google text-primary me-2"></i>Google Gemini</span>
                                     <?php if (!empty($settings['gemini_api_key'])): ?>
-                                        <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-25" style="font-size:0.7rem;"><i class="fa-solid fa-check me-1"></i>Configured</span>
+                                        <span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25" style="font-size:0.7rem;"><i class="fa-solid fa-check me-1"></i>Configured</span>
                                     <?php else: ?>
-                                        <span class="badge bg-secondary bg-opacity-20 text-secondary border border-secondary border-opacity-25" style="font-size:0.7rem;">Not set</span>
+                                        <span class="badge bg-secondary bg-opacity-15 text-secondary border border-secondary border-opacity-25" style="font-size:0.7rem;">Not set</span>
                                     <?php endif; ?>
                                 </div>
                                 <div class="card-body p-3">
                                     <div class="mb-2.5">
-                                        <label class="form-label text-secondary small mb-1">API Key</label>
+                                        <label class="form-label small mb-1" style="color: var(--text-secondary);">API Key</label>
                                         <div class="input-group input-group-sm">
-                                            <input type="password" name="gemini_api_key" id="gemini_api_key" class="form-control bg-black text-white border-secondary"
+                                            <input type="password" name="gemini_api_key" id="gemini_api_key" class="form-control"
                                                    value="<?php echo htmlspecialchars($settings['gemini_api_key'] ?? ''); ?>" placeholder="AIzaSy...">
                                             <button class="btn btn-outline-secondary toggle-key-visibility" type="button" data-target="gemini_api_key">
                                                 <i class="fa-regular fa-eye"></i>
@@ -95,9 +95,9 @@
                                         </div>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label text-secondary small mb-1">Model</label>
+                                        <label class="form-label small mb-1" style="color: var(--text-secondary);">Model</label>
                                         <?php $geminiModel = $settings['gemini_model'] ?? 'gemini-2.5-flash'; ?>
-                                        <select name="gemini_model" id="gemini_model" class="form-select form-select-sm bg-black text-white border-secondary">
+                                        <select name="gemini_model" id="gemini_model" class="form-select form-select-sm">
                                             <option value="gemini-2.5-flash" <?php echo ($geminiModel === 'gemini-2.5-flash') ? 'selected' : ''; ?>>gemini-2.5-flash (Fast &amp; Recommended)</option>
                                             <option value="gemini-1.5-pro" <?php echo ($geminiModel === 'gemini-1.5-pro') ? 'selected' : ''; ?>>gemini-1.5-pro (Deep Reasoning)</option>
                                             <option value="gemini-2.0-flash" <?php echo ($geminiModel === 'gemini-2.0-flash') ? 'selected' : ''; ?>>gemini-2.0-flash (Next-Gen Preview)</option>
@@ -114,20 +114,20 @@
 
                         <!-- 2. OpenAI GPT Card -->
                         <div class="col-12 col-lg-4">
-                            <div class="card h-100 bg-dark bg-opacity-75 border-secondary border-opacity-30 rounded-3 shadow-sm">
-                                <div class="card-header bg-transparent border-secondary border-opacity-20 d-flex justify-content-between align-items-center py-2.5">
-                                    <span class="text-white fw-bold"><i class="fa-solid fa-robot text-success me-2"></i>OpenAI GPT</span>
+                            <div class="card h-100 border rounded-3 shadow-sm" style="background: var(--panel-dark); border-color: var(--border-color) !important;">
+                                <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-2.5" style="border-color: var(--border-color) !important;">
+                                    <span class="fw-bold" style="color: var(--text-primary);"><i class="fa-solid fa-robot text-success me-2"></i>OpenAI GPT</span>
                                     <?php if (!empty($settings['openai_api_key'])): ?>
-                                        <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-25" style="font-size:0.7rem;"><i class="fa-solid fa-check me-1"></i>Configured</span>
+                                        <span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25" style="font-size:0.7rem;"><i class="fa-solid fa-check me-1"></i>Configured</span>
                                     <?php else: ?>
-                                        <span class="badge bg-secondary bg-opacity-20 text-secondary border border-secondary border-opacity-25" style="font-size:0.7rem;">Not set</span>
+                                        <span class="badge bg-secondary bg-opacity-15 text-secondary border border-secondary border-opacity-25" style="font-size:0.7rem;">Not set</span>
                                     <?php endif; ?>
                                 </div>
                                 <div class="card-body p-3">
                                     <div class="mb-2.5">
-                                        <label class="form-label text-secondary small mb-1">API Key</label>
+                                        <label class="form-label small mb-1" style="color: var(--text-secondary);">API Key</label>
                                         <div class="input-group input-group-sm">
-                                            <input type="password" name="openai_api_key" id="openai_api_key" class="form-control bg-black text-white border-secondary"
+                                            <input type="password" name="openai_api_key" id="openai_api_key" class="form-control"
                                                    value="<?php echo htmlspecialchars($settings['openai_api_key'] ?? ''); ?>" placeholder="sk-proj-...">
                                             <button class="btn btn-outline-secondary toggle-key-visibility" type="button" data-target="openai_api_key">
                                                 <i class="fa-regular fa-eye"></i>
@@ -138,9 +138,9 @@
                                         </div>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label text-secondary small mb-1">Model</label>
+                                        <label class="form-label small mb-1" style="color: var(--text-secondary);">Model</label>
                                         <?php $openaiModel = $settings['openai_model'] ?? 'gpt-4o-mini'; ?>
-                                        <select name="openai_model" id="openai_model" class="form-select form-select-sm bg-black text-white border-secondary">
+                                        <select name="openai_model" id="openai_model" class="form-select form-select-sm">
                                             <option value="gpt-4o-mini" <?php echo ($openaiModel === 'gpt-4o-mini') ? 'selected' : ''; ?>>gpt-4o-mini (Fast &amp; Cost-Effective)</option>
                                             <option value="gpt-4o" <?php echo ($openaiModel === 'gpt-4o') ? 'selected' : ''; ?>>gpt-4o (High-Intelligence Flagship)</option>
                                             <option value="o3-mini" <?php echo ($openaiModel === 'o3-mini') ? 'selected' : ''; ?>>o3-mini (Reasoning Model)</option>
@@ -157,20 +157,20 @@
 
                         <!-- 3. Anthropic Claude Card -->
                         <div class="col-12 col-lg-4">
-                            <div class="card h-100 bg-dark bg-opacity-75 border-secondary border-opacity-30 rounded-3 shadow-sm">
-                                <div class="card-header bg-transparent border-secondary border-opacity-20 d-flex justify-content-between align-items-center py-2.5">
-                                    <span class="text-white fw-bold"><i class="fa-solid fa-brain text-warning me-2"></i>Anthropic Claude</span>
+                            <div class="card h-100 border rounded-3 shadow-sm" style="background: var(--panel-dark); border-color: var(--border-color) !important;">
+                                <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-2.5" style="border-color: var(--border-color) !important;">
+                                    <span class="fw-bold" style="color: var(--text-primary);"><i class="fa-solid fa-brain text-warning me-2"></i>Anthropic Claude</span>
                                     <?php if (!empty($settings['anthropic_api_key'])): ?>
-                                        <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-25" style="font-size:0.7rem;"><i class="fa-solid fa-check me-1"></i>Configured</span>
+                                        <span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25" style="font-size:0.7rem;"><i class="fa-solid fa-check me-1"></i>Configured</span>
                                     <?php else: ?>
-                                        <span class="badge bg-secondary bg-opacity-20 text-secondary border border-secondary border-opacity-25" style="font-size:0.7rem;">Not set</span>
+                                        <span class="badge bg-secondary bg-opacity-15 text-secondary border border-secondary border-opacity-25" style="font-size:0.7rem;">Not set</span>
                                     <?php endif; ?>
                                 </div>
                                 <div class="card-body p-3">
                                     <div class="mb-2.5">
-                                        <label class="form-label text-secondary small mb-1">API Key</label>
+                                        <label class="form-label small mb-1" style="color: var(--text-secondary);">API Key</label>
                                         <div class="input-group input-group-sm">
-                                            <input type="password" name="anthropic_api_key" id="anthropic_api_key" class="form-control bg-black text-white border-secondary"
+                                            <input type="password" name="anthropic_api_key" id="anthropic_api_key" class="form-control"
                                                    value="<?php echo htmlspecialchars($settings['anthropic_api_key'] ?? ''); ?>" placeholder="sk-ant-...">
                                             <button class="btn btn-outline-secondary toggle-key-visibility" type="button" data-target="anthropic_api_key">
                                                 <i class="fa-regular fa-eye"></i>
@@ -181,9 +181,9 @@
                                         </div>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label text-secondary small mb-1">Model</label>
+                                        <label class="form-label small mb-1" style="color: var(--text-secondary);">Model</label>
                                         <?php $anthropicModel = $settings['anthropic_model'] ?? 'claude-3-5-haiku-20241022'; ?>
-                                        <select name="anthropic_model" id="anthropic_model" class="form-select form-select-sm bg-black text-white border-secondary">
+                                        <select name="anthropic_model" id="anthropic_model" class="form-select form-select-sm">
                                             <option value="claude-3-5-haiku-20241022" <?php echo ($anthropicModel === 'claude-3-5-haiku-20241022') ? 'selected' : ''; ?>>claude-3-5-haiku (Ultra Fast &amp; Cheap)</option>
                                             <option value="claude-3-5-sonnet-20241022" <?php echo ($anthropicModel === 'claude-3-5-sonnet-20241022') ? 'selected' : ''; ?>>claude-3-5-sonnet (Highest Accuracy)</option>
                                             <option value="claude-3-opus-20240229" <?php echo ($anthropicModel === 'claude-3-opus-20240229') ? 'selected' : ''; ?>>claude-3-opus</option>
@@ -199,16 +199,16 @@
                     </div>
 
                     <!-- Fine-Tuning Parameters (Collapsible) -->
-                    <div class="mt-3 pt-3 border-top border-secondary border-opacity-20">
+                    <div class="mt-3 pt-3 border-top" style="border-color: var(--border-color) !important;">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label text-secondary small mb-1">Generation Temperature (Creativity: 0.0 - 1.0)</label>
-                                <input type="number" step="0.1" min="0.0" max="1.0" name="ai_temperature" class="form-control form-control-sm bg-black text-white border-secondary"
+                                <label class="form-label small mb-1" style="color: var(--text-secondary);">Generation Temperature (Creativity: 0.0 - 1.0)</label>
+                                <input type="number" step="0.1" min="0.0" max="1.0" name="ai_temperature" class="form-control form-control-sm"
                                        value="<?php echo htmlspecialchars($settings['ai_temperature'] ?? '0.7'); ?>">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label text-secondary small mb-1">Max Output Tokens</label>
-                                <input type="number" step="128" min="256" max="8192" name="ai_max_tokens" class="form-control form-control-sm bg-black text-white border-secondary"
+                                <label class="form-label small mb-1" style="color: var(--text-secondary);">Max Output Tokens</label>
+                                <input type="number" step="128" min="256" max="8192" name="ai_max_tokens" class="form-control form-control-sm"
                                        value="<?php echo htmlspecialchars($settings['ai_max_tokens'] ?? '2048'); ?>">
                             </div>
                         </div>
@@ -218,61 +218,61 @@
                 <hr class="border-secondary border-opacity-15 my-4">
 
                 <!-- 1. Security & Retention -->
-                <h5 class="text-white mb-3" style="font-size:1.05rem;"><i class="fa-solid fa-shield-halved text-primary me-2"></i>Security &amp; Retention</h5>
+                <h5 class="mb-3 fw-bold" style="color: var(--text-primary); font-size:1.05rem;"><i class="fa-solid fa-shield-halved text-primary me-2"></i>Security &amp; Retention</h5>
                 <div class="row g-3 mb-4">
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Max Failed Logins</label>
-                        <input type="number" min="1" name="auth.max_failed_attempts" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="1" name="auth.max_failed_attempts" class="form-control"
                                value="<?php echo htmlspecialchars($settings['auth.max_failed_attempts'] ?? '5'); ?>">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Lockout Minutes</label>
-                        <input type="number" min="1" name="auth.lockout_minutes" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="1" name="auth.lockout_minutes" class="form-control"
                                value="<?php echo htmlspecialchars($settings['auth.lockout_minutes'] ?? '15'); ?>">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label text-secondary">API Limit</label>
-                        <input type="number" min="1" name="rate.api_limit" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="1" name="rate.api_limit" class="form-control"
                                value="<?php echo htmlspecialchars($settings['rate.api_limit'] ?? '120'); ?>">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label text-secondary">API Window Seconds</label>
-                        <input type="number" min="1" name="rate.api_window_seconds" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="1" name="rate.api_window_seconds" class="form-control"
                                value="<?php echo htmlspecialchars($settings['rate.api_window_seconds'] ?? '60'); ?>">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Login Limit</label>
-                        <input type="number" min="1" name="rate.login_limit" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="1" name="rate.login_limit" class="form-control"
                                value="<?php echo htmlspecialchars($settings['rate.login_limit'] ?? '20'); ?>">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Login Window Seconds</label>
-                        <input type="number" min="1" name="rate.login_window_seconds" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="1" name="rate.login_window_seconds" class="form-control"
                                value="<?php echo htmlspecialchars($settings['rate.login_window_seconds'] ?? '300'); ?>">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Audit Retention Days</label>
-                        <input type="number" min="1" name="retention.audit_days" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="1" name="retention.audit_days" class="form-control"
                                value="<?php echo htmlspecialchars($settings['retention.audit_days'] ?? '365'); ?>">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Security Event Days</label>
-                        <input type="number" min="1" name="retention.security_events_days" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="1" name="retention.security_events_days" class="form-control"
                                value="<?php echo htmlspecialchars($settings['retention.security_events_days'] ?? '365'); ?>">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Login Attempt Days</label>
-                        <input type="number" min="1" name="retention.login_attempts_days" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="1" name="retention.login_attempts_days" class="form-control"
                                value="<?php echo htmlspecialchars($settings['retention.login_attempts_days'] ?? '90'); ?>">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Notification Days</label>
-                        <input type="number" min="1" name="retention.notifications_days" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="1" name="retention.notifications_days" class="form-control"
                                value="<?php echo htmlspecialchars($settings['retention.notifications_days'] ?? '180'); ?>">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-secondary">Location Retention Days</label>
-                        <input type="number" min="1" name="retention.location_days" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="1" name="retention.location_days" class="form-control"
                                value="<?php echo htmlspecialchars($settings['retention.location_days'] ?? ($settings['location.retention_days'] ?? '90')); ?>">
                     </div>
                 </div>
@@ -280,26 +280,26 @@
                 <hr class="border-secondary border-opacity-15 my-4">
 
                 <!-- 2. Attendance & Location Rules (Layout Restructured & Fixed) -->
-                <h5 class="text-white mb-3" style="font-size:1.05rem;"><i class="fa-solid fa-business-time text-warning me-2"></i>Attendance &amp; Location Rules</h5>
+                <h5 class="mb-3 fw-bold" style="color: var(--text-primary); font-size:1.05rem;"><i class="fa-solid fa-business-time text-warning me-2"></i>Attendance &amp; Location Rules</h5>
                 <div class="row g-3 mb-3">
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Shift Start</label>
-                        <input type="time" name="attendance.shift_start" class="form-control bg-dark text-white border-secondary"
+                        <input type="time" name="attendance.shift_start" class="form-control"
                                value="<?php echo htmlspecialchars($settings['attendance.shift_start'] ?? '09:30'); ?>">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Shift End</label>
-                        <input type="time" name="attendance.shift_end" class="form-control bg-dark text-white border-secondary"
+                        <input type="time" name="attendance.shift_end" class="form-control"
                                value="<?php echo htmlspecialchars($settings['attendance.shift_end'] ?? '18:30'); ?>">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Grace Minutes</label>
-                        <input type="number" min="0" name="attendance.grace_minutes" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="0" name="attendance.grace_minutes" class="form-control"
                                value="<?php echo htmlspecialchars($settings['attendance.grace_minutes'] ?? '15'); ?>">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Ping Interval Seconds</label>
-                        <input type="number" min="30" name="location.ping_interval_seconds" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="30" name="location.ping_interval_seconds" class="form-control"
                                value="<?php echo htmlspecialchars($settings['location.ping_interval_seconds'] ?? '120'); ?>">
                     </div>
                 </div>
@@ -308,13 +308,13 @@
                 <div class="row g-3 mb-4">
                     <div class="col-md-4">
                         <label class="form-label text-secondary">Raw Location Retention Days</label>
-                        <input type="number" min="1" name="location.retention_days" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="1" name="location.retention_days" class="form-control"
                                value="<?php echo htmlspecialchars($settings['location.retention_days'] ?? '90'); ?>">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-secondary">Geofence Enforcer</label>
-                        <div class="p-2 px-3 bg-dark border border-secondary rounded d-flex justify-content-between align-items-center" style="height:38px;">
-                            <span class="text-white small">Enforce Geofence</span>
+                        <div class="p-2 px-3 border rounded d-flex justify-content-between align-items-center" style="height:38px; background: var(--surface-soft); border-color: var(--border-color) !important;">
+                            <span class="small fw-medium" style="color: var(--text-primary);">Enforce Geofence</span>
                             <div class="form-check form-switch mb-0">
                                 <input class="form-check-input" type="checkbox" name="attendance.geofence_enabled" id="attendance_geofence_enabled" <?php echo (($settings['attendance.geofence_enabled'] ?? '0') === '1') ? 'checked' : ''; ?>>
                             </div>
@@ -322,8 +322,8 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-secondary">Foreground Location</label>
-                        <div class="p-2 px-3 bg-dark border border-secondary rounded d-flex justify-content-between align-items-center" style="height:38px;">
-                            <span class="text-white small">Enable Foreground Location</span>
+                        <div class="p-2 px-3 border rounded d-flex justify-content-between align-items-center" style="height:38px; background: var(--surface-soft); border-color: var(--border-color) !important;">
+                            <span class="small fw-medium" style="color: var(--text-primary);">Enable Foreground Location</span>
                             <div class="form-check form-switch mb-0">
                                 <input class="form-check-input" type="checkbox" name="location.tracking_enabled" id="location_tracking_enabled" <?php echo (($settings['location.tracking_enabled'] ?? '1') === '1') ? 'checked' : ''; ?>>
                             </div>
@@ -334,7 +334,7 @@
                 <hr class="border-secondary border-opacity-15 my-4">
 
                 <!-- 3. Week Off Configuration (NEW) -->
-                <h5 class="text-white mb-3" style="font-size:1.05rem;"><i class="fa-solid fa-calendar-minus text-info me-2"></i>Week Off Configuration</h5>
+                <h5 class="mb-3 fw-bold" style="color: var(--text-primary); font-size:1.05rem;"><i class="fa-solid fa-calendar-minus text-info me-2"></i>Week Off Configuration</h5>
                 <?php 
                     $selectedDays = array_map('trim', explode(',', $settings['attendance.week_off_days'] ?? 'Sunday,Saturday'));
                     $daysList = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -342,18 +342,18 @@
                 <div class="row g-3 mb-3">
                     <div class="col-md-8">
                         <label class="form-label text-secondary">Default Organization Week Off Days *</label>
-                        <div class="p-3 bg-dark border border-secondary rounded d-flex flex-wrap gap-3">
+                        <div class="p-3 border rounded d-flex flex-wrap gap-3" style="background: var(--surface-soft); border-color: var(--border-color) !important;">
                             <?php foreach ($daysList as $d): ?>
                                 <div class="form-check form-check-inline me-2 mb-0">
                                     <input class="form-check-input" type="checkbox" name="attendance_week_off_days[]" value="<?php echo $d; ?>" id="week_off_<?php echo strtolower($d); ?>" <?php echo in_array($d, $selectedDays, true) ? 'checked' : ''; ?>>
-                                    <label class="form-check-label text-white small" for="week_off_<?php echo strtolower($d); ?>"><?php echo $d; ?></label>
+                                    <label class="form-check-label small" style="color: var(--text-primary);" for="week_off_<?php echo strtolower($d); ?>"><?php echo $d; ?></label>
                                 </div>
                             <?php endforeach; ?>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-secondary">Alternate Saturdays Pattern</label>
-                        <select name="attendance.alt_saturday_off" class="form-select bg-dark text-white border-secondary">
+                        <select name="attendance.alt_saturday_off" class="form-select">
                             <option value="none" <?php echo (($settings['attendance.alt_saturday_off'] ?? 'none') === 'none') ? 'selected' : ''; ?>>None (All Selected Days Off)</option>
                             <option value="1st_3rd" <?php echo (($settings['attendance.alt_saturday_off'] ?? '') === '1st_3rd') ? 'selected' : ''; ?>>1st &amp; 3rd Saturday Off</option>
                             <option value="2nd_4th" <?php echo (($settings['attendance.alt_saturday_off'] ?? '') === '2nd_4th') ? 'selected' : ''; ?>>2nd &amp; 4th Saturday Off</option>
@@ -364,9 +364,9 @@
 
                 <div class="row g-3 mb-4">
                     <div class="col-md-12">
-                        <div class="p-3 bg-dark border border-secondary rounded d-flex justify-content-between align-items-center">
+                        <div class="p-3 border rounded d-flex justify-content-between align-items-center" style="background: var(--surface-soft); border-color: var(--border-color) !important;">
                             <div>
-                                <div class="text-white fw-semibold small">Allow Department &amp; Employee Level Week Off Overrides</div>
+                                <div class="small fw-semibold" style="color: var(--text-primary);">Allow Department &amp; Employee Level Week Off Overrides</div>
                                 <div class="text-secondary small">If enabled, team managers can configure dedicated week-off days per shift/department under HR &amp; Payroll.</div>
                             </div>
                             <div class="form-check form-switch mb-0">
@@ -379,23 +379,23 @@
                 <hr class="border-secondary border-opacity-15 my-4">
 
                 <!-- 4. Leave Policy Configuration (NEW) -->
-                <h5 class="text-white mb-3" style="font-size:1.05rem;"><i class="fa-solid fa-umbrella-beach text-success me-2"></i>Leave Policy Configuration</h5>
+                <h5 class="mb-3 fw-bold" style="color: var(--text-primary); font-size:1.05rem;"><i class="fa-solid fa-umbrella-beach text-success me-2"></i>Leave Policy Configuration</h5>
                 <div class="row g-3 mb-3">
                     <div class="col-md-4">
                         <label class="form-label text-secondary">Leave Approval Workflow</label>
-                        <select name="leave.approval_workflow" class="form-select bg-dark text-white border-secondary">
+                        <select name="leave.approval_workflow" class="form-select">
                             <option value="single_level" <?php echo (($settings['leave.approval_workflow'] ?? 'single_level') === 'single_level') ? 'selected' : ''; ?>>Single-level (Direct Manager)</option>
                             <option value="multi_level" <?php echo (($settings['leave.approval_workflow'] ?? '') === 'multi_level') ? 'selected' : ''; ?>>Multi-level (Manager → HR)</option>
                         </select>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-secondary">Minimum Notice Period (Days)</label>
-                        <input type="number" min="0" name="leave.min_notice_days" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="0" name="leave.min_notice_days" class="form-control"
                                value="<?php echo htmlspecialchars($settings['leave.min_notice_days'] ?? '3'); ?>">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-secondary">Leave Year Start Month</label>
-                        <select name="leave.year_start_month" class="form-select bg-dark text-white border-secondary">
+                        <select name="leave.year_start_month" class="form-select">
                             <?php foreach (['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] as $m): ?>
                                 <option value="<?php echo $m; ?>" <?php echo (($settings['leave.year_start_month'] ?? 'January') === $m) ? 'selected' : ''; ?>><?php echo $m; ?></option>
                             <?php endforeach; ?>
@@ -422,7 +422,7 @@
                     <input type="hidden" name="leave.types_json" id="leave_types_json" value="<?php echo htmlspecialchars($leaveTypesJson); ?>">
 
                     <div class="table-responsive">
-                        <table class="table table-dark table-hover border-secondary align-middle mb-0" id="leave-types-table" style="font-size:0.88rem;">
+                        <table class="table table-hover border align-middle mb-0" id="leave-types-table" style="font-size:0.88rem;">
                             <thead>
                                 <tr class="text-secondary">
                                     <th>Leave Type Name</th>
@@ -443,11 +443,11 @@
                 <hr class="border-secondary border-opacity-15 my-4">
 
                 <!-- 5. Shift Roster Configuration (NEW) -->
-                <h5 class="text-white mb-3" style="font-size:1.05rem;"><i class="fa-solid fa-clock text-primary me-2"></i>Shift Roster Configuration</h5>
+                <h5 class="mb-3 fw-bold" style="color: var(--text-primary); font-size:1.05rem;"><i class="fa-solid fa-clock text-primary me-2"></i>Shift Roster Configuration</h5>
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label for="roster_mode_select" class="form-label text-secondary">Roster Assignment Mode</label>
-                        <select name="attendance.roster_mode" id="roster_mode_select" class="form-select bg-dark text-white border-secondary">
+                        <select name="attendance.roster_mode" id="roster_mode_select" class="form-select">
                             <option value="fixed" <?php echo (($settings['attendance.roster_mode'] ?? 'fixed') === 'fixed') ? 'selected' : ''; ?>>Fixed (Same Shift for All Employees)</option>
                             <option value="rotational" <?php echo (($settings['attendance.roster_mode'] ?? '') === 'rotational') ? 'selected' : ''; ?>>Rotational (Scheduled Roster)</option>
                             <option value="per_employee" <?php echo (($settings['attendance.roster_mode'] ?? '') === 'per_employee') ? 'selected' : ''; ?>>Per-Employee Assignment</option>
@@ -455,7 +455,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-secondary">Roster Publish Lead Time (Days)</label>
-                        <input type="number" min="1" name="attendance.roster_publish_lead_days" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="1" name="attendance.roster_publish_lead_days" class="form-control"
                                value="<?php echo htmlspecialchars($settings['attendance.roster_publish_lead_days'] ?? '7'); ?>">
                     </div>
                 </div>
@@ -483,7 +483,7 @@
                     <input type="hidden" name="attendance.shift_templates_json" id="shift_templates_json" value="<?php echo htmlspecialchars($shiftTemplatesJson); ?>">
 
                     <div class="table-responsive">
-                        <table class="table table-dark table-hover border-secondary align-middle mb-0" id="shift-templates-table" style="font-size:0.88rem;">
+                        <table class="table table-hover border align-middle mb-0" id="shift-templates-table" style="font-size:0.88rem;">
                             <thead>
                                 <tr class="text-secondary">
                                     <th>Shift Name</th>
@@ -503,17 +503,17 @@
                 <hr class="border-secondary border-opacity-15 my-4">
 
                 <!-- 6. Alerts & Notifications (Layout Fixed) -->
-                <h5 class="text-white mb-3" style="font-size:1.05rem;"><i class="fa-solid fa-bell text-danger me-2"></i>Alerts &amp; Notifications</h5>
+                <h5 class="mb-3 fw-bold" style="color: var(--text-primary); font-size:1.05rem;"><i class="fa-solid fa-bell text-danger me-2"></i>Alerts &amp; Notifications</h5>
                 <div class="row g-3 mb-4">
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Lead Contact SLA Hours</label>
-                        <input type="number" min="1" name="lead.contact_sla_hours" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="1" name="lead.contact_sla_hours" class="form-control"
                                value="<?php echo htmlspecialchars($settings['lead.contact_sla_hours'] ?? '24'); ?>">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Scheduled Alerts</label>
-                        <div class="p-2 px-3 bg-dark border border-secondary rounded d-flex justify-content-between align-items-center" style="height:38px;">
-                            <span class="text-white small">Cron Alerts</span>
+                        <div class="p-2 px-3 border rounded d-flex justify-content-between align-items-center" style="height:38px; background: var(--surface-soft); border-color: var(--border-color) !important;">
+                            <span class="small fw-medium" style="color: var(--text-primary);">Cron Alerts</span>
                             <div class="form-check form-switch mb-0">
                                 <input class="form-check-input" type="checkbox" name="alerts.cron_enabled" id="alerts_cron_enabled" <?php echo (($settings['alerts.cron_enabled'] ?? '1') === '1') ? 'checked' : ''; ?>>
                             </div>
@@ -521,8 +521,8 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Browser Push</label>
-                        <div class="p-2 px-3 bg-dark border border-secondary rounded d-flex justify-content-between align-items-center" style="height:38px;">
-                            <span class="text-white small">Web Push Opt-in</span>
+                        <div class="p-2 px-3 border rounded d-flex justify-content-between align-items-center" style="height:38px; background: var(--surface-soft); border-color: var(--border-color) !important;">
+                            <span class="small fw-medium" style="color: var(--text-primary);">Web Push Opt-in</span>
                             <div class="form-check form-switch mb-0">
                                 <input class="form-check-input" type="checkbox" name="alerts.web_push_enabled" id="alerts_web_push_enabled" <?php echo (($settings['alerts.web_push_enabled'] ?? '0') === '1') ? 'checked' : ''; ?>>
                             </div>
@@ -530,8 +530,8 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Email Alerts</label>
-                        <div class="p-2 px-3 bg-dark border border-secondary rounded d-flex justify-content-between align-items-center" style="height:38px;">
-                            <span class="text-white small">Email Alerts</span>
+                        <div class="p-2 px-3 border rounded d-flex justify-content-between align-items-center" style="height:38px; background: var(--surface-soft); border-color: var(--border-color) !important;">
+                            <span class="small fw-medium" style="color: var(--text-primary);">Email Alerts</span>
                             <div class="form-check form-switch mb-0">
                                 <input class="form-check-input" type="checkbox" name="alerts.email_enabled" id="alerts_email_enabled" <?php echo (($settings['alerts.email_enabled'] ?? '0') === '1') ? 'checked' : ''; ?>>
                             </div>
@@ -540,24 +540,24 @@
 
                     <div class="col-md-4">
                         <label class="form-label text-secondary">VAPID Public Key</label>
-                        <input type="text" name="alerts.vapid_public_key" class="form-control bg-dark text-white border-secondary"
+                        <input type="text" name="alerts.vapid_public_key" class="form-control"
                                value="<?php echo htmlspecialchars($settings['alerts.vapid_public_key'] ?? ''); ?>">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-secondary">VAPID Private Key</label>
-                        <input type="password" name="alerts.vapid_private_key" class="form-control bg-dark text-white border-secondary"
+                        <input type="password" name="alerts.vapid_private_key" class="form-control"
                                value="<?php echo htmlspecialchars($settings['alerts.vapid_private_key'] ?? ''); ?>">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-secondary">Alert Email From</label>
-                        <input type="email" name="alerts.email_from" class="form-control bg-dark text-white border-secondary"
+                        <input type="email" name="alerts.email_from" class="form-control"
                                value="<?php echo htmlspecialchars($settings['alerts.email_from'] ?? ''); ?>">
                     </div>
                 </div>
 
                 <?php if (!empty($alert_rules)): ?>
                     <div class="table-responsive mb-4">
-                        <table class="table table-dark table-hover align-middle">
+                        <table class="table table-hover align-middle">
                             <thead>
                                 <tr>
                                     <th>Rule</th>
@@ -572,7 +572,7 @@
                                 <?php foreach ($alert_rules as $rule): ?>
                                     <tr>
                                         <td>
-                                            <div class="text-white fw-semibold"><?php echo htmlspecialchars($rule->name); ?></div>
+                                            <div class="fw-semibold" style="color: var(--text-primary);"><?php echo htmlspecialchars($rule->name); ?></div>
                                             <div class="text-secondary small"><?php echo htmlspecialchars($rule->rule_key); ?></div>
                                         </td>
                                         <td><?php echo htmlspecialchars($rule->category); ?></td>
@@ -582,7 +582,7 @@
                                                    value="1" <?php echo $rule->enabled ? 'checked' : ''; ?>>
                                         </td>
                                         <td>
-                                            <select name="alert_rules[<?php echo htmlspecialchars($rule->rule_key); ?>][severity]" class="form-select form-select-sm bg-dark text-white border-secondary">
+                                            <select name="alert_rules[<?php echo htmlspecialchars($rule->rule_key); ?>][severity]" class="form-select form-select-sm">
                                                 <?php foreach (['info', 'warning', 'critical'] as $severity): ?>
                                                     <option value="<?php echo $severity; ?>" <?php echo $rule->severity === $severity ? 'selected' : ''; ?>><?php echo ucfirst($severity); ?></option>
                                                 <?php endforeach; ?>
@@ -591,13 +591,13 @@
                                         <td>
                                             <div class="d-flex gap-2 align-items-center">
                                                 <input type="number" step="0.01" name="alert_rules[<?php echo htmlspecialchars($rule->rule_key); ?>][threshold_value]"
-                                                       class="form-control form-control-sm bg-dark text-white border-secondary"
+                                                       class="form-control form-control-sm"
                                                        value="<?php echo htmlspecialchars((string) $rule->threshold_value); ?>">
                                                 <span class="text-secondary small"><?php echo htmlspecialchars($rule->threshold_unit ?? ''); ?></span>
                                             </div>
                                         </td>
                                         <td>
-                                            <select name="alert_rules[<?php echo htmlspecialchars($rule->rule_key); ?>][recipient_scope]" class="form-select form-select-sm bg-dark text-white border-secondary">
+                                            <select name="alert_rules[<?php echo htmlspecialchars($rule->rule_key); ?>][recipient_scope]" class="form-select form-select-sm">
                                                 <?php foreach (['owner' => 'Owner', 'manager' => 'Manager', 'both' => 'Both', 'admin' => 'Admin'] as $scope => $label): ?>
                                                     <option value="<?php echo $scope; ?>" <?php echo $rule->recipient_scope === $scope ? 'selected' : ''; ?>><?php echo $label; ?></option>
                                                 <?php endforeach; ?>
@@ -613,12 +613,12 @@
                 <hr class="border-secondary border-opacity-15 my-4">
 
                 <!-- 7. Report Digest -->
-                <h5 class="text-white mb-3" style="font-size:1.05rem;"><i class="fa-solid fa-envelope-open-text text-info me-2"></i>Report Digest</h5>
+                <h5 class="mb-3 fw-bold" style="color: var(--text-primary); font-size:1.05rem;"><i class="fa-solid fa-envelope-open-text text-info me-2"></i>Report Digest</h5>
                 <div class="row g-3 mb-4">
                     <div class="col-md-4">
                         <label class="form-label text-secondary">Digest Email Frequency</label>
-                        <div class="p-2 px-3 bg-dark border border-secondary rounded d-flex justify-content-between align-items-center" style="height:38px;">
-                            <span class="text-white small">Monthly Digest Email</span>
+                        <div class="p-2 px-3 border rounded d-flex justify-content-between align-items-center" style="height:38px; background: var(--surface-soft); border-color: var(--border-color) !important;">
+                            <span class="small fw-medium" style="color: var(--text-primary);">Monthly Digest Email</span>
                             <div class="form-check form-switch mb-0">
                                 <input class="form-check-input" type="checkbox" name="reports.email_enabled" id="reports_email_enabled" <?php echo (($settings['reports.email_enabled'] ?? '0') === '1') ? 'checked' : ''; ?>>
                             </div>
@@ -626,7 +626,7 @@
                     </div>
                     <div class="col-md-8">
                         <label class="form-label text-secondary">Digest Recipients</label>
-                        <input type="text" name="reports.digest_recipients" class="form-control bg-dark text-white border-secondary"
+                        <input type="text" name="reports.digest_recipients" class="form-control"
                                value="<?php echo htmlspecialchars($settings['reports.digest_recipients'] ?? ''); ?>"
                                placeholder="manager@example.com, admin@example.com">
                     </div>
@@ -635,29 +635,29 @@
                 <hr class="border-secondary border-opacity-15 my-4">
 
                 <!-- 8. Marketing Connectors -->
-                <h5 class="text-white mb-3" style="font-size:1.05rem;"><i class="fa-solid fa-plug text-primary me-2"></i>Marketing Connectors</h5>
+                <h5 class="mb-3 fw-bold" style="color: var(--text-primary); font-size:1.05rem;"><i class="fa-solid fa-plug text-primary me-2"></i>Marketing Connectors</h5>
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
                         <label for="ga4_measurement_id" class="form-label text-secondary">Google Analytics 4 Measurement ID</label>
-                        <input type="text" name="ga4_measurement_id" id="ga4_measurement_id" class="form-control bg-dark text-white border-secondary" 
+                        <input type="text" name="ga4_measurement_id" id="ga4_measurement_id" class="form-control" 
                                value="<?php echo htmlspecialchars($settings['ga4_measurement_id'] ?? ''); ?>" 
                                placeholder="G-XXXXXXXXXX">
                     </div>
                     <div class="col-md-6">
                         <label for="google_ads_client_id" class="form-label text-secondary">Google Ads Account ID</label>
-                        <input type="text" name="google_ads_client_id" id="google_ads_client_id" class="form-control bg-dark text-white border-secondary" 
+                        <input type="text" name="google_ads_client_id" id="google_ads_client_id" class="form-control" 
                                value="<?php echo htmlspecialchars($settings['google_ads_client_id'] ?? ''); ?>" 
                                placeholder="XXX-XXX-XXXX">
                     </div>
                     <div class="col-md-6">
                         <label for="meta_access_token" class="form-label text-secondary">Meta Access Token</label>
-                        <input type="password" name="meta_access_token" id="meta_access_token" class="form-control bg-dark text-white border-secondary" 
+                        <input type="password" name="meta_access_token" id="meta_access_token" class="form-control" 
                                value="<?php echo htmlspecialchars($settings['meta_access_token'] ?? ''); ?>" 
                                placeholder="EAABw...">
                     </div>
                     <div class="col-md-6">
                         <label for="linkedin_urn" class="form-label text-secondary">LinkedIn Page URN</label>
-                        <input type="text" name="linkedin_urn" id="linkedin_urn" class="form-control bg-dark text-white border-secondary" 
+                        <input type="text" name="linkedin_urn" id="linkedin_urn" class="form-control" 
                                value="<?php echo htmlspecialchars($settings['linkedin_urn'] ?? ''); ?>" 
                                placeholder="urn:li:organization:XXXXXX">
                     </div>
@@ -667,7 +667,7 @@
 
                 <!-- 9. Corporate & Payroll SMTP Integration (Payslips & System Alerts) -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="text-white mb-0" style="font-size:1.05rem;">
+                    <h5 class="mb-0 fw-bold" style="color: var(--text-primary); font-size:1.05rem;">
                         <i class="fa-solid fa-envelope-circle-check text-success me-2"></i>Corporate &amp; Payroll SMTP (Payslips &amp; Alerts)
                     </h5>
                     <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#testEmailModal">
@@ -681,26 +681,26 @@
                 <div class="row g-3 mb-4">
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Mail Protocol / Driver</label>
-                        <select name="mail.driver" id="mail_driver" class="form-select bg-dark text-white border-secondary">
+                        <select name="mail.driver" id="mail_driver" class="form-select">
                             <option value="smtp" <?php echo (($settings['mail.driver'] ?? 'smtp') === 'smtp') ? 'selected' : ''; ?>>SMTP Socket (Recommended)</option>
                             <option value="mail" <?php echo (($settings['mail.driver'] ?? '') === 'mail') ? 'selected' : ''; ?>>PHP Native mail()</option>
                         </select>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-secondary">SMTP Host</label>
-                        <input type="text" name="mail.host" id="mail_host" class="form-control bg-dark text-white border-secondary font-monospace"
+                        <input type="text" name="mail.host" id="mail_host" class="form-control font-monospace"
                                value="<?php echo htmlspecialchars($settings['mail.host'] ?? ''); ?>"
                                placeholder="e.g. smtppro.zoho.in or smtp.gmail.com">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label text-secondary">SMTP Port</label>
-                        <input type="number" name="mail.port" id="mail_port" class="form-control bg-dark text-white border-secondary font-monospace"
+                        <input type="number" name="mail.port" id="mail_port" class="form-control font-monospace"
                                value="<?php echo htmlspecialchars($settings['mail.port'] ?? '587'); ?>"
                                placeholder="587 / 465">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Encryption Type</label>
-                        <select name="mail.encryption" id="mail_encryption" class="form-select bg-dark text-white border-secondary">
+                        <select name="mail.encryption" id="mail_encryption" class="form-select">
                             <option value="tls" <?php echo (($settings['mail.encryption'] ?? 'tls') === 'tls') ? 'selected' : ''; ?>>TLS / STARTTLS (Port 587)</option>
                             <option value="ssl" <?php echo (($settings['mail.encryption'] ?? '') === 'ssl') ? 'selected' : ''; ?>>SSL (Port 465)</option>
                             <option value="none" <?php echo (($settings['mail.encryption'] ?? '') === 'none') ? 'selected' : ''; ?>>None / Plain (Port 25)</option>
@@ -709,14 +709,14 @@
 
                     <div class="col-md-6">
                         <label class="form-label text-secondary">SMTP Username / Email</label>
-                        <input type="text" name="mail.username" id="mail_username" class="form-control bg-dark text-white border-secondary font-monospace"
+                        <input type="text" name="mail.username" id="mail_username" class="form-control font-monospace"
                                value="<?php echo htmlspecialchars($settings['mail.username'] ?? ''); ?>"
                                placeholder="e.g. accounts@axioraglobalsolutions.com">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-secondary">SMTP Password / App Password</label>
                         <div class="input-group">
-                            <input type="password" name="mail.password" id="mail_password" class="form-control bg-dark text-white border-secondary font-monospace"
+                            <input type="password" name="mail.password" id="mail_password" class="form-control font-monospace"
                                    value="<?php echo htmlspecialchars($settings['mail.password'] ?? ''); ?>"
                                    placeholder="Enter SMTP password or App Password">
                             <button class="btn btn-outline-secondary" type="button" onclick="togglePassVisibility('mail_password')">
@@ -727,20 +727,20 @@
 
                     <div class="col-md-4">
                         <label class="form-label text-secondary">Sender "From" Email</label>
-                        <input type="email" name="mail.from_address" id="mail_from_address" class="form-control bg-dark text-white border-secondary font-monospace"
+                        <input type="email" name="mail.from_address" id="mail_from_address" class="form-control font-monospace"
                                value="<?php echo htmlspecialchars($settings['mail.from_address'] ?? 'accounts@axioraglobalsolutions.com'); ?>"
                                placeholder="accounts@axioraglobalsolutions.com">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-secondary">Sender "From" Name</label>
-                        <input type="text" name="mail.from_name" id="mail_from_name" class="form-control bg-dark text-white border-secondary"
+                        <input type="text" name="mail.from_name" id="mail_from_name" class="form-control"
                                value="<?php echo htmlspecialchars($settings['mail.from_name'] ?? 'Axiora Global Solutions - Payroll'); ?>"
                                placeholder="Axiora Global Solutions - Payroll">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-secondary">Auto-Email Payslips</label>
-                        <div class="p-2 px-3 bg-dark border border-secondary rounded d-flex justify-content-between align-items-center" style="height:38px;">
-                            <span class="text-white small">Auto-send on slip generation</span>
+                        <div class="p-2 px-3 border rounded d-flex justify-content-between align-items-center" style="height:38px; background: var(--surface-soft); border-color: var(--border-color) !important;">
+                            <span class="small fw-medium" style="color: var(--text-primary);">Auto-send on slip generation</span>
                             <div class="form-check form-switch mb-0">
                                 <input class="form-check-input" type="checkbox" name="mail.auto_send_on_generation" id="mail_auto_send_on_generation" <?php echo (($settings['mail.auto_send_on_generation'] ?? '1') === '1') ? 'checked' : ''; ?>>
                             </div>
@@ -753,7 +753,7 @@
                 <!-- 10. Marketing & Bulk Email SMTP (Dedicated Campaign Dispatcher) -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
-                        <h5 class="text-white mb-0" style="font-size:1.05rem;">
+                        <h5 class="mb-0 fw-bold" style="color: var(--text-primary); font-size:1.05rem;">
                             <i class="fa-solid fa-bullhorn text-warning me-2"></i>Marketing &amp; Bulk Email SMTP (Dedicated Campaign Dispatcher)
                         </h5>
                         <p class="text-secondary small mb-0 mt-1">
@@ -765,10 +765,10 @@
                     </button>
                 </div>
 
-                <div class="p-3 mb-4 rounded bg-dark border border-secondary">
+                <div class="p-3 mb-4 rounded-3 border" style="background: var(--surface-soft); border-color: var(--border-color) !important;">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <span class="text-white fw-semibold">Use Dedicated SMTP Server for Marketing Campaigns</span>
+                            <span class="fw-semibold" style="color: var(--text-primary);">Use Dedicated SMTP Server for Marketing Campaigns</span>
                             <div class="text-secondary small">When enabled, campaign broadcasts bypass the corporate payslip mailer and route through these credentials. When disabled, marketing safely uses corporate SMTP.</div>
                         </div>
                         <div class="form-check form-switch mb-0">
@@ -779,7 +779,7 @@
                     <div id="marketing_smtp_fields" class="row g-3 <?php echo (($settings['mail.marketing.enabled'] ?? '0') === '1') ? '' : 'd-none'; ?>">
                         <div class="col-md-3">
                             <label class="form-label text-secondary">Mail Protocol / Provider</label>
-                            <select name="mail.marketing.driver" id="mail_marketing_driver" class="form-select bg-dark text-white border-secondary" onchange="onMarketingDriverChange(this.value)">
+                            <select name="mail.marketing.driver" id="mail_marketing_driver" class="form-select" onchange="onMarketingDriverChange(this.value)">
                                 <option value="ses" <?php echo (($settings['mail.marketing.driver'] ?? 'smtp') === 'ses') ? 'selected' : ''; ?>>Amazon SES (AWS SES)</option>
                                 <option value="smtp" <?php echo (($settings['mail.marketing.driver'] ?? 'smtp') === 'smtp') ? 'selected' : ''; ?>>Custom SMTP Socket</option>
                                 <option value="mail" <?php echo (($settings['mail.marketing.driver'] ?? '') === 'mail') ? 'selected' : ''; ?>>PHP Native mail()</option>
@@ -787,7 +787,7 @@
                         </div>
                         <div class="col-md-3" id="ses_region_wrapper" style="<?php echo (($settings['mail.marketing.driver'] ?? '') === 'ses') ? '' : 'display:none;'; ?>">
                             <label class="form-label text-secondary">AWS SES Region</label>
-                            <select name="mail.marketing.ses_region" id="mail_marketing_ses_region" class="form-select bg-dark text-white border-secondary" onchange="onSesRegionChange(this.value)">
+                            <select name="mail.marketing.ses_region" id="mail_marketing_ses_region" class="form-select" onchange="onSesRegionChange(this.value)">
                                 <?php 
                                 $currentRegion = $settings['mail.marketing.ses_region'] ?? 'us-east-1';
                                 $sesRegions = [
@@ -806,25 +806,25 @@
                         </div>
                         <div class="col-md-3" id="ses_config_set_wrapper" style="<?php echo (($settings['mail.marketing.driver'] ?? '') === 'ses') ? '' : 'display:none;'; ?>">
                             <label class="form-label text-secondary">SES Configuration Set (Optional)</label>
-                            <input type="text" name="mail.marketing.ses_configuration_set" id="mail_marketing_ses_configuration_set" class="form-control bg-dark text-white border-secondary font-monospace"
+                            <input type="text" name="mail.marketing.ses_configuration_set" id="mail_marketing_ses_configuration_set" class="form-control font-monospace"
                                    value="<?php echo htmlspecialchars($settings['mail.marketing.ses_configuration_set'] ?? ''); ?>"
                                    placeholder="e.g. raptor-marketing-set">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label text-secondary">Marketing SMTP Host</label>
-                            <input type="text" name="mail.marketing.host" id="mail_marketing_host" class="form-control bg-dark text-white border-secondary font-monospace"
+                            <input type="text" name="mail.marketing.host" id="mail_marketing_host" class="form-control font-monospace"
                                    value="<?php echo htmlspecialchars($settings['mail.marketing.host'] ?? ''); ?>"
                                    placeholder="e.g. email-smtp.us-east-1.amazonaws.com or smtppro.zoho.in">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label text-secondary">SMTP Port</label>
-                            <input type="number" name="mail.marketing.port" id="mail_marketing_port" class="form-control bg-dark text-white border-secondary font-monospace"
+                            <input type="number" name="mail.marketing.port" id="mail_marketing_port" class="form-control font-monospace"
                                    value="<?php echo htmlspecialchars($settings['mail.marketing.port'] ?? '587'); ?>"
                                    placeholder="587 / 465">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label text-secondary">Encryption Type</label>
-                            <select name="mail.marketing.encryption" id="mail_marketing_encryption" class="form-select bg-dark text-white border-secondary">
+                            <select name="mail.marketing.encryption" id="mail_marketing_encryption" class="form-select">
                                 <option value="tls" <?php echo (($settings['mail.marketing.encryption'] ?? 'tls') === 'tls') ? 'selected' : ''; ?>>TLS / STARTTLS (Port 587)</option>
                                 <option value="ssl" <?php echo (($settings['mail.marketing.encryption'] ?? '') === 'ssl') ? 'selected' : ''; ?>>SSL (Port 465)</option>
                                 <option value="none" <?php echo (($settings['mail.marketing.encryption'] ?? '') === 'none') ? 'selected' : ''; ?>>None / Plain (Port 25)</option>
@@ -833,14 +833,14 @@
 
                         <div class="col-md-6">
                             <label class="form-label text-secondary">Marketing SMTP / SES Username</label>
-                            <input type="text" name="mail.marketing.username" id="mail_marketing_username" class="form-control bg-dark text-white border-secondary font-monospace"
+                            <input type="text" name="mail.marketing.username" id="mail_marketing_username" class="form-control font-monospace"
                                    value="<?php echo htmlspecialchars($settings['mail.marketing.username'] ?? ''); ?>"
                                    placeholder="e.g. AKIA... or contacts@axioraglobalsolutions.com">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-secondary">Marketing SMTP / SES Password</label>
                             <div class="input-group">
-                                <input type="password" name="mail.marketing.password" id="mail_marketing_password" class="form-control bg-dark text-white border-secondary font-monospace"
+                                <input type="password" name="mail.marketing.password" id="mail_marketing_password" class="form-control font-monospace"
                                        value="<?php echo htmlspecialchars($settings['mail.marketing.password'] ?? ''); ?>"
                                        placeholder="Enter marketing SMTP / AWS SES IAM SMTP password">
                                 <button class="btn btn-outline-secondary" type="button" onclick="togglePassVisibility('mail_marketing_password')">
@@ -851,13 +851,13 @@
 
                         <div class="col-md-6">
                             <label class="form-label text-secondary">Marketing Sender "From" Email</label>
-                            <input type="email" name="mail.marketing.from_address" id="mail_marketing_from_address" class="form-control bg-dark text-white border-secondary font-monospace"
+                            <input type="email" name="mail.marketing.from_address" id="mail_marketing_from_address" class="form-control font-monospace"
                                    value="<?php echo htmlspecialchars($settings['mail.marketing.from_address'] ?? 'contacts@axioraglobalsolutions.com'); ?>"
                                    placeholder="contacts@axioraglobalsolutions.com">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-secondary">Marketing Sender "From" Name</label>
-                            <input type="text" name="mail.marketing.from_name" id="mail_marketing_from_name" class="form-control bg-dark text-white border-secondary"
+                            <input type="text" name="mail.marketing.from_name" id="mail_marketing_from_name" class="form-control"
                                    value="<?php echo htmlspecialchars($settings['mail.marketing.from_name'] ?? 'Axiora Global'); ?>"
                                    placeholder="Axiora Global">
                         </div>
@@ -868,9 +868,9 @@
                                 <i class="fa-solid fa-stopwatch text-warning me-1"></i>Dispatch Rate Pacing (Time Gap Between Emails)
                             </label>
                             <div class="input-group">
-                                <input type="number" min="120" step="10" name="mail.marketing.pacing_seconds" id="mail_marketing_pacing_seconds" class="form-control bg-dark text-white border-secondary font-monospace"
+                                <input type="number" min="120" step="10" name="mail.marketing.pacing_seconds" id="mail_marketing_pacing_seconds" class="form-control font-monospace"
                                        value="<?php echo htmlspecialchars($settings['mail.marketing.pacing_seconds'] ?? '120'); ?>">
-                                <span class="input-group-text bg-dark border-secondary text-secondary">seconds</span>
+                                <span class="input-group-text">seconds</span>
                             </div>
                             <div class="form-text text-secondary small">
                                 <i class="fa-solid fa-shield-halved text-success me-1"></i>Minimum 120 seconds required. Eliminates bulk blasts to prevent spam filters.
@@ -880,9 +880,9 @@
                             <label class="form-label text-secondary">
                                 <i class="fa-solid fa-temperature-arrow-up text-info me-1"></i>Email Domain Warmup Engine
                             </label>
-                            <div class="p-2 bg-dark rounded border border-secondary d-flex justify-content-between align-items-center">
+                            <div class="p-2 rounded border d-flex justify-content-between align-items-center" style="background: var(--surface-soft); border-color: var(--border-color) !important;">
                                 <div>
-                                    <div class="text-white small fw-semibold">Enforce Domain Warmup Schedule</div>
+                                    <div class="small fw-semibold" style="color: var(--text-primary);">Enforce Domain Warmup Schedule</div>
                                     <div class="text-secondary" style="font-size:0.75rem;">Daily caps ramp from 50/day up to 10k/day to build sender reputation.</div>
                                 </div>
                                 <div class="form-check form-switch mb-0">
@@ -897,7 +897,7 @@
 
                 <!-- 8. Payroll Lifecycle & Calculation Rules -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="text-white mb-0" style="font-size:1.05rem;">
+                    <h5 class="mb-0 fw-bold" style="color: var(--text-primary); font-size:1.05rem;">
                         <i class="fa-solid fa-money-bill-wave text-success me-2"></i>Payroll Lifecycle &amp; Calculation Rules
                     </h5>
                     <span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25 px-2 py-1" style="font-size:0.75rem;">
@@ -909,7 +909,7 @@
                     <!-- Pay Cycle Type -->
                     <div class="col-md-4">
                         <label class="form-label text-secondary">Pay Cycle Type</label>
-                        <select name="payroll.cycle_type" id="payroll_cycle_type" class="form-select bg-dark text-white border-secondary">
+                        <select name="payroll.cycle_type" id="payroll_cycle_type" class="form-select">
                             <option value="calendar_month" <?php echo (($settings['payroll.cycle_type'] ?? 'calendar_month') === 'calendar_month') ? 'selected' : ''; ?>>
                                 Standard Calendar Month (1st to Month End)
                             </option>
@@ -923,7 +923,7 @@
                     <!-- Cycle Start Day -->
                     <div class="col-md-2">
                         <label class="form-label text-secondary">Cycle Start Day</label>
-                        <input type="number" min="1" max="28" name="payroll.cycle_start_day" id="payroll_cycle_start_day" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="1" max="28" name="payroll.cycle_start_day" id="payroll_cycle_start_day" class="form-control"
                                value="<?php echo htmlspecialchars($settings['payroll.cycle_start_day'] ?? '1'); ?>">
                         <div class="form-text text-secondary-emphasis" style="font-size:0.75rem;">Day of month (1 = 1st).</div>
                     </div>
@@ -931,7 +931,7 @@
                     <!-- Scheduled Payout Day -->
                     <div class="col-md-2">
                         <label class="form-label text-secondary">Pay Date (Day)</label>
-                        <input type="number" min="1" max="28" name="payroll.pay_date_day" id="payroll_pay_date_day" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="1" max="28" name="payroll.pay_date_day" id="payroll_pay_date_day" class="form-control"
                                value="<?php echo htmlspecialchars($settings['payroll.pay_date_day'] ?? '1'); ?>">
                         <div class="form-text text-secondary-emphasis" style="font-size:0.75rem;">Day of following month.</div>
                     </div>
@@ -939,7 +939,7 @@
                     <!-- Proration Method -->
                     <div class="col-md-4">
                         <label class="form-label text-secondary">Working Days Divisor (Proration)</label>
-                        <select name="payroll.proration_method" id="payroll_proration_method" class="form-select bg-dark text-white border-secondary">
+                        <select name="payroll.proration_method" id="payroll_proration_method" class="form-select">
                             <option value="calendar_days" <?php echo (($settings['payroll.proration_method'] ?? 'calendar_days') === 'calendar_days') ? 'selected' : ''; ?>>
                                 Actual Calendar Days (30 / 31 / 28) - Recommended
                             </option>
@@ -956,29 +956,29 @@
                     <!-- Statutory & Component Thresholds -->
                     <div class="col-md-3">
                         <label class="form-label text-secondary">EPF Wage Ceiling (₹)</label>
-                        <input type="number" min="0" step="500" name="payroll.epf_wage_ceiling" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="0" step="500" name="payroll.epf_wage_ceiling" class="form-control"
                                value="<?php echo htmlspecialchars($settings['payroll.epf_wage_ceiling'] ?? '15000'); ?>">
                         <div class="form-text text-secondary-emphasis" style="font-size:0.75rem;">Standard cap ₹15,000 (₹1,800 max EPF).</div>
                     </div>
 
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Gratuity Accrual (%)</label>
-                        <input type="number" min="0" max="15" step="0.01" name="payroll.gratuity_pct" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="0" max="15" step="0.01" name="payroll.gratuity_pct" class="form-control"
                                value="<?php echo htmlspecialchars($settings['payroll.gratuity_pct'] ?? '4.81'); ?>">
                         <div class="form-text text-secondary-emphasis" style="font-size:0.75rem;">Standard 4.81% of Basic (15/26/12).</div>
                     </div>
 
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Fixed Special Allowance (₹)</label>
-                        <input type="number" min="0" step="100" name="payroll.special_allowance_fixed" class="form-control bg-dark text-white border-secondary"
+                        <input type="number" min="0" step="100" name="payroll.special_allowance_fixed" class="form-control"
                                value="<?php echo htmlspecialchars($settings['payroll.special_allowance_fixed'] ?? '1600'); ?>">
                         <div class="form-text text-secondary-emphasis" style="font-size:0.75rem;">Standard company baseline ₹1,600.</div>
                     </div>
 
                     <div class="col-md-3">
                         <label class="form-label text-secondary">Professional Tax (PT)</label>
-                        <div class="p-2 px-3 bg-dark border border-secondary rounded d-flex justify-content-between align-items-center" style="height:38px;">
-                            <span class="text-white small">Auto PT Slabs</span>
+                        <div class="p-2 px-3 border rounded d-flex justify-content-between align-items-center" style="height:38px; background: var(--surface-soft); border-color: var(--border-color) !important;">
+                            <span class="small fw-medium" style="color: var(--text-primary);">Auto PT Slabs</span>
                             <div class="form-check form-switch mb-0">
                                 <input class="form-check-input" type="checkbox" name="payroll.pt_enabled" id="payroll_pt_enabled" <?php echo (($settings['payroll.pt_enabled'] ?? '1') === '1') ? 'checked' : ''; ?>>
                             </div>
@@ -1000,43 +1000,43 @@
 <!-- Test SMTP Connection Modal -->
 <div class="modal fade" id="testEmailModal" tabindex="-1" aria-labelledby="testEmailModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content bg-dark text-white border-secondary shadow-lg" style="border-radius:12px;">
-            <div class="modal-header border-secondary py-3">
-                <h5 class="modal-title fs-6 d-flex align-items-center gap-2" id="testEmailModalLabel">
+        <div class="modal-content shadow-lg border" style="background: var(--panel-dark); border-color: var(--border-color) !important; border-radius:16px;">
+            <div class="modal-header py-3 border-bottom" style="border-color: var(--border-color) !important;">
+                <h5 class="modal-title fs-6 d-flex align-items-center gap-2 fw-bold" id="testEmailModalLabel" style="color: var(--text-primary);">
                     <i class="fa-solid fa-paper-plane text-info"></i>
                     <span>Test SMTP Email Delivery</span>
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
-                <p class="text-secondary small mb-3">
+                <p class="small mb-3" style="color: var(--text-secondary);">
                     Send a live test verification email using the currently configured SMTP parameters to ensure payslips can be sent without delivery errors.
                 </p>
 
                 <div id="test-email-alert" class="d-none alert mb-3 small" role="alert"></div>
 
                 <div class="mb-3">
-                    <label class="form-label text-secondary small font-weight-bold">Recipient Test Email *</label>
-                    <input type="email" id="test_email_recipient" class="form-control bg-black bg-opacity-50 border-secondary text-white font-monospace" 
+                    <label class="form-label small fw-bold" style="color: var(--text-secondary);">Recipient Test Email *</label>
+                    <input type="email" id="test_email_recipient" class="form-control font-monospace" 
                            value="<?php echo htmlspecialchars($_SESSION['user_email'] ?? 'admin@raptor.local'); ?>" placeholder="admin@yourdomain.com" required>
                 </div>
 
-                <div class="p-3 rounded bg-black bg-opacity-25 border border-secondary small text-secondary">
+                <div class="p-3 rounded border small" style="background: var(--surface-soft); border-color: var(--border-color) !important; color: var(--text-secondary);">
                     <div class="d-flex justify-content-between mb-1">
                         <span>Configured Host:</span>
-                        <strong class="text-white font-monospace" id="lbl-test-host"><?php echo htmlspecialchars($settings['mail.host'] ?? 'Local/Empty'); ?></strong>
+                        <strong class="font-monospace" style="color: var(--text-primary);" id="lbl-test-host"><?php echo htmlspecialchars($settings['mail.host'] ?? 'Local/Empty'); ?></strong>
                     </div>
                     <div class="d-flex justify-content-between mb-1">
                         <span>Port &amp; Protocol:</span>
-                        <strong class="text-white font-monospace" id="lbl-test-port"><?php echo htmlspecialchars($settings['mail.port'] ?? '587'); ?> (<?php echo strtoupper($settings['mail.encryption'] ?? 'TLS'); ?>)</strong>
+                        <strong class="font-monospace" style="color: var(--text-primary);" id="lbl-test-port"><?php echo htmlspecialchars($settings['mail.port'] ?? '587'); ?> (<?php echo strtoupper($settings['mail.encryption'] ?? 'TLS'); ?>)</strong>
                     </div>
                     <div class="d-flex justify-content-between">
                         <span>From Address:</span>
-                        <strong class="text-white font-monospace"><?php echo htmlspecialchars($settings['mail.from_address'] ?? 'accounts@axioraglobalsolutions.com'); ?></strong>
+                        <strong class="font-monospace" style="color: var(--text-primary);"><?php echo htmlspecialchars($settings['mail.from_address'] ?? 'accounts@axioraglobalsolutions.com'); ?></strong>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-secondary py-2">
+            <div class="modal-footer py-2 border-top" style="border-color: var(--border-color) !important;">
                 <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary btn-sm px-3" id="btn-run-test-email" style="background: var(--primary); border: none;">
                     <i class="fa-solid fa-paper-plane me-1"></i> <span id="btn-test-text">Dispatch Test Email</span>
@@ -1049,43 +1049,43 @@
 <!-- Test Marketing SMTP Connection Modal -->
 <div class="modal fade" id="testMarketingEmailModal" tabindex="-1" aria-labelledby="testMarketingEmailModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content bg-dark text-white border-secondary shadow-lg" style="border-radius:12px;">
-            <div class="modal-header border-secondary py-3">
-                <h5 class="modal-title fs-6 d-flex align-items-center gap-2" id="testMarketingEmailModalLabel">
+        <div class="modal-content shadow-lg border" style="background: var(--panel-dark); border-color: var(--border-color) !important; border-radius:16px;">
+            <div class="modal-header py-3 border-bottom" style="border-color: var(--border-color) !important;">
+                <h5 class="modal-title fs-6 d-flex align-items-center gap-2 fw-bold" id="testMarketingEmailModalLabel" style="color: var(--text-primary);">
                     <i class="fa-solid fa-bullhorn text-warning"></i>
                     <span>Test Marketing SMTP Delivery</span>
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
-                <p class="text-secondary small mb-3">
+                <p class="small mb-3" style="color: var(--text-secondary);">
                     Send a live test verification email using the marketing SMTP configuration to ensure bulk broadcasts and campaign invitations reach recipient inboxes.
                 </p>
 
                 <div id="test-marketing-email-alert" class="d-none alert mb-3 small" role="alert"></div>
 
                 <div class="mb-3">
-                    <label class="form-label text-secondary small font-weight-bold">Recipient Test Email *</label>
-                    <input type="email" id="test_marketing_recipient" class="form-control bg-black bg-opacity-50 border-secondary text-white font-monospace" 
+                    <label class="form-label small fw-bold" style="color: var(--text-secondary);">Recipient Test Email *</label>
+                    <input type="email" id="test_marketing_recipient" class="form-control font-monospace" 
                            value="<?php echo htmlspecialchars($_SESSION['user_email'] ?? 'admin@raptor.local'); ?>" placeholder="admin@yourdomain.com" required>
                 </div>
 
-                <div class="p-3 rounded bg-black bg-opacity-25 border border-secondary small text-secondary">
+                <div class="p-3 rounded border small" style="background: var(--surface-soft); border-color: var(--border-color) !important; color: var(--text-secondary);">
                     <div class="d-flex justify-content-between mb-1">
                         <span>Marketing Host:</span>
-                        <strong class="text-white font-monospace" id="lbl-test-marketing-host"><?php echo htmlspecialchars(!empty($settings['mail.marketing.host']) ? $settings['mail.marketing.host'] : ($settings['mail.host'] ?? 'Local/Empty')); ?></strong>
+                        <strong class="font-monospace" style="color: var(--text-primary);" id="lbl-test-marketing-host"><?php echo htmlspecialchars(!empty($settings['mail.marketing.host']) ? $settings['mail.marketing.host'] : ($settings['mail.host'] ?? 'Local/Empty')); ?></strong>
                     </div>
                     <div class="d-flex justify-content-between mb-1">
                         <span>Port &amp; Protocol:</span>
-                        <strong class="text-white font-monospace" id="lbl-test-marketing-port"><?php echo htmlspecialchars(!empty($settings['mail.marketing.port']) ? $settings['mail.marketing.port'] : ($settings['mail.port'] ?? '587')); ?> (<?php echo strtoupper(!empty($settings['mail.marketing.encryption']) ? $settings['mail.marketing.encryption'] : ($settings['mail.encryption'] ?? 'TLS')); ?>)</strong>
+                        <strong class="font-monospace" style="color: var(--text-primary);" id="lbl-test-marketing-port"><?php echo htmlspecialchars(!empty($settings['mail.marketing.port']) ? $settings['mail.marketing.port'] : ($settings['mail.port'] ?? '587')); ?> (<?php echo strtoupper(!empty($settings['mail.marketing.encryption']) ? $settings['mail.marketing.encryption'] : ($settings['mail.encryption'] ?? 'TLS')); ?>)</strong>
                     </div>
                     <div class="d-flex justify-content-between">
                         <span>From Address:</span>
-                        <strong class="text-white font-monospace"><?php echo htmlspecialchars($settings['mail.marketing.from_address'] ?? 'contacts@axioraglobalsolutions.com'); ?></strong>
+                        <strong class="font-monospace" style="color: var(--text-primary);"><?php echo htmlspecialchars($settings['mail.marketing.from_address'] ?? 'contacts@axioraglobalsolutions.com'); ?></strong>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-secondary py-2">
+            <div class="modal-footer py-2 border-top" style="border-color: var(--border-color) !important;">
                 <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-warning btn-sm px-3" id="btn-run-test-marketing-email">
                     <i class="fa-solid fa-paper-plane me-1"></i> <span id="btn-test-marketing-text">Dispatch Test Email</span>
@@ -1171,7 +1171,17 @@ $(document).ready(function() {
             error: function(xhr) {
                 btn.prop('disabled', false);
                 $('#btn-test-text').html('<i class="fa-solid fa-paper-plane me-1"></i> Dispatch Test Email');
-                alertBox.removeClass('d-none alert-success').addClass('alert-danger').html('<i class="fa-solid fa-triangle-exclamation me-1"></i> Request failed (HTTP ' + xhr.status + '). Check server logs.');
+                let errText = 'Failed to execute test email request.';
+                if (xhr.responseText) {
+                    try {
+                        const parsed = JSON.parse(xhr.responseText);
+                        if (parsed.error) errText = parsed.error;
+                    } catch(e) {
+                        const clean = xhr.responseText.replace(/<[^>]*>?/gm, '').trim();
+                        if (clean) errText = clean;
+                    }
+                }
+                alertBox.removeClass('d-none alert-success').addClass('alert-danger').html('<i class="fa-solid fa-triangle-exclamation me-1"></i> ' + errText);
             }
         });
     });
@@ -1284,17 +1294,17 @@ $(document).ready(function() {
 
         leaveTypes.forEach((lt, idx) => {
             const tr = $('<tr>');
-            tr.append(`<td><input type="text" class="form-control form-control-sm bg-dark text-white border-secondary lt-name" data-idx="${idx}" value="${lt.name || ''}"></td>`);
-            tr.append(`<td><input type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary lt-quota" data-idx="${idx}" value="${lt.quota || 0}"></td>`);
+            tr.append(`<td><input type="text" class="form-control form-control-sm lt-name" data-idx="${idx}" value="${lt.name || ''}"></td>`);
+            tr.append(`<td><input type="number" min="0" class="form-control form-control-sm lt-quota" data-idx="${idx}" value="${lt.quota || 0}"></td>`);
             tr.append(`<td>
-                <select class="form-select form-select-sm bg-dark text-white border-secondary lt-carry" data-idx="${idx}">
+                <select class="form-select form-select-sm lt-carry" data-idx="${idx}">
                     <option value="No" ${lt.carry_forward === 'No' ? 'selected' : ''}>No</option>
                     <option value="Yes" ${lt.carry_forward === 'Yes' ? 'selected' : ''}>Yes</option>
                 </select>
             </td>`);
-            tr.append(`<td><input type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary lt-maxcarry" data-idx="${idx}" value="${lt.max_carry || 0}"></td>`);
+            tr.append(`<td><input type="number" min="0" class="form-control form-control-sm lt-maxcarry" data-idx="${idx}" value="${lt.max_carry || 0}"></td>`);
             tr.append(`<td>
-                <select class="form-select form-select-sm bg-dark text-white border-secondary lt-encash" data-idx="${idx}">
+                <select class="form-select form-select-sm lt-encash" data-idx="${idx}">
                     <option value="No" ${lt.encashable === 'No' ? 'selected' : ''}>No</option>
                     <option value="Yes" ${lt.encashable === 'Yes' ? 'selected' : ''}>Yes</option>
                 </select>
@@ -1351,10 +1361,10 @@ $(document).ready(function() {
 
         shiftTemplates.forEach((st, idx) => {
             const tr = $('<tr>');
-            tr.append(`<td><input type="text" class="form-control form-control-sm bg-dark text-white border-secondary st-name" data-idx="${idx}" value="${st.name || ''}"></td>`);
-            tr.append(`<td><input type="time" class="form-control form-control-sm bg-dark text-white border-secondary st-start" data-idx="${idx}" value="${st.start_time || '09:30'}"></td>`);
-            tr.append(`<td><input type="time" class="form-control form-control-sm bg-dark text-white border-secondary st-end" data-idx="${idx}" value="${st.end_time || '18:30'}"></td>`);
-            tr.append(`<td><input type="number" min="0" class="form-control form-control-sm bg-dark text-white border-secondary st-grace" data-idx="${idx}" value="${st.grace_minutes || 15}"></td>`);
+            tr.append(`<td><input type="text" class="form-control form-control-sm st-name" data-idx="${idx}" value="${st.name || ''}"></td>`);
+            tr.append(`<td><input type="time" class="form-control form-control-sm st-start" data-idx="${idx}" value="${st.start_time || '09:30'}"></td>`);
+            tr.append(`<td><input type="time" class="form-control form-control-sm st-end" data-idx="${idx}" value="${st.end_time || '18:30'}"></td>`);
+            tr.append(`<td><input type="number" min="0" class="form-control form-control-sm st-grace" data-idx="${idx}" value="${st.grace_minutes || 15}"></td>`);
             tr.append(`<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger btn-del-st" data-idx="${idx}"><i class="fa-solid fa-trash"></i></button></td>`);
             tbody.append(tr);
         });

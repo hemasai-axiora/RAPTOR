@@ -32,7 +32,7 @@ class RecruitmentOfferController extends Controller {
      * Offer list and status directory.
      */
     public function index(): void {
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $role = (string)($_SESSION['user_role'] ?? 'employee');
 
         $statusFilter = $_GET['status'] ?? '';
@@ -60,7 +60,7 @@ class RecruitmentOfferController extends Controller {
      * Offer builder wizard.
      */
     public function create(): void {
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
 
         // Fetch applications eligible for offer (shortlisted, interview, or offer_prep)
         $stmtApps = $db->query("
@@ -102,7 +102,7 @@ class RecruitmentOfferController extends Controller {
     public function store(): void {
         $this->validateCsrf();
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $userId = (int)$_SESSION['user_id'];
 
         $payload = [
@@ -141,7 +141,7 @@ class RecruitmentOfferController extends Controller {
             return;
         }
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $role = (string)($_SESSION['user_role'] ?? 'employee');
 
         $offer = $this->offerService->getOfferById($db, $offerId, $role);
@@ -182,7 +182,7 @@ class RecruitmentOfferController extends Controller {
             return;
         }
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $userId = (int)$_SESSION['user_id'];
         $role   = (string)($_SESSION['user_role'] ?? 'employee');
 
@@ -207,7 +207,7 @@ class RecruitmentOfferController extends Controller {
             return;
         }
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $userId = (int)$_SESSION['user_id'];
 
         try {
@@ -234,7 +234,7 @@ class RecruitmentOfferController extends Controller {
             return;
         }
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
 
         try {
             $this->offerService->candidateResponse($db, $offerId, $decision, $reason ?: null);

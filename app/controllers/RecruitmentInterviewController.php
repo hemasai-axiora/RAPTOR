@@ -35,7 +35,7 @@ class RecruitmentInterviewController extends Controller {
      * Interview calendar and schedule view.
      */
     public function index(): void {
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
 
         // Calculate current week date range (Monday to Sunday)
         $startOfWeek = date('Y-m-d', strtotime('monday this week'));
@@ -91,7 +91,7 @@ class RecruitmentInterviewController extends Controller {
     public function store(): void {
         $this->validateCsrf();
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $userId = (int)$_SESSION['user_id'];
 
         $applicationId  = (int)($_POST['application_id'] ?? 0);
@@ -138,7 +138,7 @@ class RecruitmentInterviewController extends Controller {
             return;
         }
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $userId = (int)$_SESSION['user_id'];
         $role   = (string)($_SESSION['user_role'] ?? 'employee');
 
@@ -167,7 +167,7 @@ class RecruitmentInterviewController extends Controller {
     public function submitEvaluation(): void {
         $this->validateCsrf();
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $userId = (int)$_SESSION['user_id'];
 
         $interviewId = (int)($_POST['interview_id'] ?? 0);
@@ -203,7 +203,7 @@ class RecruitmentInterviewController extends Controller {
     public function screen($id = null): void {
         $this->validateCsrf();
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $userId = (int)$_SESSION['user_id'];
         $applicationId = (int)($id ?? $_POST['application_id'] ?? 0);
 

@@ -29,7 +29,7 @@ class RecruitmentApplicationController extends Controller {
      * Primary ATS Kanban Pipeline Board.
      */
     public function index(): void {
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $jobId = !empty($_GET['job_id']) ? (int)$_GET['job_id'] : null;
         $recruiterId = !empty($_GET['recruiter_id']) ? (int)$_GET['recruiter_id'] : null;
 
@@ -97,7 +97,7 @@ class RecruitmentApplicationController extends Controller {
             return;
         }
 
-        $db = Database::getInstance();
+        $db = Database::getInstance()->getConnection();
         $userId = (int) $_SESSION['user_id'];
 
         try {

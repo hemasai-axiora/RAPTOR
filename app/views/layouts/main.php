@@ -1621,7 +1621,7 @@
 
                 <!-- 5.5 Recruitment (ATS) Accordion Group -->
                 <?php if (Policy::canAccessRecruitment()): ?>
-                <li class="menu-section <?php echo (isset($active_tab) && strpos($active_tab, 'recruitment') !== false) ? 'open active' : ''; ?>" data-section="recruitment">
+                <li class="menu-section <?php echo ((isset($active_tab) && strpos($active_tab, 'recruitment') !== false) || (isset($_GET['route']) && strpos($_GET['route'], 'recruitment') === 0)) ? 'expanded has-active' : ''; ?>" data-section="recruitment">
                     <div class="menu-section-header" title="Recruitment (ATS)">
                         <i class="fa-solid fa-user-plus section-icon"></i>
                         <span class="section-text">Recruitment (ATS)</span>
@@ -1664,7 +1664,7 @@
                                 <i class="fa-solid fa-id-card-clip"></i><span>Pre-Joining & BGV</span>
                             </a>
                         </li>
-                        <li class="menu-item <?php echo (isset($active_tab) && $active_tab === 'recruitment_reports') ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo ((isset($active_tab) && in_array($active_tab, ['recruitment_reports', 'recruitment_analytics'], true)) || (isset($_GET['route']) && (strpos($_GET['route'], 'recruitment/reports') === 0 || strpos($_GET['route'], 'recruitment_analytics') === 0))) ? 'active' : ''; ?>">
                             <a href="index.php?route=recruitment/reports">
                                 <i class="fa-solid fa-chart-column"></i><span>Recruitment Analytics</span>
                             </a>
@@ -1806,7 +1806,7 @@
                         <i class="fa-solid fa-chevron-right section-arrow"></i>
                     </div>
                     <ul class="menu-section-items">
-                        <li class="menu-item <?php echo (($data['title'] ?? '') === 'Reports Center | Raptor CRM' || (isset($_GET['route']) && strpos($_GET['route'], 'reports') !== false)) ? 'active' : ''; ?>">
+                        <li class="menu-item <?php echo (($data['title'] ?? '') === 'Reports Center | Raptor CRM' || (isset($_GET['route']) && (strpos($_GET['route'], 'reports/') === 0 || $_GET['route'] === 'reports' || $_GET['route'] === 'reports/index')) || (isset($active_tab) && $active_tab === 'reports')) ? 'active' : ''; ?>">
                             <a href="index.php?route=reports/index">
                                 <i class="fa-solid fa-folder-open"></i><span>Reports Center</span>
                             </a>
