@@ -127,6 +127,10 @@ class SettingsController extends Controller {
                 'mail.marketing.encryption',
                 'mail.marketing.from_address',
                 'mail.marketing.from_name',
+                'mail.marketing.ses_region',
+                'mail.marketing.ses_configuration_set',
+                'mail.marketing.pacing_seconds',
+                'mail.warmup_enabled',
 
                 // Payroll Lifecycle & Calculation Configurations
                 'payroll.cycle_type',
@@ -148,15 +152,15 @@ class SettingsController extends Controller {
                                             ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)');
 
                 foreach ($settingKeys as $key) {
+                    $postKey = str_replace('.', '_', $key);
                     if ($key === 'attendance.week_off_days') {
-                        $weekOffArr = $_POST['attendance_week_off_days'] ?? [];
+                        $weekOffArr = $_POST['attendance_week_off_days'] ?? ($_POST['attendance.week_off_days'] ?? []);
                         $value = is_array($weekOffArr) ? implode(',', array_map('trim', $weekOffArr)) : '';
+                    } elseif (in_array($key, ['attendance.geofence_enabled', 'location.tracking_enabled', 'alerts.cron_enabled', 'alerts.web_push_enabled', 'alerts.email_enabled', 'reports.email_enabled', 'attendance.allow_week_off_override', 'mail.auto_send_on_generation', 'mail.marketing.enabled', 'payroll.pt_enabled', 'payroll.auto_email_payslips'], true)) {
+                        $value = (isset($_POST[$key]) || isset($_POST[$postKey])) ? '1' : '0';
                     } else {
-                        $value = isset($_POST[$key]) ? trim($_POST[$key]) : '';
-                    }
-
-                    if (in_array($key, ['attendance.geofence_enabled', 'location.tracking_enabled', 'alerts.cron_enabled', 'alerts.web_push_enabled', 'alerts.email_enabled', 'reports.email_enabled', 'attendance.allow_week_off_override', 'mail.auto_send_on_generation', 'mail.marketing.enabled', 'payroll.pt_enabled', 'payroll.auto_email_payslips'], true)) {
-                        $value = isset($_POST[$key]) ? '1' : '0';
+                        $raw = $_POST[$key] ?? ($_POST[$postKey] ?? '');
+                        $value = is_string($raw) ? trim($raw) : (string)$raw;
                     }
 
                     $stmt->execute([
@@ -232,16 +236,22 @@ class SettingsController extends Controller {
 
     // Send diagnostic test email to verify Marketing SMTP configuration
     public function test_marketing_email() {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-                if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
-                    header('Content-Type: application/json');
-                    echo json_encode(['success' => false, 'error' => 'CSRF validation failed']);
-                    exit;
-                }
-                die('CSRF validation failed.');
-            }
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/json');
 
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Method not allowed.']);
+            exit;
+        }
+
+        if (!isset($_POST['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+            echo json_encode(['success' => false, 'error' => 'CSRF security token expired. Please refresh the page and try again.']);
+            exit;
+        }
+
+        try {
             require_once APPROOT . '/services/EmailService.php';
 
             $recipient = trim($_POST['test_email_recipient'] ?? '');
@@ -249,33 +259,38 @@ class SettingsController extends Controller {
                 $recipient = $_SESSION['user_email'] ?? 'admin@raptor.local';
             }
 
+            $driver = trim($_POST['mail_marketing_driver'] ?? 'smtp');
+            $host = trim($_POST['mail_marketing_host'] ?? '');
+            $sesRegion = trim($_POST['mail_marketing_ses_region'] ?? 'us-east-1');
+            if (empty($host) && ($driver === 'ses' || $driver === 'aws_ses' || $driver === 'amazon_ses')) {
+                $host = "email-smtp.{$sesRegion}.amazonaws.com";
+            }
+
             $testConfig = [
-                'driver'       => trim($_POST['mail_marketing_driver'] ?? 'smtp'),
-                'host'         => trim($_POST['mail_marketing_host'] ?? ''),
+                'driver'       => $driver,
+                'host'         => $host,
                 'port'         => (int)($_POST['mail_marketing_port'] ?? 587),
                 'username'     => trim($_POST['mail_marketing_username'] ?? ''),
                 'password'     => $_POST['mail_marketing_password'] ?? '',
                 'encryption'   => trim($_POST['mail_marketing_encryption'] ?? 'tls'),
                 'from_address' => trim($_POST['mail_marketing_from_address'] ?? 'contacts@axioraglobalsolutions.com'),
                 'from_name'    => trim($_POST['mail_marketing_from_name'] ?? 'Axiora Global'),
+                'is_marketing' => true,
                 'timeout'      => 10
             ];
 
-            $result = EmailService::testConnection($recipient, $testConfig);
-
-            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
-                header('Content-Type: application/json');
-                echo json_encode($result);
+            if (empty($testConfig['host'])) {
+                echo json_encode(['success' => false, 'error' => 'Marketing SMTP Host cannot be empty. Marketing test emails cannot use Corporate SMTP.']);
                 exit;
             }
 
-            if ($result['success']) {
-                $_SESSION['settings_success'] = "Marketing test email sent successfully to {$recipient}!";
-            } else {
-                $_SESSION['settings_error'] = "Failed to send marketing test email: " . ($result['error'] ?? 'Unknown error');
-            }
+            $result = EmailService::testConnection($recipient, $testConfig);
+            echo json_encode($result);
+            exit;
+        } catch (Throwable $t) {
+            echo json_encode(['success' => false, 'error' => 'Execution error: ' . $t->getMessage()]);
+            exit;
         }
-        $this->redirect('index.php?route=settings/index');
     }
 
     // List users for Access Control management

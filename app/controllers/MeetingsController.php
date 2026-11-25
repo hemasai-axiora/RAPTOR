@@ -169,10 +169,26 @@ class MeetingsController extends Controller {
                         "- Location: " . ($location ?: 'N/A') . "\n\n" .
                         "Please click the link below to view or check-in to this meeting:\n" .
                         $meetingUrl . "\n\n" .
-                        "Best regards,\nRaptor CRM System";
+                        "Best regards,\nAxiora CRM Team";
+
+                $htmlBody = '<div style="max-width:600px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;color:#1e293b;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">'
+                          . '<div style="background:#0f172a;padding:20px 24px;color:#ffffff;"><h2 style="margin:0;font-size:18px;">Axiora Global Solutions</h2></div>'
+                          . '<div style="padding:24px;line-height:1.6;">'
+                          . '<p>Hello,</p>'
+                          . '<p>A new meeting has been scheduled in Raptor CRM. Please review the details below:</p>'
+                          . '<table style="width:100%;border-collapse:collapse;margin:16px 0;">'
+                          . '<tr><td style="padding:8px 0;color:#64748b;width:35%;">Title</td><td style="padding:8px 0;font-weight:bold;">' . htmlspecialchars($title) . '</td></tr>'
+                          . '<tr><td style="padding:8px 0;color:#64748b;">Date &amp; Time</td><td style="padding:8px 0;font-weight:bold;">' . htmlspecialchars($scheduledStart) . '</td></tr>'
+                          . '<tr><td style="padding:8px 0;color:#64748b;">Location</td><td style="padding:8px 0;">' . htmlspecialchars($location ?: 'Online / TBD') . '</td></tr>'
+                          . '</table>'
+                          . '<p style="margin:20px 0;"><a href="' . htmlspecialchars($meetingUrl) . '" style="display:inline-block;background:#2563eb;color:#ffffff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;">View &amp; Check-In to Meeting</a></p>'
+                          . '<p style="margin-top:24px;color:#64748b;font-size:13px;">Best regards,<br><strong style="color:#0f172a;">Axiora CRM Team</strong></p>'
+                          . '</div>'
+                          . '<div style="background:#f8fafc;padding:12px 24px;font-size:12px;color:#94a3b8;border-top:1px solid #e2e8f0;text-align:center;">Axiora Global Solutions, Cyber City, Hyderabad, India</div>'
+                          . '</div>';
 
                 foreach ($recipients as $email) {
-                    @mail($email, $subject, $body);
+                    EmailService::send($email, 'Colleague / Stakeholder', $subject, $htmlBody, $body);
                 }
             }
         }

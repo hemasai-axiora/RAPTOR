@@ -109,6 +109,31 @@ class AuthController extends Controller {
                     $_SESSION['forgot_otp'] = $otp;
                     $_SESSION['forgot_email'] = $user->email;
                     $_SESSION['forgot_expires'] = time() + 600; // 10 minutes
+
+                    if (class_exists('EmailService') && filter_var($user->email, FILTER_VALIDATE_EMAIL)) {
+                        $otpSubject = "Your Raptor CRM Password Reset Verification Code";
+                        $otpPlain = "Hello " . ($user->name ?? 'User') . ",\n\n" .
+                                    "Your password reset verification code is: {$otp}\n\n" .
+                                    "This code will expire in 10 minutes.\n" .
+                                    "If you did not request this password reset, please ignore this email or contact support.\n\n" .
+                                    "Best regards,\nAxiora Security Team";
+                        $otpHtml = '<div style="max-width:550px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;color:#1e293b;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">'
+                                 . '<div style="background:#0f172a;padding:20px 24px;color:#ffffff;"><h2 style="margin:0;font-size:18px;">Axiora Global Solutions</h2></div>'
+                                 . '<div style="padding:24px;line-height:1.6;">'
+                                 . '<p>Hello ' . htmlspecialchars($user->name ?? 'User') . ',</p>'
+                                 . '<p>We received a request to reset your password for Raptor CRM. Use the verification code below to complete your password reset:</p>'
+                                 . '<div style="background:#f1f5f9;border-radius:6px;padding:16px;text-align:center;margin:20px 0;"><span style="font-size:28px;font-weight:bold;letter-spacing:4px;color:#0f172a;">' . htmlspecialchars($otp) . '</span></div>'
+                                 . '<p style="font-size:13px;color:#64748b;">This verification code is valid for <strong>10 minutes</strong>. If you did not initiate this request, no action is needed and your account remains secure.</p>'
+                                 . '<p style="margin-top:24px;color:#64748b;font-size:13px;">Best regards,<br><strong style="color:#0f172a;">Axiora Security Team</strong></p>'
+                                 . '</div>'
+                                 . '<div style="background:#f8fafc;padding:12px 24px;font-size:12px;color:#94a3b8;border-top:1px solid #e2e8f0;text-align:center;">Axiora Global Solutions, Cyber City, Hyderabad, India</div>'
+                                 . '</div>';
+                        try {
+                            EmailService::send($user->email, $user->name ?? 'User', $otpSubject, $otpHtml, $otpPlain);
+                        } catch (Throwable $eMail) {
+                            // Non-blocking: session OTP remains available for UI demo/fallback
+                        }
+                    }
                 } else {
                     // Set fake session data to prevent timing analysis & keep reset flow consistent
                     $_SESSION['forgot_otp'] = (string) random_int(100000, 999999);

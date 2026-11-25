@@ -343,7 +343,8 @@ assertCondition(str_contains($c3Enrollment->execution_log_json, 'globally suppre
 
 // TEST 8: Standalone CLI Worker Test (bin/journey_worker.php --once)
 echo "\nTest 8: Standalone CLI Runner Execution\n";
-$workerCmd = "php " . escapeshellarg(__DIR__ . '/journey_worker.php') . " --once 2>&1";
+$phpBin = PHP_BINARY ?: 'php';
+$workerCmd = escapeshellarg($phpBin) . " " . escapeshellarg(__DIR__ . '/journey_worker.php') . " --once 2>&1";
 $output = [];
 $retVal = 0;
 exec($workerCmd, $output, $retVal);

@@ -140,23 +140,43 @@ class InvoicesController extends Controller {
                         $subject = !empty($_POST['custom_email_subject']) ? trim($_POST['custom_email_subject']) : ("Invoice Generated: " . $data['invoice_number']);
                         
                         // Use custom body if provided, and swap dynamic link placeholder
+                        $currencySymbol = ($data['currency'] === 'INR') ? 'Rs. ' : '$';
+                        $formattedAmount = $currencySymbol . number_format((float)$data['amount'], 2);
+                        $clientName = $client ? htmlspecialchars($client->company_name) : 'Valued Client';
+
                         if (!empty($_POST['custom_email_body'])) {
                             $body = trim($_POST['custom_email_body']);
                             $body = str_replace('[Invoice Link will be generated automatically]', $invoiceUrl, $body);
+                            $htmlBody = '<div style="font-family:sans-serif;line-height:1.6;color:#1e293b;padding:20px;">' . nl2br(htmlspecialchars($body)) . '</div>';
                         } else {
-                            $currencySymbol = ($data['currency'] === 'INR') ? 'Rs. ' : '$';
                             $body = "Hello,\n\nAn invoice has been generated for your company, " . ($client ? $client->company_name : 'Valued Client') . ".\n\n" .
                                     "Details:\n" .
                                     "- Invoice Number: " . $data['invoice_number'] . "\n" .
-                                    "- Amount: " . $currencySymbol . number_format((float)$data['amount'], 2) . "\n" .
+                                    "- Amount: " . $formattedAmount . "\n" .
                                     "- Due Date: " . $data['due_date'] . "\n\n" .
                                     "Please click the link below to view or print your invoice:\n" .
                                     $invoiceUrl . "\n\n" .
-                                    "Best regards,\nRaptor Billing Team";
+                                    "Best regards,\nAxiora Billing & Finance Team";
+
+                            $htmlBody = '<div style="max-width:600px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;color:#1e293b;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">'
+                                      . '<div style="background:#0f172a;padding:20px 24px;color:#ffffff;"><h2 style="margin:0;font-size:18px;">Axiora Global Solutions</h2></div>'
+                                      . '<div style="padding:24px;line-height:1.6;">'
+                                      . '<p>Dear ' . $clientName . ',</p>'
+                                      . '<p>An official invoice has been generated for your account. Please find the summary details below:</p>'
+                                      . '<table style="width:100%;border-collapse:collapse;margin:16px 0;">'
+                                      . '<tr><td style="padding:8px 0;color:#64748b;width:40%;">Invoice Number</td><td style="padding:8px 0;font-weight:bold;">' . htmlspecialchars($data['invoice_number']) . '</td></tr>'
+                                      . '<tr><td style="padding:8px 0;color:#64748b;">Amount Due</td><td style="padding:8px 0;font-weight:bold;">' . $formattedAmount . '</td></tr>'
+                                      . '<tr><td style="padding:8px 0;color:#64748b;">Due Date</td><td style="padding:8px 0;">' . htmlspecialchars($data['due_date']) . '</td></tr>'
+                                      . '</table>'
+                                      . '<p style="margin:20px 0;"><a href="' . htmlspecialchars($invoiceUrl) . '" style="display:inline-block;background:#2563eb;color:#ffffff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;">View &amp; Print Official Invoice</a></p>'
+                                      . '<p style="margin-top:24px;color:#64748b;font-size:13px;">Best regards,<br><strong style="color:#0f172a;">Axiora Billing &amp; Finance Team</strong></p>'
+                                      . '</div>'
+                                      . '<div style="background:#f8fafc;padding:12px 24px;font-size:12px;color:#94a3b8;border-top:1px solid #e2e8f0;text-align:center;">Axiora Global Solutions, Cyber City, Hyderabad, India</div>'
+                                      . '</div>';
                         }
                         
                         foreach ($recipients as $email) {
-                            @mail($email, $subject, $body);
+                            EmailService::send($email, $client ? $client->company_name : 'Valued Client', $subject, $htmlBody, $body);
                         }
                     }
 
@@ -272,18 +292,38 @@ class InvoicesController extends Controller {
                     $invoiceUrl = URLROOT . '/index.php?route=invoices/show/' . $invoice->invoice_id;
                     $subject = "Invoice Details: " . $invoice->invoice_number;
                     $currencySymbol = ($invoice->currency === 'INR') ? 'Rs. ' : '$';
+                    $formattedAmount = $currencySymbol . number_format((float)$invoice->amount, 2);
+                    $clientName = $client ? htmlspecialchars($client->company_name) : 'Valued Client';
+
                     $body = "Hello,\n\nPlease find the details of invoice " . $invoice->invoice_number . " generated for your company, " . ($client ? $client->company_name : 'Valued Client') . ".\n\n" .
                             "Details:\n" .
                             "- Invoice Number: " . $invoice->invoice_number . "\n" .
-                            "- Amount: " . $currencySymbol . number_format((float)$invoice->amount, 2) . "\n" .
+                            "- Amount: " . $formattedAmount . "\n" .
                             "- Due Date: " . $invoice->due_date . "\n\n" .
                             "Please click the link below to view or print your invoice:\n" .
                             $invoiceUrl . "\n\n" .
-                            "Best regards,\nRaptor Billing Team";
+                            "Best regards,\nAxiora Billing & Finance Team";
+
+                    $htmlBody = '<div style="max-width:600px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;color:#1e293b;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">'
+                              . '<div style="background:#0f172a;padding:20px 24px;color:#ffffff;"><h2 style="margin:0;font-size:18px;">Axiora Global Solutions</h2></div>'
+                              . '<div style="padding:24px;line-height:1.6;">'
+                              . '<p>Dear ' . $clientName . ',</p>'
+                              . '<p>Please find the summary details of your invoice below:</p>'
+                              . '<table style="width:100%;border-collapse:collapse;margin:16px 0;">'
+                              . '<tr><td style="padding:8px 0;color:#64748b;width:40%;">Invoice Number</td><td style="padding:8px 0;font-weight:bold;">' . htmlspecialchars($invoice->invoice_number) . '</td></tr>'
+                              . '<tr><td style="padding:8px 0;color:#64748b;">Amount Due</td><td style="padding:8px 0;font-weight:bold;">' . $formattedAmount . '</td></tr>'
+                              . '<tr><td style="padding:8px 0;color:#64748b;">Due Date</td><td style="padding:8px 0;">' . htmlspecialchars($invoice->due_date) . '</td></tr>'
+                              . '</table>'
+                              . '<p style="margin:20px 0;"><a href="' . htmlspecialchars($invoiceUrl) . '" style="display:inline-block;background:#2563eb;color:#ffffff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;">View &amp; Print Official Invoice</a></p>'
+                              . '<p style="margin-top:24px;color:#64748b;font-size:13px;">Best regards,<br><strong style="color:#0f172a;">Axiora Billing &amp; Finance Team</strong></p>'
+                              . '</div>'
+                              . '<div style="background:#f8fafc;padding:12px 24px;font-size:12px;color:#94a3b8;border-top:1px solid #e2e8f0;text-align:center;">Axiora Global Solutions, Cyber City, Hyderabad, India</div>'
+                              . '</div>';
                     
                     $success = true;
                     foreach ($recipients as $email) {
-                        if (!@mail($email, $subject, $body)) {
+                        $res = EmailService::send($email, $client ? $client->company_name : 'Valued Client', $subject, $htmlBody, $body);
+                        if (empty($res['success'])) {
                             $success = false;
                         }
                     }

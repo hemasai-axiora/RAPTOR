@@ -113,9 +113,15 @@ try {
 
     // Simple autoloader for core classes
     spl_autoload_register(function ($className) {
-        $corePath = APPROOT . '/core/' . $className . '.php';
-        $modelPath = APPROOT . '/models/' . $className . '.php';
-        $servicePath = APPROOT . '/services/' . $className . '.php';
+        if ($className === 'PreflightContext' || $className === 'Finding' || $className === 'MarketingRule') {
+            require_once APPROOT . '/services/PreflightEngine.php';
+            return;
+        }
+
+        $corePath    = APPROOT . '/core/'             . $className . '.php';
+        $modelPath   = APPROOT . '/models/'           . $className . '.php';
+        $servicePath = APPROOT . '/services/'         . $className . '.php';
+        $mailerPath  = APPROOT . '/services/mailers/' . $className . '.php';
         
         if (file_exists($corePath)) {
             require_once $corePath;
@@ -123,6 +129,8 @@ try {
             require_once $modelPath;
         } elseif (file_exists($servicePath)) {
             require_once $servicePath;
+        } elseif (file_exists($mailerPath)) {
+            require_once $mailerPath;
         }
     });
 

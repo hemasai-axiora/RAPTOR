@@ -7,6 +7,9 @@
  * Internal Payroll Employee Synchronization, and Global Suppression.
  */
 
+require_once APPROOT . '/services/PreflightEngine.php';
+require_once APPROOT . '/services/PreSendChecklistService.php';
+
 class EmailCampaignsController extends Controller {
 
     private CampaignContact $contactModel;
@@ -276,11 +279,13 @@ class EmailCampaignsController extends Controller {
         $totalCount = $this->campaignModel->countCampaigns($filters);
         $campaigns = $this->campaignModel->getAllCampaigns($filters, $limit, $offset);
         $totalPages = (int)ceil($totalCount / $limit);
+        $broadcastStats = $this->campaignModel->getBroadcastStats();
 
         $data = [
             'title' => 'Email Campaigns & Broadcasts | Raptor CRM',
             'active_tab' => 'email_campaigns_broadcasts',
             'campaigns' => $campaigns,
+            'stats' => $broadcastStats,
             'total_count' => $totalCount,
             'current_page' => $page,
             'total_pages' => $totalPages,
@@ -428,13 +433,18 @@ class EmailCampaignsController extends Controller {
             'email' => $testEmail
         ];
 
+        // Generate safe test preview unsubscribe token
+        $testToken = UnsubscribeService::generateToken($campaignId, 0, 'test-preview@raptor.internal');
+        $testUnsubUrl = UnsubscribeService::buildUnsubscribeUrl($testToken, $campaignId);
+        $testOneClickUrl = UnsubscribeService::buildOneClickUrl($testToken);
+
         $renderedHtml = CampaignTemplate::renderMergeTags($campaign->html_content, $sampleContact, [
-            'unsubscribe_url' => URLROOT . '/index.php?route=unsubscribe/view&token=test_preview_sample_token',
+            'unsubscribe_url' => $testUnsubUrl,
             'company_address' => 'Axiora Global Solutions, Cyber City, Hyderabad, India'
         ]);
 
         $renderedPlain = CampaignTemplate::renderMergeTags($campaign->plain_text_content, $sampleContact, [
-            'unsubscribe_url' => URLROOT . '/index.php?route=unsubscribe/view&token=test_preview_sample_token',
+            'unsubscribe_url' => $testUnsubUrl,
             'company_address' => 'Axiora Global Solutions, Cyber City, Hyderabad, India'
         ]);
 
@@ -456,7 +466,9 @@ class EmailCampaignsController extends Controller {
                 'text' => $renderedPlain,
                 'headers' => [
                     'X-Raptor-Test-Send' => '1',
-                    'Precedence' => 'bulk'
+                    'Precedence' => 'bulk',
+                    'List-Unsubscribe' => "<{$testOneClickUrl}>",
+                    'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click'
                 ]
             ];
 
@@ -494,6 +506,30 @@ class EmailCampaignsController extends Controller {
     }
 
     /**
+     * Real-time Spam-Free Content Verification (AJAX)
+     */
+    public function scanSpam() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['error' => 'Method not allowed']);
+            exit();
+        }
+
+        $subject = trim($_POST['subject'] ?? ($_POST['subject_a'] ?? ''));
+        $html = $_POST['html_content'] ?? '';
+        $plain = $_POST['plain_text_content'] ?? '';
+
+        $analysis = PreSendChecklistService::scanContentForSpam($subject, $html, $plain);
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'analysis' => $analysis
+        ]);
+        exit();
+    }
+
+    /**
      * Launch Campaign (Final Execution: Quality Gate & Queue Seeding)
      */
     public function campaignLaunch() {
@@ -506,20 +542,24 @@ class EmailCampaignsController extends Controller {
         $res = $this->campaignModel->launchCampaign($campaignId, (int)($_SESSION['user_id'] ?? 0));
 
         if ($res['success']) {
-            // Immediately dispatch queued batch via SMTP so recipients receive emails right away
-            $batchResult = EmailQueueService::processBatch(100, 10);
+            // Process the first queued item immediately (non-bulk safe dispatch)
+            // Subsequent queued items are spaced 120 seconds apart according to scheduled_at
+            $batchResult = EmailQueueService::processBatch(1, 1);
             $dispatchedCount = $batchResult['sent'] ?? 0;
             $failedCount = $batchResult['failed'] ?? 0;
+            $lastErr = $batchResult['last_error'] ?? null;
 
-            $msg = 'Campaign successfully verified and launched! ' . $res['message'];
-            if ($dispatchedCount > 0) {
-                $msg .= " ({$dispatchedCount} messages sent immediately via SMTP)";
-            }
-            if ($failedCount > 0) {
-                $msg .= " [Notice: {$failedCount} messages deferred or rejected by provider - review Deliverability Health]";
+            if ($dispatchedCount > 0 && $failedCount === 0) {
+                $_SESSION['flash_success'] = "Campaign verified & launched! 1st message dispatched safely via SMTP/SES. Remaining recipients are scheduled with strict 120s pacing (non-bulk delivery).";
+            } elseif ($dispatchedCount > 0 && $failedCount > 0) {
+                $errNote = $lastErr ? " (Provider message: {$lastErr})" : "";
+                $_SESSION['flash_warning'] = "Campaign launched with partial delivery: {$dispatchedCount} message(s) dispatched, but {$failedCount} deferred/rejected by provider{$errNote}. Review Deliverability Health.";
+            } else {
+                // 0 dispatched, all failed
+                $errNote = $lastErr ? ": {$lastErr}" : " - recipient messages rejected or deferred by provider";
+                $_SESSION['flash_error'] = "Campaign was launched, but email dispatch failed{$errNote}. Please verify your SMTP credentials in Settings > Marketing SMTP.";
             }
 
-            $_SESSION['flash_success'] = $msg;
             $this->redirect('index.php?route=email_campaigns/campaigns');
         } else {
             $errMsg = $res['error'] ?? 'Unknown error';
@@ -666,12 +706,20 @@ class EmailCampaignsController extends Controller {
         // Create immutable cryptographic snapshot
         $hash = CampaignSnapshotService::createSnapshot($campaignId, $userId, (array)$campaign);
 
-        // Update campaign status to approved
+        // Update campaign approval record and cryptographic snapshot
         $db = Database::getInstance()->getConnection();
-        $db->prepare('UPDATE campaigns_broadcast 
-                      SET status = "approved", approved_by = :uid, approved_at = NOW(), 
+        $hasApprovedEnum = false;
+        try {
+            $colCheck = $db->query("SHOW COLUMNS FROM campaigns_broadcast LIKE 'status'")->fetch(PDO::FETCH_ASSOC);
+            $hasApprovedEnum = (strpos($colCheck['Type'] ?? '', "'approved'") !== false);
+        } catch (Throwable $e) {}
+
+        $statusSql = $hasApprovedEnum ? 'status = "approved",' : '';
+
+        $db->prepare("UPDATE campaigns_broadcast 
+                      SET {$statusSql} approved_by = :uid, approved_at = NOW(), 
                           approved_snapshot_hash = :hash, content_sha256 = :hash 
-                      WHERE campaign_id = :cid')
+                      WHERE campaign_id = :cid")
            ->execute([':uid' => $userId, ':hash' => $hash, ':cid' => $campaignId]);
 
         $_SESSION['flash_success'] = 'Campaign approved successfully with immutable cryptographic snapshot (' . substr($hash, 0, 12) . '...). Ready to queue or schedule.';

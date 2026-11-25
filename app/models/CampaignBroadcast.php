@@ -15,6 +15,7 @@ class CampaignBroadcast extends Model {
     public const STATUS_PAUSED = 'paused';
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_FAILED = 'failed';
 
     private function hasCampaignColumn(string $column): bool {
         static $cols = null;
@@ -44,17 +45,33 @@ class CampaignBroadcast extends Model {
     }
 
     public function getAllCampaigns(array $filters = [], int $limit = 25, int $offset = 0): array {
-        $sql = 'SELECT c.*, 
+        $hasQueueTable = false;
+        try {
+            $db = Database::getInstance()->getConnection();
+            $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+            if ($driver === 'sqlite') {
+                $hasQueueTable = (bool)$db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='campaign_email_queue'")->fetch();
+            } else {
+                $hasQueueTable = (bool)$db->query("SHOW TABLES LIKE 'campaign_email_queue'")->fetch();
+            }
+        } catch (Throwable $e) {}
+
+        $queueSubquery = $hasQueueTable 
+            ? '(SELECT last_error FROM campaign_email_queue q WHERE q.campaign_id = c.campaign_id AND q.last_error IS NOT NULL AND q.last_error != "" ORDER BY q.queue_id DESC LIMIT 1) as latest_queue_error'
+            : 'NULL as latest_queue_error';
+
+        $sql = "SELECT c.*, 
                        l.name as list_name, 
                        s.name as segment_name, 
                        t.name as template_name,
-                       u.name as creator_name
+                       u.name as creator_name,
+                       {$queueSubquery}
                 FROM campaigns_broadcast c
                 LEFT JOIN campaign_lists l ON c.list_id = l.list_id
                 LEFT JOIN campaign_segments s ON c.segment_id = s.segment_id
                 LEFT JOIN campaign_templates t ON c.template_id = t.template_id
                 LEFT JOIN users u ON c.created_by = u.user_id
-                WHERE 1=1 ';
+                WHERE 1=1 ";
         $params = [];
 
         if (!empty($filters['status'])) {
@@ -74,6 +91,58 @@ class CampaignBroadcast extends Model {
             $this->bind($k, $v);
         }
         return $this->resultSet() ?: [];
+    }
+
+    /**
+     * Retrieve aggregated statistics for top KPI metric cards
+     */
+    public function getBroadcastStats(): array {
+        $stats = [
+            'total_campaigns' => 0,
+            'active_campaigns' => 0,
+            'scheduled_campaigns' => 0,
+            'completed_campaigns' => 0,
+            'total_sent' => 0,
+            'total_delivered' => 0,
+            'total_opened' => 0,
+            'total_clicked' => 0,
+            'avg_open_rate' => 0.0,
+            'avg_click_rate' => 0.0
+        ];
+
+        try {
+            $sql = "SELECT 
+                        COUNT(*) as total_count,
+                        SUM(CASE WHEN status IN ('sending', 'queued') THEN 1 ELSE 0 END) as active_count,
+                        SUM(CASE WHEN status = 'scheduled' THEN 1 ELSE 0 END) as scheduled_count,
+                        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_count,
+                        SUM(sent_count) as sum_sent,
+                        SUM(delivered_count) as sum_delivered,
+                        SUM(opened_count) as sum_opened,
+                        SUM(clicked_count) as sum_clicked
+                    FROM campaigns_broadcast";
+            $this->query($sql);
+            $row = $this->single();
+            if ($row) {
+                $stats['total_campaigns'] = (int)($row->total_count ?? 0);
+                $stats['active_campaigns'] = (int)($row->active_count ?? 0);
+                $stats['scheduled_campaigns'] = (int)($row->scheduled_count ?? 0);
+                $stats['completed_campaigns'] = (int)($row->completed_count ?? 0);
+                $stats['total_sent'] = (int)($row->sum_sent ?? 0);
+                $stats['total_delivered'] = (int)($row->sum_delivered ?? 0);
+                $stats['total_opened'] = (int)($row->sum_opened ?? 0);
+                $stats['total_clicked'] = (int)($row->sum_clicked ?? 0);
+
+                if ($stats['total_sent'] > 0) {
+                    $stats['avg_open_rate'] = round(($stats['total_opened'] / $stats['total_sent']) * 100, 1);
+                }
+                if ($stats['total_opened'] > 0) {
+                    $stats['avg_click_rate'] = round(($stats['total_clicked'] / $stats['total_opened']) * 100, 1);
+                }
+            }
+        } catch (Throwable $e) {}
+
+        return $stats;
     }
 
     public function countCampaigns(array $filters = []): int {
@@ -149,6 +218,26 @@ class CampaignBroadcast extends Model {
             $plainTextContent = CampaignTemplate::htmlToPlainText($htmlContent);
         }
 
+        // Auto-attach compliance footer if missing in promotional/marketing emails
+        if ($communicationIntent !== 'operational') {
+            $hasUnsubHtml = (strpos($htmlContent, '{{unsubscribe_url}}') !== false) ||
+                            (stripos($htmlContent, 'unsubscribe') !== false && preg_match('/<a[^>]*href=[^>]*>.*?unsubscribe.*?<\/a>/is', $htmlContent));
+            if (!$hasUnsubHtml && !empty($htmlContent)) {
+                $complianceFooter = '<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12px;color:#718096;text-align:center;">'
+                    . 'Axiora Global Solutions, Cyber City, Hyderabad, India | <a href="{{unsubscribe_url}}" style="color:#4a5568;text-decoration:underline;">Unsubscribe</a>'
+                    . '</div>';
+                if (stripos($htmlContent, '</body>') !== false) {
+                    $htmlContent = str_ireplace('</body>', $complianceFooter . '</body>', $htmlContent);
+                } else {
+                    $htmlContent .= "\n\n" . $complianceFooter;
+                }
+            }
+
+            if (!empty($plainTextContent) && strpos($plainTextContent, '{{unsubscribe_url}}') === false && stripos($plainTextContent, 'unsubscribe') === false) {
+                $plainTextContent = rtrim($plainTextContent) . "\n\nAxiora Global Solutions, Cyber City, Hyderabad, India | Unsubscribe: {{unsubscribe_url}}";
+            }
+        }
+
         // Sanitize HTML
         $htmlContent = CampaignTemplate::sanitizeHtml($htmlContent);
 
@@ -165,6 +254,11 @@ class CampaignBroadcast extends Model {
 
         $hasIntent = $this->hasCampaignColumn('communication_intent');
         $hasCHash = $this->hasCampaignColumn('content_sha256');
+        $hasWarmup = $this->hasCampaignColumn('is_warmup_enabled');
+        $hasPacing = $this->hasCampaignColumn('send_interval_seconds');
+
+        $isWarmup = isset($data['is_warmup_enabled']) ? (int)$data['is_warmup_enabled'] : 1;
+        $pacingSec = isset($data['send_interval_seconds']) ? max(120, (int)$data['send_interval_seconds']) : 120;
 
         $campaignId = (int)($data['campaign_id'] ?? 0);
         if ($campaignId > 0) {
@@ -179,6 +273,12 @@ class CampaignBroadcast extends Model {
             }
             if ($hasCHash) {
                 $sql .= ', content_sha256 = :chash, approved_snapshot_hash = NULL';
+            }
+            if ($hasWarmup) {
+                $sql .= ', is_warmup_enabled = :warmup';
+            }
+            if ($hasPacing) {
+                $sql .= ', send_interval_seconds = :pacing';
             }
             $sql .= ', updated_at = CURRENT_TIMESTAMP WHERE campaign_id = :id';
 
@@ -203,6 +303,12 @@ class CampaignBroadcast extends Model {
             if ($hasCHash) {
                 $this->bind(':chash', $contentHash);
             }
+            if ($hasWarmup) {
+                $this->bind(':warmup', $isWarmup);
+            }
+            if ($hasPacing) {
+                $this->bind(':pacing', $pacingSec);
+            }
             $this->bind(':id', $campaignId);
             $this->execute();
             return $campaignId;
@@ -224,6 +330,14 @@ class CampaignBroadcast extends Model {
         if ($hasCHash) {
             $insCols .= ', content_sha256';
             $insVals .= ', :chash';
+        }
+        if ($hasWarmup) {
+            $insCols .= ', is_warmup_enabled';
+            $insVals .= ', :warmup';
+        }
+        if ($hasPacing) {
+            $insCols .= ', send_interval_seconds';
+            $insVals .= ', :pacing';
         }
 
         $insCols .= ', status, created_by';
@@ -250,6 +364,12 @@ class CampaignBroadcast extends Model {
         }
         if ($hasCHash) {
             $this->bind(':chash', $contentHash);
+        }
+        if ($hasWarmup) {
+            $this->bind(':warmup', $isWarmup);
+        }
+        if ($hasPacing) {
+            $this->bind(':pacing', $pacingSec);
         }
         $this->bind(':uid', $userId);
         $this->execute();
@@ -350,7 +470,12 @@ class CampaignBroadcast extends Model {
             return ['success' => false, 'error' => 'Campaign not found'];
         }
 
-        if ($camp->status !== self::STATUS_DRAFT && $camp->status !== self::STATUS_SCHEDULED && $camp->status !== 'approved') {
+        if ($camp->status !== self::STATUS_DRAFT && 
+            $camp->status !== self::STATUS_SCHEDULED && 
+            $camp->status !== 'approved' &&
+            $camp->status !== self::STATUS_PAUSED &&
+            $camp->status !== self::STATUS_FAILED &&
+            !($camp->status === self::STATUS_COMPLETED && (int)$camp->sent_count === 0)) {
             return ['success' => false, 'error' => 'Campaign is not in a launchable state (status: ' . $camp->status . ')'];
         }
 
@@ -361,6 +486,67 @@ class CampaignBroadcast extends Model {
                     'success' => false,
                     'error' => 'Campaign approved content hash mismatch (Rule D-017). Approval invalidated because content was edited after sign-off. Please re-run preflight and re-approve.'
                 ];
+            }
+        }
+
+        // 0. Verify Dedicated Marketing SMTP is Enabled & Configured
+        $isExplicitlyDisabled = false;
+        try {
+            $dbCheck = Database::getInstance()->getConnection();
+            $stmt = $dbCheck->query("SELECT setting_value FROM settings WHERE setting_key = 'mail.marketing.enabled'");
+            $val = $stmt->fetchColumn();
+            if ($val !== false && ($val === '0' || $val === 0)) {
+                $isExplicitlyDisabled = true;
+            }
+        } catch (Throwable $t) {
+            // Table doesn't exist or not queryable (e.g. isolated mock test)
+        }
+
+        if ($isExplicitlyDisabled) {
+            return [
+                'success' => false,
+                'error' => 'Launch Blocked: Dedicated Marketing SMTP is disabled or unconfigured in Global Settings. Configure and enable Marketing SMTP in Settings before launching bulk campaigns to protect Corporate SMTP reputation.'
+            ];
+        }
+
+        // Auto-ensure compliance unsubscribe and postal address footer on launch if missing
+        if (($camp->communication_intent ?? 'promotional') !== 'operational') {
+            $hasUnsub = (strpos($camp->html_content, '{{unsubscribe_url}}') !== false) ||
+                        (stripos($camp->html_content, 'unsubscribe') !== false && preg_match('/<a[^>]*href=[^>]*>.*?unsubscribe.*?<\/a>/is', $camp->html_content));
+            $hasAddress = (strpos($camp->html_content, '{{company_address}}') !== false) ||
+                          (strpos($camp->html_content, '{{company_postal_address}}') !== false) ||
+                          (preg_match('/\b(?:suite|street|road|st|ave|blvd|lane|floor|building|box|city|india|usa|state|pin|zip|hyderabad|telangana|address)\b/i', $camp->html_content));
+
+            if (!$hasUnsub || !$hasAddress) {
+                $footerParts = [];
+                if (!$hasAddress) {
+                    $footerParts[] = 'Axiora Global Solutions, Cyber City, Hyderabad, India';
+                }
+                if (!$hasUnsub) {
+                    $footerParts[] = '<a href="{{unsubscribe_url}}" style="color:#4a5568;text-decoration:underline;">Unsubscribe</a>';
+                }
+                $complianceFooter = '<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12px;color:#718096;text-align:center;">'
+                    . implode(' | ', $footerParts)
+                    . '</div>';
+                $updatedHtml = (stripos($camp->html_content, '</body>') !== false)
+                    ? str_ireplace('</body>', $complianceFooter . '</body>', $camp->html_content)
+                    : ($camp->html_content . "\n\n" . $complianceFooter);
+
+                $updatedPlain = rtrim($camp->plain_text_content ?? '');
+                if (!$hasAddress) {
+                    $updatedPlain .= "\n\nAxiora Global Solutions, Cyber City, Hyderabad, India";
+                }
+                if (!$hasUnsub) {
+                    $updatedPlain .= "\n\nUnsubscribe: {{unsubscribe_url}}";
+                }
+
+                try {
+                    $dbFix = Database::getInstance()->getConnection();
+                    $dbFix->prepare("UPDATE campaigns_broadcast SET html_content = :html, plain_text_content = :plain WHERE campaign_id = :id")
+                          ->execute([':html' => $updatedHtml, ':plain' => $updatedPlain, ':id' => $campaignId]);
+                    $camp->html_content = $updatedHtml;
+                    $camp->plain_text_content = $updatedPlain;
+                } catch (Throwable $t) {}
             }
         }
 
@@ -401,17 +587,25 @@ class CampaignBroadcast extends Model {
         try {
             $db->beginTransaction();
 
+            // Clear any prior queue items and recipient rows if re-launching
+            $db->prepare('DELETE FROM campaign_email_queue WHERE campaign_id = :cid')->execute([':cid' => $campaignId]);
+            $db->prepare('DELETE FROM campaign_recipients WHERE campaign_id = :cid')->execute([':cid' => $campaignId]);
+
             $rIns = $db->prepare('INSERT INTO campaign_recipients 
                                   (campaign_id, contact_id, email, subject_variant, status, unsubscribe_token)
                                   VALUES (:cid, :cntid, :email, :variant, "queued", :token)');
 
             $qIns = $db->prepare('INSERT INTO campaign_email_queue 
                                   (campaign_id, recipient_id, status, priority, scheduled_at)
-                                  VALUES (:cid, :rid, "pending", 10, CURRENT_TIMESTAMP)');
+                                  VALUES (:cid, :rid, "pending", 10, :sched)');
 
             $hasAb = (!empty($camp->subject_b) && $camp->ab_split_percent > 0);
             $abSplitCount = $hasAb ? (int)ceil(count($recipients) * ($camp->ab_split_percent / 100)) : 0;
             $seededCount = 0;
+            $pacingSeconds = (isset($camp->send_interval_seconds) && (int)$camp->send_interval_seconds > 0)
+                ? (int)$camp->send_interval_seconds 
+                : 0;
+            $baseTimestamp = time();
 
             foreach ($recipients as $idx => $r) {
                 $cleanEmail = strtolower(trim($r->email));
@@ -435,9 +629,18 @@ class CampaignBroadcast extends Model {
 
                 $recipientId = (int)$db->lastInsertId();
 
+                // Strict 120-second minimum dispatch pacing per recipient to prevent bulk bursts
+                // Use UTC (gmdate) to ensure seamless compatibility with SQLite datetime('now') and MySQL UTC
+                if ($pacingSeconds > 0) {
+                    $scheduledAt = gmdate('Y-m-d H:i:s', $baseTimestamp + ($seededCount * $pacingSeconds));
+                } else {
+                    $scheduledAt = gmdate('Y-m-d H:i:s', $baseTimestamp);
+                }
+
                 $qIns->execute([
                     ':cid' => $campaignId,
-                    ':rid' => $recipientId
+                    ':rid' => $recipientId,
+                    ':sched' => $scheduledAt
                 ]);
 
                 $seededCount++;

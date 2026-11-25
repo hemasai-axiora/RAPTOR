@@ -1,7 +1,8 @@
 <?php
+
 /**
  * Raptor CRM Email Service
- * 
+ *
  * Enterprise email service supporting:
  * 1. Pure PHP Socket SMTP (SSL/TLS, STARTTLS, AUTH LOGIN/PLAIN) - No external composer dependencies needed.
  * 2. Native PHP mail() fallback.
@@ -10,12 +11,14 @@
  * 5. SMTP verification & diagnostic test connection tool.
  */
 
-class EmailService {
+class EmailService
+{
 
     /**
      * Retrieve mail settings from database settings table, with env() and sensible defaults.
      */
-    public static function getConfig(): array {
+    public static function getConfig(): array
+    {
         $db = null;
         $dbSettings = [];
         try {
@@ -30,7 +33,7 @@ class EmailService {
             // Database not accessible or table doesn't have mail keys yet
         }
 
-        $getEnvOrDb = function(string $dbKey, string $envKey, $default = '') use ($dbSettings) {
+        $getEnvOrDb = function (string $dbKey, string $envKey, $default = '') use ($dbSettings) {
             if (isset($dbSettings[$dbKey]) && $dbSettings[$dbKey] !== '') {
                 return $dbSettings[$dbKey];
             }
@@ -59,50 +62,81 @@ class EmailService {
     }
 
     /**
-     * Retrieve dedicated email marketing mail settings, falling back to corporate mail settings.
+     * Retrieve dedicated email marketing mail settings.
+     * STRICT ROUTING POLICY: Marketing campaigns MUST NOT fall back to Corporate SMTP!
+     * Supports Amazon SES, SMTP Socket, and PHP Native drivers.
+     * If disabled or unconfigured, returns enabled => false and error details.
      */
-    public static function getMarketingConfig(): array {
+    public static function getMarketingConfig(): array
+    {
         $dbSettings = [];
         try {
             if (class_exists('Database')) {
                 $db = Database::getInstance()->getConnection();
-                $stmt = $db->query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'mail.marketing.%'");
+                $stmt = $db->query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'mail.marketing.%' OR setting_key = 'mail.warmup_enabled'");
                 while ($row = $stmt->fetch(PDO::FETCH_OBJ)) {
                     $dbSettings[$row->setting_key] = $row->setting_value;
                 }
             }
-        } catch (Throwable $t) {}
+        } catch (Throwable $t) {
+        }
 
         $isDedicated = !empty($dbSettings['mail.marketing.enabled']) && ($dbSettings['mail.marketing.enabled'] === '1' || $dbSettings['mail.marketing.enabled'] === 1);
+        $driver = strtolower(trim($dbSettings['mail.marketing.driver'] ?? (getenv('MAIL_MARKETING_DRIVER') ?: 'smtp')));
+        $sesRegion = trim($dbSettings['mail.marketing.ses_region'] ?? (getenv('AWS_REGION') ?: 'us-east-1'));
+        $sesConfigSet = trim($dbSettings['mail.marketing.ses_configuration_set'] ?? (getenv('SES_CONFIGURATION_SET') ?: ''));
+        $pacingSeconds = max(120, (int)($dbSettings['mail.marketing.pacing_seconds'] ?? (getenv('MAIL_MARKETING_PACING') ?: 120)));
+        $warmupEnabled = !isset($dbSettings['mail.warmup_enabled']) || ($dbSettings['mail.warmup_enabled'] === '1' || $dbSettings['mail.warmup_enabled'] === 1);
+
         $mHost = trim($dbSettings['mail.marketing.host'] ?? (getenv('SMTP_MARKETING_HOST') ?: ''));
+        if (empty($mHost) && ($driver === 'ses' || $driver === 'aws_ses' || $driver === 'amazon_ses')) {
+            $mHost = "email-smtp.{$sesRegion}.amazonaws.com";
+        }
 
         if ($isDedicated && !empty($mHost)) {
-            $defaultDriver = $dbSettings['mail.marketing.driver'] ?? 'smtp';
             return [
-                'driver'          => $defaultDriver,
-                'host'            => $mHost,
-                'port'            => (int)($dbSettings['mail.marketing.port'] ?? (getenv('SMTP_MARKETING_PORT') ?: 587)),
-                'username'        => $dbSettings['mail.marketing.username'] ?? (getenv('SMTP_MARKETING_USER') ?: ''),
-                'password'        => $dbSettings['mail.marketing.password'] ?? (getenv('SMTP_MARKETING_PASS') ?: ''),
-                'encryption'      => strtolower($dbSettings['mail.marketing.encryption'] ?? (getenv('SMTP_MARKETING_ENCRYPTION') ?: 'tls')),
-                'from_address'    => $dbSettings['mail.marketing.from_address'] ?? 'contacts@axioraglobalsolutions.com',
-                'from_name'       => $dbSettings['mail.marketing.from_name'] ?? 'Axiora Global',
-                'auto_send'       => '1',
-                'timeout'         => 15
+                'enabled'                => true,
+                'driver'                 => $driver,
+                'host'                   => $mHost,
+                'port'                   => (int)($dbSettings['mail.marketing.port'] ?? (getenv('SMTP_MARKETING_PORT') ?: 587)),
+                'username'               => $dbSettings['mail.marketing.username'] ?? (getenv('SMTP_MARKETING_USER') ?: ''),
+                'password'               => $dbSettings['mail.marketing.password'] ?? (getenv('SMTP_MARKETING_PASS') ?: ''),
+                'encryption'             => strtolower($dbSettings['mail.marketing.encryption'] ?? (getenv('SMTP_MARKETING_ENCRYPTION') ?: 'tls')),
+                'from_address'           => $dbSettings['mail.marketing.from_address'] ?? 'contacts@axioraglobalsolutions.com',
+                'from_name'              => $dbSettings['mail.marketing.from_name'] ?? 'Axiora Global',
+                'ses_region'             => $sesRegion,
+                'ses_configuration_set'  => $sesConfigSet ?: null,
+                'pacing_seconds'         => $pacingSeconds,
+                'warmup_enabled'         => $warmupEnabled,
+                'auto_send'              => '1',
+                'timeout'                => 15
             ];
         }
 
-        // Fallback to corporate mail settings
-        $corpConfig = self::getConfig();
-        if ($corpConfig['from_address'] === 'accounts@axioraglobalsolutions.com') {
-            $corpConfig['marketing_from_address'] = 'contacts@axioraglobalsolutions.com';
-        }
-        return $corpConfig;
+        // STRICT POLICY: Do NOT fall back to corporate SMTP. Return unconfigured/disabled state.
+        return [
+            'enabled'                => false,
+            'error'                  => 'Dedicated Marketing SMTP is disabled or not configured in Global Settings. Mass email dispatch aborted to preserve Corporate SMTP reputation.',
+            'driver'                 => $driver,
+            'host'                   => '',
+            'port'                   => (int)($dbSettings['mail.marketing.port'] ?? 587),
+            'username'               => $dbSettings['mail.marketing.username'] ?? '',
+            'password'               => $dbSettings['mail.marketing.password'] ?? '',
+            'encryption'             => 'tls',
+            'from_address'           => $dbSettings['mail.marketing.from_address'] ?? 'contacts@axioraglobalsolutions.com',
+            'from_name'              => $dbSettings['mail.marketing.from_name'] ?? 'Axiora Global',
+            'ses_region'             => $sesRegion,
+            'ses_configuration_set'  => $sesConfigSet ?: null,
+            'pacing_seconds'         => $pacingSeconds,
+            'warmup_enabled'         => $warmupEnabled,
+            'auto_send'              => '0',
+            'timeout'                => 15
+        ];
     }
 
     /**
      * Send email with optional attachments.
-     * 
+     *
      * @param string $toEmail Recipient email address
      * @param string $toName Recipient name
      * @param string $subject Email subject line
@@ -112,7 +146,8 @@ class EmailService {
      * @param array|null $customConfig Optional custom mail config
      * @return array ['success' => bool, 'error' => string|null, 'message_id' => string]
      */
-    public static function send(string $toEmail, string $toName, string $subject, string $htmlBody, string $textBody = '', array $attachments = [], ?array $customConfig = null): array {
+    public static function send(string $toEmail, string $toName, string $subject, string $htmlBody, string $textBody = '', array $attachments = [], ?array $customConfig = null): array
+    {
         $toEmail = trim($toEmail);
         if (empty($toEmail) || !filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
             return ['success' => false, 'error' => 'Invalid recipient email address: ' . htmlspecialchars($toEmail)];
@@ -120,14 +155,42 @@ class EmailService {
 
         $config = $customConfig ?? self::getConfig();
         $driver = strtolower($config['driver'] ?? 'smtp');
+        $isMarketing = !empty($config['is_marketing']) || in_array($driver, ['ses', 'aws_ses', 'amazon_ses'], true) || (!empty($config['host']) && str_contains($config['host'], 'email-smtp.'));
 
-        if ($driver === 'smtp' && !empty($config['host'])) {
+        if (in_array($driver, ['smtp', 'ses', 'aws_ses', 'amazon_ses'], true) && !empty($config['host'])) {
             try {
                 $res = self::sendViaSmtp($toEmail, $toName, $subject, $htmlBody, $textBody, $attachments, $config);
                 return $res;
             } catch (Throwable $e) {
                 // If SMTP fails, record exact error
                 $smtpError = $e->getMessage();
+
+                // If SMTP rejected due to sender relay restrictions, automatically retry on a FRESH connection
+                // with the verified authenticated sender address while preserving the user's campaign email as Reply-To:
+                $isRelayErr = (stripos($smtpError, 'relay') !== false || stripos($smtpError, '550') !== false || stripos($smtpError, 'not allowed') !== false);
+                $authSender = (!empty($config['authenticated_from']) && filter_var($config['authenticated_from'], FILTER_VALIDATE_EMAIL))
+                    ? $config['authenticated_from']
+                    : ((!empty($config['username']) && filter_var($config['username'], FILTER_VALIDATE_EMAIL)) ? $config['username'] : 'contacts@axioraglobalsolutions.com');
+
+                if ($isRelayErr && !empty($authSender) && strtolower($config['from_address'] ?? '') !== strtolower($authSender)) {
+                    try {
+                        $retryConfig = $config;
+                        $retryConfig['reply_to'] = !empty($config['from_address']) ? $config['from_address'] : ($retryConfig['reply_to'] ?? '');
+                        $retryConfig['from_address'] = $authSender;
+                        $retryRes = self::sendViaSmtp($toEmail, $toName, $subject, $htmlBody, $textBody, $attachments, $retryConfig);
+                        if (!empty($retryRes['success'])) {
+                            return $retryRes;
+                        }
+                    } catch (Throwable $eRetry) {
+                        $smtpError = $eRetry->getMessage();
+                    }
+                }
+
+                // If marketing or SES, NEVER fallback to php mail()!
+                if ($isMarketing) {
+                    return ['success' => false, 'error' => "Marketing SMTP Error: " . $smtpError];
+                }
+
                 // If in dev environment or mail fallback allowed, try PHP mail() as fallback
                 $fallbackRes = self::sendViaPhpMail($toEmail, $toName, $subject, $htmlBody, $textBody, $attachments, $config);
                 if ($fallbackRes['success']) {
@@ -137,6 +200,10 @@ class EmailService {
             }
         }
 
+        if ($isMarketing) {
+            return ['success' => false, 'error' => "Marketing SMTP Error: No valid host configured for driver '{$driver}'."];
+        }
+
         // Driver is 'mail' or SMTP host not set
         return self::sendViaPhpMail($toEmail, $toName, $subject, $htmlBody, $textBody, $attachments, $config);
     }
@@ -144,7 +211,8 @@ class EmailService {
     /**
      * Send email using direct Socket SMTP connection with TLS/SSL authentication.
      */
-    private static function sendViaSmtp(string $toEmail, string $toName, string $subject, string $htmlBody, string $textBody, array $attachments, array $config): array {
+    private static function sendViaSmtp(string $toEmail, string $toName, string $subject, string $htmlBody, string $textBody, array $attachments, array $config): array
+    {
         $host = trim($config['host']);
         $port = (int)($config['port'] ?? 587);
         $encryption = strtolower($config['encryption'] ?? 'tls');
@@ -159,7 +227,9 @@ class EmailService {
             'ssl' => [
                 'verify_peer' => false,
                 'verify_peer_name' => false,
-                'allow_self_signed' => true
+                'allow_self_signed' => true,
+                'SNI_enabled' => true,
+                'peer_name' => $host
             ]
         ]);
 
@@ -172,7 +242,7 @@ class EmailService {
 
         stream_set_timeout($socket, $timeout);
 
-        $readResponse = function() use ($socket): string {
+        $readResponse = function () use ($socket): string {
             $response = '';
             while ($line = fgets($socket, 515)) {
                 $response .= $line;
@@ -184,7 +254,7 @@ class EmailService {
             return trim($response);
         };
 
-        $sendCommand = function(string $cmd, array $expectedCodes) use ($socket, $readResponse): string {
+        $sendCommand = function (string $cmd, array $expectedCodes) use ($socket, $readResponse): string {
             fwrite($socket, $cmd . "\r\n");
             $res = $readResponse();
             $code = (int)substr($res, 0, 3);
@@ -212,7 +282,7 @@ class EmailService {
         // 3. STARTTLS if required and not already connected via SSL
         if ($encryption === 'tls' && $transport === 'tcp') {
             $sendCommand("STARTTLS", [220]);
-            
+
             $cryptoMethod = STREAM_CRYPTO_METHOD_TLS_CLIENT;
             if (defined('STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT')) {
                 $cryptoMethod |= STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT;
@@ -238,8 +308,34 @@ class EmailService {
             $sendCommand(base64_encode($password), [235]);
         }
 
-        // 5. MAIL FROM
-        $sendCommand("MAIL FROM:<{$fromEmail}>", [250]);
+        // 5. MAIL FROM with Envelope-Sender Fallback
+        // First try configured From address. If rejected by server (e.g. 550 sender rejected, 553 relaying disallowed by Zoho/SES/Resend),
+        // automatically fallback to authenticated username or verified system address as envelope sender while keeping From: header intact.
+        $envelopeCandidates = array_unique(array_filter([
+            $fromEmail,
+            (!empty($username) && filter_var($username, FILTER_VALIDATE_EMAIL)) ? $username : null,
+            trim($config['system_from_address'] ?? ''),
+            trim($config['default_from'] ?? ''),
+            'contacts@axioraglobalsolutions.com',
+            'accounts@axioraglobalsolutions.com'
+        ]));
+
+        $mailFromAccepted = false;
+        $lastMailFromErr = null;
+        foreach ($envelopeCandidates as $candidate) {
+            try {
+                $sendCommand("MAIL FROM:<{$candidate}>", [250]);
+                $mailFromAccepted = true;
+                break;
+            } catch (Exception $mfe) {
+                $lastMailFromErr = $mfe;
+                // If rejected, try next candidate
+                continue;
+            }
+        }
+        if (!$mailFromAccepted) {
+            throw $lastMailFromErr ?? new Exception("MAIL FROM rejected by SMTP server for all sender candidates");
+        }
 
         // 6. RCPT TO
         $sendCommand("RCPT TO:<{$toEmail}>", [250, 251]);
@@ -248,14 +344,49 @@ class EmailService {
         $sendCommand("DATA", [354]);
 
         // 8. Build and Send MIME Payload
-        $messageData = self::buildMimeMessage($toEmail, $toName, $fromEmail, $fromName, $subject, $htmlBody, $textBody, $attachments);
-        
+        $replyTo = !empty($config['reply_to']) ? trim($config['reply_to']) : $fromEmail;
+        $customHeaders = !empty($config['custom_headers']) && is_array($config['custom_headers']) ? $config['custom_headers'] : [];
+        $messageData = self::buildMimeMessage($toEmail, $toName, $fromEmail, $fromName, $subject, $htmlBody, $textBody, $attachments, $replyTo, $customHeaders);
+
         // Escape lone dots on a line per RFC 2821
         $messageData = preg_replace('/^\./m', '..', $messageData);
         fwrite($socket, $messageData . "\r\n.\r\n");
 
         $dataRes = $readResponse();
         $code = (int)substr($dataRes, 0, 3);
+
+        // If provider (e.g. Zoho/SES/Resend) rejects DATA due to relaying restriction on custom from_email
+        if ($code !== 250) {
+            $isRelayErr = (stripos($dataRes, 'relay') !== false || stripos($dataRes, '550') !== false || stripos($dataRes, 'not allowed') !== false);
+            $authSender = (!empty($config['authenticated_from']) && filter_var($config['authenticated_from'], FILTER_VALIDATE_EMAIL))
+                ? $config['authenticated_from']
+                : ((!empty($username) && filter_var($username, FILTER_VALIDATE_EMAIL)) ? $username : 'contacts@axioraglobalsolutions.com');
+
+            if ($isRelayErr && !empty($authSender) && strtolower($fromEmail) !== strtolower($authSender)) {
+                // Recover: Send RSET, switch From: to authenticated sender, preserve user's campaign email as Reply-To:
+                try {
+                    @fwrite($socket, "RSET\r\n");
+                    $readResponse();
+                    $sendCommand("MAIL FROM:<{$authSender}>", [250]);
+                    $sendCommand("RCPT TO:<{$toEmail}>", [250, 251]);
+                    $sendCommand("DATA", [354]);
+
+                    $fallbackReplyTo = !empty($replyTo) ? $replyTo : $fromEmail;
+                    $retryMsgData = self::buildMimeMessage($toEmail, $toName, $authSender, $fromName, $subject, $htmlBody, $textBody, $attachments, $fallbackReplyTo, $customHeaders);
+                    $retryMsgData = preg_replace('/^\./m', '..', $retryMsgData);
+                    fwrite($socket, $retryMsgData . "\r\n.\r\n");
+
+                    $retryRes = $readResponse();
+                    $retryCode = (int)substr($retryRes, 0, 3);
+                    if ($retryCode === 250) {
+                        $code = 250;
+                        $dataRes = $retryRes;
+                    }
+                } catch (Throwable $ignoreRetry) {
+                }
+            }
+        }
+
         if ($code !== 250) {
             fclose($socket);
             throw new Exception("SMTP DATA send failed: {$dataRes}");
@@ -264,7 +395,8 @@ class EmailService {
         // 9. QUIT
         try {
             $sendCommand("QUIT", [221, 250]);
-        } catch (Throwable $ignore) {}
+        } catch (Throwable $ignore) {
+        }
 
         @fclose($socket);
 
@@ -278,9 +410,11 @@ class EmailService {
     /**
      * Send email using PHP built-in mail() function.
      */
-    private static function sendViaPhpMail(string $toEmail, string $toName, string $subject, string $htmlBody, string $textBody, array $attachments, array $config): array {
+    private static function sendViaPhpMail(string $toEmail, string $toName, string $subject, string $htmlBody, string $textBody, array $attachments, array $config): array
+    {
         $fromEmail = trim($config['from_address'] ?: 'accounts@axioraglobalsolutions.com');
         $fromName = trim($config['from_name'] ?: 'Axiora Global Solutions');
+        $replyTo = !empty($config['reply_to']) ? trim($config['reply_to']) : $fromEmail;
 
         $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
         $recipientHeader = !empty($toName) ? "=?UTF-8?B?" . base64_encode($toName) . "?= <{$toEmail}>" : $toEmail;
@@ -290,8 +424,17 @@ class EmailService {
 
         $headers = [];
         $headers[] = "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$fromEmail}>";
-        $headers[] = "Reply-To: <{$fromEmail}>";
+        $headers[] = "Reply-To: <{$replyTo}>";
         $headers[] = "MIME-Version: 1.0";
+        if (!empty($config['custom_headers']) && is_array($config['custom_headers'])) {
+            foreach ($config['custom_headers'] as $hk => $hv) {
+                $cleanK = trim(str_replace(["\r", "\n"], '', (string)$hk));
+                $cleanV = trim(str_replace(["\r", "\n"], '', (string)$hv));
+                if (!empty($cleanK) && !empty($cleanV) && !in_array(strtolower($cleanK), ['from', 'to', 'reply-to', 'subject', 'mime-version', 'content-type'], true)) {
+                    $headers[] = "{$cleanK}: {$cleanV}";
+                }
+            }
+        }
         $headers[] = "Content-Type: multipart/mixed; boundary=\"{$boundaryMixed}\"";
         $headers[] = "X-Mailer: RaptorCRM-Mailer/2.0";
 
@@ -341,7 +484,7 @@ class EmailService {
 
         // If local environment doesn't have an MTA, provide clear guidance
         return [
-            'success' => false, 
+            'success' => false,
             'error'   => 'PHP mail() dispatch failed. Local server has no MTA configured. Please configure real SMTP credentials in Settings > Email & SMTP Integration.'
         ];
     }
@@ -349,22 +492,37 @@ class EmailService {
     /**
      * Build complete RFC 2822 MIME message string.
      */
-    private static function buildMimeMessage(string $toEmail, string $toName, string $fromEmail, string $fromName, string $subject, string $htmlBody, string $textBody, array $attachments): string {
+    private static function buildMimeMessage(string $toEmail, string $toName, string $fromEmail, string $fromName, string $subject, string $htmlBody, string $textBody, array $attachments, string $replyTo = '', array $customHeaders = []): string
+    {
         $boundaryMixed = '=_mix_' . md5(uniqid((string)mt_rand(), true));
         $boundaryAlt   = '=_alt_' . md5(uniqid((string)mt_rand(), true));
 
         $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
         $encodedFromName = '=?UTF-8?B?' . base64_encode($fromName) . '?=';
         $encodedToName = !empty($toName) ? '=?UTF-8?B?' . base64_encode($toName) . '?=' : '';
+        $effectiveReplyTo = !empty($replyTo) ? $replyTo : $fromEmail;
+        $fromDomain = substr(strrchr($fromEmail, "@"), 1) ?: 'axioraglobalsolutions.com';
 
         $lines = [];
         $lines[] = "Date: " . date('r');
         $lines[] = "From: {$encodedFromName} <{$fromEmail}>";
         $lines[] = !empty($encodedToName) ? "To: {$encodedToName} <{$toEmail}>" : "To: <{$toEmail}>";
-        $lines[] = "Reply-To: <{$fromEmail}>";
+        $lines[] = "Reply-To: <{$effectiveReplyTo}>";
         $lines[] = "Subject: {$encodedSubject}";
-        $lines[] = "Message-ID: <" . md5(uniqid((string)mt_rand(), true)) . "@axioraglobalsolutions.com>";
+        $lines[] = "Message-ID: <" . md5(uniqid((string)mt_rand(), true)) . "@{$fromDomain}>";
         $lines[] = "MIME-Version: 1.0";
+
+        // Inject custom headers (List-Unsubscribe, Feedback-ID, etc.)
+        if (!empty($customHeaders)) {
+            foreach ($customHeaders as $hKey => $hVal) {
+                $cleanKey = trim(str_replace(["\r", "\n"], '', (string)$hKey));
+                $cleanVal = trim(str_replace(["\r", "\n"], '', (string)$hVal));
+                if (!empty($cleanKey) && !empty($cleanVal) && !in_array(strtolower($cleanKey), ['date', 'from', 'to', 'reply-to', 'subject', 'message-id', 'mime-version', 'content-type'], true)) {
+                    $lines[] = "{$cleanKey}: {$cleanVal}";
+                }
+            }
+        }
+
         $lines[] = "Content-Type: multipart/mixed; boundary=\"{$boundaryMixed}\"";
         $lines[] = "X-Mailer: RaptorCRM-SMTP/2.0";
         $lines[] = "";
@@ -413,14 +571,15 @@ class EmailService {
 
     /**
      * Send official branded payslip email to employee with vector PDF attached.
-     * 
+     *
      * @param object $slip Payslip detail object from database (with name, email, employee_code, gross_salary, net_salary, etc.)
      * @param string|null $customSubject Optional custom subject line (supports dynamic tags {name}, {month}, etc.)
      * @param string|null $customBody Optional custom message body
      * @param string|null $customNotes Optional audit remarks note
      * @return array ['success' => bool, 'error' => string|null, 'subject' => string, 'body' => string]
      */
-    public static function sendPayslip($slip, ?string $customSubject = null, ?string $customBody = null, ?string $customNotes = null): array {
+    public static function sendPayslip($slip, ?string $customSubject = null, ?string $customBody = null, ?string $customNotes = null): array
+    {
         if (empty($slip->email) || !filter_var($slip->email, FILTER_VALIDATE_EMAIL)) {
             return [
                 'success' => false,
@@ -463,21 +622,21 @@ class EmailService {
             }
         } else {
             $plainText = "Dear {$name},\n\n" .
-                         "Please find attached your official payslip for the month of {$monthYearFormatted}.\n\n" .
-                         "Payroll Summary:\n" .
-                         "----------------------------------------\n" .
-                         "Employee ID    : {$empCode}\n" .
-                         "Pay Period     : {$monthYearFormatted}\n" .
-                         "Gross Earnings : Rs. {$grossPayFormatted}\n" .
-                         "Deductions     : Rs. {$deductionsFormatted}\n" .
-                         "Net Take-Home  : Rs. {$netPayFormatted}\n" .
-                         "----------------------------------------\n\n" .
-                         (!empty($customNotes) ? "Remarks / Record Note:\n{$customNotes}\n\n" : "") .
-                         "Your official detailed payslip is attached as a PDF document.\n\n" .
-                         "Warm regards,\n" .
-                         "Accounts & Payroll Team\n" .
-                         "Axiora Global Solutions\n" .
-                         "accounts@axioraglobalsolutions.com";
+                "Please find attached your official payslip for the month of {$monthYearFormatted}.\n\n" .
+                "Payroll Summary:\n" .
+                "----------------------------------------\n" .
+                "Employee ID    : {$empCode}\n" .
+                "Pay Period     : {$monthYearFormatted}\n" .
+                "Gross Earnings : Rs. {$grossPayFormatted}\n" .
+                "Deductions     : Rs. {$deductionsFormatted}\n" .
+                "Net Take-Home  : Rs. {$netPayFormatted}\n" .
+                "----------------------------------------\n\n" .
+                (!empty($customNotes) ? "Remarks / Record Note:\n{$customNotes}\n\n" : "") .
+                "Your official detailed payslip is attached as a PDF document.\n\n" .
+                "Warm regards,\n" .
+                "Accounts & Payroll Team\n" .
+                "Axiora Global Solutions\n" .
+                "accounts@axioraglobalsolutions.com";
         }
 
         // HTML Email Template
@@ -511,7 +670,8 @@ class EmailService {
     /**
      * Render responsive branded HTML template for salary payslip email.
      */
-    private static function renderPayslipHtml(string $name, string $empCode, string $month, string $gross, string $deductions, string $net, ?string $notes): string {
+    private static function renderPayslipHtml(string $name, string $empCode, string $month, string $gross, string $deductions, string $net, ?string $notes): string
+    {
         $safeName = htmlspecialchars($name);
         $safeEmpCode = htmlspecialchars($empCode);
         $safeMonth = htmlspecialchars($month);
@@ -617,7 +777,8 @@ class EmailService {
     /**
      * Send a diagnostic test email to verify SMTP credentials.
      */
-    public static function testConnection(string $toEmail, ?array $customConfig = null): array {
+    public static function testConnection(string $toEmail, ?array $customConfig = null): array
+    {
         $config = $customConfig ?? self::getConfig();
         $subject = "Raptor CRM - Email Integration Test (" . date('Y-m-d H:i:s') . ")";
         $host = !empty($config['host']) ? $config['host'] : 'localhost (PHP mail)';

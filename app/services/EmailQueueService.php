@@ -27,6 +27,43 @@ class EmailQueueService {
 
         $nowSql = ($driver === 'sqlite') ? "datetime('now')" : "NOW()";
 
+        if (!class_exists('EmailService')) {
+            $emailServiceFile = defined('APPROOT') ? (APPROOT . '/services/EmailService.php') : (dirname(__DIR__) . '/EmailService.php');
+            if (file_exists($emailServiceFile)) {
+                require_once $emailServiceFile;
+            }
+        }
+        if (!class_exists('TrackingService')) {
+            $tsFile = defined('APPROOT') ? (APPROOT . '/services/TrackingService.php') : (dirname(__DIR__) . '/TrackingService.php');
+            if (file_exists($tsFile)) {
+                require_once $tsFile;
+            }
+        }
+        if (!class_exists('MailerFactory')) {
+            $mfFile = defined('APPROOT') ? (APPROOT . '/services/mailers/MailerFactory.php') : (__DIR__ . '/mailers/MailerFactory.php');
+            if (file_exists($mfFile)) {
+                require_once $mfFile;
+            }
+        }
+        if (!class_exists('MailerSendResult')) {
+            $msrFile = defined('APPROOT') ? (APPROOT . '/services/mailers/MailerSendResult.php') : (__DIR__ . '/mailers/MailerSendResult.php');
+            if (file_exists($msrFile)) {
+                require_once $msrFile;
+            }
+        }
+        if (!interface_exists('MailerAdapterInterface')) {
+            $maiFile = defined('APPROOT') ? (APPROOT . '/services/mailers/MailerAdapterInterface.php') : (__DIR__ . '/mailers/MailerAdapterInterface.php');
+            if (file_exists($maiFile)) {
+                require_once $maiFile;
+            }
+        }
+        if (!class_exists('SmtpAdapter')) {
+            $smtpFile = defined('APPROOT') ? (APPROOT . '/services/mailers/SmtpAdapter.php') : (__DIR__ . '/mailers/SmtpAdapter.php');
+            if (file_exists($smtpFile)) {
+                require_once $smtpFile;
+            }
+        }
+
         // 1. Safe Row Locking to prevent double sends across concurrent workers
         $lockedItemIds = self::lockPendingQueueItems($batchSize, $worker);
         if (empty($lockedItemIds)) {
@@ -35,6 +72,11 @@ class EmailQueueService {
 
         // 2. Fetch locked items with full campaign, recipient, and contact data
         $inClause = implode(',', array_map('intval', $lockedItemIds));
+        $hasWarmupCol = self::hasCampaignColumn('is_warmup_enabled');
+        $warmupSelect = $hasWarmupCol ? 'c.is_warmup_enabled,' : '1 as is_warmup_enabled,';
+        $hasPacingCol = self::hasCampaignColumn('send_interval_seconds');
+        $pacingSelect = $hasPacingCol ? 'c.send_interval_seconds,' : '120 as send_interval_seconds,';
+
         $sql = "SELECT q.*, 
                        r.email as recipient_email, 
                        r.subject_variant, 
@@ -50,8 +92,10 @@ class EmailQueueService {
                        c.reply_to,
                        c.html_content,
                        c.plain_text_content,
-                       1 as track_opens,
-                       1 as track_clicks,
+                       c.track_opens,
+                       c.track_clicks,
+                       {$warmupSelect}
+                       {$pacingSelect}
                        c.status as campaign_status,
                        c.bounced_count,
                        c.complained_count,
@@ -78,15 +122,32 @@ class EmailQueueService {
         ];
 
         $mailer = MailerFactory::getAdapter();
+
+        // Strict Routing Policy: If using SMTP and Marketing SMTP is disabled or unconfigured, halt batch
+        if ($mailer instanceof SmtpAdapter) {
+            $mktConfig = class_exists('EmailService') ? EmailService::getMarketingConfig() : ['enabled' => false];
+            if (empty($mktConfig['enabled']) || empty($mktConfig['host'])) {
+                $disabledErr = $mktConfig['error'] ?? 'Marketing SMTP is disabled or unconfigured in Global Settings. Delivery halted.';
+                foreach ($items as $item) {
+                    self::unlockQueueItem((int)$item->queue_id);
+                    $db->prepare("UPDATE campaign_email_queue SET last_error = :err WHERE queue_id = :qid")
+                       ->execute([':err' => $disabledErr, ':qid' => $item->queue_id]);
+                }
+                $stats['error'] = $disabledErr;
+                return $stats;
+            }
+        }
+
         $suppressionModel = new CampaignSuppression();
         $delayMicroseconds = $rateLimitPerSec > 0 ? (int)(1000000 / $rateLimitPerSec) : 0;
 
         foreach ($items as $item) {
             $stats['processed']++;
 
-            // -----------------------------------------------------------------
-            // Check A: Campaign Status & Auto-Pause Safeguards
-            // -----------------------------------------------------------------
+            try {
+                // -----------------------------------------------------------------
+                // Check A: Campaign Status & Auto-Pause Safeguards
+                // -----------------------------------------------------------------
             if ($item->campaign_status === CampaignBroadcast::STATUS_PAUSED || $item->campaign_status === CampaignBroadcast::STATUS_CANCELLED) {
                 self::unlockQueueItem((int)$item->queue_id);
                 continue;
@@ -123,16 +184,19 @@ class EmailQueueService {
             }
 
             // -----------------------------------------------------------------
-            // Check D: Domain Warm-Up Daily Cap
+            // Check D: Domain Warm-Up Daily Cap (If Warmup Mode Enabled)
             // -----------------------------------------------------------------
-            $fromDomain = substr(strrchr($item->from_email, "@"), 1);
-            if (!WarmupScheduleService::canSend($fromDomain)) {
-                $stats['throttled']++;
-                // Reschedule for next day 09:00 UTC
-                $tomorrow = date('Y-m-d 09:00:00', strtotime('+1 day'));
-                $db->prepare("UPDATE campaign_email_queue SET status = 'pending', scheduled_at = :next, locked_at = NULL WHERE queue_id = :qid")
-                   ->execute([':next' => $tomorrow, ':qid' => $item->queue_id]);
-                continue;
+            $isWarmup = !isset($item->is_warmup_enabled) || (bool)$item->is_warmup_enabled;
+            if ($isWarmup) {
+                $fromDomain = substr(strrchr($item->from_email, "@"), 1);
+                if (!WarmupScheduleService::canSend($fromDomain)) {
+                    $stats['throttled']++;
+                    // Reschedule for next day 09:00 UTC
+                    $tomorrow = date('Y-m-d 09:00:00', strtotime('+1 day'));
+                    $db->prepare("UPDATE campaign_email_queue SET status = 'pending', scheduled_at = :next, locked_at = NULL WHERE queue_id = :qid")
+                       ->execute([':next' => $tomorrow, ':qid' => $item->queue_id]);
+                    continue;
+                }
             }
 
             // -----------------------------------------------------------------
@@ -168,9 +232,25 @@ class EmailQueueService {
                 $renderedHtml = TrackingService::injectTracking($renderedHtml, $unsubToken, $trackOpens, $trackClicks);
             }
 
+            // Ensure CAN-SPAM / GDPR compliance physical postal address footer is included
+            $hasAddressInRendered = (stripos($renderedHtml, 'Cyber City') !== false ||
+                                     stripos($renderedHtml, 'Hyderabad') !== false ||
+                                     preg_match('/\b(?:suite|street|road|st|ave|blvd|lane|floor|building|box|city|india|usa|state|pin|zip)\b/i', $renderedHtml));
+            if (!$hasAddressInRendered && !empty($context['company_address'])) {
+                $complianceFooter = '<div style="margin-top:24px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:12px;color:#718096;text-align:center;">'
+                    . htmlspecialchars($context['company_address'])
+                    . ' | <a href="' . htmlspecialchars($unsubUrl) . '" style="color:#4a5568;text-decoration:underline;">Unsubscribe</a>'
+                    . '</div>';
+                if (stripos($renderedHtml, '</body>') !== false) {
+                    $renderedHtml = str_ireplace('</body>', $complianceFooter . '</body>', $renderedHtml);
+                } else {
+                    $renderedHtml .= $complianceFooter;
+                }
+            }
+
             // Construct RFC 8058 & anti-spam deliverability headers
             $headers = [
-                'List-Unsubscribe' => "<mailto:unsub@{$fromDomain}?subject=unsubscribe-{$unsubToken}>, <{$oneClickUrl}>",
+                'List-Unsubscribe' => "<{$oneClickUrl}>",
                 'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click',
                 'Feedback-ID' => "camp_{$item->campaign_id}:raptor:{$fromDomain}",
                 'Precedence' => 'bulk',
@@ -222,6 +302,7 @@ class EmailQueueService {
             } else {
                 $stats['failed']++;
                 $errorMsg = $result->getErrorMessage();
+                $stats['last_error'] = $errorMsg;
                 $isTransient = $result->isTransient();
                 $newAttempts = (int)$item->attempts + 1;
 
@@ -251,6 +332,13 @@ class EmailQueueService {
                        ->execute([':err' => $errorMsg, ':rid' => $item->recipient_id]);
                 }
             }
+            } catch (Throwable $itemErr) {
+                $stats['failed']++;
+                $errorMsg = $itemErr->getMessage();
+                $stats['last_error'] = $errorMsg;
+                $db->prepare("UPDATE campaign_email_queue SET status = 'failed', last_error = :err, locked_at = NULL, locked_by = NULL WHERE queue_id = :qid")
+                   ->execute([':err' => $errorMsg, ':qid' => $item->queue_id]);
+            }
 
             // Domain-level rate pacing
             if ($delayMicroseconds > 0) {
@@ -271,6 +359,14 @@ class EmailQueueService {
         $db = Database::getInstance()->getConnection();
         $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
         $nowSql = ($driver === 'sqlite') ? "datetime('now')" : "NOW()";
+
+        // Auto-recover stale locked items (> 5 minutes old from unexpected worker crash or restart)
+        try {
+            $staleThreshold = ($driver === 'sqlite') ? "datetime('now', '-5 minutes')" : "DATE_SUB(NOW(), INTERVAL 5 MINUTE)";
+            $db->exec("UPDATE campaign_email_queue 
+                       SET status = 'pending', locked_at = NULL, locked_by = NULL 
+                       WHERE status = 'processing' AND locked_at < {$staleThreshold}");
+        } catch (Throwable $e) {}
 
         // In MySQL 8+: use SELECT ... FOR UPDATE SKIP LOCKED
         // In SQLite / fallback: atomic update then select locked by worker
@@ -350,15 +446,54 @@ class EmailQueueService {
 
     private static function checkAndMarkCompletedCampaigns(): void {
         $db = Database::getInstance()->getConnection();
-        $sql = "UPDATE campaigns_broadcast c
+        
+        // 1. Mark campaigns with successfully dispatched messages as completed when queue finishes
+        $sqlCompleted = "UPDATE campaigns_broadcast c
                 SET status = 'completed', completed_at = CURRENT_TIMESTAMP
                 WHERE c.status IN ('queued', 'sending')
+                  AND c.sent_count > 0
                   AND NOT EXISTS (
                       SELECT 1 FROM campaign_email_queue q 
                       WHERE q.campaign_id = c.campaign_id AND q.status IN ('pending', 'processing')
                   )";
+        
+        // 2. If sent_count is 0 and all queue items failed, mark as failed (or paused) with the provider failure reason
+        $sqlFailed = "UPDATE campaigns_broadcast c
+                SET status = 'failed', 
+                    paused_reason = COALESCE(
+                        (SELECT last_error FROM campaign_email_queue q WHERE q.campaign_id = c.campaign_id AND q.status = 'failed' AND q.last_error IS NOT NULL AND q.last_error != '' LIMIT 1),
+                        'Delivery failed: All recipient messages deferred or rejected by provider'
+                    )
+                WHERE c.status IN ('queued', 'sending')
+                  AND c.sent_count = 0
+                  AND NOT EXISTS (
+                      SELECT 1 FROM campaign_email_queue q 
+                      WHERE q.campaign_id = c.campaign_id AND q.status IN ('pending', 'processing')
+                  )
+                  AND EXISTS (
+                      SELECT 1 FROM campaign_email_queue q 
+                      WHERE q.campaign_id = c.campaign_id AND q.status = 'failed'
+                  )";
         try {
-            $db->exec($sql);
+            $db->exec($sqlCompleted);
+            try {
+                $db->exec($sqlFailed);
+            } catch (Throwable $eFail) {
+                // If 'failed' enum is not yet present on older schema, gracefully fall back to 'paused'
+                $db->exec("UPDATE campaigns_broadcast c
+                           SET status = 'paused', 
+                               paused_reason = 'Delivery failed: Provider rejected or deferred all recipient messages'
+                           WHERE c.status IN ('queued', 'sending')
+                             AND c.sent_count = 0
+                             AND NOT EXISTS (
+                                 SELECT 1 FROM campaign_email_queue q 
+                                 WHERE q.campaign_id = c.campaign_id AND q.status IN ('pending', 'processing')
+                             )
+                             AND EXISTS (
+                                 SELECT 1 FROM campaign_email_queue q 
+                                 WHERE q.campaign_id = c.campaign_id AND q.status = 'failed'
+                             )");
+            }
         } catch (Throwable $e) {}
     }
 
@@ -374,6 +509,33 @@ class EmailQueueService {
                 ':payload' => json_encode($payload, JSON_UNESCAPED_UNICODE)
             ]);
         } catch (Throwable $e) {}
+    }
+
+    private static function hasCampaignColumn(string $column): bool {
+        static $cols = null;
+        if ($cols === null) {
+            $cols = [];
+            try {
+                $db = Database::getInstance()->getConnection();
+                $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+                if ($driver === 'sqlite') {
+                    $stmt = $db->query("PRAGMA table_info(campaigns_broadcast)");
+                    if ($stmt) {
+                        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                            $cols[$row['name']] = true;
+                        }
+                    }
+                } else {
+                    $stmt = $db->query("SHOW COLUMNS FROM campaigns_broadcast");
+                    if ($stmt) {
+                        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                            $cols[$row['Field']] = true;
+                        }
+                    }
+                }
+            } catch (Throwable $e) {}
+        }
+        return isset($cols[$column]);
     }
 }
 
