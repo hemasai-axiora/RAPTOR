@@ -1,8 +1,8 @@
 <div class="row justify-content-center">
     <div class="col-12 col-xl-10">
         <?php if (!empty($success_msg)): ?>
-            <div class="alert alert-success alert-dismissible fade show bg-success bg-opacity-15 border-success border-opacity-25 text-success shadow-lg mb-4" role="alert" style="border-radius:12px;">
-                <i class="fa-solid fa-circle-check me-2"></i><?php echo htmlspecialchars($success_msg); ?>
+            <div class="alert alert-dismissible fade show shadow-sm mb-4" role="alert" style="border-radius:12px; background-color: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; font-weight: 500;">
+                <i class="fa-solid fa-circle-check me-2" style="color: #10b981;"></i><strong style="color: #065f46;">Success:</strong> <?php echo htmlspecialchars($success_msg); ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         <?php endif; ?>
@@ -75,9 +75,9 @@
                                 <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-2.5" style="border-color: var(--border-color) !important;">
                                     <span class="fw-bold" style="color: var(--text-primary);"><i class="fa-brands fa-google text-primary me-2"></i>Google Gemini</span>
                                     <?php if (!empty($settings['gemini_api_key'])): ?>
-                                        <span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25" style="font-size:0.7rem;"><i class="fa-solid fa-check me-1"></i>Configured</span>
+                                        <span class="badge" style="font-size:0.7rem; background-color: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0;"><i class="fa-solid fa-check me-1" style="color: #10b981;"></i>Configured</span>
                                     <?php else: ?>
-                                        <span class="badge bg-secondary bg-opacity-15 text-secondary border border-secondary border-opacity-25" style="font-size:0.7rem;">Not set</span>
+                                        <span class="badge" style="font-size:0.7rem; background-color: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;">Not set</span>
                                     <?php endif; ?>
                                 </div>
                                 <div class="card-body p-3">
@@ -118,9 +118,9 @@
                                 <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-2.5" style="border-color: var(--border-color) !important;">
                                     <span class="fw-bold" style="color: var(--text-primary);"><i class="fa-solid fa-robot text-success me-2"></i>OpenAI GPT</span>
                                     <?php if (!empty($settings['openai_api_key'])): ?>
-                                        <span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25" style="font-size:0.7rem;"><i class="fa-solid fa-check me-1"></i>Configured</span>
+                                        <span class="badge" style="font-size:0.7rem; background-color: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0;"><i class="fa-solid fa-check me-1" style="color: #10b981;"></i>Configured</span>
                                     <?php else: ?>
-                                        <span class="badge bg-secondary bg-opacity-15 text-secondary border border-secondary border-opacity-25" style="font-size:0.7rem;">Not set</span>
+                                        <span class="badge" style="font-size:0.7rem; background-color: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;">Not set</span>
                                     <?php endif; ?>
                                 </div>
                                 <div class="card-body p-3">
@@ -161,9 +161,9 @@
                                 <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-2.5" style="border-color: var(--border-color) !important;">
                                     <span class="fw-bold" style="color: var(--text-primary);"><i class="fa-solid fa-brain text-warning me-2"></i>Anthropic Claude</span>
                                     <?php if (!empty($settings['anthropic_api_key'])): ?>
-                                        <span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25" style="font-size:0.7rem;"><i class="fa-solid fa-check me-1"></i>Configured</span>
+                                        <span class="badge" style="font-size:0.7rem; background-color: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0;"><i class="fa-solid fa-check me-1" style="color: #10b981;"></i>Configured</span>
                                     <?php else: ?>
-                                        <span class="badge bg-secondary bg-opacity-15 text-secondary border border-secondary border-opacity-25" style="font-size:0.7rem;">Not set</span>
+                                        <span class="badge" style="font-size:0.7rem; background-color: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;">Not set</span>
                                     <?php endif; ?>
                                 </div>
                                 <div class="card-body p-3">
@@ -895,7 +895,7 @@
                                     <div class="text-secondary" style="font-size:0.75rem;">Daily caps ramp from 50/day up to 10k/day to build sender reputation.</div>
                                 </div>
                                 <div class="form-check form-switch mb-0">
-                                    <input class="form-check-input" type="checkbox" name="mail.warmup_enabled" id="mail_warmup_enabled" <?php echo (($settings['mail.warmup_enabled'] ?? '1') === '1') ? 'checked' : ''; ?>>
+                                    <input class="form-check-input" type="checkbox" name="mail.warmup_enabled" id="mail_warmup_enabled" value="1" <?php echo (($settings['mail.warmup_enabled'] ?? '1') === '1' || ($settings['mail.warmup_enabled'] ?? '') === 'on') ? 'checked' : ''; ?>>
                                 </div>
                             </div>
                         </div>
@@ -909,8 +909,8 @@
                     <h5 class="mb-0 fw-bold" style="color: var(--text-primary); font-size:1.05rem;">
                         <i class="fa-solid fa-money-bill-wave text-success me-2"></i>Payroll Lifecycle &amp; Calculation Rules
                     </h5>
-                    <span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25 px-2 py-1" style="font-size:0.75rem;">
-                        <i class="fa-solid fa-check-double me-1"></i>Data-Driven Core
+                    <span class="badge px-2 py-1" style="font-size:0.75rem; background-color: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; font-weight: 500;">
+                        <i class="fa-solid fa-check-double me-1" style="color: #10b981;"></i>Data-Driven Core
                     </span>
                 </div>
 

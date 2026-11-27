@@ -157,7 +157,7 @@ class SettingsController extends Controller {
                     if ($key === 'attendance.week_off_days') {
                         $weekOffArr = $_POST['attendance_week_off_days'] ?? ($_POST['attendance.week_off_days'] ?? []);
                         $value = is_array($weekOffArr) ? implode(',', array_map('trim', $weekOffArr)) : '';
-                    } elseif (in_array($key, ['attendance.geofence_enabled', 'location.tracking_enabled', 'alerts.cron_enabled', 'alerts.web_push_enabled', 'alerts.email_enabled', 'reports.email_enabled', 'attendance.allow_week_off_override', 'mail.auto_send_on_generation', 'mail.marketing.enabled', 'payroll.pt_enabled', 'payroll.auto_email_payslips'], true)) {
+                    } elseif (in_array($key, ['attendance.geofence_enabled', 'location.tracking_enabled', 'alerts.cron_enabled', 'alerts.web_push_enabled', 'alerts.email_enabled', 'reports.email_enabled', 'attendance.allow_week_off_override', 'mail.auto_send_on_generation', 'mail.marketing.enabled', 'mail.warmup_enabled', 'payroll.pt_enabled', 'payroll.auto_email_payslips'], true)) {
                         $value = (isset($_POST[$key]) || isset($_POST[$postKey])) ? '1' : '0';
                     } else {
                         $raw = $_POST[$key] ?? ($_POST[$postKey] ?? '');
