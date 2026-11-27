@@ -300,6 +300,14 @@ class EmailCampaignsController extends Controller {
         $segments = $this->segmentModel->getAllSegments();
         $templates = $this->templateModel->getAllTemplates();
 
+        require_once APPROOT . '/services/EmailService.php';
+        $mConfig = EmailService::getMarketingConfig();
+        $cConfig = EmailService::getConfig();
+
+        $defaultFromEmail = !empty($mConfig['from_address']) ? $mConfig['from_address'] : 'contacts@axioraglobalsolutions.in';
+        $defaultFromName = !empty($mConfig['from_name']) ? $mConfig['from_name'] : 'Axiora Global';
+        $defaultReplyTo = !empty($mConfig['reply_to']) ? $mConfig['reply_to'] : (!empty($cConfig['from_address']) ? $cConfig['from_address'] : 'contacts@axioraglobalsolutions.com');
+
         $data = [
             'title' => 'Create Email Campaign | Raptor CRM',
             'active_tab' => 'email_campaigns_broadcasts',
@@ -307,7 +315,10 @@ class EmailCampaignsController extends Controller {
             'segments' => $segments,
             'templates' => $templates,
             'merge_tags' => CampaignTemplate::MERGE_TAGS,
-            'campaign' => null
+            'campaign' => null,
+            'default_from_email' => $defaultFromEmail,
+            'default_from_name' => $defaultFromName,
+            'default_reply_to' => $defaultReplyTo
         ];
 
         $this->viewWithLayout('email_campaigns/campaigns/create', 'main', $data);

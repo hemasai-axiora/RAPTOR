@@ -127,6 +127,7 @@ class SettingsController extends Controller {
                 'mail.marketing.encryption',
                 'mail.marketing.from_address',
                 'mail.marketing.from_name',
+                'mail.marketing.reply_to',
                 'mail.marketing.ses_region',
                 'mail.marketing.ses_configuration_set',
                 'mail.marketing.pacing_seconds',

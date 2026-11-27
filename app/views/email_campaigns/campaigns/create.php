@@ -59,18 +59,19 @@
                                     Observed results are sample-specific; inbox tab and spam-folder placement are not guaranteed by any email sender.
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label small fw-semibold">From Name <span class="text-danger">*</span></label>
-                                <input type="text" name="from_name" class="form-control" placeholder="Axiora Global" value="<?php echo htmlspecialchars($campaign->from_name ?? 'Axiora Global'); ?>" required>
+                                <input type="text" name="from_name" class="form-control" placeholder="Axiora Global" value="<?php echo htmlspecialchars($campaign->from_name ?? ($default_from_name ?? 'Axiora Global')); ?>" required>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label small fw-semibold">From Email Address <span class="text-danger">*</span></label>
-                                <input type="email" name="from_email" id="from_email" class="form-control font-monospace" placeholder="contacts@axioraglobalsolutions.com" value="<?php echo htmlspecialchars((!empty($campaign->from_email) && $campaign->from_email !== 'noreply@axiora.in') ? $campaign->from_email : 'contacts@axioraglobalsolutions.com'); ?>" required>
-                                <div class="form-text small"><i class="fa-solid fa-circle-check text-success me-1"></i>Verified sender: <code>contacts@axioraglobalsolutions.com</code></div>
+                                <input type="email" name="from_email" id="from_email" class="form-control font-monospace" placeholder="contacts@axioraglobalsolutions.in" value="<?php echo htmlspecialchars((!empty($campaign->from_email) && $campaign->from_email !== 'noreply@axiora.in') ? $campaign->from_email : ($default_from_email ?? 'contacts@axioraglobalsolutions.in')); ?>" required>
+                                <div class="form-text small"><i class="fa-solid fa-circle-check text-success me-1"></i>Verified SES sender: <code>contacts@axioraglobalsolutions.in</code></div>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label small fw-semibold">Reply-To Email</label>
-                                <input type="email" name="reply_to" class="form-control" placeholder="support@axiora.in" value="<?php echo htmlspecialchars($campaign->reply_to ?? ''); ?>">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Reply-To Email <span class="text-success small fw-medium">(Customer Replies)</span></label>
+                                <input type="email" name="reply_to" class="form-control font-monospace" placeholder="contacts@axioraglobalsolutions.com" value="<?php echo htmlspecialchars(!empty($campaign->reply_to) ? $campaign->reply_to : ($default_reply_to ?? 'contacts@axioraglobalsolutions.com')); ?>">
+                                <div class="form-text small"><i class="fa-solid fa-inbox text-info me-1"></i>Customer replies route directly to your active Zoho inbox.</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold">Preheader Snippet</label>
