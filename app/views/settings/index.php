@@ -849,17 +849,26 @@
                             </div>
                         </div>
 
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label text-secondary">Marketing Sender "From" Email</label>
                             <input type="email" name="mail.marketing.from_address" id="mail_marketing_from_address" class="form-control font-monospace"
-                                   value="<?php echo htmlspecialchars($settings['mail.marketing.from_address'] ?? 'contacts@axioraglobalsolutions.com'); ?>"
-                                   placeholder="contacts@axioraglobalsolutions.com">
+                                   value="<?php echo htmlspecialchars($settings['mail.marketing.from_address'] ?? 'contacts@axioraglobalsolutions.in'); ?>"
+                                   placeholder="contacts@axioraglobalsolutions.in">
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label text-secondary">Marketing Sender "From" Name</label>
                             <input type="text" name="mail.marketing.from_name" id="mail_marketing_from_name" class="form-control"
                                    value="<?php echo htmlspecialchars($settings['mail.marketing.from_name'] ?? 'Axiora Global'); ?>"
                                    placeholder="Axiora Global">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-secondary">Marketing "Reply-To" Email <span class="text-success small fw-medium">(Customer Replies)</span></label>
+                            <input type="email" name="mail.marketing.reply_to" id="mail_marketing_reply_to" class="form-control font-monospace"
+                                   value="<?php echo htmlspecialchars($settings['mail.marketing.reply_to'] ?? 'contacts@axioraglobalsolutions.com'); ?>"
+                                   placeholder="contacts@axioraglobalsolutions.com">
+                            <div class="form-text small" style="color: var(--text-secondary); font-size: 0.75rem;">
+                                Customer replies route straight to this active inbox.
+                            </div>
                         </div>
 
                         <!-- Deliverability Pacing & Warmup Configuration -->

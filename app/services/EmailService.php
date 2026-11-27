@@ -104,6 +104,7 @@ class EmailService
                 'encryption'             => strtolower($dbSettings['mail.marketing.encryption'] ?? (getenv('SMTP_MARKETING_ENCRYPTION') ?: 'tls')),
                 'from_address'           => $dbSettings['mail.marketing.from_address'] ?? 'contacts@axioraglobalsolutions.com',
                 'from_name'              => $dbSettings['mail.marketing.from_name'] ?? 'Axiora Global',
+                'reply_to'               => $dbSettings['mail.marketing.reply_to'] ?? ($dbSettings['mail.from_address'] ?? 'contacts@axioraglobalsolutions.com'),
                 'ses_region'             => $sesRegion,
                 'ses_configuration_set'  => $sesConfigSet ?: null,
                 'pacing_seconds'         => $pacingSeconds,
